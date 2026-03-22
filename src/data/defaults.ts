@@ -1,18 +1,19 @@
 import { BudgetCategory, FixedExpense } from '@/types/budget';
 
 export const DEFAULT_CATEGORIES: BudgetCategory[] = [
-  { id: 'car-gas', name: 'Car/Gas', budgeted: 400, group: 'shared' },
-  { id: 'groceries', name: 'Groceries', budgeted: 800, group: 'shared' },
-  { id: 'household', name: 'Household', budgeted: 300, group: 'shared' },
-  { id: 'dates', name: 'Dates', budgeted: 200, group: 'shared' },
-  { id: 'dog', name: 'Dog', budgeted: 100, group: 'shared' },
+  { id: 'car-gas', name: 'Car/Gas', budgeted: 375, group: 'shared' },
+  { id: 'groceries', name: 'Groceries', budgeted: 700, group: 'shared' },
+  { id: 'household', name: 'Household', budgeted: 100, group: 'shared' },
+  { id: 'kids', name: 'Kids', budgeted: 500, group: 'shared' },
+  { id: 'dates', name: 'Dates', budgeted: 450, group: 'shared' },
+  { id: 'dog', name: 'Dog', budgeted: 75, group: 'shared' },
   { id: 'gifts', name: 'Gifts', budgeted: 100, group: 'shared' },
-  { id: 'random', name: 'Random', budgeted: 200, group: 'shared' },
-  { id: 'j-eating', name: 'J-Eating Out', budgeted: 150, group: 'joe' },
-  { id: 'j-misc', name: 'J-Misc', budgeted: 100, group: 'joe' },
-  { id: 'k-eating', name: 'K-Eating Out', budgeted: 150, group: 'katie' },
-  { id: 'k-misc', name: 'K-Misc', budgeted: 100, group: 'katie' },
-  { id: 'k-selfcare', name: 'K-Self Care', budgeted: 100, group: 'katie' },
+  { id: 'random', name: 'Random', budgeted: 150, group: 'shared' },
+  { id: 'j-eating', name: 'J-EO', budgeted: 100, group: 'joe' },
+  { id: 'j-misc', name: 'J-Misc', budgeted: 250, group: 'joe' },
+  { id: 'k-eating', name: 'K-EO', budgeted: 100, group: 'katie' },
+  { id: 'k-misc', name: 'K-Misc', budgeted: 200, group: 'katie' },
+  { id: 'k-selfcare', name: 'K-SC', budgeted: 100, group: 'katie' },
 ];
 
 export const DEFAULT_FIXED_EXPENSES: FixedExpense[] = [

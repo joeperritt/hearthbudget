@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource } from '@/types/budget';
 import { MonthHeader } from './MonthHeader';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,7 +8,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-type Filter = 'all' | 'joe' | 'katie' | 'shared';
+type Filter = 'all' | AccountSource;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -20,6 +20,12 @@ interface TransactionsViewProps {
   onDeleteTransaction: (id: string) => void;
 }
 
+const ACCOUNT_LABELS: Record<AccountSource, string> = {
+  'joe-amex': "Joe's Amex",
+  'katie-amex': "Katie's Amex",
+  'checking': 'Checking',
+};
+
 export function TransactionsView({
   transactions, categories, monthLabel, onPrevMonth, onNextMonth, onAddTransaction, onDeleteTransaction,
 }: TransactionsViewProps) {
@@ -27,14 +33,14 @@ export function TransactionsView({
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
 
-  const filtered = filter === 'all' ? transactions : transactions.filter(t => t.person === filter);
+  const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
 
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
-    { id: 'shared', label: 'Shared' },
-    { id: 'joe', label: 'Joe' },
-    { id: 'katie', label: 'Katie' },
+    { id: 'joe-amex', label: "Joe's Amex" },
+    { id: 'katie-amex', label: "Katie's Amex" },
+    { id: 'checking', label: 'Checking' },
   ];
 
   return (
@@ -44,12 +50,12 @@ export function TransactionsView({
       </div>
       <MonthHeader monthLabel={monthLabel} onPrev={onPrevMonth} onNext={onNextMonth} />
 
-      <div className="px-6 flex gap-2 mb-4">
+      <div className="px-6 flex gap-2 mb-4 overflow-x-auto no-scrollbar">
         {filters.map(f => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors active:scale-95 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors active:scale-95 whitespace-nowrap ${
               filter === f.id
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card text-muted-foreground'
@@ -81,13 +87,18 @@ export function TransactionsView({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-medium text-foreground truncate">{t.description}</span>
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {t.description}
+                      {t.isTransferToSavings && (
+                        <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">savings</span>
+                      )}
+                    </span>
                     <span className="text-sm font-medium tabular-nums text-foreground ml-2">
                       {formatCurrency(t.amount)}
                     </span>
                   </div>
                   <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
-                    <span>{catMap[t.categoryId]?.name || 'Unknown'}</span>
+                    <span>{catMap[t.categoryId]?.name || 'Unknown'} · {ACCOUNT_LABELS[t.account]}</span>
                     <span>{format(new Date(t.date), 'MMM d')}</span>
                   </div>
                 </div>

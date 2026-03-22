@@ -10,6 +10,7 @@ import { TransactionsView } from '@/components/hearth/TransactionsView';
 import { SettingsView } from '@/components/hearth/SettingsView';
 import { AddTransactionSheet } from '@/components/hearth/AddTransactionSheet';
 import { CategoryDetail } from '@/components/hearth/CategoryDetail';
+import { PlanningView } from '@/components/hearth/PlanningView';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -31,13 +32,19 @@ const Index = () => {
     [transactions, monthKey]
   );
 
+  // Exclude savings transfers from budget tracking
+  const budgetTransactions = useMemo(
+    () => monthTransactions.filter(t => !t.isTransferToSavings),
+    [monthTransactions]
+  );
+
   const spentByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTransactions.forEach(t => {
+    budgetTransactions.forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     });
     return map;
-  }, [monthTransactions]);
+  }, [budgetTransactions]);
 
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
@@ -55,13 +62,19 @@ const Index = () => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleStartMonth = (nextMonthDate: Date, nextCats: BudgetCategory[]) => {
+    setCategories(nextCats);
+    setCurrentMonth(nextMonthDate);
+    setActiveTab('dashboard');
+  };
+
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
     if (cat) {
       return (
         <CategoryDetail
           category={cat}
-          transactions={monthTransactions.filter(t => t.categoryId === cat.id)}
+          transactions={budgetTransactions.filter(t => t.categoryId === cat.id)}
           spent={spentByCategory[cat.id] || 0}
           onBack={() => setSelectedCategoryId(null)}
           onDeleteTransaction={deleteTransaction}
@@ -116,12 +129,12 @@ const Index = () => {
             onDeleteTransaction={deleteTransaction}
           />
         )}
-        {activeTab === 'settings' && (
-          <SettingsView
+        {activeTab === 'planning' && (
+          <PlanningView
+            currentMonth={currentMonth}
             categories={categories}
             fixedExpenses={fixedExpenses}
-            onUpdateCategories={setCategories}
-            onUpdateFixedExpenses={setFixedExpenses}
+            onStartMonth={handleStartMonth}
           />
         )}
       </div>
