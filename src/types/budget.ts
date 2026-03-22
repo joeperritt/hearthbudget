@@ -1,10 +1,13 @@
+export type AccountSource = 'joe-amex' | 'katie-amex' | 'checking';
+
 export interface Transaction {
   id: string;
   date: string;
   description: string;
   amount: number;
   categoryId: string;
-  person: 'joe' | 'katie' | 'shared';
+  account: AccountSource;
+  isTransferToSavings: boolean;
 }
 
 export interface BudgetCategory {
@@ -28,4 +31,4 @@ export interface MonthlyBudget {
   transactions: Transaction[];
 }
 
-export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'settings';
+export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'planning';

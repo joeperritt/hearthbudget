@@ -1,12 +1,12 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, FileText, List, Settings } from 'lucide-react';
+import { Home, Wallet, FileText, List, CalendarDays } from 'lucide-react';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
   { id: 'variable', label: 'Spending', icon: Wallet },
   { id: 'fixed', label: 'Fixed', icon: FileText },
   { id: 'transactions', label: 'Activity', icon: List },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'planning', label: 'Planning', icon: CalendarDays },
 ];
 
 export function BottomNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (t: TabId) => void }) {

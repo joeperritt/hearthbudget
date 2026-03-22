@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BudgetCategory, Transaction } from '@/types/budget';
+import { BudgetCategory, Transaction, AccountSource } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 
@@ -10,12 +10,19 @@ interface AddTransactionSheetProps {
   onAdd: (t: Omit<Transaction, 'id'>) => void;
 }
 
+const ACCOUNTS: { id: AccountSource; label: string }[] = [
+  { id: 'joe-amex', label: "Joe's Amex" },
+  { id: 'katie-amex', label: "Katie's Amex" },
+  { id: 'checking', label: 'Checking' },
+];
+
 export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
-  const [person, setPerson] = useState<'joe' | 'katie' | 'shared'>('shared');
+  const [account, setAccount] = useState<AccountSource>('joe-amex');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [isTransfer, setIsTransfer] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +31,16 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
       description,
       amount: parseFloat(amount),
       categoryId,
-      person,
+      account,
       date,
+      isTransferToSavings: isTransfer,
     });
     setDescription('');
     setAmount('');
     setCategoryId(categories[0]?.id || '');
-    setPerson('shared');
+    setAccount('joe-amex');
     setDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsTransfer(false);
   };
 
   return (
@@ -85,23 +94,36 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Who</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Account</label>
             <div className="flex gap-2 mt-1">
-              {(['shared', 'joe', 'katie'] as const).map(p => (
+              {ACCOUNTS.map(a => (
                 <button
-                  key={p}
+                  key={a.id}
                   type="button"
-                  onClick={() => setPerson(p)}
+                  onClick={() => setAccount(a.id)}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors active:scale-95 ${
-                    person === p
+                    account === a.id
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card text-muted-foreground border border-border'
                   }`}
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {a.label}
                 </button>
               ))}
             </div>
+          </div>
+          <div className="flex items-center justify-between bg-card rounded-lg px-4 py-3 border border-border">
+            <div>
+              <p className="text-sm font-medium text-foreground">Transfer to Savings</p>
+              <p className="text-[11px] text-muted-foreground">Exclude from budget tracking</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsTransfer(!isTransfer)}
+              className={`relative w-11 h-6 rounded-full transition-colors ${isTransfer ? 'bg-accent' : 'bg-border'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform ${isTransfer ? 'translate-x-5' : ''}`} />
+            </button>
           </div>
           <button
             type="submit"
