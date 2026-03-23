@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 
 import { Plus, Trash2 } from 'lucide-react';
@@ -92,7 +92,6 @@ export function TransactionsView({
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
-              const isDescCat = DESCRIPTION_REQUIRED_CATEGORIES.includes(t.categoryId);
               return (
               <div
                   key={t.id}
