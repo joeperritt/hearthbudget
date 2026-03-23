@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { BudgetCategory, Transaction, AccountSource, TransactionType, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { BudgetCategory, Transaction, AccountSource, TransactionType, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { Plus, Minus } from 'lucide-react';
@@ -29,6 +29,8 @@ interface SplitLine {
 
 export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
   const [totalAmount, setTotalAmount] = useState('');
   const [account, setAccount] = useState<AccountSource | ''>('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -39,23 +41,23 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
   const [splits, setSplits] = useState<SplitLine[]>([
     { categoryId: categories[0]?.id || '', amount: '' },
   ]);
-  const descRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLInputElement>(null);
   const [singleCategoryId, setSingleCategoryId] = useState(categories[0]?.id || '');
 
   const total = parseFloat(totalAmount) || 0;
   const allocatedAmount = splits.reduce((s, sp) => s + (parseFloat(sp.amount) || 0), 0);
   const remainder = total - allocatedAmount;
 
-  // Check if description is needed (only for Random, Gifts, Hosting/Gifts/Random)
-  const needsDescription = useMemo(() => {
+  // Check if notes are required (Random, Gifts, Hosting/Gifts/Random)
+  const notesRequired = useMemo(() => {
     if (isSplit) {
-      return splits.some(sp => DESCRIPTION_REQUIRED_CATEGORIES.includes(sp.categoryId));
+      return splits.some(sp => NOTES_REQUIRED_CATEGORIES.includes(sp.categoryId));
     }
-    return DESCRIPTION_REQUIRED_CATEGORIES.includes(singleCategoryId);
+    return NOTES_REQUIRED_CATEGORIES.includes(singleCategoryId);
   }, [isSplit, splits, singleCategoryId]);
 
-  // Show description field only when needed
-  const showDescription = needsDescription;
+  // Always show notes for required categories
+  const notesVisible = notesRequired || showNotes;
 
   const updateSplit = (idx: number, field: keyof SplitLine, value: string) => {
     setSplits(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
@@ -73,18 +75,18 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     }
   };
 
-  // Auto-focus description when it becomes required
+  // Auto-focus notes when it becomes required
   useEffect(() => {
-    if (needsDescription && descRef.current) {
-      descRef.current.focus();
+    if (notesRequired && notesRef.current) {
+      notesRef.current.focus();
     }
-  }, [needsDescription]);
+  }, [notesRequired]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!totalAmount || !account) return;
-    if (needsDescription && !description.trim()) {
-      descRef.current?.focus();
+    if (notesRequired && !notes.trim()) {
+      notesRef.current?.focus();
       return;
     }
 
@@ -94,6 +96,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
       const acct = account as AccountSource;
       const txns = splits.map(sp => ({
         description: description || '',
+        notes: notes || '',
         amount: (parseFloat(sp.amount) || 0) * signMultiplier,
         categoryId: sp.categoryId,
         account: acct,
@@ -107,6 +110,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
       const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       onAdd([{
         description: description || '',
+        notes: notes || '',
         amount: total * signMultiplier,
         categoryId: singleCategoryId,
         account: account as AccountSource,
@@ -118,6 +122,8 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
     // Reset
     setDescription('');
+    setNotes('');
+    setShowNotes(false);
     setTotalAmount('');
     setSingleCategoryId(categories[0]?.id || '');
     setAccount('');
@@ -276,19 +282,39 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
             </div>
           )}
 
-          {/* Description — only for specific categories */}
-          {showDescription && (
+          {/* Merchant / Description — always visible */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Merchant / Description</label>
+            <input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="e.g. Whole Foods, Shell Gas Station"
+              className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+
+          {/* Notes — toggle or always visible for required categories */}
+          {!notesVisible && (
+            <button
+              type="button"
+              onClick={() => { setShowNotes(true); setTimeout(() => notesRef.current?.focus(), 50); }}
+              className="text-[11px] text-accent font-medium active:scale-95 transition-transform"
+            >
+              ＋ Add note
+            </button>
+          )}
+          {notesVisible && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Description <span className="text-destructive">*</span>
+                Notes {notesRequired && <span className="text-destructive">*</span>}
               </label>
               <input
-                ref={descRef}
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="What was this for?"
+                ref={notesRef}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="e.g. Birthday dinner for mom"
                 className={`w-full mt-1 px-3 py-2.5 rounded-lg bg-card border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30 ${
-                  !description.trim() ? 'border-accent/60' : 'border-border'
+                  notesRequired && !notes.trim() ? 'border-accent/60' : 'border-border'
                 }`}
               />
             </div>
