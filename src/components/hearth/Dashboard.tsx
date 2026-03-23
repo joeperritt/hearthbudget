@@ -89,19 +89,19 @@ export function Dashboard({
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-foreground">Joe's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency2(joeAmexTotal)}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexTotal)}</span>
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-foreground">Katie's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency2(katieAmexTotal)}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexTotal)}</span>
           </div>
           <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
             <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency2(combinedCredit)}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-foreground">Checking Balance</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency2(checkingBalance)}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingBalance)}</span>
           </div>
         </div>
       </div>
