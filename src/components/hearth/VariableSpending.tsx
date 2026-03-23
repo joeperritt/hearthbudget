@@ -1,26 +1,25 @@
 import { BudgetCategory } from '@/types/budget';
 import { MonthHeader } from './MonthHeader';
 import { ProgressBar } from './ProgressBar';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ArrowLeftRight } from 'lucide-react';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
 
 function CategoryCard({
-  category, spent, onSelect, delay,
+  category, spent, onSelect, onMoveFunds, delay,
 }: {
-  category: BudgetCategory; spent: number; onSelect: () => void; delay: number;
+  category: BudgetCategory; spent: number; onSelect: () => void; onMoveFunds: () => void; delay: number;
 }) {
   const remaining = category.budgeted - spent;
 
   return (
-    <button
-      onClick={onSelect}
+    <div
       className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
-      <div className="flex-1 min-w-0">
+      <button onClick={onSelect} className="flex-1 min-w-0 text-left">
         <div className="flex justify-between items-baseline mb-1">
           <span className="font-medium text-sm text-foreground truncate">{category.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -31,9 +30,18 @@ function CategoryCard({
         <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
           <span>{formatCurrency(spent)} of {formatCurrency(category.budgeted)}</span>
         </div>
-      </div>
-      <ChevronRight size={16} className="text-muted-foreground/50 shrink-0" />
-    </button>
+      </button>
+      <button
+        onClick={onMoveFunds}
+        className="p-1.5 text-muted-foreground/40 hover:text-accent active:scale-90 transition-all shrink-0"
+        title="Move funds"
+      >
+        <ArrowLeftRight size={14} />
+      </button>
+      <button onClick={onSelect} className="shrink-0">
+        <ChevronRight size={16} className="text-muted-foreground/50" />
+      </button>
+    </div>
   );
 }
 
@@ -52,13 +60,14 @@ interface VariableSpendingProps {
   categories: BudgetCategory[];
   spentByCategory: Record<string, number>;
   onSelectCategory: (id: string) => void;
+  onMoveFunds: (fromCategoryId: string) => void;
   monthLabel: string;
   onPrevMonth: () => void;
   onNextMonth: () => void;
 }
 
 export function VariableSpending({
-  categories, spentByCategory, onSelectCategory, monthLabel, onPrevMonth, onNextMonth,
+  categories, spentByCategory, onSelectCategory, onMoveFunds, monthLabel, onPrevMonth, onNextMonth,
 }: VariableSpendingProps) {
   const shared = categories.filter(c => c.group === 'shared');
   const joe = categories.filter(c => c.group === 'joe');
@@ -81,6 +90,7 @@ export function VariableSpending({
             category={c}
             spent={spentByCategory[c.id] || 0}
             onSelect={() => onSelectCategory(c.id)}
+            onMoveFunds={() => onMoveFunds(c.id)}
             delay={(delay++) * 40}
           />
         ))}
@@ -92,6 +102,7 @@ export function VariableSpending({
             category={c}
             spent={spentByCategory[c.id] || 0}
             onSelect={() => onSelectCategory(c.id)}
+            onMoveFunds={() => onMoveFunds(c.id)}
             delay={(delay++) * 40}
           />
         ))}
@@ -103,6 +114,7 @@ export function VariableSpending({
             category={c}
             spent={spentByCategory[c.id] || 0}
             onSelect={() => onSelectCategory(c.id)}
+            onMoveFunds={() => onMoveFunds(c.id)}
             delay={(delay++) * 40}
           />
         ))}
