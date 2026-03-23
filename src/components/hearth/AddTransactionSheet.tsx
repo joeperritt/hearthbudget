@@ -19,8 +19,7 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
 
 const TRANSACTION_TYPES: { id: TransactionType; label: string; helper: string }[] = [
   { id: 'expense', label: 'Expense', helper: 'Normal spending transaction' },
-  { id: 'savings-paydown', label: 'Savings Paydown', helper: 'Paying down a credit card from savings. Adds funds back to category without affecting checking.' },
-  { id: 'funds-transfer-in', label: 'Funds Transfer In', helper: 'Moving money from savings into checking. Increases checking balance and category budget.' },
+  { id: 'budget-adjustment', label: 'Budget Adjustment', helper: 'Adjust category funds. Use + to add funds or − to remove funds.' },
 ];
 
 interface SplitLine {

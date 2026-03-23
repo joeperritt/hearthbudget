@@ -1,6 +1,6 @@
 export type AccountSource = 'joe-amex' | 'katie-amex' | 'checking';
 
-export type TransactionType = 'expense' | 'savings-paydown' | 'funds-transfer-in';
+export type TransactionType = 'expense' | 'budget-adjustment';
 
 export interface Transaction {
   id: string;
