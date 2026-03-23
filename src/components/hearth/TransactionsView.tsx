@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction, BudgetCategory, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { supabase } from '@/integrations/supabase/client';
 
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -9,6 +10,12 @@ function formatCurrency(n: number) {
 }
 
 type Filter = 'all' | AccountSource;
+
+interface ProfileInfo {
+  user_id: string;
+  display_name: string;
+  avatar_initial: string;
+}
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -28,7 +35,15 @@ export function TransactionsView({
   transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
 
+  useEffect(() => {
+    supabase.from('profiles').select('user_id, display_name, avatar_initial').then(({ data }) => {
+      if (data) setProfiles(data as ProfileInfo[]);
+    });
+  }, []);
+
+  const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
