@@ -10,6 +10,12 @@ export interface Transaction {
   isTransferToSavings: boolean;
 }
 
+// A split transaction creates multiple TransactionSplit entries under one parent
+export interface TransactionSplit {
+  categoryId: string;
+  amount: number;
+}
+
 export interface BudgetCategory {
   id: string;
   name: string;
@@ -24,6 +30,14 @@ export interface FixedExpense {
   group: 'bills' | 'savings' | 'tithe';
 }
 
+export interface BudgetTransfer {
+  id: string;
+  date: string;
+  fromCategoryId: string;
+  toCategoryId: string;
+  amount: number;
+}
+
 export interface MonthlyBudget {
   month: string; // YYYY-MM
   categories: BudgetCategory[];
@@ -32,3 +46,6 @@ export interface MonthlyBudget {
 }
 
 export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'planning';
+
+// Categories that require descriptions
+export const DESCRIPTION_REQUIRED_CATEGORIES = ['random', 'hosting-gifts'];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, AccountSource } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
 import { MonthHeader } from './MonthHeader';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -79,37 +79,40 @@ export function TransactionsView({
           </div>
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-            {sorted.map((t, i) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-3 px-4 py-3 animate-fade-up"
-                style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {t.description}
-                      {t.isTransferToSavings && (
-                        <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">savings</span>
-                      )}
-                    </span>
-                    <span className="text-sm font-medium tabular-nums text-foreground ml-2">
-                      {formatCurrency(t.amount)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
-                    <span>{catMap[t.categoryId]?.name || 'Unknown'} · {ACCOUNT_LABELS[t.account]}</span>
-                    <span>{format(new Date(t.date), 'MMM d')}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => onDeleteTransaction(t.id)}
-                  className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
+            {sorted.map((t, i) => {
+              const isDescCat = DESCRIPTION_REQUIRED_CATEGORIES.includes(t.categoryId);
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+                  style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {isDescCat && t.description ? t.description : t.description || '(no description)'}
+                        {t.isTransferToSavings && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">savings</span>
+                        )}
+                      </span>
+                      <span className="text-sm font-medium tabular-nums text-foreground ml-2">
+                        {formatCurrency(t.amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
+                      <span>{catMap[t.categoryId]?.name || 'Unknown'} · {ACCOUNT_LABELS[t.account]}</span>
+                      <span>{format(new Date(t.date), 'MMM d')}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onDeleteTransaction(t.id)}
+                    className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
