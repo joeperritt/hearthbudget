@@ -1,5 +1,7 @@
 export type AccountSource = 'joe-amex' | 'katie-amex' | 'checking';
 
+export type TransactionType = 'expense' | 'savings-paydown' | 'funds-transfer-in';
+
 export interface Transaction {
   id: string;
   date: string;
@@ -8,6 +10,7 @@ export interface Transaction {
   categoryId: string;
   account: AccountSource;
   isTransferToSavings: boolean;
+  transactionType: TransactionType;
 }
 
 // A split transaction creates multiple TransactionSplit entries under one parent
@@ -45,10 +48,10 @@ export interface MonthlyBudget {
   transactions: Transaction[];
 }
 
-export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'more';
+export type TabId = 'dashboard' | 'variable' | 'transactions' | 'more';
 
 // Categories that require descriptions
-export const DESCRIPTION_REQUIRED_CATEGORIES = ['random', 'hosting-gifts'];
+export const DESCRIPTION_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
 
 // The Hosting/Gifts/Random category ID — rolls up into giving totals
 export const GIVING_VARIABLE_CATEGORY = 'hosting-gifts';

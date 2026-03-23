@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { BudgetCategory, Transaction, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { BudgetCategory, Transaction, AccountSource, TransactionType, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { Plus, Minus } from 'lucide-react';
@@ -17,6 +17,12 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'checking', label: 'Checking' },
 ];
 
+const TRANSACTION_TYPES: { id: TransactionType; label: string; helper: string }[] = [
+  { id: 'expense', label: 'Expense', helper: 'Normal spending transaction' },
+  { id: 'savings-paydown', label: 'Savings Paydown', helper: 'Paying down a credit card from savings. Adds funds back to category without affecting checking.' },
+  { id: 'funds-transfer-in', label: 'Funds Transfer In', helper: 'Moving money from savings into checking. Increases checking balance and category budget.' },
+];
+
 interface SplitLine {
   categoryId: string;
   amount: string;
@@ -28,26 +34,28 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
   const [account, setAccount] = useState<AccountSource>('joe-amex');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isTransfer, setIsTransfer] = useState(false);
+  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
   const [isSplit, setIsSplit] = useState(false);
   const [splits, setSplits] = useState<SplitLine[]>([
     { categoryId: categories[0]?.id || '', amount: '' },
   ]);
   const descRef = useRef<HTMLInputElement>(null);
-
-  // Single category mode (no split)
   const [singleCategoryId, setSingleCategoryId] = useState(categories[0]?.id || '');
 
   const total = parseFloat(totalAmount) || 0;
   const allocatedAmount = splits.reduce((s, sp) => s + (parseFloat(sp.amount) || 0), 0);
   const remainder = total - allocatedAmount;
 
-  // Check if description is required
+  // Check if description is needed (only for Random, Gifts, Hosting/Gifts/Random)
   const needsDescription = useMemo(() => {
     if (isSplit) {
       return splits.some(sp => DESCRIPTION_REQUIRED_CATEGORIES.includes(sp.categoryId));
     }
     return DESCRIPTION_REQUIRED_CATEGORIES.includes(singleCategoryId);
   }, [isSplit, splits, singleCategoryId]);
+
+  // Show description field only when needed
+  const showDescription = needsDescription;
 
   const updateSplit = (idx: number, field: keyof SplitLine, value: string) => {
     setSplits(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
@@ -65,6 +73,13 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     }
   };
 
+  // Auto-focus description when it becomes required
+  useEffect(() => {
+    if (needsDescription && descRef.current) {
+      descRef.current.focus();
+    }
+  }, [needsDescription]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!totalAmount) return;
@@ -74,7 +89,6 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     }
 
     if (isSplit) {
-      // Validate splits sum
       if (Math.abs(remainder) > 0.01) return;
       const txns = splits.map(sp => ({
         description: description || '',
@@ -83,6 +97,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
         account,
         date,
         isTransferToSavings: isTransfer,
+        transactionType,
       }));
       onAdd(txns);
     } else {
@@ -94,6 +109,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
         account,
         date,
         isTransferToSavings: isTransfer,
+        transactionType,
       }]);
     }
 
@@ -104,9 +120,12 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     setAccount('joe-amex');
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setIsTransfer(false);
+    setTransactionType('expense');
     setIsSplit(false);
     setSplits([{ categoryId: categories[0]?.id || '', amount: '' }]);
   };
+
+  const selectedType = TRANSACTION_TYPES.find(t => t.id === transactionType)!;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -115,20 +134,28 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
           <SheetTitle className="font-display text-lg">Add Transaction</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4 pb-8">
+          {/* Transaction Type */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Description {needsDescription && <span className="text-destructive">*</span>}
-            </label>
-            <input
-              ref={descRef}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={needsDescription ? "What was this for?" : "What was it for?"}
-              className={`w-full mt-1 px-3 py-2.5 rounded-lg bg-card border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30 ${
-                needsDescription && !description.trim() ? 'border-accent/60' : 'border-border'
-              }`}
-            />
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Transaction Type</label>
+            <div className="flex gap-2 mt-1">
+              {TRANSACTION_TYPES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTransactionType(t.id)}
+                  className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-colors active:scale-95 ${
+                    transactionType === t.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground border border-border'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground/70 mt-1">{selectedType.helper}</p>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount</label>
@@ -222,6 +249,24 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
             </div>
           )}
 
+          {/* Description — only for specific categories */}
+          {showDescription && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Description <span className="text-destructive">*</span>
+              </label>
+              <input
+                ref={descRef}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="What was this for?"
+                className={`w-full mt-1 px-3 py-2.5 rounded-lg bg-card border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+                  !description.trim() ? 'border-accent/60' : 'border-border'
+                }`}
+              />
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Account</label>
             <div className="flex gap-2 mt-1">
@@ -241,19 +286,23 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
               ))}
             </div>
           </div>
-          <div className="flex items-center justify-between bg-card rounded-lg px-4 py-3 border border-border">
-            <div>
-              <p className="text-sm font-medium text-foreground">Transfer to Savings</p>
-              <p className="text-[11px] text-muted-foreground">Exclude from budget tracking</p>
+
+          {transactionType === 'expense' && (
+            <div className="flex items-center justify-between bg-card rounded-lg px-4 py-3 border border-border">
+              <div>
+                <p className="text-sm font-medium text-foreground">Transfer to Savings</p>
+                <p className="text-[11px] text-muted-foreground">Exclude from budget tracking</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTransfer(!isTransfer)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isTransfer ? 'bg-accent' : 'bg-border'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform ${isTransfer ? 'translate-x-5' : ''}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsTransfer(!isTransfer)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${isTransfer ? 'bg-accent' : 'bg-border'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform ${isTransfer ? 'translate-x-5' : ''}`} />
-            </button>
-          </div>
+          )}
+
           <button
             type="submit"
             disabled={isSplit && Math.abs(remainder) > 0.01}

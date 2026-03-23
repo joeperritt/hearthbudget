@@ -4,8 +4,7 @@ import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVIN
 import { DEFAULT_CATEGORIES, DEFAULT_FIXED_EXPENSES } from '@/data/defaults';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
-import { VariableSpending } from '@/components/hearth/VariableSpending';
-import { FixedExpensesView } from '@/components/hearth/FixedExpensesView';
+import { SpendingView } from '@/components/hearth/SpendingView';
 import { TransactionsView } from '@/components/hearth/TransactionsView';
 import { AddTransactionSheet } from '@/components/hearth/AddTransactionSheet';
 import { CategoryDetail } from '@/components/hearth/CategoryDetail';
@@ -25,7 +24,6 @@ const Index = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings'>('menu');
-  const [checkingBalance, setCheckingBalance] = useState(0);
 
   const monthKey = format(currentMonth, 'yyyy-MM');
   const monthLabel = format(currentMonth, 'MMMM yyyy');
@@ -44,7 +42,7 @@ const Index = () => {
   );
 
   const budgetTransactions = useMemo(
-    () => monthTransactions.filter(t => !t.isTransferToSavings),
+    () => monthTransactions.filter(t => !t.isTransferToSavings && t.transactionType === 'expense'),
     [monthTransactions]
   );
 
@@ -53,8 +51,12 @@ const Index = () => {
     budgetTransactions.forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     });
+    // Subtract savings-paydown and funds-transfer-in amounts (they add funds back)
+    monthTransactions.filter(t => t.transactionType === 'savings-paydown' || t.transactionType === 'funds-transfer-in').forEach(t => {
+      map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
+    });
     return map;
-  }, [budgetTransactions]);
+  }, [budgetTransactions, monthTransactions]);
 
   const transferAdjustments = useMemo(() => {
     const map: Record<string, number> = {};
@@ -65,7 +67,6 @@ const Index = () => {
     return map;
   }, [monthTransfers]);
 
-  // Hosting/Gifts/Random budget rolls into giving totals
   const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
@@ -75,15 +76,26 @@ const Index = () => {
   const totalTithe = rawTithe + hostingGiftsBudget;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + rawTithe;
 
-  // Account totals for dashboard
+  // Account totals
   const joeAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex').reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
   const katieAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex').reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
+
+  // Checking balance: totalBudget - checking account expenses + funds-transfer-in amounts
+  const checkingBalance = useMemo(() => {
+    const checkingExpenses = monthTransactions
+      .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings)
+      .reduce((s, t) => s + t.amount, 0);
+    const fundsIn = monthTransactions
+      .filter(t => t.transactionType === 'funds-transfer-in')
+      .reduce((s, t) => s + t.amount, 0);
+    return totalBudget - checkingExpenses + fundsIn;
+  }, [monthTransactions, totalBudget]);
 
   const addTransactions = (txns: Omit<Transaction, 'id'>[]) => {
     const newTxns = txns.map(t => ({ ...t, id: crypto.randomUUID() }));
@@ -107,7 +119,6 @@ const Index = () => {
     setMoreSubView('menu');
   };
 
-  // Reset more sub-view when switching tabs
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     if (tab === 'more') setMoreSubView('menu');
@@ -149,24 +160,16 @@ const Index = () => {
             joeAmexTotal={joeAmexTotal}
             katieAmexTotal={katieAmexTotal}
             checkingBalance={checkingBalance}
-            onCheckingBalanceChange={setCheckingBalance}
           />
         )}
         {activeTab === 'variable' && (
-          <VariableSpending
+          <SpendingView
             categories={categories}
+            fixedExpenses={fixedExpenses}
+            transactions={monthTransactions}
             spentByCategory={spentByCategory}
             onSelectCategory={setSelectedCategoryId}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
-            monthLabel={monthLabel}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
-          />
-        )}
-        {activeTab === 'fixed' && (
-          <FixedExpensesView
-            expenses={fixedExpenses}
-            transactions={monthTransactions}
             monthLabel={monthLabel}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
@@ -191,7 +194,6 @@ const Index = () => {
             currentMonth={currentMonth}
             categories={categories}
             fixedExpenses={fixedExpenses}
-            onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
           />
         )}
@@ -199,8 +201,10 @@ const Index = () => {
           <SettingsView
             categories={categories}
             fixedExpenses={fixedExpenses}
+            currentMonth={currentMonth}
             onUpdateCategories={setCategories}
             onUpdateFixedExpenses={setFixedExpenses}
+            onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
           />
         )}
