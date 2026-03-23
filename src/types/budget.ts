@@ -45,7 +45,10 @@ export interface MonthlyBudget {
   transactions: Transaction[];
 }
 
-export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'planning';
+export type TabId = 'dashboard' | 'variable' | 'fixed' | 'transactions' | 'more';
 
 // Categories that require descriptions
 export const DESCRIPTION_REQUIRED_CATEGORIES = ['random', 'hosting-gifts'];
+
+// The Hosting/Gifts/Random category ID — rolls up into giving totals
+export const GIVING_VARIABLE_CATEGORY = 'hosting-gifts';

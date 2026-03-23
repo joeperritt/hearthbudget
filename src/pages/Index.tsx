@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format, addMonths, subMonths } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
 import { DEFAULT_CATEGORIES, DEFAULT_FIXED_EXPENSES } from '@/data/defaults';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -11,6 +11,8 @@ import { AddTransactionSheet } from '@/components/hearth/AddTransactionSheet';
 import { CategoryDetail } from '@/components/hearth/CategoryDetail';
 import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
+import { MoreView } from '@/components/hearth/MoreView';
+import { SettingsView } from '@/components/hearth/SettingsView';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -22,6 +24,8 @@ const Index = () => {
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings'>('menu');
+  const [checkingBalance, setCheckingBalance] = useState(0);
 
   const monthKey = format(currentMonth, 'yyyy-MM');
   const monthLabel = format(currentMonth, 'MMMM yyyy');
@@ -52,7 +56,6 @@ const Index = () => {
     return map;
   }, [budgetTransactions]);
 
-  // Transfer adjustments per category
   const transferAdjustments = useMemo(() => {
     const map: Record<string, number> = {};
     monthTransfers.forEach(t => {
@@ -62,12 +65,25 @@ const Index = () => {
     return map;
   }, [monthTransfers]);
 
+  // Hosting/Gifts/Random budget rolls into giving totals
+  const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
   const totalFixed = fixedExpenses.filter(e => e.group === 'bills').reduce((s, e) => s + e.amount, 0);
   const totalSavings = fixedExpenses.filter(e => e.group === 'savings').reduce((s, e) => s + e.amount, 0);
-  const totalTithe = fixedExpenses.filter(e => e.group === 'tithe').reduce((s, e) => s + e.amount, 0);
-  const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
+  const rawTithe = fixedExpenses.filter(e => e.group === 'tithe').reduce((s, e) => s + e.amount, 0);
+  const totalTithe = rawTithe + hostingGiftsBudget;
+  const totalBudget = totalVariableBudget + totalFixed + totalSavings + rawTithe;
+
+  // Account totals for dashboard
+  const joeAmexTotal = useMemo(
+    () => monthTransactions.filter(t => t.account === 'joe-amex').reduce((s, t) => s + t.amount, 0),
+    [monthTransactions]
+  );
+  const katieAmexTotal = useMemo(
+    () => monthTransactions.filter(t => t.account === 'katie-amex').reduce((s, t) => s + t.amount, 0),
+    [monthTransactions]
+  );
 
   const addTransactions = (txns: Omit<Transaction, 'id'>[]) => {
     const newTxns = txns.map(t => ({ ...t, id: crypto.randomUUID() }));
@@ -88,6 +104,13 @@ const Index = () => {
     setFixedExpenses(nextFixed);
     setCurrentMonth(nextMonthDate);
     setActiveTab('dashboard');
+    setMoreSubView('menu');
+  };
+
+  // Reset more sub-view when switching tabs
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === 'more') setMoreSubView('menu');
   };
 
   if (selectedCategoryId) {
@@ -123,6 +146,10 @@ const Index = () => {
             savingsTotal={totalSavings}
             titheTotal={totalTithe}
             onAddTransaction={() => setShowAddTransaction(true)}
+            joeAmexTotal={joeAmexTotal}
+            katieAmexTotal={katieAmexTotal}
+            checkingBalance={checkingBalance}
+            onCheckingBalanceChange={setCheckingBalance}
           />
         )}
         {activeTab === 'variable' && (
@@ -139,6 +166,7 @@ const Index = () => {
         {activeTab === 'fixed' && (
           <FixedExpensesView
             expenses={fixedExpenses}
+            transactions={monthTransactions}
             monthLabel={monthLabel}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
@@ -155,17 +183,30 @@ const Index = () => {
             onDeleteTransaction={deleteTransaction}
           />
         )}
-        {activeTab === 'planning' && (
+        {activeTab === 'more' && moreSubView === 'menu' && (
+          <MoreView onSelect={tab => setMoreSubView(tab)} />
+        )}
+        {activeTab === 'more' && moreSubView === 'planning' && (
           <PlanningView
             currentMonth={currentMonth}
             categories={categories}
             fixedExpenses={fixedExpenses}
             onStartMonth={handleStartMonth}
+            onBack={() => setMoreSubView('menu')}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'settings' && (
+          <SettingsView
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            onUpdateCategories={setCategories}
+            onUpdateFixedExpenses={setFixedExpenses}
+            onBack={() => setMoreSubView('menu')}
           />
         )}
       </div>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       <AddTransactionSheet
         open={showAddTransaction}
