@@ -186,8 +186,6 @@ const Index = () => {
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
             totalBudget={totalBudget}
             variableBudget={totalVariableBudget}
             variableSpent={totalVariableSpent}
