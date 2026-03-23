@@ -2,10 +2,6 @@ import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox } from 'lucide-react';
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
-}
-
-function formatCurrency2(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
