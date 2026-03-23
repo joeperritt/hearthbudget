@@ -193,7 +193,7 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
   const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
   const titheTotal = rawTithe + hostingGiftsAmt;
-  const budgetTotal = variableTotal + fixedTotal + savingsTotal + rawTithe;
+  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
   function renderItemRow(item: { id: string; name: string }, value: number, saveEdit: (id: string) => void, isFixed: boolean, group: { items: { id: string }[] }) {
     const idx = group.items.findIndex(i => i.id === item.id);
