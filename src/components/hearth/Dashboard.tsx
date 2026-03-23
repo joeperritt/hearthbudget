@@ -57,7 +57,7 @@ export function Dashboard({
   fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
   joeAmexTotal, katieAmexTotal, checkingBalance,
 }: DashboardProps) {
-  const totalSpent = variableSpent + fixedTotal + savingsTotal + titheTotal;
+  const totalSpent = variableSpent + fixedSpent + savingsSpent + titheSpent;
   const combinedCredit = joeAmexTotal + katieAmexTotal;
 
   return (
