@@ -22,7 +22,9 @@ const Index = () => {
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
+  const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings'>('menu');
 
   const monthKey = format(currentMonth, 'yyyy-MM');
@@ -129,13 +131,33 @@ const Index = () => {
     if (cat) {
       return (
         <CategoryDetail
-          category={cat}
+          category={{ id: cat.id, name: cat.name, budgeted: cat.budgeted }}
           categories={categories}
           transactions={budgetTransactions.filter(t => t.categoryId === cat.id)}
           transfers={monthTransfers}
           spent={spentByCategory[cat.id] || 0}
           transferAdjustment={transferAdjustments[cat.id] || 0}
           onBack={() => setSelectedCategoryId(null)}
+          onDeleteTransaction={deleteTransaction}
+        />
+      );
+    }
+  }
+
+  if (selectedFixedExpenseId) {
+    const exp = fixedExpenses.find(e => e.id === selectedFixedExpenseId);
+    if (exp) {
+      const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
+      const fixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0);
+      return (
+        <CategoryDetail
+          category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
+          categories={categories}
+          transactions={fixedTransactions}
+          transfers={monthTransfers}
+          spent={fixedSpent}
+          transferAdjustment={transferAdjustments[exp.id] || 0}
+          onBack={() => setSelectedFixedExpenseId(null)}
           onDeleteTransaction={deleteTransaction}
         />
       );
@@ -169,7 +191,9 @@ const Index = () => {
             transactions={monthTransactions}
             spentByCategory={spentByCategory}
             onSelectCategory={setSelectedCategoryId}
+            onSelectFixedExpense={setSelectedFixedExpenseId}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
+            onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
@@ -224,7 +248,19 @@ const Index = () => {
           open={!!moveFundsCategoryId}
           onOpenChange={open => { if (!open) setMoveFundsCategoryId(null); }}
           categories={categories}
+          fixedExpenses={fixedExpenses}
           fromCategoryId={moveFundsCategoryId}
+          onMove={addTransfer}
+        />
+      )}
+
+      {moveFundsFixedId && (
+        <MoveFundsSheet
+          open={!!moveFundsFixedId}
+          onOpenChange={open => { if (!open) setMoveFundsFixedId(null); }}
+          categories={categories}
+          fixedExpenses={fixedExpenses}
+          fromCategoryId={moveFundsFixedId}
           onMove={addTransfer}
         />
       )}
