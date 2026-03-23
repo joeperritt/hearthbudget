@@ -202,6 +202,7 @@ export type Database = {
           household_id: string
           id: string
           is_transfer_to_savings: boolean
+          notes: string
           transaction_type: string
         }
         Insert: {
@@ -215,6 +216,7 @@ export type Database = {
           household_id: string
           id?: string
           is_transfer_to_savings?: boolean
+          notes?: string
           transaction_type?: string
         }
         Update: {
@@ -228,6 +230,7 @@ export type Database = {
           household_id?: string
           id?: string
           is_transfer_to_savings?: boolean
+          notes?: string
           transaction_type?: string
         }
         Relationships: [
