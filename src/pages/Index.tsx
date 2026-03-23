@@ -12,6 +12,7 @@ import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
+import { PastMonthsView } from '@/components/hearth/PastMonthsView';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -245,6 +246,9 @@ const Index = () => {
             onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
           />
+        )}
+        {activeTab === 'more' && moreSubView === 'past-months' && (
+          <PastMonthsView onBack={() => setMoreSubView('menu')} />
         )}
       </div>
 
