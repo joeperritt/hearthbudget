@@ -6,6 +6,7 @@ export interface Transaction {
   id: string;
   date: string;
   description: string;
+  notes: string;
   amount: number;
   categoryId: string;
   account: AccountSource;
@@ -51,8 +52,8 @@ export interface MonthlyBudget {
 
 export type TabId = 'dashboard' | 'variable' | 'transactions' | 'more';
 
-// Categories that require descriptions
-export const DESCRIPTION_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
+// Categories that require notes
+export const NOTES_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
 
 // The Hosting/Gifts/Random category ID — rolls up into giving totals
 export const GIVING_VARIABLE_CATEGORY = 'hosting-gifts';

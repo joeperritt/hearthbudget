@@ -1,4 +1,4 @@
-import { Transaction, BudgetCategory, BudgetTransfer, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, BudgetTransfer, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { ArrowLeft, Trash2, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -28,7 +28,7 @@ export function CategoryDetail({ category, categories, transactions, transfers, 
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
-  const isDescriptionCategory = DESCRIPTION_REQUIRED_CATEGORIES.includes(category.id);
+  const isDescriptionCategory = NOTES_REQUIRED_CATEGORIES.includes(category.id);
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
 
   // Transfers involving this category
