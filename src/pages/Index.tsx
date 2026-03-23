@@ -214,7 +214,6 @@ const Index = () => {
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
           />
-        )
         )}
         {activeTab === 'transactions' && (
           <TransactionsView
