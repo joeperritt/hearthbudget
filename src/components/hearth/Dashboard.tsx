@@ -91,8 +91,7 @@ export function Dashboard({
       <div className="px-6 grid grid-cols-2 gap-3">
         <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
         <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
-        <SummaryCard label="Savings" budgeted={savingsTotal} spent={savingsSpent} delay={200} />
-        <SummaryCard label="Tithe/Giving" budgeted={titheTotal} spent={titheSpent} delay={250} />
+      </div>
       </div>
 
       {/* Account Snapshot */}
