@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
-import { DEFAULT_CATEGORIES, DEFAULT_FIXED_EXPENSES } from '@/data/defaults';
+import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
@@ -15,12 +15,21 @@ import { SettingsView } from '@/components/hearth/SettingsView';
 import { PastMonthsView } from '@/components/hearth/PastMonthsView';
 
 const Index = () => {
+  const {
+    categories,
+    fixedExpenses,
+    transactions,
+    transfers,
+    loading,
+    addTransactions,
+    deleteTransaction,
+    addTransfer,
+    updateCategories,
+    updateFixedExpenses,
+  } = useBudgetData();
+
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [categories, setCategories] = useState<BudgetCategory[]>(DEFAULT_CATEGORIES);
-  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>(DEFAULT_FIXED_EXPENSES);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
+  const [currentMonth] = useState(new Date());
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
@@ -30,9 +39,6 @@ const Index = () => {
 
   const monthKey = format(currentMonth, 'yyyy-MM');
   const monthLabel = format(currentMonth, 'MMMM yyyy');
-
-  const prevMonth = useCallback(() => setCurrentMonth(d => subMonths(d, 1)), []);
-  const nextMonth = useCallback(() => setCurrentMonth(d => addMonths(d, 1)), []);
 
   const monthTransactions = useMemo(
     () => transactions.filter(t => t.date.startsWith(monthKey)),
@@ -71,7 +77,7 @@ const Index = () => {
   }, [monthTransfers]);
 
   const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
+  const totalVariableBudget = categories.filter(c => c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
   const totalFixed = fixedExpenses.filter(e => e.group === 'bills').reduce((s, e) => s + e.amount, 0);
   const totalSavings = fixedExpenses.filter(e => e.group === 'savings').reduce((s, e) => s + e.amount, 0);
@@ -112,24 +118,14 @@ const Index = () => {
     return totalBudget - checkingExpenses;
   }, [monthTransactions, totalBudget]);
 
-  const addTransactions = (txns: Omit<Transaction, 'id'>[]) => {
-    const newTxns = txns.map(t => ({ ...t, id: crypto.randomUUID() }));
-    setTransactions(prev => [...newTxns, ...prev]);
+  const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
+    await addTransactions(txns);
     setShowAddTransaction(false);
   };
 
-  const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  };
-
-  const addTransfer = (t: Omit<BudgetTransfer, 'id'>) => {
-    setTransfers(prev => [...prev, { ...t, id: crypto.randomUUID() }]);
-  };
-
-  const handleStartMonth = (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
-    setCategories(nextCats);
-    setFixedExpenses(nextFixed);
-    setCurrentMonth(nextMonthDate);
+  const handleStartMonth = async (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
+    await updateCategories(nextCats);
+    await updateFixedExpenses(nextFixed);
     setActiveTab('dashboard');
     setMoreSubView('menu');
   };
@@ -138,6 +134,16 @@ const Index = () => {
     setActiveTab(tab);
     if (tab === 'more') setMoreSubView('menu');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
+          <span className="text-primary-foreground font-display text-lg font-bold">H</span>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
@@ -161,14 +167,14 @@ const Index = () => {
     const exp = fixedExpenses.find(e => e.id === selectedFixedExpenseId);
     if (exp) {
       const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
-      const fixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0);
+      const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0);
       return (
         <CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
           categories={categories}
           transactions={fixedTransactions}
           transfers={monthTransfers}
-          spent={fixedSpent}
+          spent={expFixedSpent}
           transferAdjustment={transferAdjustments[exp.id] || 0}
           onBack={() => setSelectedFixedExpenseId(null)}
           onDeleteTransaction={deleteTransaction}
@@ -236,8 +242,8 @@ const Index = () => {
             categories={categories}
             fixedExpenses={fixedExpenses}
             currentMonth={currentMonth}
-            onUpdateCategories={setCategories}
-            onUpdateFixedExpenses={setFixedExpenses}
+            onUpdateCategories={updateCategories}
+            onUpdateFixedExpenses={updateFixedExpenses}
             onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
           />
@@ -253,7 +259,7 @@ const Index = () => {
         open={showAddTransaction}
         onOpenChange={setShowAddTransaction}
         categories={categories}
-        onAdd={addTransactions}
+        onAdd={handleAddTransactions}
       />
 
       {moveFundsCategoryId && (
