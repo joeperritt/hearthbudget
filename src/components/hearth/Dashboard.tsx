@@ -40,8 +40,11 @@ interface DashboardProps {
   variableBudget: number;
   variableSpent: number;
   fixedTotal: number;
+  fixedSpent: number;
   savingsTotal: number;
+  savingsSpent: number;
   titheTotal: number;
+  titheSpent: number;
   onAddTransaction: () => void;
   joeAmexTotal: number;
   katieAmexTotal: number;
@@ -51,7 +54,7 @@ interface DashboardProps {
 export function Dashboard({
   monthLabel, onPrevMonth, onNextMonth,
   totalBudget, variableBudget, variableSpent,
-  fixedTotal, savingsTotal, titheTotal, onAddTransaction,
+  fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
   joeAmexTotal, katieAmexTotal, checkingBalance,
 }: DashboardProps) {
   const totalSpent = variableSpent + fixedTotal + savingsTotal + titheTotal;
@@ -87,9 +90,9 @@ export function Dashboard({
 
       <div className="px-6 grid grid-cols-2 gap-3">
         <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
-        <SummaryCard label="Fixed Bills" budgeted={fixedTotal} delay={150} />
-        <SummaryCard label="Savings" budgeted={savingsTotal} delay={200} />
-        <SummaryCard label="Tithe/Giving" budgeted={titheTotal} delay={250} />
+        <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
+        <SummaryCard label="Savings" budgeted={savingsTotal} spent={savingsSpent} delay={200} />
+        <SummaryCard label="Tithe/Giving" budgeted={titheTotal} spent={titheSpent} delay={250} />
       </div>
 
       {/* Account Snapshot */}
