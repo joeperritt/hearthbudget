@@ -29,7 +29,7 @@ function dbToFixed(row: Record<string, unknown>): FixedExpense {
   };
 }
 
-function dbToTx(row: Record<string, unknown>): Transaction & { enteredBy?: string | null } {
+function dbToTx(row: Record<string, unknown>): Transaction {
   return {
     id: row.id as string,
     date: row.date as string,
@@ -59,7 +59,7 @@ export function useBudgetData() {
 
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
-  const [transactions, setTransactions] = useState<(Transaction & { enteredBy?: string | null })[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const initialLoad = useRef(true);
