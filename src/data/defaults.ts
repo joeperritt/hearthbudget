@@ -9,6 +9,7 @@ export const DEFAULT_CATEGORIES: BudgetCategory[] = [
   { id: 'dog', name: 'Dog', budgeted: 75, group: 'shared' },
   { id: 'gifts', name: 'Gifts', budgeted: 100, group: 'shared' },
   { id: 'random', name: 'Random', budgeted: 150, group: 'shared' },
+  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', budgeted: 800, group: 'shared' },
   { id: 'j-eating', name: 'J-EO', budgeted: 100, group: 'joe' },
   { id: 'j-misc', name: 'J-Misc', budgeted: 250, group: 'joe' },
   { id: 'k-eating', name: 'K-EO', budgeted: 100, group: 'katie' },
@@ -44,5 +45,5 @@ export const DEFAULT_FIXED_EXPENSES: FixedExpense[] = [
   { id: 'ccc', name: 'CCC', amount: 700, group: 'tithe' },
   { id: 'od', name: 'OD', amount: 300, group: 'tithe' },
   { id: 'co-ef', name: 'CO-EF', amount: 100, group: 'tithe' },
-  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', amount: 800, group: 'tithe' },
+  
 ];
