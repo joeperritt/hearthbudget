@@ -142,17 +142,17 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
   const netPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
 
-  const titheAmt = parseFloat(pay.titheAmt) || 0;
-  const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
-
   const hostingGiftsAmt = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const variableTotal = categories.reduce((s, c) => s + c.budgeted, 0);
+  const variableTotal = categories.filter(c => c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
   const fixedBills = fixedExpenses.filter(e => e.group === 'bills');
   const savingsBuckets = fixedExpenses.filter(e => e.group === 'savings');
   const titheItems = fixedExpenses.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
-  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheItems.reduce((s, e) => s + e.amount, 0);
+  const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
+  const titheAmt = rawTithe + hostingGiftsAmt;
+  const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
+  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
@@ -226,14 +226,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }
           {/* Tithe */}
           <div className="flex items-center justify-between py-2.5 border-b border-border/50">
             <div>
-              <span className="text-sm text-foreground">Tithe</span>
+              <span className="text-sm text-foreground">Tithe/Giving</span>
               <p className="text-[10px] text-muted-foreground mt-0.5">{tithePercent}% of gross</p>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">$</span>
-              <input type="number" step="1" value={pay.titheAmt} onChange={e => up('titheAmt')(e.target.value)}
-                className="w-24 text-right px-2 py-1 rounded bg-card border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
-            </div>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
           </div>
 
           <InputRow label="Budget Total" computed={budgetTotal} bold />
