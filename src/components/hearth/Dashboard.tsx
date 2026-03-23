@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MonthHeader } from './MonthHeader';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Pencil, Check } from 'lucide-react';
+import { Plus, Pencil, Check, Inbox } from 'lucide-react';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -46,25 +46,16 @@ interface DashboardProps {
   joeAmexTotal: number;
   katieAmexTotal: number;
   checkingBalance: number;
-  onCheckingBalanceChange: (val: number) => void;
 }
 
 export function Dashboard({
   monthLabel, onPrevMonth, onNextMonth,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, savingsTotal, titheTotal, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance, onCheckingBalanceChange,
+  joeAmexTotal, katieAmexTotal, checkingBalance,
 }: DashboardProps) {
   const totalSpent = variableSpent + fixedTotal + savingsTotal + titheTotal;
   const combinedCredit = joeAmexTotal + katieAmexTotal;
-  const [editingChecking, setEditingChecking] = useState(false);
-  const [checkingValue, setCheckingValue] = useState(String(checkingBalance));
-
-  const saveChecking = () => {
-    const v = parseFloat(checkingValue) || 0;
-    onCheckingBalanceChange(v);
-    setEditingChecking(false);
-  };
 
   return (
     <div className="max-w-lg mx-auto">
@@ -119,32 +110,18 @@ export function Dashboard({
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-foreground">Checking Balance</span>
-            {editingChecking ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={checkingValue}
-                  onChange={e => setCheckingValue(e.target.value)}
-                  className="w-24 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && saveChecking()}
-                />
-                <button onClick={saveChecking} className="p-1 text-accent active:scale-95 transition-transform">
-                  <Check size={14} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => { setEditingChecking(true); setCheckingValue(String(checkingBalance)); }}
-                className="flex items-center gap-1.5 text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform"
-              >
-                {formatCurrency2(checkingBalance)}
-                <Pencil size={12} className="text-muted-foreground/40" />
-              </button>
-            )}
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency2(checkingBalance)}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Unassigned Transactions */}
+      <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Unassigned Transactions</h3>
+        <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
+          <Inbox size={24} className="text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground">No unassigned transactions</p>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">Imported transactions will appear here</p>
         </div>
       </div>
 

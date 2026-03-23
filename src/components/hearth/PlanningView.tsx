@@ -15,7 +15,6 @@ interface PlanningViewProps {
   currentMonth: Date;
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
-  onStartMonth: (nextMonth: Date, cats: BudgetCategory[], expenses: FixedExpense[]) => void;
   onBack: () => void;
 }
 
@@ -125,17 +124,12 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   );
 }
 
-export function PlanningView({ currentMonth, categories, fixedExpenses, onStartMonth, onBack }: PlanningViewProps) {
+export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }: PlanningViewProps) {
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthLabel = format(nextMonth, 'MMMM yyyy');
-  const nextMonthShort = format(nextMonth, 'MMMM');
 
   const [payMode, setPayMode] = useState<PayMode>('estimate');
   const [pay, setPay] = useState<PayFields>(DEFAULT_FIELDS);
-  const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => categories.map(c => ({ ...c })));
-  const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => fixedExpenses.map(e => ({ ...e })));
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
 
   const up = (field: keyof PayFields) => (v: string) => setPay(p => ({ ...p, [field]: v }));
 
@@ -151,44 +145,23 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
   const titheAmt = parseFloat(pay.titheAmt) || 0;
   const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
 
-  // Hosting/Gifts/Random budgeted amount rolls into giving totals
-  const hostingGiftsAmt = nextCats.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const variableTotal = nextCats.reduce((s, c) => s + c.budgeted, 0);
-  const fixedBills = nextFixed.filter(e => e.group === 'bills');
-  const savingsBuckets = nextFixed.filter(e => e.group === 'savings');
-  const titheItems = nextFixed.filter(e => e.group === 'tithe');
+  const hostingGiftsAmt = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
+  const variableTotal = categories.reduce((s, c) => s + c.budgeted, 0);
+  const fixedBills = fixedExpenses.filter(e => e.group === 'bills');
+  const savingsBuckets = fixedExpenses.filter(e => e.group === 'savings');
+  const titheItems = fixedExpenses.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
-  const titheTotal = titheItems.reduce((s, e) => s + e.amount, 0) + hostingGiftsAmt;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheItems.reduce((s, e) => s + e.amount, 0);
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
-  const totalCheckingNeed = budgetTotal;
   const netForSavings = netPay - budgetTotal;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
   const katiePay2 = parseFloat(pay.katiePay2) || 0;
   const totalKatiePay = katiePay1 + katiePay2;
   const totalMonthlySavings = netForSavings + totalKatiePay;
-
-  const sharedCats = nextCats.filter(c => c.group === 'shared');
-  const joeCats = nextCats.filter(c => c.group === 'joe');
-  const katieCats = nextCats.filter(c => c.group === 'katie');
-
-  const startEditCat = (id: string, val: number) => { setEditingId(id); setEditValue(String(val)); };
-  const saveCatEdit = (id: string) => {
-    const v = parseFloat(editValue);
-    if (!isNaN(v)) setNextCats(cats => cats.map(c => c.id === id ? { ...c, budgeted: v } : c));
-    setEditingId(null);
-  };
-
-  const startEditFixed = (id: string, val: number) => { setEditingId(id); setEditValue(String(val)); };
-  const saveFixedEdit = (id: string) => {
-    const v = parseFloat(editValue);
-    if (!isNaN(v)) setNextFixed(exps => exps.map(e => e.id === id ? { ...e, amount: v } : e));
-    setEditingId(null);
-  };
 
   return (
     <div className="max-w-lg mx-auto pb-28">
@@ -197,10 +170,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
           <ArrowLeft size={16} /> Back
         </button>
         <h1 className="font-display text-xl font-bold text-foreground">Planning</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{nextMonthLabel}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Pay & Savings Calculator</p>
       </div>
 
-      {/* Section A: Pay & Savings Planner */}
+      {/* Pay & Savings Planner */}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pay & Savings Planner</h2>
 
@@ -250,7 +223,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
 
           <div className="my-2 border-t border-border" />
 
-          {/* Tithe — dollar input with read-only percentage */}
+          {/* Tithe */}
           <div className="flex items-center justify-between py-2.5 border-b border-border/50">
             <div>
               <span className="text-sm text-foreground">Tithe</span>
@@ -266,7 +239,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
           <InputRow label="Budget Total" computed={budgetTotal} bold />
           <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} prefix="$" />
           <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} prefix="$" />
-          <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
+          <InputRow label="Total Checking Need" computed={budgetTotal} bold />
           <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
 
           <div className="my-2 border-t border-border" />
@@ -274,147 +247,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
           <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} prefix="$" />
           <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} prefix="$" />
           <InputRow label="Total Katie Pay" computed={totalKatiePay} />
-          
+
           <div className="my-2 border-t border-border" />
           <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
         </div>
-      </div>
-
-      {/* Section B: Next Month Variable Budget */}
-      <div className="px-6 mt-8">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{nextMonthShort} Variable Budget</h2>
-
-        {[
-          { label: 'Shared', cats: sharedCats },
-          { label: "Joe's", cats: joeCats },
-          { label: "Katie's", cats: katieCats },
-        ].map(({ label, cats }) => (
-          <div key={label} className="mb-4">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</p>
-            <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-              {cats.map(c => (
-                <div key={c.id} className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-sm text-foreground">{c.name}</span>
-                  {editingId === c.id ? (
-                    <div className="flex gap-1.5">
-                      <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
-                        className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                        autoFocus onKeyDown={e => e.key === 'Enter' && saveCatEdit(c.id)} />
-                      <button onClick={() => saveCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => startEditCat(c.id, c.budgeted)}
-                      className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                      {fmtWhole(c.budgeted)}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Editable Fixed Bills */}
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 mt-6">{nextMonthShort} Fixed Bills</h2>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden mb-4">
-          {fixedBills.map(e => (
-            <div key={e.id} className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-foreground">{e.name}</span>
-              {editingId === e.id ? (
-                <div className="flex gap-1.5">
-                  <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                    className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    autoFocus onKeyDown={ev => ev.key === 'Enter' && saveFixedEdit(e.id)} />
-                  <button onClick={() => saveFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
-                </div>
-              ) : (
-                <button onClick={() => startEditFixed(e.id, e.amount)}
-                  className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                  {fmt(e.amount)}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Editable Savings Buckets */}
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{nextMonthShort} Savings Buckets</h2>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden mb-4">
-          {savingsBuckets.map(e => (
-            <div key={e.id} className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-foreground">{e.name}</span>
-              {editingId === e.id ? (
-                <div className="flex gap-1.5">
-                  <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                    className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    autoFocus onKeyDown={ev => ev.key === 'Enter' && saveFixedEdit(e.id)} />
-                  <button onClick={() => saveFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
-                </div>
-              ) : (
-                <button onClick={() => startEditFixed(e.id, e.amount)}
-                  className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                  {fmt(e.amount)}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Editable Tithe/Giving */}
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{nextMonthShort} Tithe/Giving</h2>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden mb-4">
-          {titheItems.map(e => (
-            <div key={e.id} className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-foreground">{e.name}</span>
-              {editingId === e.id ? (
-                <div className="flex gap-1.5">
-                  <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                    className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    autoFocus onKeyDown={ev => ev.key === 'Enter' && saveFixedEdit(e.id)} />
-                  <button onClick={() => saveFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
-                </div>
-              ) : (
-                <button onClick={() => startEditFixed(e.id, e.amount)}
-                  className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                  {fmt(e.amount)}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Totals Summary */}
-        <div className="bg-card rounded-lg shadow-sm px-4 py-3 mb-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Variable Total</span>
-            <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Fixed Bills</span>
-            <span className="font-medium tabular-nums">{fmt(fixedTotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Savings Buckets</span>
-            <span className="font-medium tabular-nums">{fmt(savingsTotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Tithe/Giving</span>
-            <span className="font-medium tabular-nums">{fmt(titheTotal)}</span>
-          </div>
-          <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
-            <span className="font-semibold text-foreground">Total Budget</span>
-            <span className="font-semibold tabular-nums text-foreground">{fmt(budgetTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 mt-4 mb-8">
-        <button
-          onClick={() => onStartMonth(nextMonth, nextCats, nextFixed)}
-          className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
-        >
-          Start {nextMonthShort}
-        </button>
       </div>
     </div>
   );
