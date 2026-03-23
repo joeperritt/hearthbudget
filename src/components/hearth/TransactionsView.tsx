@@ -109,7 +109,7 @@ export function TransactionsView({
                     {ACCOUNT_LABELS[t.account]}
                   </span>
 
-                  {/* Center — category + description */}
+                  {/* Center — category + merchant + notes */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
                       {catMap[t.categoryId]?.name || 'Unknown'}
@@ -119,6 +119,9 @@ export function TransactionsView({
                     </p>
                     {t.description ? (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.description}</p>
+                    ) : null}
+                    {t.notes ? (
+                      <p className="text-[10px] text-muted-foreground/70 italic truncate mt-0.5">📝 {t.notes}</p>
                     ) : null}
                   </div>
 
