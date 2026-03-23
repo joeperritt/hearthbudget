@@ -82,7 +82,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!totalAmount) return;
+    if (!totalAmount || !account) return;
     if (needsDescription && !description.trim()) {
       descRef.current?.focus();
       return;
@@ -91,11 +91,12 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     if (isSplit) {
       if (Math.abs(remainder) > 0.01) return;
       const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
+      const acct = account as AccountSource;
       const txns = splits.map(sp => ({
         description: description || '',
         amount: (parseFloat(sp.amount) || 0) * signMultiplier,
         categoryId: sp.categoryId,
-        account,
+        account: acct,
         date,
         isTransferToSavings: isTransfer,
         transactionType,
@@ -108,7 +109,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
         description: description || '',
         amount: total * signMultiplier,
         categoryId: singleCategoryId,
-        account,
+        account: account as AccountSource,
         date,
         isTransferToSavings: isTransfer,
         transactionType,
@@ -119,7 +120,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     setDescription('');
     setTotalAmount('');
     setSingleCategoryId(categories[0]?.id || '');
-    setAccount('joe-amex');
+    setAccount('');
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setIsTransfer(false);
     setTransactionType('expense');
@@ -331,7 +332,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
           <button
             type="submit"
-            disabled={isSplit && Math.abs(remainder) > 0.01}
+            disabled={(isSplit && Math.abs(remainder) > 0.01) || !account}
             className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50"
           >
             Add Transaction
