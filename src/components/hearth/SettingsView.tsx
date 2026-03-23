@@ -180,6 +180,38 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     setEditingId(null);
   };
 
+  const moveNextCat = (id: string, direction: 'up' | 'down', group: GroupType) => {
+    setNextCats(prev => {
+      const gItems = prev.filter(c => c.group === group);
+      const others = prev.filter(c => c.group !== group);
+      const idx = gItems.findIndex(c => c.id === id);
+      if (direction === 'up' && idx > 0) {
+        [gItems[idx - 1], gItems[idx]] = [gItems[idx], gItems[idx - 1]];
+      } else if (direction === 'down' && idx < gItems.length - 1) {
+        [gItems[idx], gItems[idx + 1]] = [gItems[idx + 1], gItems[idx]];
+      }
+      const insertAt = prev.findIndex(c => c.group === group);
+      others.splice(insertAt, 0, ...gItems);
+      return others;
+    });
+  };
+
+  const moveNextFixed = (id: string, direction: 'up' | 'down', group: FixedGroupType) => {
+    setNextFixed(prev => {
+      const gItems = prev.filter(e => e.group === group);
+      const others = prev.filter(e => e.group !== group);
+      const idx = gItems.findIndex(e => e.id === id);
+      if (direction === 'up' && idx > 0) {
+        [gItems[idx - 1], gItems[idx]] = [gItems[idx], gItems[idx - 1]];
+      } else if (direction === 'down' && idx < gItems.length - 1) {
+        [gItems[idx], gItems[idx + 1]] = [gItems[idx + 1], gItems[idx]];
+      }
+      const insertAt = prev.findIndex(e => e.group === group);
+      others.splice(insertAt, 0, ...gItems);
+      return others;
+    });
+  };
+
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's" };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
