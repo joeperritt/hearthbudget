@@ -123,6 +123,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setIsTransfer(false);
     setTransactionType('expense');
+    setAdjustmentSign('+');
     setIsSplit(false);
     setSplits([{ categoryId: categories[0]?.id || '', amount: '' }]);
   };
