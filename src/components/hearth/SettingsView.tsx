@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { AccountManagement } from './AccountManagement';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -25,6 +27,7 @@ type GroupType = 'shared' | 'joe' | 'katie';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
 
 export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack }: SettingsViewProps) {
+  const { isAdmin, signOut, profile } = useAuth();
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthShort = format(nextMonth, 'MMMM');
 
