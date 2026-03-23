@@ -1,21 +1,26 @@
 import { useState } from 'react';
-import { BudgetCategory, BudgetTransfer } from '@/types/budget';
+import { BudgetCategory, BudgetTransfer, FixedExpense } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface MoveFundsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: BudgetCategory[];
+  fixedExpenses?: FixedExpense[];
   fromCategoryId: string;
   onMove: (transfer: Omit<BudgetTransfer, 'id'>) => void;
 }
 
-export function MoveFundsSheet({ open, onOpenChange, categories, fromCategoryId, onMove }: MoveFundsSheetProps) {
+export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses = [], fromCategoryId, onMove }: MoveFundsSheetProps) {
   const [toCategoryId, setToCategoryId] = useState('');
   const [amount, setAmount] = useState('');
 
-  const otherCats = categories.filter(c => c.id !== fromCategoryId);
-  const fromCat = categories.find(c => c.id === fromCategoryId);
+  const allItems = [
+    ...categories.map(c => ({ id: c.id, name: c.name })),
+    ...fixedExpenses.map(e => ({ id: e.id, name: e.name })),
+  ];
+  const otherItems = allItems.filter(c => c.id !== fromCategoryId);
+  const fromItem = allItems.find(c => c.id === fromCategoryId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +47,7 @@ export function MoveFundsSheet({ open, onOpenChange, categories, fromCategoryId,
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From</label>
             <div className="w-full mt-1 px-3 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
-              {fromCat?.name || 'Unknown'}
+              {fromItem?.name || 'Unknown'}
             </div>
           </div>
           <div>
@@ -53,7 +58,7 @@ export function MoveFundsSheet({ open, onOpenChange, categories, fromCategoryId,
               className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
             >
               <option value="">Select category…</option>
-              {otherCats.map(c => (
+              {otherItems.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>

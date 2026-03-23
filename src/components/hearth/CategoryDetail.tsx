@@ -7,8 +7,14 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
+interface DetailCategory {
+  id: string;
+  name: string;
+  budgeted: number;
+}
+
 interface CategoryDetailProps {
-  category: BudgetCategory;
+  category: DetailCategory;
   categories: BudgetCategory[];
   transactions: Transaction[];
   transfers: BudgetTransfer[];
