@@ -111,7 +111,7 @@ export function TransactionsView({
                     <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">?</div>
                   )}
 
-                  {/* Center — category + entered by + description */}
+                  {/* Center — category + description */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
                       {catMap[t.categoryId]?.name || 'Unknown'}
@@ -119,15 +119,12 @@ export function TransactionsView({
                         <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
                       )}
                     </p>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      {t.enteredBy && profileMap[t.enteredBy]
-                        ? `Entered by ${profileMap[t.enteredBy].display_name}`
-                        : 'Entered by unknown'}
-                      {t.description ? ` · ${t.description}` : ''}
-                    </p>
+                    {t.description ? (
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.description}</p>
+                    ) : null}
                   </div>
 
-                  {/* Right — amount, date, account pill */}
+                  {/* Right — amount, date, account */}
                   <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                     <span className="text-sm font-medium tabular-nums text-foreground">
                       {formatCurrency(t.amount)}
