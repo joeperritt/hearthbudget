@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
-import { MonthHeader } from './MonthHeader';
+
 import { ProgressBar } from './ProgressBar';
 import { ChevronRight, ArrowLeftRight } from 'lucide-react';
 
@@ -95,12 +95,10 @@ interface SpendingViewProps {
   onMoveFunds: (fromCategoryId: string) => void;
   onMoveFundsFixed: (fromFixedId: string) => void;
   monthLabel: string;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
 }
 
 export function SpendingView({
-  categories, fixedExpenses, transactions, spentByCategory, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel, onPrevMonth, onNextMonth,
+  categories, fixedExpenses, transactions, spentByCategory, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
 
@@ -125,9 +123,8 @@ export function SpendingView({
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-xl font-bold text-foreground">Spending</h1>
+        <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
       </div>
-      <MonthHeader monthLabel={monthLabel} onPrev={onPrevMonth} onNext={onNextMonth} />
 
       {/* Segmented Toggle */}
       <div className="px-6 mb-4">

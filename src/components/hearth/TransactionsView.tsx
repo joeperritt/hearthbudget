@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Transaction, BudgetCategory, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
-import { MonthHeader } from './MonthHeader';
+
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -14,8 +14,6 @@ interface TransactionsViewProps {
   transactions: Transaction[];
   categories: BudgetCategory[];
   monthLabel: string;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
 }
@@ -27,7 +25,7 @@ const ACCOUNT_LABELS: Record<AccountSource, string> = {
 };
 
 export function TransactionsView({
-  transactions, categories, monthLabel, onPrevMonth, onNextMonth, onAddTransaction, onDeleteTransaction,
+  transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -45,10 +43,9 @@ export function TransactionsView({
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-xl font-bold text-foreground">Transactions</h1>
+      <div className="px-6 pt-12 pb-4 safe-top">
+        <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
       </div>
-      <MonthHeader monthLabel={monthLabel} onPrev={onPrevMonth} onNext={onNextMonth} />
 
       <div className="px-6 flex gap-2 mb-4 overflow-x-auto no-scrollbar">
         {filters.map(f => (
