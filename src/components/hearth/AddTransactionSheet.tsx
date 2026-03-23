@@ -19,8 +19,7 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
 
 const TRANSACTION_TYPES: { id: TransactionType; label: string; helper: string }[] = [
   { id: 'expense', label: 'Expense', helper: 'Normal spending transaction' },
-  { id: 'savings-paydown', label: 'Savings Paydown', helper: 'Paying down a credit card from savings. Adds funds back to category without affecting checking.' },
-  { id: 'funds-transfer-in', label: 'Funds Transfer In', helper: 'Moving money from savings into checking. Increases checking balance and category budget.' },
+  { id: 'budget-adjustment', label: 'Budget Adjustment', helper: 'Adjust category funds. Use + to add funds or − to remove funds.' },
 ];
 
 interface SplitLine {
@@ -35,6 +34,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isTransfer, setIsTransfer] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
+  const [adjustmentSign, setAdjustmentSign] = useState<'+' | '-'>('+');
   const [isSplit, setIsSplit] = useState(false);
   const [splits, setSplits] = useState<SplitLine[]>([
     { categoryId: categories[0]?.id || '', amount: '' },
@@ -90,9 +90,10 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
     if (isSplit) {
       if (Math.abs(remainder) > 0.01) return;
+      const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       const txns = splits.map(sp => ({
         description: description || '',
-        amount: parseFloat(sp.amount) || 0,
+        amount: (parseFloat(sp.amount) || 0) * signMultiplier,
         categoryId: sp.categoryId,
         account,
         date,
@@ -102,9 +103,10 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
       onAdd(txns);
     } else {
       if (!singleCategoryId) return;
+      const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       onAdd([{
         description: description || '',
-        amount: total,
+        amount: total * signMultiplier,
         categoryId: singleCategoryId,
         account,
         date,
@@ -121,6 +123,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setIsTransfer(false);
     setTransactionType('expense');
+    setAdjustmentSign('+');
     setIsSplit(false);
     setSplits([{ categoryId: categories[0]?.id || '', amount: '' }]);
   };
@@ -155,6 +158,29 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
             </div>
             <p className="text-[10px] text-muted-foreground/70 mt-1">{selectedType.helper}</p>
           </div>
+
+          {/* +/- toggle for budget adjustments */}
+          {transactionType === 'budget-adjustment' && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Direction</label>
+              <div className="flex gap-2 mt-1">
+                {(['+', '-'] as const).map(sign => (
+                  <button
+                    key={sign}
+                    type="button"
+                    onClick={() => setAdjustmentSign(sign)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors active:scale-95 ${
+                      adjustmentSign === sign
+                        ? sign === '+' ? 'bg-green-600 text-white' : 'bg-destructive text-destructive-foreground'
+                        : 'bg-card text-muted-foreground border border-border'
+                    }`}
+                  >
+                    {sign === '+' ? '+ Add Funds' : '− Remove Funds'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

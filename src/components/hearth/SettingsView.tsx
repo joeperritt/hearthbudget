@@ -180,6 +180,38 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     setEditingId(null);
   };
 
+  const moveNextCat = (id: string, direction: 'up' | 'down', group: GroupType) => {
+    setNextCats(prev => {
+      const gItems = prev.filter(c => c.group === group);
+      const others = prev.filter(c => c.group !== group);
+      const idx = gItems.findIndex(c => c.id === id);
+      if (direction === 'up' && idx > 0) {
+        [gItems[idx - 1], gItems[idx]] = [gItems[idx], gItems[idx - 1]];
+      } else if (direction === 'down' && idx < gItems.length - 1) {
+        [gItems[idx], gItems[idx + 1]] = [gItems[idx + 1], gItems[idx]];
+      }
+      const insertAt = prev.findIndex(c => c.group === group);
+      others.splice(insertAt, 0, ...gItems);
+      return others;
+    });
+  };
+
+  const moveNextFixed = (id: string, direction: 'up' | 'down', group: FixedGroupType) => {
+    setNextFixed(prev => {
+      const gItems = prev.filter(e => e.group === group);
+      const others = prev.filter(e => e.group !== group);
+      const idx = gItems.findIndex(e => e.id === id);
+      if (direction === 'up' && idx > 0) {
+        [gItems[idx - 1], gItems[idx]] = [gItems[idx], gItems[idx - 1]];
+      } else if (direction === 'down' && idx < gItems.length - 1) {
+        [gItems[idx], gItems[idx + 1]] = [gItems[idx + 1], gItems[idx]];
+      }
+      const insertAt = prev.findIndex(e => e.group === group);
+      others.splice(insertAt, 0, ...gItems);
+      return others;
+    });
+  };
+
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's" };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
@@ -296,9 +328,15 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
               <div key={group} className="mb-4">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                  {cats.map(c => (
-                    <div key={c.id} className="flex justify-between items-center px-4 py-2.5">
-                      <span className="text-sm text-foreground">{c.name}</span>
+                  {cats.map((c, idx) => (
+                    <div key={c.id} className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                        <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                      </div>
+                      <span className="flex-1 text-sm text-foreground min-w-0 truncate">{c.name}</span>
                       {editingId === `next-cat-${c.id}` ? (
                         <div className="flex gap-1.5">
                           <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
@@ -328,9 +366,15 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             <div key={key} className="mb-4">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{label}</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                {items.map(e => (
-                  <div key={e.id} className="flex justify-between items-center px-4 py-2.5">
-                    <span className="text-sm text-foreground">{e.name}</span>
+                {items.map((e, idx) => (
+                  <div key={e.id} className="flex items-center gap-2 px-3 py-2.5">
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button onClick={() => moveNextFixed(e.id, 'up', key)} disabled={idx === 0}
+                        className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                      <button onClick={() => moveNextFixed(e.id, 'down', key)} disabled={idx === items.length - 1}
+                        className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                    </div>
+                    <span className="flex-1 text-sm text-foreground min-w-0 truncate">{e.name}</span>
                     {editingId === `next-fix-${e.id}` ? (
                       <div className="flex gap-1.5">
                         <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}

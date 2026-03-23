@@ -54,8 +54,8 @@ const Index = () => {
     budgetTransactions.forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     });
-    // Subtract savings-paydown and funds-transfer-in amounts (they add funds back)
-    monthTransactions.filter(t => t.transactionType === 'savings-paydown' || t.transactionType === 'funds-transfer-in').forEach(t => {
+    // Budget adjustments: positive amount adds funds (subtract from spent), negative removes funds (add to spent)
+    monthTransactions.filter(t => t.transactionType === 'budget-adjustment').forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
     });
     return map;
@@ -104,15 +104,12 @@ const Index = () => {
     [monthTransactions]
   );
 
-  // Checking balance: totalBudget - checking account expenses + funds-transfer-in amounts
+  // Checking balance: totalBudget - checking account expenses
   const checkingBalance = useMemo(() => {
     const checkingExpenses = monthTransactions
       .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings)
       .reduce((s, t) => s + t.amount, 0);
-    const fundsIn = monthTransactions
-      .filter(t => t.transactionType === 'funds-transfer-in')
-      .reduce((s, t) => s + t.amount, 0);
-    return totalBudget - checkingExpenses + fundsIn;
+    return totalBudget - checkingExpenses;
   }, [monthTransactions, totalBudget]);
 
   const addTransactions = (txns: Omit<Transaction, 'id'>[]) => {
