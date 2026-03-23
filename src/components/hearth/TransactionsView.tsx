@@ -98,18 +98,16 @@ export function TransactionsView({
                   className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
-                  {/* Avatar badge — large */}
-                  {t.enteredBy && profileMap[t.enteredBy] ? (
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                      profileMap[t.enteredBy].avatar_initial === 'J'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-accent text-accent-foreground'
-                    }`}>
-                      {profileMap[t.enteredBy].avatar_initial}
-                    </div>
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">?</div>
-                  )}
+                  {/* Left — account pill */}
+                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
+                    t.account === 'joe-amex'
+                      ? 'bg-primary text-primary-foreground'
+                      : t.account === 'katie-amex'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {ACCOUNT_LABELS[t.account]}
+                  </span>
 
                   {/* Center — category + description */}
                   <div className="flex-1 min-w-0">
@@ -124,17 +122,14 @@ export function TransactionsView({
                     ) : null}
                   </div>
 
-                  {/* Right — amount, date, account */}
-                  <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-                    <span className="text-sm font-medium tabular-nums text-foreground">
+                  {/* Right — amount + date */}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium tabular-nums text-foreground">
                       {formatCurrency(t.amount)}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full mt-0.5">
-                      {ACCOUNT_LABELS[t.account]}
-                    </span>
+                    </p>
                   </div>
 
                   <button
