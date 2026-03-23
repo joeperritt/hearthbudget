@@ -156,7 +156,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
-  const totalCheckingNeed = budgetTotal - creditCard + checking;
+  const totalCheckingNeed = budgetTotal + creditCard - checking;
   const netForSavings = netPay - totalCheckingNeed;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
