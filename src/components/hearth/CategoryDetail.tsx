@@ -1,4 +1,4 @@
-import { Transaction, BudgetCategory, BudgetTransfer, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, BudgetTransfer, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { ArrowLeft, Trash2, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
