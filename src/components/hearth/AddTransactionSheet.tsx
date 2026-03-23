@@ -159,6 +159,29 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
             <p className="text-[10px] text-muted-foreground/70 mt-1">{selectedType.helper}</p>
           </div>
 
+          {/* +/- toggle for budget adjustments */}
+          {transactionType === 'budget-adjustment' && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Direction</label>
+              <div className="flex gap-2 mt-1">
+                {(['+', '-'] as const).map(sign => (
+                  <button
+                    key={sign}
+                    type="button"
+                    onClick={() => setAdjustmentSign(sign)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors active:scale-95 ${
+                      adjustmentSign === sign
+                        ? sign === '+' ? 'bg-green-600 text-white' : 'bg-destructive text-destructive-foreground'
+                        : 'bg-card text-muted-foreground border border-border'
+                    }`}
+                  >
+                    {sign === '+' ? '+ Add Funds' : '− Remove Funds'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount</label>
