@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
-import { BudgetCategory, FixedExpense } from '@/types/budget';
+import { useState } from 'react';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
 import { format, addMonths } from 'date-fns';
+import { ArrowLeft } from 'lucide-react';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -15,6 +16,7 @@ interface PlanningViewProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   onStartMonth: (nextMonth: Date, cats: BudgetCategory[], expenses: FixedExpense[]) => void;
+  onBack: () => void;
 }
 
 type PayMode = 'estimate' | 'actual';
@@ -26,13 +28,11 @@ interface PayFields {
   medicareRate: string;
   scTaxRate: string;
   roth401kRate: string;
-  // Actual mode dollar amounts
   fedTaxAmt: string;
   ssTaxAmt: string;
   medicareAmt: string;
   scTaxAmt: string;
   roth401kAmt: string;
-  // Tithe as dollar amount
   titheAmt: string;
   creditCardTotal: string;
   checkingTotal: string;
@@ -88,7 +88,7 @@ function InputRow({ label, value, onChange, prefix, suffix, computed, bold }: {
   );
 }
 
-function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChange, computedAmt }: {
+function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChange, computedAmt, gross }: {
   label: string;
   mode: PayMode;
   rate: string;
@@ -96,7 +96,10 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   dollarAmt: string;
   onDollarChange: (v: string) => void;
   computedAmt: number;
+  gross: number;
 }) {
+  const actualPct = gross > 0 ? ((computedAmt / gross) * 100).toFixed(2) : '0.00';
+
   return (
     <div className="flex items-center justify-between py-1.5">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -112,8 +115,9 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
           <>
             <span className="text-xs text-muted-foreground">$</span>
             <input type="number" step="0.01" value={dollarAmt} onChange={e => onDollarChange(e.target.value)}
-              className="w-24 text-right px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+              className="w-20 text-right px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
               placeholder="0.00" />
+            <span className="text-[10px] tabular-nums text-muted-foreground w-14 text-right">{actualPct}%</span>
           </>
         )}
       </div>
@@ -121,7 +125,7 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   );
 }
 
-export function PlanningView({ currentMonth, categories, fixedExpenses, onStartMonth }: PlanningViewProps) {
+export function PlanningView({ currentMonth, categories, fixedExpenses, onStartMonth, onBack }: PlanningViewProps) {
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthLabel = format(nextMonth, 'MMMM yyyy');
   const nextMonthShort = format(nextMonth, 'MMMM');
@@ -137,7 +141,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
 
   const gross = parseFloat(pay.grossPay) || 0;
 
-  // Deduction amounts depend on mode
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
   const medicareTax = payMode === 'estimate' ? gross * (parseFloat(pay.medicareRate) || 0) / 100 : (parseFloat(pay.medicareAmt) || 0);
@@ -148,14 +151,16 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
   const titheAmt = parseFloat(pay.titheAmt) || 0;
   const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
 
+  // Hosting/Gifts/Random budgeted amount rolls into giving totals
+  const hostingGiftsAmt = nextCats.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
   const variableTotal = nextCats.reduce((s, c) => s + c.budgeted, 0);
   const fixedBills = nextFixed.filter(e => e.group === 'bills');
   const savingsBuckets = nextFixed.filter(e => e.group === 'savings');
   const titheItems = nextFixed.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
-  const titheTotal = titheItems.reduce((s, e) => s + e.amount, 0);
-  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
+  const titheTotal = titheItems.reduce((s, e) => s + e.amount, 0) + hostingGiftsAmt;
+  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheItems.reduce((s, e) => s + e.amount, 0);
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
@@ -188,6 +193,9 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
   return (
     <div className="max-w-lg mx-auto pb-28">
       <div className="px-6 pt-12 safe-top">
+        <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
+          <ArrowLeft size={16} /> Back
+        </button>
         <h1 className="font-display text-xl font-bold text-foreground">Planning</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{nextMonthLabel}</p>
       </div>
@@ -196,7 +204,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
       <div className="px-6 mt-6">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pay & Savings Planner</h2>
 
-        {/* Estimate / Actual Toggle */}
         <div className="flex bg-card rounded-lg p-1 mb-3 shadow-sm">
           {(['estimate', 'actual'] as PayMode[]).map(mode => (
             <button
@@ -220,23 +227,23 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onStartM
             <DeductionRow label="Federal Income Tax" mode={payMode}
               rate={pay.fedTaxRate} onRateChange={up('fedTaxRate')}
               dollarAmt={pay.fedTaxAmt} onDollarChange={up('fedTaxAmt')}
-              computedAmt={fedTax} />
+              computedAmt={fedTax} gross={gross} />
             <DeductionRow label="Social Security" mode={payMode}
               rate={pay.ssTaxRate} onRateChange={up('ssTaxRate')}
               dollarAmt={pay.ssTaxAmt} onDollarChange={up('ssTaxAmt')}
-              computedAmt={ssTax} />
+              computedAmt={ssTax} gross={gross} />
             <DeductionRow label="Medicare" mode={payMode}
               rate={pay.medicareRate} onRateChange={up('medicareRate')}
               dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
-              computedAmt={medicareTax} />
+              computedAmt={medicareTax} gross={gross} />
             <DeductionRow label="SC Income Tax" mode={payMode}
               rate={pay.scTaxRate} onRateChange={up('scTaxRate')}
               dollarAmt={pay.scTaxAmt} onDollarChange={up('scTaxAmt')}
-              computedAmt={scTax} />
+              computedAmt={scTax} gross={gross} />
             <DeductionRow label="Roth 401k" mode={payMode}
               rate={pay.roth401kRate} onRateChange={up('roth401kRate')}
               dollarAmt={pay.roth401kAmt} onDollarChange={up('roth401kAmt')}
-              computedAmt={roth} />
+              computedAmt={roth} gross={gross} />
           </div>
 
           <InputRow label="Net Pay" computed={netPay} bold />

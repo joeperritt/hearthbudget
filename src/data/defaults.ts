@@ -37,7 +37,7 @@ export const DEFAULT_FIXED_EXPENSES: FixedExpense[] = [
   { id: 'groomer', name: 'Groomer', amount: 95.00, group: 'bills' },
   { id: 'pets-best', name: "Pet's Best", amount: 53.36, group: 'bills' },
   { id: 'cars-savings', name: 'Cars', amount: 500, group: 'savings' },
-  { id: 'vacations', name: 'Vacations', amount: 0, group: 'savings' },
+  { id: 'vacations', name: 'Vacations', amount: 400, group: 'savings' },
   { id: 'trash', name: 'Trash', amount: 30, group: 'savings' },
   { id: 'dog-savings', name: 'Dog', amount: 50, group: 'savings' },
   { id: 'hoa', name: 'HOA', amount: 285, group: 'savings' },
@@ -45,5 +45,4 @@ export const DEFAULT_FIXED_EXPENSES: FixedExpense[] = [
   { id: 'ccc', name: 'CCC', amount: 700, group: 'tithe' },
   { id: 'od', name: 'OD', amount: 300, group: 'tithe' },
   { id: 'co-ef', name: 'CO-EF', amount: 100, group: 'tithe' },
-  
 ];
