@@ -98,7 +98,7 @@ const Index = () => {
     return fixedTitheSpent + givingCatSpent;
   }, [monthTransactions, fixedExpenses, spentByCategory]);
   const totalTithe = rawTithe + hostingGiftsBudget;
-  const totalBudget = totalVariableBudget + totalFixed + totalSavings + rawTithe;
+  const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
 
   // Account totals
   const joeAmexTotal = useMemo(

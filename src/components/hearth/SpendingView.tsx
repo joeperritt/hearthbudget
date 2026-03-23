@@ -5,10 +5,6 @@ import { ProgressBar } from './ProgressBar';
 import { ChevronRight, ArrowLeftRight } from 'lucide-react';
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
-}
-
-function formatCurrency2(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
@@ -56,12 +52,12 @@ function FixedExpenseCard({ expense, spent, onSelect, onMoveFunds, delay }: { ex
         <div className="flex justify-between items-baseline mb-1">
           <span className="font-medium text-sm text-foreground truncate">{expense.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {formatCurrency2(remaining)} left
+            {formatCurrency(remaining)} left
           </span>
         </div>
         <ProgressBar value={spent} max={expense.amount} className="mb-1.5" />
         <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-          <span>{formatCurrency2(spent)} of {formatCurrency2(expense.amount)}</span>
+          <span>{formatCurrency(spent)} of {formatCurrency(expense.amount)}</span>
         </div>
       </button>
       <button onClick={onMoveFunds} className="p-1.5 text-muted-foreground/40 hover:text-accent active:scale-90 transition-all shrink-0" title="Move funds">
