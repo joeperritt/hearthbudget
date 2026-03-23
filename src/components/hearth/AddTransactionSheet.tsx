@@ -34,6 +34,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isTransfer, setIsTransfer] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
+  const [adjustmentSign, setAdjustmentSign] = useState<'+' | '-'>('+');
   const [isSplit, setIsSplit] = useState(false);
   const [splits, setSplits] = useState<SplitLine[]>([
     { categoryId: categories[0]?.id || '', amount: '' },
@@ -89,9 +90,10 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
     if (isSplit) {
       if (Math.abs(remainder) > 0.01) return;
+      const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       const txns = splits.map(sp => ({
         description: description || '',
-        amount: parseFloat(sp.amount) || 0,
+        amount: (parseFloat(sp.amount) || 0) * signMultiplier,
         categoryId: sp.categoryId,
         account,
         date,
@@ -101,9 +103,10 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
       onAdd(txns);
     } else {
       if (!singleCategoryId) return;
+      const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       onAdd([{
         description: description || '',
-        amount: total,
+        amount: total * signMultiplier,
         categoryId: singleCategoryId,
         account,
         date,
