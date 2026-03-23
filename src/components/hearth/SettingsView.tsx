@@ -304,6 +304,9 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       </div>
 
       <div className="px-6 mt-6 pb-6">
+        {/* Admin Account Management */}
+        {isAdmin && <AccountManagement />}
+
         {/* Profiles */}
         <div className="mb-8">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
@@ -431,6 +434,18 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
           >
             Start {nextMonthShort}
+          </button>
+        </div>
+
+        {/* Log Out */}
+        <div className="mt-12 mb-8">
+          <button
+            onClick={signOut}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
+          >
+            <LogOut size={16} />
+            <span>Log Out</span>
+            <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
           </button>
         </div>
       </div>
