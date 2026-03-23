@@ -92,7 +92,6 @@ export function Dashboard({
         <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
         <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
-      </div>
 
       {/* Account Snapshot */}
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
