@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { MonthHeader } from './MonthHeader';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Pencil, Check, Inbox } from 'lucide-react';
+import { Plus, Inbox } from 'lucide-react';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -34,8 +32,6 @@ function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgete
 
 interface DashboardProps {
   monthLabel: string;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
   totalBudget: number;
   variableBudget: number;
   variableSpent: number;
@@ -52,7 +48,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  monthLabel, onPrevMonth, onNextMonth,
+  monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
   joeAmexTotal, katieAmexTotal, checkingBalance,
