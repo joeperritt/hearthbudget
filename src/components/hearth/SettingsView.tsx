@@ -328,9 +328,15 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
               <div key={group} className="mb-4">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                  {cats.map(c => (
-                    <div key={c.id} className="flex justify-between items-center px-4 py-2.5">
-                      <span className="text-sm text-foreground">{c.name}</span>
+                  {cats.map((c, idx) => (
+                    <div key={c.id} className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                        <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                      </div>
+                      <span className="flex-1 text-sm text-foreground min-w-0 truncate">{c.name}</span>
                       {editingId === `next-cat-${c.id}` ? (
                         <div className="flex gap-1.5">
                           <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
