@@ -30,7 +30,7 @@ interface SplitLine {
 export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
-  const [account, setAccount] = useState<AccountSource>('joe-amex');
+  const [account, setAccount] = useState<AccountSource | ''>('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isTransfer, setIsTransfer] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');

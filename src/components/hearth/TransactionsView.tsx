@@ -94,14 +94,14 @@ export function TransactionsView({
             {sorted.map((t, i) => {
               const isDescCat = DESCRIPTION_REQUIRED_CATEGORIES.includes(t.categoryId);
               return (
-                <div
+              <div
                   key={t.id}
                   className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
-                  {/* Avatar badge */}
+                  {/* Avatar badge — large */}
                   {t.enteredBy && profileMap[t.enteredBy] ? (
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                       profileMap[t.enteredBy].avatar_initial === 'J'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-accent text-accent-foreground'
@@ -109,25 +109,38 @@ export function TransactionsView({
                       {profileMap[t.enteredBy].avatar_initial}
                     </div>
                   ) : (
-                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">?</div>
+                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">?</div>
                   )}
+
+                  {/* Center — category + entered by + description */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-sm font-medium text-foreground truncate">
-                        {isDescCat && t.description ? t.description : t.description || '(no description)'}
-                        {t.isTransferToSavings && (
-                          <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">savings</span>
-                        )}
-                      </span>
-                      <span className="text-sm font-medium tabular-nums text-foreground ml-2">
-                        {formatCurrency(t.amount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
-                      <span>{catMap[t.categoryId]?.name || 'Unknown'} · {ACCOUNT_LABELS[t.account]}</span>
-                      <span>{format(new Date(t.date), 'MMM d')}</span>
-                    </div>
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {catMap[t.categoryId]?.name || 'Unknown'}
+                      {t.isTransferToSavings && (
+                        <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {t.enteredBy && profileMap[t.enteredBy]
+                        ? `Entered by ${profileMap[t.enteredBy].display_name}`
+                        : 'Entered by unknown'}
+                      {t.description ? ` · ${t.description}` : ''}
+                    </p>
                   </div>
+
+                  {/* Right — amount, date, account pill */}
+                  <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                    <span className="text-sm font-medium tabular-nums text-foreground">
+                      {formatCurrency(t.amount)}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {format(new Date(t.date), 'MMM d')}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full mt-0.5">
+                      {ACCOUNT_LABELS[t.account]}
+                    </span>
+                  </div>
+
                   <button
                     onClick={() => onDeleteTransaction(t.id)}
                     className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
