@@ -99,6 +99,18 @@ export function TransactionsView({
                   className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
+                  {/* Avatar badge */}
+                  {t.enteredBy && profileMap[t.enteredBy] ? (
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${
+                      profileMap[t.enteredBy].avatar_initial === 'J'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-accent text-accent-foreground'
+                    }`}>
+                      {profileMap[t.enteredBy].avatar_initial}
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">?</div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm font-medium text-foreground truncate">
