@@ -25,7 +25,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'past-months'>('menu');
 
   const monthKey = format(currentMonth, 'yyyy-MM');
   const monthLabel = format(currentMonth, 'MMMM yyyy');
@@ -213,17 +213,14 @@ const Index = () => {
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
           />
+        )
         )}
         {activeTab === 'transactions' && (
           <TransactionsView
             transactions={monthTransactions}
             categories={categories}
             monthLabel={monthLabel}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
           />
