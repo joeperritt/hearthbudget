@@ -156,7 +156,8 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
-  const netForSavings = netPay - budgetTotal;
+  const totalCheckingNeed = budgetTotal - creditCard + checking;
+  const netForSavings = netPay - totalCheckingNeed;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
   const katiePay2 = parseFloat(pay.katiePay2) || 0;
@@ -235,7 +236,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }
           <InputRow label="Budget Total" computed={budgetTotal} bold />
           <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} prefix="$" />
           <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} prefix="$" />
-          <InputRow label="Total Checking Need" computed={budgetTotal} bold />
+          <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
           <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
 
           <div className="my-2 border-t border-border" />
