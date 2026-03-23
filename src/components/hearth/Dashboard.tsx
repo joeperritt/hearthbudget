@@ -63,11 +63,9 @@ export function Dashboard({
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 pb-2 safe-top">
-        <h1 className="font-display text-2xl font-bold text-foreground">Hearth</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Your household budget</p>
       </div>
-
-      <MonthHeader monthLabel={monthLabel} onPrev={onPrevMonth} onNext={onNextMonth} />
 
       <div className="px-6 mb-6 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
         <div className="bg-primary rounded-xl p-5 shadow-lg">
