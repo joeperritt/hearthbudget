@@ -75,6 +75,21 @@ const Index = () => {
   const totalFixed = fixedExpenses.filter(e => e.group === 'bills').reduce((s, e) => s + e.amount, 0);
   const totalSavings = fixedExpenses.filter(e => e.group === 'savings').reduce((s, e) => s + e.amount, 0);
   const rawTithe = fixedExpenses.filter(e => e.group === 'tithe').reduce((s, e) => s + e.amount, 0);
+
+  const fixedSpent = useMemo(() => {
+    const ids = new Set(fixedExpenses.filter(e => e.group === 'bills').map(e => e.id));
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+  }, [monthTransactions, fixedExpenses]);
+  const savingsSpent = useMemo(() => {
+    const ids = new Set(fixedExpenses.filter(e => e.group === 'savings').map(e => e.id));
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+  }, [monthTransactions, fixedExpenses]);
+  const titheSpent = useMemo(() => {
+    const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
+    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+    const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
+    return fixedTitheSpent + givingCatSpent;
+  }, [monthTransactions, fixedExpenses, spentByCategory]);
   const totalTithe = rawTithe + hostingGiftsBudget;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + rawTithe;
 
@@ -176,8 +191,11 @@ const Index = () => {
             variableBudget={totalVariableBudget}
             variableSpent={totalVariableSpent}
             fixedTotal={totalFixed}
+            fixedSpent={fixedSpent}
             savingsTotal={totalSavings}
+            savingsSpent={savingsSpent}
             titheTotal={totalTithe}
+            titheSpent={titheSpent}
             onAddTransaction={() => setShowAddTransaction(true)}
             joeAmexTotal={joeAmexTotal}
             katieAmexTotal={katieAmexTotal}
