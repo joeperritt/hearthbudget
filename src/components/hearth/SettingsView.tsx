@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { AccountManagement } from './AccountManagement';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -25,6 +27,7 @@ type GroupType = 'shared' | 'joe' | 'katie';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
 
 export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack }: SettingsViewProps) {
+  const { isAdmin, signOut, profile } = useAuth();
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthShort = format(nextMonth, 'MMMM');
 
@@ -301,6 +304,9 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       </div>
 
       <div className="px-6 mt-6 pb-6">
+        {/* Admin Account Management */}
+        {isAdmin && <AccountManagement />}
+
         {/* Profiles */}
         <div className="mb-8">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
@@ -428,6 +434,18 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
           >
             Start {nextMonthShort}
+          </button>
+        </div>
+
+        {/* Log Out */}
+        <div className="mt-12 mb-8">
+          <button
+            onClick={signOut}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
+          >
+            <LogOut size={16} />
+            <span>Log Out</span>
+            <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
           </button>
         </div>
       </div>

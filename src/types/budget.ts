@@ -11,6 +11,7 @@ export interface Transaction {
   account: AccountSource;
   isTransferToSavings: boolean;
   transactionType: TransactionType;
+  enteredBy?: string | null;
 }
 
 // A split transaction creates multiple TransactionSplit entries under one parent

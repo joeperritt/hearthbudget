@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction, BudgetCategory, AccountSource, DESCRIPTION_REQUIRED_CATEGORIES } from '@/types/budget';
+import { supabase } from '@/integrations/supabase/client';
 
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -9,6 +10,12 @@ function formatCurrency(n: number) {
 }
 
 type Filter = 'all' | AccountSource;
+
+interface ProfileInfo {
+  user_id: string;
+  display_name: string;
+  avatar_initial: string;
+}
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -28,7 +35,15 @@ export function TransactionsView({
   transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
 
+  useEffect(() => {
+    supabase.from('profiles').select('user_id, display_name, avatar_initial').then(({ data }) => {
+      if (data) setProfiles(data as ProfileInfo[]);
+    });
+  }, []);
+
+  const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
@@ -84,6 +99,18 @@ export function TransactionsView({
                   className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
+                  {/* Avatar badge */}
+                  {t.enteredBy && profileMap[t.enteredBy] ? (
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${
+                      profileMap[t.enteredBy].avatar_initial === 'J'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-accent text-accent-foreground'
+                    }`}>
+                      {profileMap[t.enteredBy].avatar_initial}
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">?</div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm font-medium text-foreground truncate">
