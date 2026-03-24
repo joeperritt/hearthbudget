@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,12 +40,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     if (notesRequired && !notes.trim()) return;
     setSaving(true);
     const isIncome = categoryId === INCOME_CATEGORY;
+    const isDeposit = categoryId === DEPOSIT_CATEGORY;
+    const txType = isIncome ? 'income' : isDeposit ? 'deposit' : 'expense';
     const { error } = await supabase
       .from('transactions')
       .update({
         category_slug: categoryId,
         notes,
-        transaction_type: isIncome ? 'income' : 'expense',
+        transaction_type: txType,
       })
       .eq('id', transaction.id);
     setSaving(false);
@@ -98,6 +100,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             >
               <option value="unassigned">Unassigned</option>
               <option value={INCOME_CATEGORY}>Ignore — Income</option>
+              <option value={DEPOSIT_CATEGORY}>Mark as Deposit</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
