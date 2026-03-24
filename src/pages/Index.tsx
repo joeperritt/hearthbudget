@@ -69,14 +69,8 @@ const Index = () => {
     monthTransactions.filter(t => t.transactionType === 'budget-adjustment').forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
     });
-    // Deposit reimbursements: deposits with a specific category reduce that category's spent amount
-    monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId !== DEPOSIT_CATEGORY && t.categoryId !== INCOME_CATEGORY).forEach(t => {
-      map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
-    });
-    // CC Payment reimbursements: cc-payments with a specific category reduce that category's spent amount
-    monthTransactions.filter(t => t.transactionType === 'cc-payment' && t.categoryId !== CC_PAYMENT_CATEGORY).forEach(t => {
-      map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
-    });
+    // CC Payment, Deposit, Income, and Transfer transactions are completely excluded
+    // from spending calculations — they never contribute positively or negatively.
     return map;
   }, [budgetTransactions, monthTransactions]);
 
