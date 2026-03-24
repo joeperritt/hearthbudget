@@ -82,7 +82,7 @@ const Index = () => {
   }, [monthTransfers]);
 
   const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const totalVariableBudget = categories.filter(c => c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
+  const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
   const totalFixed = fixedExpenses.filter(e => e.group === 'bills').reduce((s, e) => s + e.amount, 0);
   const totalSavings = fixedExpenses.filter(e => e.group === 'savings').reduce((s, e) => s + e.amount, 0);
@@ -98,11 +98,9 @@ const Index = () => {
   }, [monthTransactions, fixedExpenses]);
   const titheSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
-    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-    const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
-    return fixedTitheSpent + givingCatSpent;
-  }, [monthTransactions, fixedExpenses, spentByCategory]);
-  const totalTithe = rawTithe + hostingGiftsBudget;
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+  }, [monthTransactions, fixedExpenses]);
+  const totalTithe = rawTithe;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
 
   // Account totals — sum ALL amounts (including negative credits/payments) for net balance
