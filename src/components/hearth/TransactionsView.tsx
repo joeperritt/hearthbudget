@@ -108,7 +108,12 @@ export function TransactionsView({
                       {isIncome ? (
                         <span className="text-muted-foreground italic">Income</span>
                       ) : isDeposit ? (
-                        <span className="text-muted-foreground italic">Deposit</span>
+                        <span className="text-muted-foreground italic">
+                          Deposit
+                          {t.categoryId !== DEPOSIT_CATEGORY && (catMap[t.categoryId] || fixedMap[t.categoryId]) && (
+                            <span className="ml-1 text-muted-foreground/80">→ {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name}</span>
+                          )}
+                        </span>
                       ) : (
                         <>
                           {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
