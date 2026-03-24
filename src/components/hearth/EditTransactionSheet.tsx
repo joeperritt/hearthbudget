@@ -26,6 +26,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [showFixedPicker, setShowFixedPicker] = useState(false);
+  const [depositCategoryId, setDepositCategoryId] = useState('');
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
@@ -34,8 +35,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setLastId(txId);
     setCategoryId(transaction.categoryId);
     setNotes(transaction.notes);
-    // Check if current category is a fixed expense
     setShowFixedPicker(fixedExpenses.some(e => e.id === transaction.categoryId));
+    // If deposit with a reimbursement category, restore it
+    if (transaction.transactionType === 'deposit' && transaction.categoryId !== DEPOSIT_CATEGORY) {
+      setDepositCategoryId(transaction.categoryId);
+      setCategoryId(DEPOSIT_CATEGORY);
+    } else {
+      setDepositCategoryId('');
+    }
   }
 
   if (!transaction) return null;
@@ -45,12 +52,13 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const handleCategoryChange = (value: string) => {
     if (value === FIXED_BILL_SENTINEL) {
       setShowFixedPicker(true);
-      // Auto-select first fixed bill
       const firstBill = fixedExpenses.find(e => e.group === 'bills');
       if (firstBill) setCategoryId(firstBill.id);
+      setDepositCategoryId('');
     } else {
       setShowFixedPicker(false);
       setCategoryId(value);
+      if (value !== DEPOSIT_CATEGORY) setDepositCategoryId('');
     }
   };
 
@@ -65,10 +73,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     const isIncome = categoryId === INCOME_CATEGORY;
     const isDeposit = categoryId === DEPOSIT_CATEGORY;
     const txType = isIncome ? 'income' : isDeposit ? 'deposit' : 'expense';
+    // For deposits with a reimbursement category, store that category; otherwise store the main categoryId
+    const slugToSave = isDeposit && depositCategoryId ? depositCategoryId : categoryId;
     const { error } = await supabase
       .from('transactions')
       .update({
-        category_slug: categoryId,
+        category_slug: slugToSave,
         notes,
         transaction_type: txType,
       })
@@ -165,7 +175,25 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
-          {/* Notes */}
+          {/* Deposit reimbursement category picker */}
+          {categoryId === DEPOSIT_CATEGORY && (
+            <div className="animate-fade-up">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Apply to Category <span className="text-muted-foreground/60 normal-case">(optional)</span>
+              </label>
+              <select
+                value={depositCategoryId}
+                onChange={e => setDepositCategoryId(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="">None — general deposit</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Notes {notesRequired && <span className="text-destructive">*</span>}

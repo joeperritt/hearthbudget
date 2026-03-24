@@ -69,6 +69,10 @@ const Index = () => {
     monthTransactions.filter(t => t.transactionType === 'budget-adjustment').forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
     });
+    // Deposit reimbursements: deposits with a specific category reduce that category's spent amount
+    monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId !== DEPOSIT_CATEGORY && t.categoryId !== INCOME_CATEGORY).forEach(t => {
+      map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
+    });
     return map;
   }, [budgetTransactions, monthTransactions]);
 
