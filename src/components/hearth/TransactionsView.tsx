@@ -3,6 +3,7 @@ import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGO
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
@@ -148,18 +149,10 @@ export function TransactionsView({
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
                     {(() => {
-                      const isCheckingCredit = t.account === 'checking' && (t.transactionType === 'income' || t.transactionType === 'deposit');
-                      const isCheckingDebit = t.account === 'checking' && t.transactionType === 'expense';
-                      const amountColor = isCheckingCredit ? 'text-green-600'
-                        : isCheckingDebit ? 'text-destructive'
-                        : isExcluded ? 'text-green-600'
-                        : 'text-foreground';
-                      const prefix = isCheckingCredit ? '+'
-                        : isCheckingDebit ? '-'
-                        : isExcluded ? '+' : '';
+                      const { colorClassName, prefix, value } = getTransactionAmountPresentation(t, { isExcluded });
                       return (
-                        <p className={`text-sm font-medium tabular-nums ${amountColor}`}>
-                          {prefix}{formatCurrency(t.amount)}
+                        <p className={`text-sm font-medium tabular-nums ${colorClassName}`}>
+                          {prefix}{formatCurrency(value)}
                         </p>
                       );
                     })()}

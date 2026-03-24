@@ -3,6 +3,7 @@ import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw } from 'lucide-react';
 import { Transaction, AccountSource } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
+import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -79,13 +80,10 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unas
                 <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
               </div>
               {(() => {
-                const isCheckingCredit = tx.account === 'checking' && (tx.transactionType === 'income' || tx.transactionType === 'deposit');
-                const isCheckingDebit = tx.account === 'checking' && tx.transactionType === 'expense';
-                const color = isCheckingCredit ? 'text-green-600' : isCheckingDebit ? 'text-destructive' : 'text-foreground';
-                const prefix = isCheckingCredit ? '+' : isCheckingDebit ? '-' : '';
+                const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
                 return (
-                  <span className={`text-sm font-medium tabular-nums ml-3 ${color}`}>
-                    {prefix}{formatCurrency(tx.amount)}
+                  <span className={`text-sm font-medium tabular-nums ml-3 ${colorClassName}`}>
+                    {prefix}{formatCurrency(value)}
                   </span>
                 );
               })()}
