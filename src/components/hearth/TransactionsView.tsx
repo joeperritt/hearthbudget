@@ -92,7 +92,7 @@ export function TransactionsView({
                 <div
                   key={t.id}
                   onClick={() => onEditTransaction(t)}
-                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-40' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-30 grayscale' : ''}`}
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
                   {/* Left — account pill */}
