@@ -147,11 +147,22 @@ export function TransactionsView({
 
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-medium tabular-nums ${
-                      t.amount < 0 ? 'text-green-600' : (t.account === 'checking' || isExcluded) ? 'text-destructive' : 'text-foreground'
-                    }`}>
-                      {t.amount < 0 ? '+' : (t.account === 'checking' ? '-' : isExcluded ? '+' : '')}{formatCurrency(t.amount)}
-                    </p>
+                    {(() => {
+                      const isCheckingCredit = t.account === 'checking' && (t.transactionType === 'income' || t.transactionType === 'deposit');
+                      const isCheckingDebit = t.account === 'checking' && t.transactionType === 'expense';
+                      const amountColor = isCheckingCredit ? 'text-green-600'
+                        : isCheckingDebit ? 'text-destructive'
+                        : isExcluded ? 'text-green-600'
+                        : 'text-foreground';
+                      const prefix = isCheckingCredit ? '+'
+                        : isCheckingDebit ? '-'
+                        : isExcluded ? '+' : '';
+                      return (
+                        <p className={`text-sm font-medium tabular-nums ${amountColor}`}>
+                          {prefix}{formatCurrency(t.amount)}
+                        </p>
+                      );
+                    })()}
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}
                     </p>
