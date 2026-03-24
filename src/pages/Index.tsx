@@ -269,6 +269,7 @@ const Index = () => {
         open={showAddTransaction}
         onOpenChange={setShowAddTransaction}
         categories={categories}
+        fixedExpenses={fixedExpenses}
         onAdd={handleAddTransactions}
       />
 
