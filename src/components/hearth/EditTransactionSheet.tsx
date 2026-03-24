@@ -185,7 +185,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 <option value="unassigned">Unassigned</option>
-                {categories.map(c => (
+                {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
@@ -202,21 +202,21 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
               >
                 {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
                   <optgroup label="Bills">
-                    {fixedExpenses.filter(e => e.group === 'bills').map(e => (
+                    {fixedExpenses.filter(e => e.group === 'bills').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
                       <option key={e.id} value={e.id}>{e.name}</option>
                     ))}
                   </optgroup>
                 )}
                 {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
                   <optgroup label="Savings">
-                    {fixedExpenses.filter(e => e.group === 'savings').map(e => (
+                    {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
                       <option key={e.id} value={e.id}>{e.name}</option>
                     ))}
                   </optgroup>
                 )}
                 {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
                   <optgroup label="Tithe / Giving">
-                    {fixedExpenses.filter(e => e.group === 'tithe').map(e => (
+                    {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
                       <option key={e.id} value={e.id}>{e.name}</option>
                     ))}
                   </optgroup>
