@@ -153,17 +153,18 @@ Deno.serve(async (req) => {
                 : baseAccount;
               const plaidAmount = tx.amount as number;
               // Plaid: positive = money leaving (debit/expense), negative = money entering (credit/deposit/payment)
-              const isIncome = plaidAmount < 0;
+              // Store the raw signed amount so credits/payments reduce account balances
+              const isCredit = plaidAmount < 0;
               return {
                 household_id: profile.household_id,
                 date: tx.date as string,
                 description: (tx.merchant_name as string) || (tx.name as string) || "",
                 notes: "",
-                amount: Math.abs(plaidAmount),
-                category_slug: isIncome ? "ignore-income" : "unassigned",
+                amount: plaidAmount,
+                category_slug: isCredit ? "ignore-income" : "unassigned",
                 account,
                 is_transfer_to_savings: false,
-                transaction_type: isIncome ? "income" : "expense",
+                transaction_type: isCredit ? "income" : "expense",
                 entered_by: null,
               };
             });

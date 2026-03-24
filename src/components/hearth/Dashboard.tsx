@@ -68,7 +68,11 @@ export function Dashboard({
           <div className="mt-4">
             <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
               <span>{formatCurrency(totalSpent)} committed</span>
-              <span>{formatCurrency(Math.max(totalBudget - totalSpent, 0))} remaining</span>
+              {totalSpent > totalBudget ? (
+                <span className="text-red-300 font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+              ) : (
+                <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
+              )}
             </div>
             <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
               <div
