@@ -81,8 +81,9 @@ export function TransactionsView({
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
               const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
+              const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
-              const isExcluded = isIncome || isDeposit;
+              const isExcluded = isIncome || isDeposit || isTransfer;
               const isNegative = t.amount < 0;
               return (
                 <div
