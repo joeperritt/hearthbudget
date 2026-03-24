@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,9 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'checking', label: 'Checking' },
 ];
 
-type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore';
+type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
+
+const CC_PAYMENT_PATTERNS = ['MOBILE PAYMENT', 'AMERICAN EXPRESS ACH PMT', 'AMEX ACH PMT'];
 
 interface EditTransactionSheetProps {
   transaction: Transaction | null;
@@ -21,8 +23,14 @@ interface EditTransactionSheetProps {
   fixedExpenses: FixedExpense[];
 }
 
-function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
-  if (transactionType === 'income' || categoryId === INCOME_CATEGORY) return 'ignore';
+function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
+  if (transactionType === 'cc-payment' || categoryId === CC_PAYMENT_CATEGORY) return 'cc-payment';
+  if (transactionType === 'income' || categoryId === INCOME_CATEGORY) {
+    // Check if it's actually a CC payment that was auto-tagged as income
+    const upperDesc = description.toUpperCase();
+    if (CC_PAYMENT_PATTERNS.some(p => upperDesc.includes(p))) return 'cc-payment';
+    return 'ignore';
+  }
   if (categoryId === TRANSFER_CATEGORY) return 'ignore';
   if (transactionType === 'deposit') return 'deposit';
   if (fixedExpenses.some(e => e.id === categoryId)) return 'fixed';
@@ -34,6 +42,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
   const [depositCategoryId, setDepositCategoryId] = useState('');
+  const [ccPaymentCategoryId, setCcPaymentCategoryId] = useState('');
+  const [ccPaymentCategoryType, setCcPaymentCategoryType] = useState<'none' | 'variable' | 'fixed'>('none');
   const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -45,7 +55,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setLastId(txId);
     setNotes(transaction.notes);
 
-    const m = deriveMode(transaction.categoryId, transaction.transactionType, fixedExpenses);
+    const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
     setMode(m);
 
     if (m === 'variable') {
@@ -54,6 +64,21 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       setFixedCategoryId(transaction.categoryId);
     } else if (m === 'deposit') {
       setDepositCategoryId(transaction.categoryId !== DEPOSIT_CATEGORY ? transaction.categoryId : '');
+    } else if (m === 'cc-payment') {
+      // Restore optional category assignment
+      const catId = transaction.categoryId;
+      if (catId && catId !== CC_PAYMENT_CATEGORY && catId !== INCOME_CATEGORY) {
+        if (fixedExpenses.some(e => e.id === catId)) {
+          setCcPaymentCategoryType('fixed');
+          setCcPaymentCategoryId(catId);
+        } else {
+          setCcPaymentCategoryType('variable');
+          setCcPaymentCategoryId(catId);
+        }
+      } else {
+        setCcPaymentCategoryType('none');
+        setCcPaymentCategoryId('');
+      }
     } else if (m === 'ignore') {
       setIgnoreType(transaction.categoryId === TRANSFER_CATEGORY ? 'transfer' : 'income');
     }
@@ -67,7 +92,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
   const handleModeChange = (newMode: TxMode) => {
     setMode(newMode);
-    // Set sensible defaults
     if (newMode === 'fixed' && !fixedCategoryId) {
       const first = fixedExpenses[0];
       if (first) setFixedCategoryId(first.id);
@@ -93,6 +117,10 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       case 'deposit':
         slugToSave = depositCategoryId || DEPOSIT_CATEGORY;
         txType = 'deposit';
+        break;
+      case 'cc-payment':
+        slugToSave = ccPaymentCategoryType !== 'none' && ccPaymentCategoryId ? ccPaymentCategoryId : CC_PAYMENT_CATEGORY;
+        txType = 'cc-payment';
         break;
       case 'ignore':
         slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : INCOME_CATEGORY;
@@ -121,6 +149,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     { id: 'variable', label: 'Variable' },
     { id: 'fixed', label: 'Fixed' },
     { id: 'deposit', label: 'Deposit' },
+    { id: 'cc-payment', label: 'CC Pmt' },
     { id: 'ignore', label: 'Ignore' },
   ];
 
@@ -158,12 +187,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
           {/* Mode toggle pills */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</label>
-            <div className="flex gap-2 mt-1.5">
+            <div className="flex gap-1.5 mt-1.5">
               {MODE_BUTTONS.map(b => (
                 <button
                   key={b.id}
                   onClick={() => handleModeChange(b.id)}
-                  className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition-all active:scale-95 ${
+                  className={`flex-1 px-2 py-2 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
                     mode === b.id
                       ? 'bg-accent text-accent-foreground shadow-sm'
                       : 'bg-card text-muted-foreground border border-border'
@@ -239,10 +268,90 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 className="w-full px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 <option value="">None — general deposit</option>
-                {categories.map(c => (
+                {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {mode === 'cc-payment' && (
+            <div className="animate-fade-up space-y-3">
+              <p className="text-[11px] text-muted-foreground/70">
+                Reduces credit card balance. Optionally assign to a category to offset that budget.
+              </p>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Apply to Budget <span className="text-muted-foreground/60 normal-case">(optional)</span>
+                </label>
+                <div className="flex gap-1.5 mt-1.5 mb-2">
+                  {([
+                    { id: 'none' as const, label: 'None' },
+                    { id: 'variable' as const, label: 'Variable' },
+                    { id: 'fixed' as const, label: 'Fixed' },
+                  ]).map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setCcPaymentCategoryType(opt.id);
+                        if (opt.id === 'none') setCcPaymentCategoryId('');
+                        if (opt.id === 'fixed' && !ccPaymentCategoryId) {
+                          const first = fixedExpenses[0];
+                          if (first) setCcPaymentCategoryId(first.id);
+                        }
+                      }}
+                      className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95 ${
+                        ccPaymentCategoryType === opt.id
+                          ? 'bg-muted text-foreground border border-accent/50'
+                          : 'bg-card text-muted-foreground border border-border'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {ccPaymentCategoryType === 'variable' && (
+                  <select
+                    value={ccPaymentCategoryId}
+                    onChange={e => setCcPaymentCategoryId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  >
+                    <option value="">Select category…</option>
+                    {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
+                {ccPaymentCategoryType === 'fixed' && (
+                  <select
+                    value={ccPaymentCategoryId}
+                    onChange={e => setCcPaymentCategoryId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  >
+                    {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
+                      <optgroup label="Bills">
+                        {fixedExpenses.filter(e => e.group === 'bills').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
+                      <optgroup label="Savings">
+                        {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
+                      <optgroup label="Tithe / Giving">
+                        {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
+              </div>
             </div>
           )}
 

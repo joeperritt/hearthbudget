@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
