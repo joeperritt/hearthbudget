@@ -86,7 +86,7 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
 
   // Plaid Link success handler
   const onPlaidSuccess = useCallback(
-    async (publicToken: string, metadata: Record<string, unknown>) => {
+    async (publicToken: string, metadata: any) => {
       try {
         const institution = metadata.institution as Record<string, string> | undefined;
         const accounts = metadata.accounts as Array<Record<string, string>> | undefined;
