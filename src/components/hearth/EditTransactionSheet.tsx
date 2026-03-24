@@ -52,12 +52,13 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const handleCategoryChange = (value: string) => {
     if (value === FIXED_BILL_SENTINEL) {
       setShowFixedPicker(true);
-      // Auto-select first fixed bill
       const firstBill = fixedExpenses.find(e => e.group === 'bills');
       if (firstBill) setCategoryId(firstBill.id);
+      setDepositCategoryId('');
     } else {
       setShowFixedPicker(false);
       setCategoryId(value);
+      if (value !== DEPOSIT_CATEGORY) setDepositCategoryId('');
     }
   };
 
