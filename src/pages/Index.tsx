@@ -85,8 +85,13 @@ const Index = () => {
     return map;
   }, [monthTransfers]);
 
+  const variableCategoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
-  const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
+  const totalVariableSpent = useMemo(() => {
+    return Object.entries(spentByCategory)
+      .filter(([id]) => variableCategoryIds.has(id))
+      .reduce((s, [, v]) => s + v, 0);
+  }, [spentByCategory, variableCategoryIds]);
   const totalFixedAll = fixedExpenses.reduce((s, e) => s + e.amount, 0);
 
   const allFixedSpent = useMemo(() => {
@@ -153,6 +158,7 @@ const Index = () => {
           category={{ id: cat.id, name: cat.name, budgeted: cat.budgeted }}
           categories={categories}
           transactions={budgetTransactions.filter(t => t.categoryId === cat.id)}
+          deposits={monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === cat.id)}
           transfers={monthTransfers}
           spent={spentByCategory[cat.id] || 0}
           transferAdjustment={transferAdjustments[cat.id] || 0}
