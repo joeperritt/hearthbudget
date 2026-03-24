@@ -209,14 +209,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 )}
                 {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
                   <optgroup label="Savings">
-                    {fixedExpenses.filter(e => e.group === 'savings').map(e => (
+                    {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
                       <option key={e.id} value={e.id}>{e.name}</option>
                     ))}
                   </optgroup>
                 )}
                 {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
                   <optgroup label="Tithe / Giving">
-                    {fixedExpenses.filter(e => e.group === 'tithe').map(e => (
+                    {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
                       <option key={e.id} value={e.id}>{e.name}</option>
                     ))}
                   </optgroup>
