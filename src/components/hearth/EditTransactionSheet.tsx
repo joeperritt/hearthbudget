@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SplitEditor, SplitLine } from './SplitEditor';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
@@ -26,7 +27,6 @@ interface EditTransactionSheetProps {
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
   if (transactionType === 'cc-payment' || categoryId === CC_PAYMENT_CATEGORY) return 'cc-payment';
   if (transactionType === 'income' || categoryId === INCOME_CATEGORY) {
-    // Check if it's actually a CC payment that was auto-tagged as income
     const upperDesc = description.toUpperCase();
     if (CC_PAYMENT_PATTERNS.some(p => upperDesc.includes(p))) return 'cc-payment';
     return 'ignore';
@@ -47,6 +47,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
@@ -54,6 +56,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   if (txId && txId !== lastId) {
     setLastId(txId);
     setNotes(transaction.notes);
+    setIsSplit(false);
+    setSplitLines([]);
 
     const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
     setMode(m);
@@ -65,7 +69,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     } else if (m === 'deposit') {
       setDepositCategoryId(transaction.categoryId !== DEPOSIT_CATEGORY ? transaction.categoryId : '');
     } else if (m === 'cc-payment') {
-      // Restore optional category assignment
       const catId = transaction.categoryId;
       if (catId && catId !== CC_PAYMENT_CATEGORY && catId !== INCOME_CATEGORY) {
         if (fixedExpenses.some(e => e.id === catId)) {
@@ -86,20 +89,80 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
   if (!transaction) return null;
 
-  // Resolve effective categoryId for notes-required check
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
-  const notesRequired = NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
+  const notesRequired = !isSplit && NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
 
   const handleModeChange = (newMode: TxMode) => {
     setMode(newMode);
+    setIsSplit(false);
+    setSplitLines([]);
     if (newMode === 'fixed' && !fixedCategoryId) {
       const first = fixedExpenses[0];
       if (first) setFixedCategoryId(first.id);
     }
   };
 
+  const handleStartSplit = () => {
+    const txAmount = Math.abs(transaction.amount);
+    const defaultCat = mode === 'variable' ? (variableCategoryId || 'unassigned') : (fixedCategoryId || fixedExpenses[0]?.id || '');
+    const secondCat = mode === 'variable' ? 'unassigned' : (fixedExpenses[0]?.id || '');
+    setSplitLines([
+      { categoryId: defaultCat, amount: '' },
+      { categoryId: secondCat, amount: txAmount > 0 ? txAmount.toFixed(2) : '' },
+    ]);
+    setIsSplit(true);
+  };
+
   const handleSave = async () => {
     if (notesRequired && !notes.trim()) return;
+
+    if (isSplit && (mode === 'variable' || mode === 'fixed')) {
+      const txAmount = Math.abs(transaction.amount);
+      const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      if (Math.abs(txAmount - allocated) >= 0.01) return;
+
+      setSaving(true);
+      // Get household_id from the profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setSaving(false); return; }
+      const { data: profile } = await supabase.from('profiles').select('household_id').eq('user_id', user.id).single();
+      if (!profile) { setSaving(false); return; }
+
+      // Insert split transactions
+      const splitRows = splitLines
+        .filter(l => parseFloat(l.amount) > 0)
+        .map(l => ({
+          household_id: profile.household_id,
+          date: transaction.date,
+          description: transaction.description,
+          notes: notes || '',
+          amount: parseFloat(l.amount),
+          category_slug: l.categoryId,
+          account: transaction.account,
+          is_transfer_to_savings: false,
+          transaction_type: 'expense',
+          entered_by: user.id,
+        }));
+
+      const { error: insertError } = await supabase.from('transactions').insert(splitRows);
+      if (insertError) {
+        toast.error('Failed to create split transactions');
+        setSaving(false);
+        return;
+      }
+
+      // Delete original transaction
+      const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
+      setSaving(false);
+      if (deleteError) {
+        toast.error('Split created but failed to remove original');
+      } else {
+        toast.success(`Split into ${splitRows.length} transactions`);
+        onOpenChange(false);
+      }
+      return;
+    }
+
     setSaving(true);
 
     let slugToSave: string;
@@ -153,6 +216,10 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     { id: 'ignore', label: 'Ignore' },
   ];
 
+  const txAmount = Math.abs(transaction.amount);
+  const splitBalanced = isSplit && Math.abs(txAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
+  const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || splitBalanced) && !saving;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-2xl max-w-lg mx-auto bg-background max-h-[90vh] overflow-y-auto">
@@ -204,10 +271,19 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           </div>
 
-          {/* Sub-options based on mode */}
-          {mode === 'variable' && (
+          {/* Category selection or Split editor */}
+          {mode === 'variable' && !isSplit && (
             <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+                <button
+                  type="button"
+                  onClick={handleStartSplit}
+                  className="text-[11px] font-medium text-accent active:scale-95 transition-transform"
+                >
+                  Split →
+                </button>
+              </div>
               <select
                 value={variableCategoryId}
                 onChange={e => setVariableCategoryId(e.target.value)}
@@ -221,9 +297,18 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
-          {mode === 'fixed' && (
+          {mode === 'fixed' && !isSplit && (
             <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Category</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Category</label>
+                <button
+                  type="button"
+                  onClick={handleStartSplit}
+                  className="text-[11px] font-medium text-accent active:scale-95 transition-transform"
+                >
+                  Split →
+                </button>
+              </div>
               <select
                 value={fixedCategoryId}
                 onChange={e => setFixedCategoryId(e.target.value)}
@@ -251,6 +336,29 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   </optgroup>
                 )}
               </select>
+            </div>
+          )}
+
+          {isSplit && (mode === 'variable' || mode === 'fixed') && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Split Mode</span>
+                <button
+                  type="button"
+                  onClick={() => { setIsSplit(false); setSplitLines([]); }}
+                  className="text-[11px] font-medium text-destructive active:scale-95 transition-transform"
+                >
+                  Cancel Split
+                </button>
+              </div>
+              <SplitEditor
+                totalAmount={txAmount}
+                mode={mode}
+                categories={categories}
+                fixedExpenses={fixedExpenses}
+                lines={splitLines}
+                onChange={setSplitLines}
+              />
             </div>
           )}
 
@@ -398,10 +506,10 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
           <button
             onClick={handleSave}
-            disabled={saving || (notesRequired && !notes.trim())}
+            disabled={!canSave}
             className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : isSplit ? `Split into ${splitLines.filter(l => parseFloat(l.amount) > 0).length} Transactions` : 'Save Changes'}
           </button>
         </div>
       </SheetContent>
