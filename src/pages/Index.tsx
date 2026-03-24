@@ -232,6 +232,7 @@ const Index = () => {
           <TransactionsView
             transactions={monthTransactions}
             categories={categories}
+            fixedExpenses={fixedExpenses}
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
