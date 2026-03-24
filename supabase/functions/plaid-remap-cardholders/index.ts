@@ -85,119 +85,97 @@ Deno.serve(async (req) => {
       });
     }
 
-    let totalAdded = 0;
-    let totalModified = 0;
-    let totalRemoved = 0;
+    let totalUpdated = 0;
 
     for (const item of plaidItems) {
-      let hasMore = true;
-      let cursor = item.cursor || undefined;
+      // Check if any account is an Amex
+      const hasAmex = (item.plaid_accounts || []).some(
+        (acc: Record<string, unknown>) => ((acc.app_account as string) || "").includes("amex")
+      );
+      if (!hasAmex) continue;
 
-      while (hasMore) {
-        const syncBody: Record<string, unknown> = {
-          client_id: PLAID_CLIENT_ID,
-          secret: PLAID_SECRET,
-          access_token: item.access_token,
-        };
-        if (cursor) syncBody.cursor = cursor;
+      // Use /transactions/get to pull all historical transactions with account_owner
+      let offset = 0;
+      const count = 500;
+      let totalTransactions = Infinity;
 
-        const syncRes = await fetch(`${plaidBaseUrl}/transactions/sync`, {
+      while (offset < totalTransactions) {
+        const getRes = await fetch(`${plaidBaseUrl}/transactions/get`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(syncBody),
+          body: JSON.stringify({
+            client_id: PLAID_CLIENT_ID,
+            secret: PLAID_SECRET,
+            access_token: item.access_token,
+            start_date: "2020-01-01",
+            end_date: new Date().toISOString().split("T")[0],
+            options: {
+              count,
+              offset,
+              include_personal_finance_category: false,
+            },
+          }),
         });
 
-        const syncData = await syncRes.json();
-
-        if (!syncRes.ok) {
-          console.error("Plaid sync error for item", item.id, syncData);
+        const getData = await getRes.json();
+        if (!getRes.ok) {
+          console.error("Plaid get error for item", item.id, getData);
           break;
         }
 
-        // Build account mapping: plaid_account_id → app_account
-        const accountMap: Record<string, string> = {};
-        for (const acc of item.plaid_accounts || []) {
-          if (acc.app_account) {
-            accountMap[acc.plaid_account_id] = acc.app_account;
-          }
-        }
+        totalTransactions = getData.total_transactions;
 
-        // Helper: resolve the correct app account using cardholder name
-        const resolveAccount = (tx: Record<string, unknown>, fallback: string): string => {
-          // Plaid may provide account_owner or cardholder info
-          const owner = ((tx.account_owner as string) || "").toLowerCase();
-          const txName = ((tx.name as string) || "").toLowerCase();
+        // For each transaction, check cardholder and update matching DB records
+        for (const tx of getData.transactions) {
+          const owner = (tx.account_owner || "").toLowerCase();
+          const txName = (tx.name || "").toLowerCase();
           const searchText = owner || txName;
 
+          let newAccount: string | null = null;
           if (searchText.includes("katherine") || searchText.includes("katie")) {
-            return "katie-amex";
+            newAccount = "katie-amex";
+          } else if (searchText.includes("joseph") || searchText.includes("joe")) {
+            newAccount = "joe-amex";
           }
-          if (searchText.includes("joseph") || searchText.includes("joe")) {
-            return "joe-amex";
-          }
-          return fallback;
-        };
 
-        // Process added transactions
-        if (syncData.added && syncData.added.length > 0) {
-          const txRows = syncData.added
-            .filter((tx: Record<string, unknown>) => {
-              const accId = tx.account_id as string;
-              return accountMap[accId]; // Only import mapped accounts
-            })
-            .map((tx: Record<string, unknown>) => {
-              const baseAccount = accountMap[tx.account_id as string];
-              // For Amex accounts, resolve by cardholder name
-              const account = baseAccount.includes("amex")
-                ? resolveAccount(tx, baseAccount)
-                : baseAccount;
-              return {
-                household_id: profile.household_id,
-                date: tx.date as string,
-                description: (tx.merchant_name as string) || (tx.name as string) || "",
-                notes: "",
-                amount: Math.abs(tx.amount as number),
-                category_slug: "unassigned",
-                account,
-                is_transfer_to_savings: false,
-                transaction_type: "expense",
-                entered_by: null,
-              };
-            });
+          if (!newAccount) continue;
 
-          if (txRows.length > 0) {
-            await serviceClient.from("transactions").insert(txRows);
-            totalAdded += txRows.length;
+          // Match by date + amount + description in our DB
+          const merchantName = tx.merchant_name || tx.name || "";
+          const amount = Math.abs(tx.amount);
+          const date = tx.date;
+
+          const { data: matchingTxs } = await serviceClient
+            .from("transactions")
+            .select("id, account")
+            .eq("household_id", profile.household_id)
+            .eq("date", date)
+            .eq("amount", amount)
+            .eq("description", merchantName);
+
+          if (matchingTxs && matchingTxs.length > 0) {
+            for (const dbTx of matchingTxs) {
+              if (dbTx.account !== newAccount && dbTx.account.includes("amex")) {
+                await serviceClient
+                  .from("transactions")
+                  .update({ account: newAccount })
+                  .eq("id", dbTx.id);
+                totalUpdated++;
+              }
+            }
           }
         }
 
-        totalModified += (syncData.modified || []).length;
-        totalRemoved += (syncData.removed || []).length;
-
-        hasMore = syncData.has_more;
-        cursor = syncData.next_cursor;
-      }
-
-      // Update cursor
-      if (cursor) {
-        await serviceClient
-          .from("plaid_items")
-          .update({ cursor, last_synced_at: new Date().toISOString() })
-          .eq("id", item.id);
+        offset += count;
       }
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        added: totalAdded,
-        modified: totalModified,
-        removed: totalRemoved,
-      }),
+      JSON.stringify({ success: true, updated: totalUpdated }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error syncing transactions:", error);
+    console.error("Error remapping cardholders:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

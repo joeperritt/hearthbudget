@@ -141,6 +141,21 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
     }
   };
 
+  // Remap cardholder assignments on existing transactions
+  const handleRemapCardholders = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('plaid-remap-cardholders');
+      if (error) throw error;
+      toast.success(`Remapped ${data.updated} transactions by cardholder`);
+    } catch (err) {
+      console.error('Remap error:', err);
+      toast.error('Failed to remap cardholders');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Get balances
   const handleGetBalances = async () => {
     setLoadingBalances(true);
@@ -229,6 +244,16 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
               <Building2 size={16} className="text-primary" />
               <span className="text-xs font-medium text-foreground">
                 {loadingBalances ? 'Loading...' : 'Get Balances'}
+              </span>
+            </button>
+            <button
+              onClick={handleRemapCardholders}
+              disabled={syncing}
+              className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={`text-primary ${syncing ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-medium text-foreground">
+                {syncing ? 'Remapping...' : 'Fix Cardholders'}
               </span>
             </button>
           </div>
