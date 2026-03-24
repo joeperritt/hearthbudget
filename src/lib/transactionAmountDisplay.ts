@@ -19,14 +19,19 @@ export function getTransactionAmountPresentation(
   if (transaction.account === 'checking') {
     const isInflowByType = transaction.transactionType === 'income' || transaction.transactionType === 'deposit';
     const isOutflowByType = transaction.transactionType === 'expense';
-    const isInflow = transaction.amount > 0 || (transaction.amount === 0 && isInflowByType);
-    const isOutflow = transaction.amount < 0 || (transaction.amount === 0 && isOutflowByType);
-
-    if (isInflow) {
+    if (isInflowByType) {
       return { colorClassName: 'text-success', prefix: '+', value };
     }
 
-    if (isOutflow) {
+    if (isOutflowByType) {
+      return { colorClassName: 'text-destructive', prefix: '-', value };
+    }
+
+    if (transaction.amount > 0) {
+      return { colorClassName: 'text-success', prefix: '+', value };
+    }
+
+    if (transaction.amount < 0) {
       return { colorClassName: 'text-destructive', prefix: '-', value };
     }
   }
