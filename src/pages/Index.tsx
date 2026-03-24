@@ -189,12 +189,8 @@ const Index = () => {
             totalBudget={totalBudget}
             variableBudget={totalVariableBudget}
             variableSpent={totalVariableSpent}
-            fixedTotal={totalFixed}
-            fixedSpent={fixedSpent}
-            savingsTotal={totalSavings}
-            savingsSpent={savingsSpent}
-            titheTotal={totalTithe}
-            titheSpent={titheSpent}
+            fixedTotal={totalFixedAll}
+            fixedSpent={allFixedSpent}
             onAddTransaction={() => setShowAddTransaction(true)}
             joeAmexTotal={joeAmexTotal}
             katieAmexTotal={katieAmexTotal}
