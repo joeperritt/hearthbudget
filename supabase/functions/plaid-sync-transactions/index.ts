@@ -178,25 +178,46 @@ Deno.serve(async (req) => {
                 is_transfer_to_savings: false,
                 transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
                 entered_by: null,
+                plaid_transaction_id: (tx.transaction_id as string) || null,
               };
             });
 
           if (txRows.length > 0) {
-            // Deduplicate: check which transactions already exist by (date, description, amount, account)
+            // Deduplicate by Plaid transaction ID, with fallback to backfill existing rows
             const deduped: typeof txRows = [];
             for (const row of txRows) {
-              const { data: existing } = await serviceClient
-                .from("transactions")
-                .select("id")
-                .eq("household_id", row.household_id)
-                .eq("date", row.date)
-                .eq("description", row.description)
-                .eq("amount", row.amount)
-                .eq("account", row.account)
-                .limit(1);
-              if (!existing || existing.length === 0) {
-                deduped.push(row);
+              if (row.plaid_transaction_id) {
+                // Check if this exact Plaid transaction ID already exists
+                const { data: existingById } = await serviceClient
+                  .from("transactions")
+                  .select("id")
+                  .eq("household_id", row.household_id)
+                  .eq("plaid_transaction_id", row.plaid_transaction_id)
+                  .limit(1);
+                if (existingById && existingById.length > 0) {
+                  continue; // Already imported with this Plaid ID — skip
+                }
+
+                // Check if a legacy row exists without a plaid_transaction_id (backfill it)
+                const { data: legacyMatch } = await serviceClient
+                  .from("transactions")
+                  .select("id")
+                  .eq("household_id", row.household_id)
+                  .eq("date", row.date)
+                  .eq("amount", row.amount)
+                  .eq("account", row.account)
+                  .is("plaid_transaction_id", null)
+                  .limit(1);
+                if (legacyMatch && legacyMatch.length > 0) {
+                  // Backfill the plaid_transaction_id on the existing row
+                  await serviceClient
+                    .from("transactions")
+                    .update({ plaid_transaction_id: row.plaid_transaction_id })
+                    .eq("id", legacyMatch[0].id);
+                  continue;
+                }
               }
+              deduped.push(row);
             }
             if (deduped.length > 0) {
               await serviceClient.from("transactions").insert(deduped);
