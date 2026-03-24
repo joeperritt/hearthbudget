@@ -77,7 +77,9 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unas
                 <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
                 <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
               </div>
-              <span className="text-sm font-medium tabular-nums text-foreground ml-3">{formatCurrency(tx.amount)}</span>
+              <span className={`text-sm font-medium tabular-nums ml-3 ${tx.amount < 0 ? 'text-green-600' : 'text-foreground'}`}>
+                {tx.amount < 0 ? '+' : ''}{formatCurrency(tx.amount)}
+              </span>
             </div>
           ))}
           {filtered.length > 10 && (

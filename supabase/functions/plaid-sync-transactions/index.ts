@@ -155,7 +155,10 @@ Deno.serve(async (req) => {
               // Plaid: positive = money leaving (debit/expense), negative = money entering (credit/deposit/payment)
               // Store the raw signed amount so credits/payments reduce account balances
               const isCredit = plaidAmount < 0;
-              const description = (tx.merchant_name as string) || (tx.name as string) || "";
+              const merchantName = (tx.merchant_name as string) || "";
+              const txName = (tx.name as string) || "";
+              // For Venmo, prefer the full tx name which includes the person's name
+              const description = (merchantName.toLowerCase() === "venmo" && txName) ? txName : (merchantName || txName);
               const upperDesc = description.toUpperCase();
               // Auto-detect CC payments
               const isCcPayment = isCredit && (
