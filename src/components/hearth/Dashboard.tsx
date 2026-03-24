@@ -28,6 +28,69 @@ function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgete
   );
 }
 
+type AccountFilter = 'all' | AccountSource;
+
+const ACCOUNT_FILTERS: { id: AccountFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'joe-amex', label: 'Joe' },
+  { id: 'katie-amex', label: 'Katie' },
+  { id: 'checking', label: 'Checking' },
+];
+
+function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void }) {
+  const [filter, setFilter] = useState<AccountFilter>('all');
+  const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+
+  return (
+    <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
+        <div className="flex gap-1">
+          {ACCOUNT_FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors active:scale-95 ${
+                filter === f.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {filtered.length === 0 ? (
+        <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
+          <Inbox size={24} className="text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground">No unassigned transactions</p>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+            {filter === 'all' ? 'Imported transactions will appear here' : 'No unassigned transactions for this account'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+          {filtered.slice(0, 10).map(tx => (
+            <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 cursor-pointer active:bg-muted/50 transition-colors">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
+                <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
+              </div>
+              <span className="text-sm font-medium tabular-nums text-foreground ml-3">{formatCurrency(tx.amount)}</span>
+            </div>
+          ))}
+          {filtered.length > 10 && (
+            <div className="px-4 py-2 text-center">
+              <span className="text-xs text-muted-foreground">+{filtered.length - 10} more</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface DashboardProps {
   monthLabel: string;
   totalBudget: number;
@@ -67,7 +130,7 @@ export function Dashboard({
             <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
               <span>{formatCurrency(totalSpent)} committed</span>
               {totalSpent > totalBudget ? (
-                <span className="text-red-300 font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+                <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
               ) : (
                 <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
               )}
