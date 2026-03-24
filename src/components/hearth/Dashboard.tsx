@@ -1,5 +1,6 @@
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox } from 'lucide-react';
+import { Transaction } from '@/types/budget';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -41,13 +42,14 @@ interface DashboardProps {
   joeAmexTotal: number;
   katieAmexTotal: number;
   checkingBalance: number;
+  unassignedTransactions: Transaction[];
 }
 
 export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance,
+  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions,
 }: DashboardProps) {
   const totalSpent = variableSpent + fixedSpent + savingsSpent + titheSpent;
   const combinedCredit = joeAmexTotal + katieAmexTotal;
@@ -109,11 +111,30 @@ export function Dashboard({
       {/* Unassigned Transactions */}
       <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Unassigned Transactions</h3>
-        <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
-          <Inbox size={24} className="text-muted-foreground/30 mb-2" />
-          <p className="text-sm text-muted-foreground">No unassigned transactions</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5">Imported transactions will appear here</p>
-        </div>
+        {unassignedTransactions.length === 0 ? (
+          <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
+            <Inbox size={24} className="text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No unassigned transactions</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Imported transactions will appear here</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {unassignedTransactions.slice(0, 10).map(tx => (
+              <div key={tx.id} className="flex justify-between items-center px-4 py-3">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
+                  <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
+                </div>
+                <span className="text-sm font-medium tabular-nums text-foreground ml-3">{formatCurrency(tx.amount)}</span>
+              </div>
+            ))}
+            {unassignedTransactions.length > 10 && (
+              <div className="px-4 py-2 text-center">
+                <span className="text-xs text-muted-foreground">+{unassignedTransactions.length - 10} more</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <button

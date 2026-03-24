@@ -116,8 +116,13 @@ const Index = () => {
     const checkingExpenses = monthTransactions
       .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings)
       .reduce((s, t) => s + t.amount, 0);
-    return totalBudget - checkingExpenses;
+    return Math.abs(totalBudget - checkingExpenses);
   }, [monthTransactions, totalBudget]);
+
+  const unassignedTransactions = useMemo(
+    () => monthTransactions.filter(t => t.categoryId === 'unassigned'),
+    [monthTransactions]
+  );
 
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     await addTransactions(txns);
@@ -203,6 +208,7 @@ const Index = () => {
             joeAmexTotal={joeAmexTotal}
             katieAmexTotal={katieAmexTotal}
             checkingBalance={checkingBalance}
+            unassignedTransactions={unassignedTransactions}
           />
         )}
         {activeTab === 'variable' && (
