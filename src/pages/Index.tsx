@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -53,7 +53,7 @@ const Index = () => {
     [transfers, monthKey]
   );
 
-  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY || t.categoryId === TRANSFER_CATEGORY;
+  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.transactionType === 'cc-payment' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY || t.categoryId === TRANSFER_CATEGORY || t.categoryId === CC_PAYMENT_CATEGORY;
 
   const budgetTransactions = useMemo(
     () => monthTransactions.filter(t => !isExcluded(t) && t.transactionType === 'expense'),
@@ -71,6 +71,10 @@ const Index = () => {
     });
     // Deposit reimbursements: deposits with a specific category reduce that category's spent amount
     monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId !== DEPOSIT_CATEGORY && t.categoryId !== INCOME_CATEGORY).forEach(t => {
+      map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
+    });
+    // CC Payment reimbursements: cc-payments with a specific category reduce that category's spent amount
+    monthTransactions.filter(t => t.transactionType === 'cc-payment' && t.categoryId !== CC_PAYMENT_CATEGORY).forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
     });
     return map;

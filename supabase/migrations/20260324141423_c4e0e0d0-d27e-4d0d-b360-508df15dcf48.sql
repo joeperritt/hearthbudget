@@ -1,0 +1,3 @@
+ALTER TABLE transactions DROP CONSTRAINT transactions_transaction_type_check;
+ALTER TABLE transactions ADD CONSTRAINT transactions_transaction_type_check CHECK (transaction_type = ANY (ARRAY['expense'::text, 'budget-adjustment'::text, 'income'::text, 'deposit'::text, 'cc-payment'::text]));
+UPDATE transactions SET category_slug = 'cc-payment', transaction_type = 'cc-payment' WHERE (UPPER(description) LIKE '%MOBILE PAYMENT%' OR UPPER(description) LIKE '%AMERICAN EXPRESS ACH PMT%' OR UPPER(description) LIKE '%AMEX ACH PMT%' OR UPPER(description) LIKE '%PAYMENT THANK YOU%') AND transaction_type != 'cc-payment';

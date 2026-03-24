@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -80,10 +80,11 @@ export function TransactionsView({
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
-              const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
+              const isCcPayment = t.transactionType === 'cc-payment' || t.categoryId === CC_PAYMENT_CATEGORY;
+              const isIncome = !isCcPayment && (t.categoryId === INCOME_CATEGORY || t.transactionType === 'income');
               const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
-              const isExcluded = isIncome || isDeposit || isTransfer;
+              const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment;
               const isNegative = t.amount < 0;
               return (
                 <div
@@ -106,7 +107,14 @@ export function TransactionsView({
                   {/* Center — category + merchant + notes */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {isTransfer ? (
+                      {isCcPayment ? (
+                        <span className="text-muted-foreground italic">
+                          CC Payment
+                          {t.categoryId !== CC_PAYMENT_CATEGORY && (catMap[t.categoryId] || fixedMap[t.categoryId]) && (
+                            <span className="ml-1 text-muted-foreground/80">→ {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name}</span>
+                          )}
+                        </span>
+                      ) : isTransfer ? (
                         <span className="text-muted-foreground italic">Transfer</span>
                       ) : isIncome ? (
                         <span className="text-muted-foreground italic">Income</span>

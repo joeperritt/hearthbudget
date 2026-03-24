@@ -155,16 +155,25 @@ Deno.serve(async (req) => {
               // Plaid: positive = money leaving (debit/expense), negative = money entering (credit/deposit/payment)
               // Store the raw signed amount so credits/payments reduce account balances
               const isCredit = plaidAmount < 0;
+              const description = (tx.merchant_name as string) || (tx.name as string) || "";
+              const upperDesc = description.toUpperCase();
+              // Auto-detect CC payments
+              const isCcPayment = isCredit && (
+                upperDesc.includes("MOBILE PAYMENT") ||
+                upperDesc.includes("AMERICAN EXPRESS ACH PMT") ||
+                upperDesc.includes("AMEX ACH PMT") ||
+                upperDesc.includes("PAYMENT THANK YOU")
+              );
               return {
                 household_id: profile.household_id,
                 date: tx.date as string,
-                description: (tx.merchant_name as string) || (tx.name as string) || "",
+                description,
                 notes: "",
                 amount: plaidAmount,
-                category_slug: isCredit ? "ignore-income" : "unassigned",
+                category_slug: isCcPayment ? "cc-payment" : isCredit ? "ignore-income" : "unassigned",
                 account,
                 is_transfer_to_savings: false,
-                transaction_type: isCredit ? "income" : "expense",
+                transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
                 entered_by: null,
               };
             });
