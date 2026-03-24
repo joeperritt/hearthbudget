@@ -34,10 +34,6 @@ interface DashboardProps {
   variableSpent: number;
   fixedTotal: number;
   fixedSpent: number;
-  savingsTotal: number;
-  savingsSpent: number;
-  titheTotal: number;
-  titheSpent: number;
   onAddTransaction: () => void;
   joeAmexTotal: number;
   katieAmexTotal: number;
@@ -49,10 +45,10 @@ interface DashboardProps {
 export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
-  fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
+  fixedTotal, fixedSpent, onAddTransaction,
   joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions, onEditTransaction,
 }: DashboardProps) {
-  const totalSpent = variableSpent + fixedSpent + savingsSpent + titheSpent;
+  const totalSpent = variableSpent + fixedSpent;
   const combinedCredit = joeAmexTotal + katieAmexTotal;
 
   return (
