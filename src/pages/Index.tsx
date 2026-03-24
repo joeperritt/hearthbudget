@@ -282,6 +282,7 @@ const Index = () => {
         open={!!editingTransaction}
         onOpenChange={open => { if (!open) setEditingTransaction(null); }}
         categories={categories}
+        fixedExpenses={fixedExpenses}
       />
 
       {moveFundsCategoryId && (

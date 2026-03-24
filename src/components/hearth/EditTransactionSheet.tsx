@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,17 +11,21 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'checking', label: 'Checking' },
 ];
 
+const FIXED_BILL_SENTINEL = '__fixed-bill__';
+
 interface EditTransactionSheetProps {
   transaction: Transaction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: BudgetCategory[];
+  fixedExpenses: FixedExpense[];
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses }: EditTransactionSheetProps) {
   const [categoryId, setCategoryId] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showFixedPicker, setShowFixedPicker] = useState(false);
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
@@ -30,11 +34,30 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setLastId(txId);
     setCategoryId(transaction.categoryId);
     setNotes(transaction.notes);
+    // Check if current category is a fixed expense
+    setShowFixedPicker(fixedExpenses.some(e => e.id === transaction.categoryId));
   }
 
   if (!transaction) return null;
 
   const notesRequired = NOTES_REQUIRED_CATEGORIES.includes(categoryId);
+
+  const handleCategoryChange = (value: string) => {
+    if (value === FIXED_BILL_SENTINEL) {
+      setShowFixedPicker(true);
+      // Auto-select first fixed bill
+      const firstBill = fixedExpenses.find(e => e.group === 'bills');
+      if (firstBill) setCategoryId(firstBill.id);
+    } else {
+      setShowFixedPicker(false);
+      setCategoryId(value);
+    }
+  };
+
+  // Determine if current categoryId belongs to a fixed expense
+  const isFixedCategory = fixedExpenses.some(e => e.id === categoryId);
+  // The main dropdown value: show sentinel if in fixed mode, otherwise the actual categoryId
+  const mainDropdownValue = showFixedPicker || isFixedCategory ? FIXED_BILL_SENTINEL : categoryId;
 
   const handleSave = async () => {
     if (notesRequired && !notes.trim()) return;
@@ -94,18 +117,53 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
             <select
-              value={categoryId}
-              onChange={e => setCategoryId(e.target.value)}
+              value={mainDropdownValue}
+              onChange={e => handleCategoryChange(e.target.value)}
               className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
             >
               <option value="unassigned">Unassigned</option>
               <option value={INCOME_CATEGORY}>Ignore — Income</option>
               <option value={DEPOSIT_CATEGORY}>Mark as Deposit</option>
+              <option value={FIXED_BILL_SENTINEL}>Fixed Bills →</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
+
+          {/* Fixed bill sub-picker */}
+          {showFixedPicker && (
+            <div className="animate-fade-up">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Bill Category</label>
+              <select
+                value={categoryId}
+                onChange={e => setCategoryId(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
+                  <optgroup label="Bills">
+                    {fixedExpenses.filter(e => e.group === 'bills').map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
+                  <optgroup label="Savings">
+                    {fixedExpenses.filter(e => e.group === 'savings').map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
+                  <optgroup label="Tithe / Giving">
+                    {fixedExpenses.filter(e => e.group === 'tithe').map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+          )}
 
           {/* Notes */}
           <div>
