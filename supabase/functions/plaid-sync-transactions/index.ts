@@ -72,6 +72,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get the household's active budget month
+    const { data: household } = await serviceClient
+      .from("households")
+      .select("active_month")
+      .eq("id", profile.household_id)
+      .single();
+    const activeBudgetMonth = (household as any)?.active_month || new Date().toISOString().slice(0, 7);
+
     // Get all plaid items for this household
     const { data: plaidItems } = await serviceClient
       .from("plaid_items")
@@ -179,6 +187,7 @@ Deno.serve(async (req) => {
                 transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
                 entered_by: null,
                 plaid_transaction_id: (tx.transaction_id as string) || null,
+                budget_month: activeBudgetMonth,
               };
             });
 

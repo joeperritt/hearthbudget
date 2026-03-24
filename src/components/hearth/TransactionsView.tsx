@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -82,11 +82,12 @@ export function TransactionsView({
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
               const isCcPayment = t.transactionType === 'cc-payment' || t.categoryId === CC_PAYMENT_CATEGORY;
-              const isIncome = !isCcPayment && (t.categoryId === INCOME_CATEGORY || t.transactionType === 'income');
+              const isIncome = !isCcPayment && (t.categoryId === INCOME_CATEGORY || (t.transactionType === 'income' && t.categoryId !== PRIOR_MONTH_CATEGORY));
               const isTransfer = t.categoryId === TRANSFER_CATEGORY;
+              const isPriorMonth = t.categoryId === PRIOR_MONTH_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
-              const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment;
-              const isIgnored = isIncome || isTransfer;
+              const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth;
+              const isIgnored = isIncome || isTransfer || isPriorMonth;
               
               return (
                 <div
@@ -116,6 +117,8 @@ export function TransactionsView({
                             <span className="ml-1 text-muted-foreground/80">→ {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name}</span>
                           )}
                         </span>
+                      ) : isPriorMonth ? (
+                        <span className="text-muted-foreground italic">Prior Month</span>
                       ) : isTransfer ? (
                         <span className="text-muted-foreground italic">Transfer</span>
                       ) : isIncome ? (

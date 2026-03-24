@@ -7,6 +7,7 @@ export const INCOME_CATEGORY = 'ignore-income';
 export const DEPOSIT_CATEGORY = 'ignore-deposit';
 export const TRANSFER_CATEGORY = 'ignore-transfer';
 export const CC_PAYMENT_CATEGORY = 'cc-payment';
+export const PRIOR_MONTH_CATEGORY = 'ignore-prior-month';
 
 export interface Transaction {
   id: string;
@@ -19,6 +20,7 @@ export interface Transaction {
   isTransferToSavings: boolean;
   transactionType: TransactionType;
   enteredBy?: string | null;
+  budgetMonth: string;
 }
 
 // A split transaction creates multiple TransactionSplit entries under one parent

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRED_CATEGORIES, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRED_CATEGORIES, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { SplitEditor, SplitLine } from './SplitEditor';
@@ -39,7 +39,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   const [depositCategoryId, setDepositCategoryId] = useState('');
   const [ccPaymentCategoryId, setCcPaymentCategoryId] = useState('');
   const [ccPaymentCategoryType, setCcPaymentCategoryType] = useState<'none' | 'variable' | 'fixed'>('none');
-  const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
+  const [ignoreType, setIgnoreType] = useState<'income' | 'transfer' | 'prior-month'>('income');
   const [notes, setNotes] = useState('');
   const [isSplit, setIsSplit] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
@@ -144,7 +144,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
         txType = 'cc-payment';
         break;
       case 'ignore':
-        categorySlug = ignoreType === 'transfer' ? TRANSFER_CATEGORY : INCOME_CATEGORY;
+        categorySlug = ignoreType === 'transfer' ? TRANSFER_CATEGORY : ignoreType === 'prior-month' ? PRIOR_MONTH_CATEGORY : INCOME_CATEGORY;
         txType = 'income';
         break;
     }
@@ -449,6 +449,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                 {([
                   { id: 'income' as const, label: 'Income' },
                   { id: 'transfer' as const, label: 'Transfer' },
+                  { id: 'prior-month' as const, label: 'Prior Month' },
                 ] as const).map(opt => (
                   <button
                     key={opt.id}
@@ -465,7 +466,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground/70 mt-1.5">
-                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : 'Inter-account transfer or credit card payment'}
+                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : ignoreType === 'transfer' ? 'Inter-account transfer or credit card payment' : 'Transaction from a previous budget month'}
               </p>
             </div>
           )}
