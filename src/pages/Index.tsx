@@ -214,7 +214,6 @@ const Index = () => {
             joeAmexGross={joeAmexGross}
             katieAmexGross={katieAmexGross}
             totalPayoffs={totalPayoffs}
-            checkingBalance={checkingBalance}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
           />
