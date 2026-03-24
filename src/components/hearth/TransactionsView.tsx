@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -13,6 +13,7 @@ type Filter = 'all' | AccountSource;
 interface TransactionsViewProps {
   transactions: Transaction[];
   categories: BudgetCategory[];
+  fixedExpenses: FixedExpense[];
   monthLabel: string;
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
@@ -26,11 +27,12 @@ const ACCOUNT_LABELS: Record<AccountSource, string> = {
 };
 
 export function TransactionsView({
-  transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction,
+  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
@@ -109,7 +111,7 @@ export function TransactionsView({
                         <span className="text-muted-foreground italic">Deposit</span>
                       ) : (
                         <>
-                          {catMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
+                          {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
                           {t.isTransferToSavings && (
                             <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
                           )}
