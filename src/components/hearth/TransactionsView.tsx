@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, AccountSource } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 
 import { Plus, Trash2 } from 'lucide-react';
@@ -92,10 +92,11 @@ export function TransactionsView({
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
+              const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
               return (
               <div
                   key={t.id}
-                  className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up ${isIncome ? 'opacity-60' : ''}`}
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
                   {/* Left — account pill */}
@@ -112,9 +113,15 @@ export function TransactionsView({
                   {/* Center — category + merchant + notes */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {catMap[t.categoryId]?.name || 'Unknown'}
-                      {t.isTransferToSavings && (
-                        <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
+                      {isIncome ? (
+                        <span className="text-muted-foreground italic">Income</span>
+                      ) : (
+                        <>
+                          {catMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
+                          {t.isTransferToSavings && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
+                          )}
+                        </>
                       )}
                     </p>
                     {t.description ? (
@@ -127,8 +134,8 @@ export function TransactionsView({
 
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-medium tabular-nums text-foreground">
-                      {formatCurrency(t.amount)}
+                    <p className={`text-sm font-medium tabular-nums ${isIncome ? 'text-green-600' : 'text-foreground'}`}>
+                      {isIncome ? '+' : ''}{formatCurrency(t.amount)}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}

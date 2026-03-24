@@ -151,16 +151,19 @@ Deno.serve(async (req) => {
               const account = baseAccount.includes("amex")
                 ? resolveAccount(tx, baseAccount)
                 : baseAccount;
+              const plaidAmount = tx.amount as number;
+              // Plaid: positive = money leaving (debit/expense), negative = money entering (credit/deposit/payment)
+              const isIncome = plaidAmount < 0;
               return {
                 household_id: profile.household_id,
                 date: tx.date as string,
                 description: (tx.merchant_name as string) || (tx.name as string) || "",
                 notes: "",
-                amount: Math.abs(tx.amount as number),
-                category_slug: "unassigned",
+                amount: Math.abs(plaidAmount),
+                category_slug: isIncome ? "ignore-income" : "unassigned",
                 account,
                 is_transfer_to_savings: false,
-                transaction_type: "expense",
+                transaction_type: isIncome ? "income" : "expense",
                 entered_by: null,
               };
             });
