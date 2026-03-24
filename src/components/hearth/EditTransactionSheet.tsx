@@ -35,8 +35,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setLastId(txId);
     setCategoryId(transaction.categoryId);
     setNotes(transaction.notes);
-    // Check if current category is a fixed expense
     setShowFixedPicker(fixedExpenses.some(e => e.id === transaction.categoryId));
+    // If deposit with a reimbursement category, restore it
+    if (transaction.transactionType === 'deposit' && transaction.categoryId !== DEPOSIT_CATEGORY) {
+      setDepositCategoryId(transaction.categoryId);
+      setCategoryId(DEPOSIT_CATEGORY);
+    } else {
+      setDepositCategoryId('');
+    }
   }
 
   if (!transaction) return null;
