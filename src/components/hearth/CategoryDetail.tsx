@@ -17,6 +17,7 @@ interface CategoryDetailProps {
   category: DetailCategory;
   categories: BudgetCategory[];
   transactions: Transaction[];
+  deposits?: Transaction[];
   transfers: BudgetTransfer[];
   spent: number;
   transferAdjustment: number;
