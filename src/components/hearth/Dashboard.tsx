@@ -99,8 +99,10 @@ interface DashboardProps {
   fixedTotal: number;
   fixedSpent: number;
   onAddTransaction: () => void;
-  joeAmexTotal: number;
-  katieAmexTotal: number;
+  joeAmexGross: number;
+  joeAmexPayoffs: number;
+  katieAmexGross: number;
+  katieAmexPayoffs: number;
   checkingBalance: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
@@ -110,10 +112,13 @@ export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions, onEditTransaction,
+  joeAmexGross, joeAmexPayoffs, katieAmexGross, katieAmexPayoffs,
+  checkingBalance, unassignedTransactions, onEditTransaction,
 }: DashboardProps) {
+  const joeAmexNet = Math.max(joeAmexGross - joeAmexPayoffs, 0);
+  const katieAmexNet = Math.max(katieAmexGross - katieAmexPayoffs, 0);
+  const combinedCredit = joeAmexNet + katieAmexNet;
   const totalSpent = variableSpent + fixedSpent;
-  const combinedCredit = joeAmexTotal + katieAmexTotal;
 
   return (
     <div className="max-w-lg mx-auto">
@@ -154,13 +159,29 @@ export function Dashboard({
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Joe's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexTotal)}</span>
+          <div className="px-4 py-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-foreground">Joe's Amex</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexNet)}</span>
+            </div>
+            {joeAmexPayoffs > 0 && (
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-muted-foreground pl-2">Payoffs applied</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">−{formatCurrency(joeAmexPayoffs)}</span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Katie's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexTotal)}</span>
+          <div className="px-4 py-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-foreground">Katie's Amex</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexNet)}</span>
+            </div>
+            {katieAmexPayoffs > 0 && (
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-muted-foreground pl-2">Payoffs applied</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">−{formatCurrency(katieAmexPayoffs)}</span>
+              </div>
+            )}
           </div>
           <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
             <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
