@@ -301,6 +301,7 @@ export type Database = {
           id: string
           is_transfer_to_savings: boolean
           notes: string
+          plaid_transaction_id: string | null
           transaction_type: string
         }
         Insert: {
@@ -315,6 +316,7 @@ export type Database = {
           id?: string
           is_transfer_to_savings?: boolean
           notes?: string
+          plaid_transaction_id?: string | null
           transaction_type?: string
         }
         Update: {
@@ -329,6 +331,7 @@ export type Database = {
           id?: string
           is_transfer_to_savings?: boolean
           notes?: string
+          plaid_transaction_id?: string | null
           transaction_type?: string
         }
         Relationships: [

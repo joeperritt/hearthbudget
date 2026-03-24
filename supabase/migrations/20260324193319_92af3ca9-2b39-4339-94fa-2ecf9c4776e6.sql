@@ -1,0 +1,2 @@
+ALTER TABLE public.transactions ADD COLUMN plaid_transaction_id text DEFAULT NULL;
+CREATE UNIQUE INDEX idx_transactions_plaid_id ON public.transactions (household_id, plaid_transaction_id) WHERE plaid_transaction_id IS NOT NULL;
