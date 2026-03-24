@@ -106,7 +106,9 @@ export function TransactionsView({
                   {/* Center — category + merchant + notes */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {isIncome ? (
+                      {isTransfer ? (
+                        <span className="text-muted-foreground italic">Transfer</span>
+                      ) : isIncome ? (
                         <span className="text-muted-foreground italic">Income</span>
                       ) : isDeposit ? (
                         <span className="text-muted-foreground italic">
@@ -118,6 +120,9 @@ export function TransactionsView({
                       ) : (
                         <>
                           {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
+                          {fixedMap[t.categoryId] && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">fixed</span>
+                          )}
                           {t.isTransferToSavings && (
                             <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
                           )}
