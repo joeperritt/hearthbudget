@@ -179,8 +179,26 @@ Deno.serve(async (req) => {
             });
 
           if (txRows.length > 0) {
-            await serviceClient.from("transactions").insert(txRows);
-            totalAdded += txRows.length;
+            // Deduplicate: check which transactions already exist by (date, description, amount, account)
+            const deduped: typeof txRows = [];
+            for (const row of txRows) {
+              const { data: existing } = await serviceClient
+                .from("transactions")
+                .select("id")
+                .eq("household_id", row.household_id)
+                .eq("date", row.date)
+                .eq("description", row.description)
+                .eq("amount", row.amount)
+                .eq("account", row.account)
+                .limit(1);
+              if (!existing || existing.length === 0) {
+                deduped.push(row);
+              }
+            }
+            if (deduped.length > 0) {
+              await serviceClient.from("transactions").insert(deduped);
+              totalAdded += deduped.length;
+            }
           }
         }
 
