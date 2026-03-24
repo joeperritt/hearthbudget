@@ -159,13 +159,29 @@ export function Dashboard({
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Joe's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexTotal)}</span>
+          <div className="px-4 py-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-foreground">Joe's Amex</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexNet)}</span>
+            </div>
+            {joeAmexPayoffs > 0 && (
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-muted-foreground pl-2">Payoffs applied</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">−{formatCurrency(joeAmexPayoffs)}</span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Katie's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexTotal)}</span>
+          <div className="px-4 py-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-foreground">Katie's Amex</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexNet)}</span>
+            </div>
+            {katieAmexPayoffs > 0 && (
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-muted-foreground pl-2">Payoffs applied</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">−{formatCurrency(katieAmexPayoffs)}</span>
+              </div>
+            )}
           </div>
           <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
             <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
