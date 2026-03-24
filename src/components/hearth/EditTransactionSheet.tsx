@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { format } from 'date-fns';
+import { format, subMonths, addMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
@@ -13,8 +13,20 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
 ];
 
 type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
+type IgnoreType = 'income' | 'transfer' | 'prior-month';
 
 const CC_PAYMENT_PATTERNS = ['MOBILE PAYMENT', 'AMERICAN EXPRESS ACH PMT', 'AMEX ACH PMT'];
+
+function generateMonthOptions(current: string): { value: string; label: string }[] {
+  if (!current) return [];
+  const base = new Date(current + '-01T00:00:00');
+  const options: { value: string; label: string }[] = [];
+  for (let i = -3; i <= 1; i++) {
+    const d = i < 0 ? subMonths(base, Math.abs(i)) : i > 0 ? addMonths(base, i) : base;
+    options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'MMM yyyy') });
+  }
+  return options;
+}
 
 interface EditTransactionSheetProps {
   transaction: Transaction | null;
@@ -22,10 +34,12 @@ interface EditTransactionSheetProps {
   onOpenChange: (open: boolean) => void;
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
+  activeMonth: string;
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
   if (transactionType === 'cc-payment' || categoryId === CC_PAYMENT_CATEGORY) return 'cc-payment';
+  if (categoryId === PRIOR_MONTH_CATEGORY) return 'ignore';
   if (transactionType === 'income' || categoryId === INCOME_CATEGORY) {
     const upperDesc = description.toUpperCase();
     if (CC_PAYMENT_PATTERNS.some(p => upperDesc.includes(p))) return 'cc-payment';
@@ -37,18 +51,25 @@ function deriveMode(categoryId: string, transactionType: string, description: st
   return 'variable';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses }: EditTransactionSheetProps) {
+function deriveIgnoreType(categoryId: string): IgnoreType {
+  if (categoryId === PRIOR_MONTH_CATEGORY) return 'prior-month';
+  if (categoryId === TRANSFER_CATEGORY) return 'transfer';
+  return 'income';
+}
+
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
   const [depositCategoryId, setDepositCategoryId] = useState('');
   const [ccPaymentCategoryId, setCcPaymentCategoryId] = useState('');
   const [ccPaymentCategoryType, setCcPaymentCategoryType] = useState<'none' | 'variable' | 'fixed'>('none');
-  const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
+  const [ignoreType, setIgnoreType] = useState<IgnoreType>('income');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [isSplit, setIsSplit] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
+  const [budgetMonth, setBudgetMonth] = useState('');
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
@@ -58,6 +79,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setNotes(transaction.notes);
     setIsSplit(false);
     setSplitLines([]);
+    setBudgetMonth(transaction.budgetMonth || activeMonth);
 
     const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
     setMode(m);
@@ -83,7 +105,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         setCcPaymentCategoryId('');
       }
     } else if (m === 'ignore') {
-      setIgnoreType(transaction.categoryId === TRANSFER_CATEGORY ? 'transfer' : 'income');
+      setIgnoreType(deriveIgnoreType(transaction.categoryId));
     }
   }
 
@@ -122,13 +144,11 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       if (Math.abs(txAmount - allocated) >= 0.01) return;
 
       setSaving(true);
-      // Get household_id from the profile
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
       const { data: profile } = await supabase.from('profiles').select('household_id').eq('user_id', user.id).single();
       if (!profile) { setSaving(false); return; }
 
-      // Insert split transactions
       const splitRows = splitLines
         .filter(l => parseFloat(l.amount) > 0)
         .map(l => ({
@@ -142,16 +162,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
           is_transfer_to_savings: false,
           transaction_type: 'expense',
           entered_by: user.id,
+          budget_month: budgetMonth,
         }));
 
-      const { error: insertError } = await supabase.from('transactions').insert(splitRows);
+      const { error: insertError } = await supabase.from('transactions').insert(splitRows as any);
       if (insertError) {
         toast.error('Failed to create split transactions');
         setSaving(false);
         return;
       }
 
-      // Delete original transaction
       const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
       setSaving(false);
       if (deleteError) {
@@ -186,18 +206,23 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         txType = 'cc-payment';
         break;
       case 'ignore':
-        slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : INCOME_CATEGORY;
+        slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : ignoreType === 'prior-month' ? PRIOR_MONTH_CATEGORY : INCOME_CATEGORY;
         txType = 'income';
         break;
     }
 
+    const updateData: Record<string, unknown> = {
+      category_slug: slugToSave,
+      notes,
+      transaction_type: txType,
+    };
+    if (budgetMonth && budgetMonth !== transaction.budgetMonth) {
+      updateData.budget_month = budgetMonth;
+    }
+
     const { error } = await supabase
       .from('transactions')
-      .update({
-        category_slug: slugToSave,
-        notes,
-        transaction_type: txType,
-      })
+      .update(updateData as any)
       .eq('id', transaction.id);
     setSaving(false);
     if (error) {
@@ -219,6 +244,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const txAmount = Math.abs(transaction.amount);
   const splitBalanced = isSplit && Math.abs(txAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
   const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || splitBalanced) && !saving;
+
+  const monthOptions = generateMonthOptions(activeMonth);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -248,6 +275,18 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
               <span className="text-sm text-foreground">
                 {ACCOUNTS.find(a => a.id === transaction.account)?.label}
               </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground uppercase">Budget Month</span>
+              <select
+                value={budgetMonth}
+                onChange={e => setBudgetMonth(e.target.value)}
+                className="text-sm text-foreground bg-transparent text-right border-none focus:outline-none focus:ring-0 cursor-pointer"
+              >
+                {monthOptions.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -470,6 +509,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 {([
                   { id: 'income' as const, label: 'Income' },
                   { id: 'transfer' as const, label: 'Transfer' },
+                  { id: 'prior-month' as const, label: 'Prior Month' },
                 ] as const).map(opt => (
                   <button
                     key={opt.id}
@@ -485,7 +525,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground/70 mt-1.5">
-                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : 'Inter-account transfer or credit card payment'}
+                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : ignoreType === 'transfer' ? 'Inter-account transfer or credit card payment' : 'Transaction from a previous budget month'}
               </p>
             </div>
           )}

@@ -55,6 +55,44 @@ export type Database = {
           },
         ]
       }
+      budget_month_snapshots: {
+        Row: {
+          categories: Json
+          created_at: string
+          fixed_expenses: Json
+          household_id: string
+          id: string
+          month: string
+          transactions_summary: Json
+        }
+        Insert: {
+          categories?: Json
+          created_at?: string
+          fixed_expenses?: Json
+          household_id: string
+          id?: string
+          month: string
+          transactions_summary?: Json
+        }
+        Update: {
+          categories?: Json
+          created_at?: string
+          fixed_expenses?: Json
+          household_id?: string
+          id?: string
+          month?: string
+          transactions_summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_month_snapshots_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_transfers: {
         Row: {
           amount: number
@@ -136,16 +174,19 @@ export type Database = {
       }
       households: {
         Row: {
+          active_month: string
           created_at: string
           id: string
           name: string
         }
         Insert: {
+          active_month?: string
           created_at?: string
           id?: string
           name?: string
         }
         Update: {
+          active_month?: string
           created_at?: string
           id?: string
           name?: string
@@ -292,6 +333,7 @@ export type Database = {
         Row: {
           account: string
           amount: number
+          budget_month: string
           category_slug: string
           created_at: string
           date: string
@@ -307,6 +349,7 @@ export type Database = {
         Insert: {
           account: string
           amount: number
+          budget_month?: string
           category_slug: string
           created_at?: string
           date?: string
@@ -322,6 +365,7 @@ export type Database = {
         Update: {
           account?: string
           amount?: number
+          budget_month?: string
           category_slug?: string
           created_at?: string
           date?: string

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
 import {
   BudgetCategory,
   FixedExpense,
@@ -41,6 +42,7 @@ function dbToTx(row: Record<string, unknown>): Transaction {
     isTransferToSavings: row.is_transfer_to_savings as boolean,
     transactionType: row.transaction_type as TransactionType,
     enteredBy: row.entered_by as string | null,
+    budgetMonth: (row.budget_month as string) || '',
   };
 }
 
@@ -62,6 +64,7 @@ export function useBudgetData() {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
+  const [activeMonth, setActiveMonth] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const initialLoad = useRef(true);
 
@@ -69,17 +72,22 @@ export function useBudgetData() {
   const fetchAll = useCallback(async () => {
     if (!householdId) return;
 
-    const [catRes, fixRes, txRes, trRes] = await Promise.all([
+    const [catRes, fixRes, txRes, trRes, hhRes] = await Promise.all([
       supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('fixed_expenses').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
       supabase.from('budget_transfers').select('*').eq('household_id', householdId),
+      supabase.from('households').select('*').eq('id', householdId).single(),
     ]);
 
     if (catRes.data) setCategories(catRes.data.map(r => dbToCat(r as unknown as Record<string, unknown>)));
     if (fixRes.data) setFixedExpenses(fixRes.data.map(r => dbToFixed(r as unknown as Record<string, unknown>)));
     if (txRes.data) setTransactions(txRes.data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
     if (trRes.data) setTransfers(trRes.data.map(r => dbToTransfer(r as unknown as Record<string, unknown>)));
+    if (hhRes.data) {
+      const hh = hhRes.data as unknown as Record<string, unknown>;
+      setActiveMonth((hh.active_month as string) || format(new Date(), 'yyyy-MM'));
+    }
 
     if (initialLoad.current) {
       initialLoad.current = false;
@@ -98,7 +106,6 @@ export function useBudgetData() {
     const channel = supabase
       .channel('budget-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `household_id=eq.${householdId}` }, () => {
-        // Refetch transactions on any change
         supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }).then(({ data }) => {
           if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
         });
@@ -138,9 +145,10 @@ export function useBudgetData() {
       is_transfer_to_savings: t.isTransferToSavings,
       transaction_type: t.transactionType,
       entered_by: user.id,
+      budget_month: activeMonth,
     }));
-    await supabase.from('transactions').insert(rows);
-  }, [householdId, user]);
+    await supabase.from('transactions').insert(rows as any);
+  }, [householdId, user, activeMonth]);
 
   const deleteTransaction = useCallback(async (id: string) => {
     await supabase.from('transactions').delete().eq('id', id);
@@ -159,7 +167,6 @@ export function useBudgetData() {
 
   const updateCategories = useCallback(async (cats: BudgetCategory[]) => {
     if (!householdId) return;
-    // Upsert each category
     const ops = cats.map((c, i) =>
       supabase.from('budget_categories').upsert({
         household_id: householdId,
@@ -172,7 +179,6 @@ export function useBudgetData() {
     );
     await Promise.all(ops);
 
-    // Delete categories that no longer exist
     const existingSlugs = cats.map(c => c.id);
     const { data: dbCats } = await supabase
       .from('budget_categories')
@@ -187,7 +193,6 @@ export function useBudgetData() {
       );
     }
 
-    // Optimistic update
     setCategories(cats);
   }, [householdId]);
 
@@ -205,7 +210,6 @@ export function useBudgetData() {
     );
     await Promise.all(ops);
 
-    // Delete expenses that no longer exist
     const existingSlugs = exps.map(e => e.id);
     const { data: dbExps } = await supabase
       .from('fixed_expenses')
@@ -220,20 +224,50 @@ export function useBudgetData() {
       );
     }
 
-    // Optimistic update
     setFixedExpenses(exps);
   }, [householdId]);
+
+  const startNewMonth = useCallback(async (nextMonth: string, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
+    if (!householdId) return;
+
+    // Snapshot current month
+    const monthTxns = transactions.filter(t => t.budgetMonth === activeMonth);
+    const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
+    const summary = {
+      totalTransactions: monthTxns.length,
+      totalExpenses: expenseTxns.length,
+      totalSpent: expenseTxns.reduce((s, t) => s + t.amount, 0),
+    };
+
+    await supabase.from('budget_month_snapshots' as any).insert({
+      household_id: householdId,
+      month: activeMonth,
+      categories: categories,
+      fixed_expenses: fixedExpenses,
+      transactions_summary: summary,
+    } as any);
+
+    // Update categories and fixed expenses to new amounts
+    await updateCategories(nextCats);
+    await updateFixedExpenses(nextFixed);
+
+    // Update active_month on household
+    await supabase.from('households').update({ active_month: nextMonth } as any).eq('id', householdId);
+    setActiveMonth(nextMonth);
+  }, [householdId, activeMonth, categories, fixedExpenses, transactions, updateCategories, updateFixedExpenses]);
 
   return {
     categories,
     fixedExpenses,
     transactions,
     transfers,
+    activeMonth,
     loading,
     addTransactions,
     deleteTransaction,
     addTransfer,
     updateCategories,
     updateFixedExpenses,
+    startNewMonth,
   };
 }

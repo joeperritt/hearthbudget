@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { format } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { format, parse } from 'date-fns';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -22,16 +22,17 @@ const Index = () => {
     fixedExpenses,
     transactions,
     transfers,
+    activeMonth,
     loading,
     addTransactions,
     deleteTransaction,
     addTransfer,
     updateCategories,
     updateFixedExpenses,
+    startNewMonth,
   } = useBudgetData();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const [currentMonth] = useState(new Date());
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -40,11 +41,29 @@ const Index = () => {
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'past-months' | 'bank-connections'>('menu');
 
-  const monthKey = format(currentMonth, 'yyyy-MM');
-  const monthLabel = format(currentMonth, 'MMMM yyyy');
+  const monthKey = activeMonth;
+  const monthLabel = useMemo(() => {
+    if (!activeMonth) return '';
+    try {
+      const d = new Date(activeMonth + '-01T00:00:00');
+      return format(d, 'MMMM yyyy');
+    } catch {
+      return activeMonth;
+    }
+  }, [activeMonth]);
+
+  // Derive a Date object for components that need it
+  const currentMonthDate = useMemo(() => {
+    if (!activeMonth) return new Date();
+    try {
+      return new Date(activeMonth + '-01T00:00:00');
+    } catch {
+      return new Date();
+    }
+  }, [activeMonth]);
 
   const monthTransactions = useMemo(
-    () => transactions.filter(t => t.date.startsWith(monthKey)),
+    () => transactions.filter(t => t.budgetMonth === monthKey),
     [transactions, monthKey]
   );
 
@@ -53,7 +72,7 @@ const Index = () => {
     [transfers, monthKey]
   );
 
-  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.transactionType === 'cc-payment' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY || t.categoryId === TRANSFER_CATEGORY || t.categoryId === CC_PAYMENT_CATEGORY;
+  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.transactionType === 'cc-payment' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY || t.categoryId === TRANSFER_CATEGORY || t.categoryId === CC_PAYMENT_CATEGORY || t.categoryId === PRIOR_MONTH_CATEGORY;
 
   const budgetTransactions = useMemo(
     () => monthTransactions.filter(t => !isExcluded(t) && t.transactionType === 'expense'),
@@ -65,11 +84,9 @@ const Index = () => {
     budgetTransactions.forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     });
-    // Budget adjustments: positive amount adds funds (subtract from spent), negative removes funds (add to spent)
     monthTransactions.filter(t => t.transactionType === 'budget-adjustment').forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
     });
-    // Deposit reimbursements: deposits assigned to a specific category reduce that category's spent
     monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId !== DEPOSIT_CATEGORY && t.categoryId !== INCOME_CATEGORY && t.categoryId !== TRANSFER_CATEGORY && t.categoryId !== CC_PAYMENT_CATEGORY).forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
     });
@@ -91,7 +108,6 @@ const Index = () => {
     const rawSpent = Object.entries(spentByCategory)
       .filter(([id]) => variableCategoryIds.has(id))
       .reduce((s, [, v]) => s + v, 0);
-    // Include transfer adjustments so Dashboard matches Spending tab card totals
     const varTransferAdj = categories.reduce((s, c) => s + (transferAdjustments[c.id] || 0), 0);
     return rawSpent - varTransferAdj;
   }, [spentByCategory, variableCategoryIds, categories, transferAdjustments]);
@@ -100,15 +116,12 @@ const Index = () => {
   const allFixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.map(e => e.id));
     const rawSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-    // Include transfer adjustments for fixed expense categories (transfers out increase effective spent)
     const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
-    // transferAdj is negative when funds transferred out, so subtract it (spending goes up)
     return rawSpent - fixedTransferAdj;
   }, [monthTransactions, fixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
-  // Account totals — gross charges per card, total payoffs across both
   const joeAmexGross = useMemo(
     () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType !== 'cc-payment').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
@@ -122,7 +135,6 @@ const Index = () => {
     [monthTransactions]
   );
 
-
   const unassignedTransactions = useMemo(
     () => monthTransactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t)),
     [monthTransactions]
@@ -134,8 +146,8 @@ const Index = () => {
   };
 
   const handleStartMonth = async (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
-    await updateCategories(nextCats);
-    await updateFixedExpenses(nextFixed);
+    const nextMonthKey = format(nextMonthDate, 'yyyy-MM');
+    await startNewMonth(nextMonthKey, nextCats, nextFixed);
     setActiveTab('dashboard');
     setMoreSubView('menu');
   };
@@ -145,7 +157,7 @@ const Index = () => {
     if (tab === 'more') setMoreSubView('menu');
   };
 
-  if (loading) {
+  if (loading || !activeMonth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
@@ -245,7 +257,7 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'planning' && (
           <PlanningView
-            currentMonth={currentMonth}
+            currentMonth={currentMonthDate}
             categories={categories}
             fixedExpenses={fixedExpenses}
             onBack={() => setMoreSubView('menu')}
@@ -255,11 +267,12 @@ const Index = () => {
           <SettingsView
             categories={categories}
             fixedExpenses={fixedExpenses}
-            currentMonth={currentMonth}
+            currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
             onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
+            unassignedCount={unassignedTransactions.length}
           />
         )}
         {activeTab === 'more' && moreSubView === 'past-months' && (
@@ -286,6 +299,7 @@ const Index = () => {
         onOpenChange={open => { if (!open) setEditingTransaction(null); }}
         categories={categories}
         fixedExpenses={fixedExpenses}
+        activeMonth={activeMonth}
       />
 
       {moveFundsCategoryId && (
