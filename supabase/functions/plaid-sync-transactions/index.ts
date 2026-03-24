@@ -183,18 +183,38 @@ Deno.serve(async (req) => {
             });
 
           if (txRows.length > 0) {
-            // Deduplicate by Plaid transaction ID — only skip if an identical plaid_transaction_id already exists
+            // Deduplicate by Plaid transaction ID, with fallback to backfill existing rows
             const deduped: typeof txRows = [];
             for (const row of txRows) {
               if (row.plaid_transaction_id) {
-                const { data: existing } = await serviceClient
+                // Check if this exact Plaid transaction ID already exists
+                const { data: existingById } = await serviceClient
                   .from("transactions")
                   .select("id")
                   .eq("household_id", row.household_id)
                   .eq("plaid_transaction_id", row.plaid_transaction_id)
                   .limit(1);
-                if (existing && existing.length > 0) {
-                  continue; // True duplicate — skip
+                if (existingById && existingById.length > 0) {
+                  continue; // Already imported with this Plaid ID — skip
+                }
+
+                // Check if a legacy row exists without a plaid_transaction_id (backfill it)
+                const { data: legacyMatch } = await serviceClient
+                  .from("transactions")
+                  .select("id")
+                  .eq("household_id", row.household_id)
+                  .eq("date", row.date)
+                  .eq("amount", row.amount)
+                  .eq("account", row.account)
+                  .is("plaid_transaction_id", null)
+                  .limit(1);
+                if (legacyMatch && legacyMatch.length > 0) {
+                  // Backfill the plaid_transaction_id on the existing row
+                  await serviceClient
+                    .from("transactions")
+                    .update({ plaid_transaction_id: row.plaid_transaction_id })
+                    .eq("id", legacyMatch[0].id);
+                  continue;
                 }
               }
               deduped.push(row);
