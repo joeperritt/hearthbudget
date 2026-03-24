@@ -84,24 +84,14 @@ const Index = () => {
   const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
-  const totalFixed = fixedExpenses.filter(e => e.group === 'bills').reduce((s, e) => s + e.amount, 0);
-  const totalSavings = fixedExpenses.filter(e => e.group === 'savings').reduce((s, e) => s + e.amount, 0);
-  const rawTithe = fixedExpenses.filter(e => e.group === 'tithe').reduce((s, e) => s + e.amount, 0);
+  const totalFixedAll = fixedExpenses.reduce((s, e) => s + e.amount, 0);
 
-  const fixedSpent = useMemo(() => {
-    const ids = new Set(fixedExpenses.filter(e => e.group === 'bills').map(e => e.id));
+  const allFixedSpent = useMemo(() => {
+    const ids = new Set(fixedExpenses.map(e => e.id));
     return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, fixedExpenses]);
-  const savingsSpent = useMemo(() => {
-    const ids = new Set(fixedExpenses.filter(e => e.group === 'savings').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-  }, [monthTransactions, fixedExpenses]);
-  const titheSpent = useMemo(() => {
-    const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-  }, [monthTransactions, fixedExpenses]);
-  const totalTithe = rawTithe;
-  const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
+
+  const totalBudget = totalVariableBudget + totalFixedAll;
 
   // Account totals — sum ALL amounts (including negative credits/payments) for net balance
   const joeAmexTotal = useMemo(
