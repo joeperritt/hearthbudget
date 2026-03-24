@@ -92,21 +92,25 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
 
     if (isSplit) {
       if (Math.abs(remainder) > 0.01) return;
-      const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       const acct = account as AccountSource;
-      const txns = splits.map(sp => ({
-        description: description || '',
-        notes: notes || '',
-        amount: (parseFloat(sp.amount) || 0) * signMultiplier,
-        categoryId: sp.categoryId,
-        account: acct,
-        date,
-        isTransferToSavings: isTransfer,
-        transactionType,
-      }));
+      const txns = splits.map(sp => {
+        const isIncomeSplit = sp.categoryId === INCOME_CATEGORY;
+        const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
+        return {
+          description: description || '',
+          notes: notes || '',
+          amount: (parseFloat(sp.amount) || 0) * signMultiplier,
+          categoryId: sp.categoryId,
+          account: acct,
+          date,
+          isTransferToSavings: isTransfer,
+          transactionType: isIncomeSplit ? 'income' as const : transactionType,
+        };
+      });
       onAdd(txns);
     } else {
       if (!singleCategoryId) return;
+      const isIncomeCategory = singleCategoryId === INCOME_CATEGORY;
       const signMultiplier = transactionType === 'budget-adjustment' ? (adjustmentSign === '+' ? 1 : -1) : 1;
       onAdd([{
         description: description || '',
@@ -116,7 +120,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
         account: account as AccountSource,
         date,
         isTransferToSavings: isTransfer,
-        transactionType,
+        transactionType: isIncomeCategory ? 'income' : transactionType,
       }]);
     }
 
