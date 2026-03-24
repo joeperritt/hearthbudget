@@ -1,7 +1,7 @@
-import { CalendarDays, Settings, Clock, LogOut } from 'lucide-react';
+import { CalendarDays, Settings, Clock, LogOut, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'planning' | 'settings' | 'past-months';
+type MoreTab = 'planning' | 'settings' | 'past-months' | 'bank-connections';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -56,8 +56,20 @@ export function MoreView({ onSelect }: MoreViewProps) {
             <p className="text-xs text-muted-foreground">View previous budget & transaction history</p>
           </div>
         </button>
-      </div>
 
+        <button
+          onClick={() => onSelect('bank-connections')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Building2 size={20} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Bank Connections</p>
+            <p className="text-xs text-muted-foreground">Link accounts & auto-import transactions</p>
+          </div>
+        </button>
+      </div>
       {/* Log Out */}
       <div className="px-6 mt-10">
         <button

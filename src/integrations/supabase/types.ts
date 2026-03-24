@@ -152,6 +152,104 @@ export type Database = {
         }
         Relationships: []
       }
+      plaid_accounts: {
+        Row: {
+          app_account: string | null
+          created_at: string
+          household_id: string
+          id: string
+          mask: string | null
+          name: string
+          official_name: string | null
+          plaid_account_id: string
+          plaid_item_id: string
+          subtype: string | null
+          type: string
+        }
+        Insert: {
+          app_account?: string | null
+          created_at?: string
+          household_id: string
+          id?: string
+          mask?: string | null
+          name?: string
+          official_name?: string | null
+          plaid_account_id: string
+          plaid_item_id: string
+          subtype?: string | null
+          type?: string
+        }
+        Update: {
+          app_account?: string | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          mask?: string | null
+          name?: string
+          official_name?: string | null
+          plaid_account_id?: string
+          plaid_item_id?: string
+          subtype?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaid_accounts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plaid_accounts_plaid_item_id_fkey"
+            columns: ["plaid_item_id"]
+            isOneToOne: false
+            referencedRelation: "plaid_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plaid_items: {
+        Row: {
+          access_token: string
+          created_at: string
+          cursor: string | null
+          household_id: string
+          id: string
+          institution_name: string
+          item_id: string
+          last_synced_at: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          cursor?: string | null
+          household_id: string
+          id?: string
+          institution_name?: string
+          item_id: string
+          last_synced_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          cursor?: string | null
+          household_id?: string
+          id?: string
+          institution_name?: string
+          item_id?: string
+          last_synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaid_items_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_initial: string
