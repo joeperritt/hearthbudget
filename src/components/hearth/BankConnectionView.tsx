@@ -141,6 +141,21 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
     }
   };
 
+  // Remap cardholder assignments on existing transactions
+  const handleRemapCardholders = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('plaid-remap-cardholders');
+      if (error) throw error;
+      toast.success(`Remapped ${data.updated} transactions by cardholder`);
+    } catch (err) {
+      console.error('Remap error:', err);
+      toast.error('Failed to remap cardholders');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Get balances
   const handleGetBalances = async () => {
     setLoadingBalances(true);
