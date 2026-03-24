@@ -72,10 +72,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     const isIncome = categoryId === INCOME_CATEGORY;
     const isDeposit = categoryId === DEPOSIT_CATEGORY;
     const txType = isIncome ? 'income' : isDeposit ? 'deposit' : 'expense';
+    // For deposits with a reimbursement category, store that category; otherwise store the main categoryId
+    const slugToSave = isDeposit && depositCategoryId ? depositCategoryId : categoryId;
     const { error } = await supabase
       .from('transactions')
       .update({
-        category_slug: categoryId,
+        category_slug: slugToSave,
         notes,
         transaction_type: txType,
       })
