@@ -99,8 +99,10 @@ interface DashboardProps {
   fixedTotal: number;
   fixedSpent: number;
   onAddTransaction: () => void;
-  joeAmexTotal: number;
-  katieAmexTotal: number;
+  joeAmexGross: number;
+  joeAmexPayoffs: number;
+  katieAmexGross: number;
+  katieAmexPayoffs: number;
   checkingBalance: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
@@ -110,10 +112,13 @@ export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions, onEditTransaction,
+  joeAmexGross, joeAmexPayoffs, katieAmexGross, katieAmexPayoffs,
+  checkingBalance, unassignedTransactions, onEditTransaction,
 }: DashboardProps) {
+  const joeAmexNet = Math.max(joeAmexGross - joeAmexPayoffs, 0);
+  const katieAmexNet = Math.max(katieAmexGross - katieAmexPayoffs, 0);
+  const combinedCredit = joeAmexNet + katieAmexNet;
   const totalSpent = variableSpent + fixedSpent;
-  const combinedCredit = joeAmexTotal + katieAmexTotal;
 
   return (
     <div className="max-w-lg mx-auto">
