@@ -21,7 +21,11 @@ function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgete
         <>
           <div className="flex justify-between text-xs text-muted-foreground mt-2 mb-1">
             <span>{formatCurrency(spent)} spent</span>
-            <span>{formatCurrency(Math.max(budgeted - spent, 0))} left</span>
+            {spent > budgeted ? (
+              <span className="text-destructive font-medium">-{formatCurrency(spent - budgeted)} over</span>
+            ) : (
+              <span>{formatCurrency(budgeted - spent)} left</span>
+            )}
           </div>
           <ProgressBar value={spent} max={budgeted} />
         </>

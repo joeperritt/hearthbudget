@@ -24,7 +24,7 @@ function CategoryCard({
         <div className="flex justify-between items-baseline mb-1">
           <span className="font-medium text-sm text-foreground truncate">{category.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {formatCurrency(remaining)} left
+            {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>
         </div>
         <ProgressBar value={spent} max={adjustedBudget} className="mb-1.5" />
@@ -54,7 +54,7 @@ function FixedExpenseCard({ expense, spent, transferAdj, onSelect, onMoveFunds, 
         <div className="flex justify-between items-baseline mb-1">
           <span className="font-medium text-sm text-foreground truncate">{expense.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {formatCurrency(remaining)} left
+            {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>
         </div>
         <ProgressBar value={spent} max={adjustedBudget} className="mb-1.5" />
