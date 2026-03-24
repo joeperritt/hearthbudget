@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { BudgetCategory, Transaction, AccountSource, TransactionType, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { BudgetCategory, Transaction, AccountSource, TransactionType, NOTES_REQUIRED_CATEGORIES, INCOME_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { Plus, Minus } from 'lucide-react';
@@ -227,6 +227,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
                 onChange={e => setSingleCategoryId(e.target.value)}
                 className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
+                <option value={INCOME_CATEGORY}>Ignore — Income</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -248,6 +249,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, onAdd }: A
                     onChange={e => updateSplit(idx, 'categoryId', e.target.value)}
                     className="flex-1 px-2 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
                   >
+                    <option value={INCOME_CATEGORY}>Ignore — Income</option>
                     {categories.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}

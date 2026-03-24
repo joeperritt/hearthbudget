@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY } from '@/types/budget';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -52,7 +52,7 @@ const Index = () => {
   );
 
   const budgetTransactions = useMemo(
-    () => monthTransactions.filter(t => !t.isTransferToSavings && t.transactionType === 'expense'),
+    () => monthTransactions.filter(t => !t.isTransferToSavings && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY),
     [monthTransactions]
   );
 
@@ -86,15 +86,15 @@ const Index = () => {
 
   const fixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'bills').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, fixedExpenses]);
   const savingsSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'savings').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, fixedExpenses]);
   const titheSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
-    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0);
+    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
     const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
     return fixedTitheSpent + givingCatSpent;
   }, [monthTransactions, fixedExpenses, spentByCategory]);
@@ -103,24 +103,23 @@ const Index = () => {
 
   // Account totals
   const joeAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
   const katieAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
 
-  // Checking balance: totalBudget - checking account expenses
   const checkingBalance = useMemo(() => {
     const checkingExpenses = monthTransactions
-      .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings)
+      .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings && t.categoryId !== INCOME_CATEGORY)
       .reduce((s, t) => s + t.amount, 0);
     return Math.abs(totalBudget - checkingExpenses);
   }, [monthTransactions, totalBudget]);
 
   const unassignedTransactions = useMemo(
-    () => monthTransactions.filter(t => t.categoryId === 'unassigned'),
+    () => monthTransactions.filter(t => t.categoryId === 'unassigned' && t.transactionType !== 'income'),
     [monthTransactions]
   );
 
