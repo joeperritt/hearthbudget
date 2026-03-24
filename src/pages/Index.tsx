@@ -88,16 +88,23 @@ const Index = () => {
   const variableCategoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = useMemo(() => {
-    return Object.entries(spentByCategory)
+    const rawSpent = Object.entries(spentByCategory)
       .filter(([id]) => variableCategoryIds.has(id))
       .reduce((s, [, v]) => s + v, 0);
-  }, [spentByCategory, variableCategoryIds]);
+    // Include transfer adjustments so Dashboard matches Spending tab card totals
+    const varTransferAdj = categories.reduce((s, c) => s + (transferAdjustments[c.id] || 0), 0);
+    return rawSpent - varTransferAdj;
+  }, [spentByCategory, variableCategoryIds, categories, transferAdjustments]);
   const totalFixedAll = fixedExpenses.reduce((s, e) => s + e.amount, 0);
 
   const allFixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-  }, [monthTransactions, fixedExpenses]);
+    const rawSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+    // Include transfer adjustments for fixed expense categories (transfers out increase effective spent)
+    const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
+    // transferAdj is negative when funds transferred out, so subtract it (spending goes up)
+    return rawSpent - fixedTransferAdj;
+  }, [monthTransactions, fixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
