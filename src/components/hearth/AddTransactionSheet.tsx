@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRED_CATEGORIES, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
+import { SplitEditor, SplitLine } from './SplitEditor';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
@@ -40,13 +41,13 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   const [ccPaymentCategoryType, setCcPaymentCategoryType] = useState<'none' | 'variable' | 'fixed'>('none');
   const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
   const [notes, setNotes] = useState('');
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
   const notesRef = useRef<HTMLInputElement>(null);
 
-  // Resolve effective categoryId for notes-required check
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
-  const notesRequired = NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
+  const notesRequired = !isSplit && NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
 
-  // Auto-focus notes when required
   useEffect(() => {
     if (notesRequired && notesRef.current) {
       notesRef.current.focus();
@@ -55,10 +56,23 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
 
   const handleModeChange = (newMode: TxMode) => {
     setMode(newMode);
+    setIsSplit(false);
+    setSplitLines([]);
     if (newMode === 'fixed' && !fixedCategoryId) {
       const first = fixedExpenses[0];
       if (first) setFixedCategoryId(first.id);
     }
+  };
+
+  const handleStartSplit = () => {
+    const parsedAmount = parseFloat(amount) || 0;
+    const defaultCat = mode === 'variable' ? (variableCategoryId || 'unassigned') : (fixedCategoryId || fixedExpenses[0]?.id || '');
+    const secondCat = mode === 'variable' ? 'unassigned' : (fixedExpenses[0]?.id || '');
+    setSplitLines([
+      { categoryId: defaultCat, amount: '' },
+      { categoryId: secondCat, amount: parsedAmount > 0 ? parsedAmount.toFixed(2) : '' },
+    ]);
+    setIsSplit(true);
   };
 
   const resetForm = () => {
@@ -74,6 +88,8 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
     setCcPaymentCategoryType('none');
     setIgnoreType('income');
     setNotes('');
+    setIsSplit(false);
+    setSplitLines([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,6 +98,28 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
     if (!parsedAmount || !account) return;
     if (notesRequired && !notes.trim()) {
       notesRef.current?.focus();
+      return;
+    }
+
+    if (isSplit && (mode === 'variable' || mode === 'fixed')) {
+      const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      const remaining = Math.round((parsedAmount - allocated) * 100) / 100;
+      if (Math.abs(remaining) >= 0.01) return; // Not balanced
+
+      const txns: Omit<Transaction, 'id'>[] = splitLines
+        .filter(l => parseFloat(l.amount) > 0)
+        .map(l => ({
+          description: description || '',
+          notes: notes || '',
+          amount: parseFloat(l.amount),
+          categoryId: l.categoryId,
+          account: account as AccountSource,
+          date,
+          isTransferToSavings: false,
+          transactionType: 'expense' as Transaction['transactionType'],
+        }));
+      onAdd(txns);
+      resetForm();
       return;
     }
 
@@ -124,6 +162,10 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
 
     resetForm();
   };
+
+  const parsedAmount = parseFloat(amount) || 0;
+  const splitBalanced = isSplit && Math.abs(parsedAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
+  const canSubmit = !!amount && !!account && (!notesRequired || !!notes.trim()) && (!isSplit || splitBalanced);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -186,7 +228,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             </div>
           </div>
 
-          {/* Mode toggle pills — identical to Edit screen */}
+          {/* Mode toggle pills */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</label>
             <div className="flex gap-1.5 mt-1.5">
@@ -207,10 +249,19 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             </div>
           </div>
 
-          {/* Sub-options based on mode — identical to Edit screen */}
-          {mode === 'variable' && (
+          {/* Category selection or Split editor */}
+          {mode === 'variable' && !isSplit && (
             <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+                <button
+                  type="button"
+                  onClick={handleStartSplit}
+                  className="text-[11px] font-medium text-accent active:scale-95 transition-transform"
+                >
+                  Split →
+                </button>
+              </div>
               <select
                 value={variableCategoryId}
                 onChange={e => setVariableCategoryId(e.target.value)}
@@ -224,9 +275,18 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             </div>
           )}
 
-          {mode === 'fixed' && (
+          {mode === 'fixed' && !isSplit && (
             <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Category</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Category</label>
+                <button
+                  type="button"
+                  onClick={handleStartSplit}
+                  className="text-[11px] font-medium text-accent active:scale-95 transition-transform"
+                >
+                  Split →
+                </button>
+              </div>
               <select
                 value={fixedCategoryId}
                 onChange={e => setFixedCategoryId(e.target.value)}
@@ -254,6 +314,29 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   </optgroup>
                 )}
               </select>
+            </div>
+          )}
+
+          {isSplit && (mode === 'variable' || mode === 'fixed') && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Split Mode</span>
+                <button
+                  type="button"
+                  onClick={() => { setIsSplit(false); setSplitLines([]); }}
+                  className="text-[11px] font-medium text-destructive active:scale-95 transition-transform"
+                >
+                  Cancel Split
+                </button>
+              </div>
+              <SplitEditor
+                totalAmount={parsedAmount}
+                mode={mode}
+                categories={categories}
+                fixedExpenses={fixedExpenses}
+                lines={splitLines}
+                onChange={setSplitLines}
+              />
             </div>
           )}
 
@@ -405,7 +488,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
 
           <button
             type="submit"
-            disabled={!amount || !account}
+            disabled={!canSubmit}
             className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50"
           >
             Add Transaction
