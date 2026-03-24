@@ -69,8 +69,10 @@ const Index = () => {
     monthTransactions.filter(t => t.transactionType === 'budget-adjustment').forEach(t => {
       map[t.categoryId] = (map[t.categoryId] || 0) - t.amount;
     });
-    // CC Payment, Deposit, Income, and Transfer transactions are completely excluded
-    // from spending calculations — they never contribute positively or negatively.
+    // Deposit reimbursements: deposits assigned to a specific category reduce that category's spent
+    monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId !== DEPOSIT_CATEGORY && t.categoryId !== INCOME_CATEGORY && t.categoryId !== TRANSFER_CATEGORY && t.categoryId !== CC_PAYMENT_CATEGORY).forEach(t => {
+      map[t.categoryId] = (map[t.categoryId] || 0) - Math.abs(t.amount);
+    });
     return map;
   }, [budgetTransactions, monthTransactions]);
 
