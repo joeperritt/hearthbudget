@@ -19,8 +19,8 @@ export function getTransactionAmountPresentation(
   if (transaction.account === 'checking') {
     const isInflowByType = transaction.transactionType === 'income' || transaction.transactionType === 'deposit';
     const isOutflowByType = transaction.transactionType === 'expense';
-    const isInflow = transaction.amount < 0 || (transaction.amount === 0 && isInflowByType);
-    const isOutflow = transaction.amount > 0 || (transaction.amount === 0 && isOutflowByType);
+    const isInflow = transaction.amount > 0 || (transaction.amount === 0 && isInflowByType);
+    const isOutflow = transaction.amount < 0 || (transaction.amount === 0 && isOutflowByType);
 
     if (isInflow) {
       return { colorClassName: 'text-success', prefix: '+', value };
