@@ -122,6 +122,22 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Helper: resolve the correct app account using cardholder name
+        const resolveAccount = (tx: Record<string, unknown>, fallback: string): string => {
+          // Plaid may provide account_owner or cardholder info
+          const owner = ((tx.account_owner as string) || "").toLowerCase();
+          const txName = ((tx.name as string) || "").toLowerCase();
+          const searchText = owner || txName;
+
+          if (searchText.includes("katherine") || searchText.includes("katie")) {
+            return "katie-amex";
+          }
+          if (searchText.includes("joseph") || searchText.includes("joe")) {
+            return "joe-amex";
+          }
+          return fallback;
+        };
+
         // Process added transactions
         if (syncData.added && syncData.added.length > 0) {
           const txRows = syncData.added
@@ -129,18 +145,25 @@ Deno.serve(async (req) => {
               const accId = tx.account_id as string;
               return accountMap[accId]; // Only import mapped accounts
             })
-            .map((tx: Record<string, unknown>) => ({
-              household_id: profile.household_id,
-              date: tx.date as string,
-              description: (tx.merchant_name as string) || (tx.name as string) || "",
-              notes: "",
-              amount: Math.abs(tx.amount as number), // Plaid uses negative for debits
-              category_slug: "unassigned",
-              account: accountMap[tx.account_id as string],
-              is_transfer_to_savings: false,
-              transaction_type: "expense",
-              entered_by: null,
-            }));
+            .map((tx: Record<string, unknown>) => {
+              const baseAccount = accountMap[tx.account_id as string];
+              // For Amex accounts, resolve by cardholder name
+              const account = baseAccount.includes("amex")
+                ? resolveAccount(tx, baseAccount)
+                : baseAccount;
+              return {
+                household_id: profile.household_id,
+                date: tx.date as string,
+                description: (tx.merchant_name as string) || (tx.name as string) || "",
+                notes: "",
+                amount: Math.abs(tx.amount as number),
+                category_slug: "unassigned",
+                account,
+                is_transfer_to_savings: false,
+                transaction_type: "expense",
+                entered_by: null,
+              };
+            });
 
           if (txRows.length > 0) {
             await serviceClient.from("transactions").insert(txRows);
