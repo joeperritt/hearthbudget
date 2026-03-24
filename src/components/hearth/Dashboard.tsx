@@ -128,11 +128,70 @@ export function Dashboard({
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
 
+  const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [checkingBalance, setCheckingBalance] = useState<number | null>(null);
+
+  const fetchCheckingBalance = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.functions.invoke('plaid-get-balances', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!error && data?.balances) {
+        const checking = data.balances.find((b: any) => b.app_account === 'checking');
+        if (checking) setCheckingBalance(checking.available ?? checking.current);
+      }
+    } catch (e) {
+      console.error('Failed to fetch balances:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCheckingBalance();
+  }, [fetchCheckingBalance]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      await Promise.all([
+        supabase.functions.invoke('plaid-sync-transactions', { headers }),
+        supabase.functions.invoke('plaid-get-balances', { headers }).then(({ data, error }) => {
+          if (!error && data?.balances) {
+            const checking = data.balances.find((b: any) => b.app_account === 'checking');
+            if (checking) setCheckingBalance(checking.available ?? checking.current);
+          }
+        }),
+      ]);
+      setLastSynced('Updated just now');
+      onSyncComplete?.();
+      setTimeout(() => setLastSynced(null), 5000);
+    } catch (e) {
+      console.error('Sync failed:', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-6 pt-12 pb-2 safe-top">
-        <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Your household budget</p>
+      <div className="px-6 pt-12 pb-2 safe-top flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Your household budget</p>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all mt-1"
+          title="Sync accounts"
+        >
+          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+        </button>
       </div>
 
       <div className="px-6 mb-6 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
@@ -187,9 +246,14 @@ export function Dashboard({
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-foreground">Checking Balance</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingBalance)}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">
+              {checkingBalance !== null ? formatCurrency(checkingBalance) : '—'}
+            </span>
           </div>
         </div>
+        {lastSynced && (
+          <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
+        )}
       </div>
 
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
