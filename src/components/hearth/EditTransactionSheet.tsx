@@ -26,6 +26,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [showFixedPicker, setShowFixedPicker] = useState(false);
+  const [depositCategoryId, setDepositCategoryId] = useState('');
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
