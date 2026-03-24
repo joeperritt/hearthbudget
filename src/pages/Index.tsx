@@ -102,7 +102,7 @@ const Index = () => {
     const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
     return fixedTitheSpent + givingCatSpent;
   }, [monthTransactions, fixedExpenses, spentByCategory]);
-  const totalTithe = rawTithe + hostingGiftsBudget;
+  const totalTithe = rawTithe;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
 
   // Account totals — sum ALL amounts (including negative credits/payments) for net balance
