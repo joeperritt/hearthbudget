@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox } from 'lucide-react';
-import { Transaction } from '@/types/budget';
+import { Transaction, AccountSource } from '@/types/budget';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
