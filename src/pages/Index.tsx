@@ -81,7 +81,6 @@ const Index = () => {
     return map;
   }, [monthTransfers]);
 
-  const hostingGiftsBudget = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
   const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
   const totalFixedAll = fixedExpenses.reduce((s, e) => s + e.amount, 0);
