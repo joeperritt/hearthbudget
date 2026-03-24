@@ -9,11 +9,12 @@ function formatCurrency(n: number) {
 }
 
 function CategoryCard({
-  category, spent, onSelect, onMoveFunds, delay,
+  category, spent, transferAdj, onSelect, onMoveFunds, delay,
 }: {
-  category: BudgetCategory; spent: number; onSelect: () => void; onMoveFunds: () => void; delay: number;
+  category: BudgetCategory; spent: number; transferAdj: number; onSelect: () => void; onMoveFunds: () => void; delay: number;
 }) {
-  const remaining = category.budgeted - spent;
+  const adjustedBudget = category.budgeted + transferAdj;
+  const remaining = adjustedBudget - spent;
   return (
     <div
       className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
@@ -26,9 +27,9 @@ function CategoryCard({
             {formatCurrency(remaining)} left
           </span>
         </div>
-        <ProgressBar value={spent} max={category.budgeted} className="mb-1.5" />
+        <ProgressBar value={spent} max={adjustedBudget} className="mb-1.5" />
         <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-          <span>{formatCurrency(spent)} of {formatCurrency(category.budgeted)}</span>
+          <span>{formatCurrency(spent)} of {formatCurrency(adjustedBudget)}</span>
         </div>
       </button>
       <button onClick={onMoveFunds} className="p-1.5 text-muted-foreground/40 hover:text-accent active:scale-90 transition-all shrink-0" title="Move funds">
@@ -41,8 +42,9 @@ function CategoryCard({
   );
 }
 
-function FixedExpenseCard({ expense, spent, onSelect, onMoveFunds, delay }: { expense: FixedExpense; spent: number; onSelect: () => void; onMoveFunds: () => void; delay: number }) {
-  const remaining = expense.amount - spent;
+function FixedExpenseCard({ expense, spent, transferAdj, onSelect, onMoveFunds, delay }: { expense: FixedExpense; spent: number; transferAdj: number; onSelect: () => void; onMoveFunds: () => void; delay: number }) {
+  const adjustedBudget = expense.amount + transferAdj;
+  const remaining = adjustedBudget - spent;
   return (
     <div
       className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
@@ -55,9 +57,9 @@ function FixedExpenseCard({ expense, spent, onSelect, onMoveFunds, delay }: { ex
             {formatCurrency(remaining)} left
           </span>
         </div>
-        <ProgressBar value={spent} max={expense.amount} className="mb-1.5" />
+        <ProgressBar value={spent} max={adjustedBudget} className="mb-1.5" />
         <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-          <span>{formatCurrency(spent)} of {formatCurrency(expense.amount)}</span>
+          <span>{formatCurrency(spent)} of {formatCurrency(adjustedBudget)}</span>
         </div>
       </button>
       <button onClick={onMoveFunds} className="p-1.5 text-muted-foreground/40 hover:text-accent active:scale-90 transition-all shrink-0" title="Move funds">
@@ -86,6 +88,7 @@ interface SpendingViewProps {
   fixedExpenses: FixedExpense[];
   transactions: Transaction[];
   spentByCategory: Record<string, number>;
+  transferAdjustments: Record<string, number>;
   onSelectCategory: (id: string) => void;
   onSelectFixedExpense: (id: string) => void;
   onMoveFunds: (fromCategoryId: string) => void;
@@ -94,7 +97,7 @@ interface SpendingViewProps {
 }
 
 export function SpendingView({
-  categories, fixedExpenses, transactions, spentByCategory, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
+  categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
 
@@ -143,17 +146,17 @@ export function SpendingView({
         <div className="px-6 pb-6 space-y-1">
           <SectionLabel label="Shared" delay={delay++} />
           {shared.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0}
+            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
               onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
           ))}
           <SectionLabel label="Joe" delay={(delay++) * 40} />
           {joe.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0}
+            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
               onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
           ))}
           <SectionLabel label="Katie" delay={(delay++) * 40} />
           {katie.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0}
+            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
               onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
           ))}
         </div>
@@ -161,17 +164,17 @@ export function SpendingView({
         <div className="px-6 pb-6 space-y-1">
           <SectionLabel label="Fixed Bills" delay={0} />
           {bills.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0}
+            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
               onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />
           ))}
           <SectionLabel label="Savings Buckets" delay={(bills.length + 1) * 40} />
           {savings.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0}
+            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
               onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(bills.length + i + 2) * 40} />
           ))}
           <SectionLabel label="Tithe / Giving" delay={(bills.length + savings.length + 2) * 40} />
           {tithe.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0}
+            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
               onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(bills.length + savings.length + i + 3) * 40} />
           ))}
         </div>

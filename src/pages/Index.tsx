@@ -223,6 +223,7 @@ const Index = () => {
             fixedExpenses={fixedExpenses}
             transactions={monthTransactions}
             spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
             onSelectFixedExpense={setSelectedFixedExpenseId}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
