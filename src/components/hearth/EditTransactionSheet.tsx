@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'checking', label: 'Checking' },
 ];
 
-const FIXED_BILL_SENTINEL = '__fixed-bill__';
+type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore';
 
 interface EditTransactionSheetProps {
   transaction: Transaction | null;
@@ -21,60 +21,85 @@ interface EditTransactionSheetProps {
   fixedExpenses: FixedExpense[];
 }
 
+function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
+  if (transactionType === 'income' || categoryId === INCOME_CATEGORY) return 'ignore';
+  if (categoryId === TRANSFER_CATEGORY) return 'ignore';
+  if (transactionType === 'deposit') return 'deposit';
+  if (fixedExpenses.some(e => e.id === categoryId)) return 'fixed';
+  return 'variable';
+}
+
 export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses }: EditTransactionSheetProps) {
-  const [categoryId, setCategoryId] = useState('');
+  const [mode, setMode] = useState<TxMode>('variable');
+  const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
+  const [fixedCategoryId, setFixedCategoryId] = useState('');
+  const [depositCategoryId, setDepositCategoryId] = useState('');
+  const [ignoreType, setIgnoreType] = useState<'income' | 'transfer'>('income');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [showFixedPicker, setShowFixedPicker] = useState(false);
-  const [depositCategoryId, setDepositCategoryId] = useState('');
 
   // Sync local state when transaction changes
   const txId = transaction?.id;
   const [lastId, setLastId] = useState('');
   if (txId && txId !== lastId) {
     setLastId(txId);
-    setCategoryId(transaction.categoryId);
     setNotes(transaction.notes);
-    setShowFixedPicker(fixedExpenses.some(e => e.id === transaction.categoryId));
-    // If deposit with a reimbursement category, restore it
-    if (transaction.transactionType === 'deposit' && transaction.categoryId !== DEPOSIT_CATEGORY) {
-      setDepositCategoryId(transaction.categoryId);
-      setCategoryId(DEPOSIT_CATEGORY);
-    } else {
-      setDepositCategoryId('');
+
+    const m = deriveMode(transaction.categoryId, transaction.transactionType, fixedExpenses);
+    setMode(m);
+
+    if (m === 'variable') {
+      setVariableCategoryId(transaction.categoryId || 'unassigned');
+    } else if (m === 'fixed') {
+      setFixedCategoryId(transaction.categoryId);
+    } else if (m === 'deposit') {
+      setDepositCategoryId(transaction.categoryId !== DEPOSIT_CATEGORY ? transaction.categoryId : '');
+    } else if (m === 'ignore') {
+      setIgnoreType(transaction.categoryId === TRANSFER_CATEGORY ? 'transfer' : 'income');
     }
   }
 
   if (!transaction) return null;
 
-  const notesRequired = NOTES_REQUIRED_CATEGORIES.includes(categoryId);
+  // Resolve effective categoryId for notes-required check
+  const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
+  const notesRequired = NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
 
-  const handleCategoryChange = (value: string) => {
-    if (value === FIXED_BILL_SENTINEL) {
-      setShowFixedPicker(true);
-      const firstBill = fixedExpenses.find(e => e.group === 'bills');
-      if (firstBill) setCategoryId(firstBill.id);
-      setDepositCategoryId('');
-    } else {
-      setShowFixedPicker(false);
-      setCategoryId(value);
-      if (value !== DEPOSIT_CATEGORY) setDepositCategoryId('');
+  const handleModeChange = (newMode: TxMode) => {
+    setMode(newMode);
+    // Set sensible defaults
+    if (newMode === 'fixed' && !fixedCategoryId) {
+      const first = fixedExpenses[0];
+      if (first) setFixedCategoryId(first.id);
     }
   };
-
-  // Determine if current categoryId belongs to a fixed expense
-  const isFixedCategory = fixedExpenses.some(e => e.id === categoryId);
-  // The main dropdown value: show sentinel if in fixed mode, otherwise the actual categoryId
-  const mainDropdownValue = showFixedPicker || isFixedCategory ? FIXED_BILL_SENTINEL : categoryId;
 
   const handleSave = async () => {
     if (notesRequired && !notes.trim()) return;
     setSaving(true);
-    const isIncome = categoryId === INCOME_CATEGORY;
-    const isDeposit = categoryId === DEPOSIT_CATEGORY;
-    const txType = isIncome ? 'income' : isDeposit ? 'deposit' : 'expense';
-    // For deposits with a reimbursement category, store that category; otherwise store the main categoryId
-    const slugToSave = isDeposit && depositCategoryId ? depositCategoryId : categoryId;
+
+    let slugToSave: string;
+    let txType: string;
+
+    switch (mode) {
+      case 'variable':
+        slugToSave = variableCategoryId;
+        txType = 'expense';
+        break;
+      case 'fixed':
+        slugToSave = fixedCategoryId;
+        txType = 'expense';
+        break;
+      case 'deposit':
+        slugToSave = depositCategoryId || DEPOSIT_CATEGORY;
+        txType = 'deposit';
+        break;
+      case 'ignore':
+        slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : INCOME_CATEGORY;
+        txType = 'income';
+        break;
+    }
+
     const { error } = await supabase
       .from('transactions')
       .update({
@@ -91,6 +116,13 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       onOpenChange(false);
     }
   };
+
+  const MODE_BUTTONS: { id: TxMode; label: string }[] = [
+    { id: 'variable', label: 'Variable' },
+    { id: 'fixed', label: 'Fixed' },
+    { id: 'deposit', label: 'Deposit' },
+    { id: 'ignore', label: 'Ignore' },
+  ];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -123,31 +155,49 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           </div>
 
-          {/* Category picker */}
+          {/* Mode toggle pills */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
-            <select
-              value={mainDropdownValue}
-              onChange={e => handleCategoryChange(e.target.value)}
-              className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-            >
-              <option value="unassigned">Unassigned</option>
-              <option value={INCOME_CATEGORY}>Ignore — Income</option>
-              <option value={DEPOSIT_CATEGORY}>Mark as Deposit</option>
-              <option value={FIXED_BILL_SENTINEL}>Fixed Bills →</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</label>
+            <div className="flex gap-2 mt-1.5">
+              {MODE_BUTTONS.map(b => (
+                <button
+                  key={b.id}
+                  onClick={() => handleModeChange(b.id)}
+                  className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold transition-all active:scale-95 ${
+                    mode === b.id
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : 'bg-card text-muted-foreground border border-border'
+                  }`}
+                >
+                  {b.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
-          {/* Fixed bill sub-picker */}
-          {showFixedPicker && (
+          {/* Sub-options based on mode */}
+          {mode === 'variable' && (
             <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Bill Category</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
               <select
-                value={categoryId}
-                onChange={e => setCategoryId(e.target.value)}
+                value={variableCategoryId}
+                onChange={e => setVariableCategoryId(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="unassigned">Unassigned</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {mode === 'fixed' && (
+            <div className="animate-fade-up">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fixed Category</label>
+              <select
+                value={fixedCategoryId}
+                onChange={e => setFixedCategoryId(e.target.value)}
                 className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
@@ -175,22 +225,51 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
-          {/* Deposit reimbursement category picker */}
-          {categoryId === DEPOSIT_CATEGORY && (
+          {mode === 'deposit' && (
             <div className="animate-fade-up">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Apply to Category <span className="text-muted-foreground/60 normal-case">(optional)</span>
               </label>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1.5">
+                Offsets spending in the selected category as a reimbursement
+              </p>
               <select
                 value={depositCategoryId}
                 onChange={e => setDepositCategoryId(e.target.value)}
-                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 <option value="">None — general deposit</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {mode === 'ignore' && (
+            <div className="animate-fade-up">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reason</label>
+              <div className="flex gap-2 mt-1.5">
+                {([
+                  { id: 'income' as const, label: 'Income' },
+                  { id: 'transfer' as const, label: 'Transfer' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setIgnoreType(opt.id)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+                      ignoreType === opt.id
+                        ? 'bg-muted text-foreground border border-accent/50'
+                        : 'bg-card text-muted-foreground border border-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground/70 mt-1.5">
+                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : 'Inter-account transfer or credit card payment'}
+              </p>
             </div>
           )}
 

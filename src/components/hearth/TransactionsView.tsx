@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -81,8 +81,9 @@ export function TransactionsView({
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
               const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
+              const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
-              const isExcluded = isIncome || isDeposit;
+              const isExcluded = isIncome || isDeposit || isTransfer;
               const isNegative = t.amount < 0;
               return (
                 <div
@@ -105,7 +106,9 @@ export function TransactionsView({
                   {/* Center — category + merchant + notes */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {isIncome ? (
+                      {isTransfer ? (
+                        <span className="text-muted-foreground italic">Transfer</span>
+                      ) : isIncome ? (
                         <span className="text-muted-foreground italic">Income</span>
                       ) : isDeposit ? (
                         <span className="text-muted-foreground italic">
@@ -117,6 +120,9 @@ export function TransactionsView({
                       ) : (
                         <>
                           {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
+                          {fixedMap[t.categoryId] && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">fixed</span>
+                          )}
                           {t.isTransferToSavings && (
                             <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>
                           )}

@@ -5,6 +5,7 @@ export type TransactionType = 'expense' | 'budget-adjustment' | 'income' | 'depo
 // Special category slug for income/credits that should be excluded from all budget tracking
 export const INCOME_CATEGORY = 'ignore-income';
 export const DEPOSIT_CATEGORY = 'ignore-deposit';
+export const TRANSFER_CATEGORY = 'ignore-transfer';
 
 export interface Transaction {
   id: string;
