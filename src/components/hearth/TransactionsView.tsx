@@ -85,7 +85,7 @@ export function TransactionsView({
               const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
               const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment;
-              const isNegative = t.amount < 0;
+              
               return (
                 <div
                   key={t.id}
@@ -147,8 +147,10 @@ export function TransactionsView({
 
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-medium tabular-nums ${isNegative || isExcluded ? 'text-green-600' : 'text-foreground'}`}>
-                      {isNegative ? '-' : isExcluded ? '+' : ''}{formatCurrency(t.amount)}
+                    <p className={`text-sm font-medium tabular-nums ${
+                      t.amount < 0 ? 'text-green-600' : isExcluded ? 'text-green-600' : 'text-foreground'
+                    }`}>
+                      {t.amount < 0 ? '+' : isExcluded ? '+' : ''}{formatCurrency(t.amount)}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}
