@@ -33,6 +33,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [currentMonth] = useState(new Date());
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
@@ -102,21 +103,21 @@ const Index = () => {
   const totalTithe = rawTithe + hostingGiftsBudget;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
 
-  // Account totals
+  // Account totals — sum ALL amounts (including negative credits/payments) for net balance
   const joeAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'joe-amex').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
   const katieAmexTotal = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0),
+    () => monthTransactions.filter(t => t.account === 'katie-amex').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
 
   const checkingBalance = useMemo(() => {
-    const checkingExpenses = monthTransactions
-      .filter(t => t.account === 'checking' && t.transactionType === 'expense' && !t.isTransferToSavings && t.categoryId !== INCOME_CATEGORY)
+    const checkingNet = monthTransactions
+      .filter(t => t.account === 'checking')
       .reduce((s, t) => s + t.amount, 0);
-    return Math.abs(totalBudget - checkingExpenses);
+    return Math.abs(totalBudget - checkingNet);
   }, [monthTransactions, totalBudget]);
 
   const unassignedTransactions = useMemo(
@@ -209,6 +210,7 @@ const Index = () => {
             katieAmexTotal={katieAmexTotal}
             checkingBalance={checkingBalance}
             unassignedTransactions={unassignedTransactions}
+            onEditTransaction={setEditingTransaction}
           />
         )}
         {activeTab === 'variable' && (
@@ -231,6 +233,7 @@ const Index = () => {
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
+            onEditTransaction={setEditingTransaction}
           />
         )}
         {activeTab === 'more' && moreSubView === 'menu' && (
@@ -270,6 +273,13 @@ const Index = () => {
         onOpenChange={setShowAddTransaction}
         categories={categories}
         onAdd={handleAddTransactions}
+      />
+
+      <EditTransactionSheet
+        transaction={editingTransaction}
+        open={!!editingTransaction}
+        onOpenChange={open => { if (!open) setEditingTransaction(null); }}
+        categories={categories}
       />
 
       {moveFundsCategoryId && (
