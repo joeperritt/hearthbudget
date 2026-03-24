@@ -43,13 +43,14 @@ interface DashboardProps {
   katieAmexTotal: number;
   checkingBalance: number;
   unassignedTransactions: Transaction[];
+  onEditTransaction: (tx: Transaction) => void;
 }
 
 export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions,
+  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions, onEditTransaction,
 }: DashboardProps) {
   const totalSpent = variableSpent + fixedSpent + savingsSpent + titheSpent;
   const combinedCredit = joeAmexTotal + katieAmexTotal;
@@ -68,7 +69,11 @@ export function Dashboard({
           <div className="mt-4">
             <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
               <span>{formatCurrency(totalSpent)} committed</span>
-              <span>{formatCurrency(Math.max(totalBudget - totalSpent, 0))} remaining</span>
+              {totalSpent > totalBudget ? (
+                <span className="text-red-300 font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+              ) : (
+                <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
+              )}
             </div>
             <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
               <div
@@ -120,7 +125,7 @@ export function Dashboard({
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {unassignedTransactions.slice(0, 10).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center px-4 py-3">
+              <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 cursor-pointer active:bg-muted/50 transition-colors">
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
                   <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
