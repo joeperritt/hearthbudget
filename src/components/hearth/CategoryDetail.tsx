@@ -102,6 +102,25 @@ export function CategoryDetail({ category, categories, transactions, deposits = 
           </div>
         </div>
       )}
+      {/* Deposit Reimbursements */}
+      {deposits.length > 0 && (
+        <div className="px-6 mt-6">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Reimbursements</h3>
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {deposits.map((d, i) => (
+              <div key={d.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+                style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
+                <ArrowDownLeft size={12} className="text-accent shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-foreground truncate">{d.description || 'Deposit'}</span>
+                  <p className="text-[11px] text-muted-foreground">{format(new Date(d.date), 'MMM d')}</p>
+                </div>
+                <span className="text-sm font-medium tabular-nums text-accent">+{formatCurrency(Math.abs(d.amount))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="px-6 mt-6 pb-6">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Transactions</h3>
