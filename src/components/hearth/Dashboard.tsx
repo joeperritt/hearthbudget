@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox } from 'lucide-react';
+import { Plus, Inbox, RefreshCw } from 'lucide-react';
 import { Transaction, AccountSource } from '@/types/budget';
+import { supabase } from '@/integrations/supabase/client';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -112,9 +113,9 @@ interface DashboardProps {
   joeAmexGross: number;
   katieAmexGross: number;
   totalPayoffs: number;
-  checkingBalance: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
+  onSyncComplete?: () => void;
 }
 
 export function Dashboard({
@@ -122,7 +123,7 @@ export function Dashboard({
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, onAddTransaction,
   joeAmexGross, katieAmexGross, totalPayoffs,
-  checkingBalance, unassignedTransactions, onEditTransaction,
+  unassignedTransactions, onEditTransaction, onSyncComplete,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
