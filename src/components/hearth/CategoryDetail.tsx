@@ -66,7 +66,12 @@ export function CategoryDetail({ category, categories, transactions, deposits = 
             </div>
           </div>
           <ProgressBar value={spent} max={adjustedBudget} />
-          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} spent</p>
+          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
+          {deposits.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              includes {formatCurrency(deposits.reduce((s, d) => s + Math.abs(d.amount), 0))} in reimbursements
+            </p>
+          )}
         </div>
       </div>
 
