@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -53,8 +53,10 @@ const Index = () => {
     [transfers, monthKey]
   );
 
+  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY;
+
   const budgetTransactions = useMemo(
-    () => monthTransactions.filter(t => !t.isTransferToSavings && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY),
+    () => monthTransactions.filter(t => !isExcluded(t) && t.transactionType === 'expense'),
     [monthTransactions]
   );
 
@@ -88,15 +90,15 @@ const Index = () => {
 
   const fixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'bills').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, fixedExpenses]);
   const savingsSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'savings').map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, fixedExpenses]);
   const titheSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
-    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && t.categoryId !== INCOME_CATEGORY).reduce((s, t) => s + t.amount, 0);
+    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
     const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
     return fixedTitheSpent + givingCatSpent;
   }, [monthTransactions, fixedExpenses, spentByCategory]);
@@ -121,7 +123,7 @@ const Index = () => {
   }, [monthTransactions, totalBudget]);
 
   const unassignedTransactions = useMemo(
-    () => monthTransactions.filter(t => t.categoryId === 'unassigned' && t.transactionType !== 'income'),
+    () => monthTransactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t)),
     [monthTransactions]
   );
 
