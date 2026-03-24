@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY } from '@/types/budget';
 
 import { ProgressBar } from './ProgressBar';
 import { ChevronRight, ArrowLeftRight } from 'lucide-react';
