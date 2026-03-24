@@ -255,7 +255,6 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />
         )}
-        )}
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
