@@ -96,8 +96,12 @@ const Index = () => {
 
   const allFixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.map(e => e.id));
-    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-  }, [monthTransactions, fixedExpenses]);
+    const rawSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+    // Include transfer adjustments for fixed expense categories (transfers out increase effective spent)
+    const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
+    // transferAdj is negative when funds transferred out, so subtract it (spending goes up)
+    return rawSpent - fixedTransferAdj;
+  }, [monthTransactions, fixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
