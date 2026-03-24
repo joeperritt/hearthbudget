@@ -1,9 +1,10 @@
 export type AccountSource = 'joe-amex' | 'katie-amex' | 'checking';
 
-export type TransactionType = 'expense' | 'budget-adjustment' | 'income';
+export type TransactionType = 'expense' | 'budget-adjustment' | 'income' | 'deposit';
 
 // Special category slug for income/credits that should be excluded from all budget tracking
 export const INCOME_CATEGORY = 'ignore-income';
+export const DEPOSIT_CATEGORY = 'ignore-deposit';
 
 export interface Transaction {
   id: string;
