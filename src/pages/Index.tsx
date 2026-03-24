@@ -7,6 +7,7 @@ import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
 import { TransactionsView } from '@/components/hearth/TransactionsView';
 import { AddTransactionSheet } from '@/components/hearth/AddTransactionSheet';
+import { EditTransactionSheet } from '@/components/hearth/EditTransactionSheet';
 import { CategoryDetail } from '@/components/hearth/CategoryDetail';
 import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
