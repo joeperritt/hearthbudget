@@ -16,6 +16,7 @@ interface DetailCategory {
 interface CategoryDetailProps {
   category: DetailCategory;
   categories: BudgetCategory[];
+  fixedExpenses?: { id: string; name: string }[];
   transactions: Transaction[];
   deposits?: Transaction[];
   transfers: BudgetTransfer[];
@@ -25,12 +26,15 @@ interface CategoryDetailProps {
   onDeleteTransaction: (id: string) => void;
 }
 
-export function CategoryDetail({ category, categories, transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
   const isDescriptionCategory = NOTES_REQUIRED_CATEGORIES.includes(category.id);
-  const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  // Build a combined lookup map for both variable categories and fixed expenses
+  const nameMap: Record<string, string> = {};
+  categories.forEach(c => { nameMap[c.id] = c.name; });
+  fixedExpenses.forEach(e => { nameMap[e.id] = e.name; });
 
   // Transfers involving this category
   const relevantTransfers = transfers.filter(
@@ -82,14 +86,14 @@ export function CategoryDetail({ category, categories, transactions, deposits = 
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {relevantTransfers.map((t, i) => {
               const isFrom = t.fromCategoryId === category.id;
-              const otherCat = catMap[isFrom ? t.toCategoryId : t.fromCategoryId];
+              const otherName = nameMap[isFrom ? t.toCategoryId : t.fromCategoryId] || 'Unknown';
               return (
                 <div key={t.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
                   <ArrowLeftRight size={12} className="text-muted-foreground/50 shrink-0" />
                   <div className="flex-1">
                     <span className="text-sm text-foreground">
-                      {isFrom ? `→ ${otherCat?.name || 'Unknown'}` : `← ${otherCat?.name || 'Unknown'}`}
+                      {isFrom ? `→ ${otherName}` : `← ${otherName}`}
                     </span>
                     <p className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d')}</p>
                   </div>
