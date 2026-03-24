@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY } from '@/types/budget';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -53,7 +53,7 @@ const Index = () => {
     [transfers, monthKey]
   );
 
-  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY;
+  const isExcluded = (t: Transaction) => t.isTransferToSavings || t.transactionType === 'income' || t.transactionType === 'deposit' || t.categoryId === INCOME_CATEGORY || t.categoryId === DEPOSIT_CATEGORY || t.categoryId === TRANSFER_CATEGORY;
 
   const budgetTransactions = useMemo(
     () => monthTransactions.filter(t => !isExcluded(t) && t.transactionType === 'expense'),
