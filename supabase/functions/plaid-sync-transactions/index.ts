@@ -178,25 +178,26 @@ Deno.serve(async (req) => {
                 is_transfer_to_savings: false,
                 transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
                 entered_by: null,
+                plaid_transaction_id: (tx.transaction_id as string) || null,
               };
             });
 
           if (txRows.length > 0) {
-            // Deduplicate: check which transactions already exist by (date, description, amount, account)
+            // Deduplicate by Plaid transaction ID — only skip if an identical plaid_transaction_id already exists
             const deduped: typeof txRows = [];
             for (const row of txRows) {
-              const { data: existing } = await serviceClient
-                .from("transactions")
-                .select("id")
-                .eq("household_id", row.household_id)
-                .eq("date", row.date)
-                .eq("description", row.description)
-                .eq("amount", row.amount)
-                .eq("account", row.account)
-                .limit(1);
-              if (!existing || existing.length === 0) {
-                deduped.push(row);
+              if (row.plaid_transaction_id) {
+                const { data: existing } = await serviceClient
+                  .from("transactions")
+                  .select("id")
+                  .eq("household_id", row.household_id)
+                  .eq("plaid_transaction_id", row.plaid_transaction_id)
+                  .limit(1);
+                if (existing && existing.length > 0) {
+                  continue; // True duplicate — skip
+                }
               }
+              deduped.push(row);
             }
             if (deduped.length > 0) {
               await serviceClient.from("transactions").insert(deduped);
