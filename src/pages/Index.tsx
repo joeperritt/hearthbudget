@@ -105,21 +105,17 @@ const Index = () => {
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
-  // Account totals — separate gross charges from CC payment payoffs for net balance
+  // Account totals — gross charges per card, total payoffs across both
   const joeAmexGross = useMemo(
     () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType !== 'cc-payment').reduce((s, t) => s + t.amount, 0),
-    [monthTransactions]
-  );
-  const joeAmexPayoffs = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
     [monthTransactions]
   );
   const katieAmexGross = useMemo(
     () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType !== 'cc-payment').reduce((s, t) => s + t.amount, 0),
     [monthTransactions]
   );
-  const katieAmexPayoffs = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
+  const totalPayoffs = useMemo(
+    () => monthTransactions.filter(t => (t.account === 'joe-amex' || t.account === 'katie-amex') && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
     [monthTransactions]
   );
 
@@ -214,9 +210,8 @@ const Index = () => {
             fixedSpent={allFixedSpent}
             onAddTransaction={() => setShowAddTransaction(true)}
             joeAmexGross={joeAmexGross}
-            joeAmexPayoffs={joeAmexPayoffs}
             katieAmexGross={katieAmexGross}
-            katieAmexPayoffs={katieAmexPayoffs}
+            totalPayoffs={totalPayoffs}
             checkingBalance={checkingBalance}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
