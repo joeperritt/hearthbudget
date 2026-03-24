@@ -17,8 +17,14 @@ export function getTransactionAmountPresentation(
   const value = Math.abs(transaction.amount);
 
   if (transaction.account === 'checking') {
+    // CC payments are always outflows from checking regardless of amount sign
+    if (transaction.transactionType === 'cc-payment') {
+      return { colorClassName: 'text-destructive', prefix: '-', value };
+    }
+
     const isInflowByType = transaction.transactionType === 'income' || transaction.transactionType === 'deposit';
     const isOutflowByType = transaction.transactionType === 'expense';
+
     if (isInflowByType) {
       return { colorClassName: 'text-success', prefix: '+', value };
     }
@@ -27,6 +33,7 @@ export function getTransactionAmountPresentation(
       return { colorClassName: 'text-destructive', prefix: '-', value };
     }
 
+    // Fallback: Wells Fargo convention — positive = money in, negative = money out
     if (transaction.amount > 0) {
       return { colorClassName: 'text-success', prefix: '+', value };
     }
