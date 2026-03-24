@@ -85,7 +85,7 @@ export function TransactionsView({
               const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
               const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment;
-              const isNegativeAmount = t.amount < 0;
+              
               return (
                 <div
                   key={t.id}
