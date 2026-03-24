@@ -1,6 +1,6 @@
 import { Transaction, BudgetCategory, BudgetTransfer, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
-import { ArrowLeft, Trash2, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, Trash2, ArrowLeftRight, ArrowDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 function formatCurrency(n: number) {
@@ -17,6 +17,7 @@ interface CategoryDetailProps {
   category: DetailCategory;
   categories: BudgetCategory[];
   transactions: Transaction[];
+  deposits?: Transaction[];
   transfers: BudgetTransfer[];
   spent: number;
   transferAdjustment: number;
@@ -24,7 +25,7 @@ interface CategoryDetailProps {
   onDeleteTransaction: (id: string) => void;
 }
 
-export function CategoryDetail({ category, categories, transactions, transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
@@ -65,7 +66,12 @@ export function CategoryDetail({ category, categories, transactions, transfers, 
             </div>
           </div>
           <ProgressBar value={spent} max={adjustedBudget} />
-          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} spent</p>
+          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
+          {deposits.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              includes {formatCurrency(deposits.reduce((s, d) => s + Math.abs(d.amount), 0))} in reimbursements
+            </p>
+          )}
         </div>
       </div>
 
@@ -93,6 +99,25 @@ export function CategoryDetail({ category, categories, transactions, transfers, 
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+      {/* Deposit Reimbursements */}
+      {deposits.length > 0 && (
+        <div className="px-6 mt-6">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Reimbursements</h3>
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {deposits.map((d, i) => (
+              <div key={d.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+                style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
+                <ArrowDownLeft size={12} className="text-accent shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-foreground truncate">{d.description || 'Deposit'}</span>
+                  <p className="text-[11px] text-muted-foreground">{format(new Date(d.date), 'MMM d')}</p>
+                </div>
+                <span className="text-sm font-medium tabular-nums text-accent">+{formatCurrency(Math.abs(d.amount))}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
