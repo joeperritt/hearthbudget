@@ -25,7 +25,7 @@ interface CategoryDetailProps {
   onDeleteTransaction: (id: string) => void;
 }
 
-export function CategoryDetail({ category, categories, transactions, transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
