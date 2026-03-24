@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -79,12 +79,14 @@ export function TransactionsView({
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
               const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
+              const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
+              const isExcluded = isIncome || isDeposit;
               const isNegative = t.amount < 0;
               return (
                 <div
                   key={t.id}
                   onClick={() => onEditTransaction(t)}
-                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIncome ? 'opacity-60' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isExcluded ? 'opacity-60' : ''}`}
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
                   {/* Left — account pill */}
@@ -103,6 +105,8 @@ export function TransactionsView({
                     <p className="text-sm font-medium text-foreground truncate">
                       {isIncome ? (
                         <span className="text-muted-foreground italic">Income</span>
+                      ) : isDeposit ? (
+                        <span className="text-muted-foreground italic">Deposit</span>
                       ) : (
                         <>
                           {catMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
@@ -122,8 +126,8 @@ export function TransactionsView({
 
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-medium tabular-nums ${isNegative || isIncome ? 'text-green-600' : 'text-foreground'}`}>
-                      {isNegative ? '-' : isIncome ? '+' : ''}{formatCurrency(t.amount)}
+                    <p className={`text-sm font-medium tabular-nums ${isNegative || isExcluded ? 'text-green-600' : 'text-foreground'}`}>
+                      {isNegative ? '-' : isExcluded ? '+' : ''}{formatCurrency(t.amount)}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, INCOME_CATEGORY } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, INCOME_CATEGORY, DEPOSIT_CATEGORY } from '@/types/budget';
 
 import { ProgressBar } from './ProgressBar';
 import { ChevronRight, ArrowLeftRight } from 'lucide-react';
@@ -108,7 +108,7 @@ export function SpendingView({
 
   // Build spent map for fixed expenses
   const fixedSpentMap: Record<string, number> = {};
-  transactions.filter(t => t.categoryId !== INCOME_CATEGORY && t.transactionType !== 'income').forEach(t => {
+  transactions.filter(t => t.categoryId !== INCOME_CATEGORY && t.categoryId !== DEPOSIT_CATEGORY && t.transactionType !== 'income' && t.transactionType !== 'deposit').forEach(t => {
     if (fixedExpenses.some(e => e.id === t.categoryId)) {
       fixedSpentMap[t.categoryId] = (fixedSpentMap[t.categoryId] || 0) + t.amount;
     }
