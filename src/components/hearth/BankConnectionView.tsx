@@ -246,6 +246,16 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
                 {loadingBalances ? 'Loading...' : 'Get Balances'}
               </span>
             </button>
+            <button
+              onClick={handleRemapCardholders}
+              disabled={syncing}
+              className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={`text-primary ${syncing ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-medium text-foreground">
+                {syncing ? 'Remapping...' : 'Fix Cardholders'}
+              </span>
+            </button>
           </div>
         )}
 
