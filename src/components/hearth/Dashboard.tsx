@@ -43,13 +43,14 @@ interface DashboardProps {
   katieAmexTotal: number;
   checkingBalance: number;
   unassignedTransactions: Transaction[];
+  onEditTransaction: (tx: Transaction) => void;
 }
 
 export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, savingsTotal, savingsSpent, titheTotal, titheSpent, onAddTransaction,
-  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions,
+  joeAmexTotal, katieAmexTotal, checkingBalance, unassignedTransactions, onEditTransaction,
 }: DashboardProps) {
   const totalSpent = variableSpent + fixedSpent + savingsSpent + titheSpent;
   const combinedCredit = joeAmexTotal + katieAmexTotal;

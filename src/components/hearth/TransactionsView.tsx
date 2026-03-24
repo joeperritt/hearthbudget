@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Transaction, BudgetCategory, AccountSource, INCOME_CATEGORY } from '@/types/budget';
 import { supabase } from '@/integrations/supabase/client';
-
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
 type Filter = 'all' | AccountSource;
-
-interface ProfileInfo {
-  user_id: string;
-  display_name: string;
-  avatar_initial: string;
-}
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -23,6 +16,7 @@ interface TransactionsViewProps {
   monthLabel: string;
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
+  onEditTransaction: (tx: Transaction) => void;
 }
 
 const ACCOUNT_LABELS: Record<AccountSource, string> = {
@@ -32,18 +26,10 @@ const ACCOUNT_LABELS: Record<AccountSource, string> = {
 };
 
 export function TransactionsView({
-  transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction,
+  transactions, categories, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
-  const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
 
-  useEffect(() => {
-    supabase.from('profiles').select('user_id, display_name, avatar_initial').then(({ data }) => {
-      if (data) setProfiles(data as ProfileInfo[]);
-    });
-  }, []);
-
-  const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
@@ -93,10 +79,12 @@ export function TransactionsView({
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {sorted.map((t, i) => {
               const isIncome = t.categoryId === INCOME_CATEGORY || t.transactionType === 'income';
+              const isNegative = t.amount < 0;
               return (
-              <div
+                <div
                   key={t.id}
-                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up ${isIncome ? 'opacity-60' : ''}`}
+                  onClick={() => onEditTransaction(t)}
+                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIncome ? 'opacity-60' : ''}`}
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
                   {/* Left — account pill */}
@@ -134,8 +122,8 @@ export function TransactionsView({
 
                   {/* Right — amount + date */}
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-medium tabular-nums ${isIncome ? 'text-green-600' : 'text-foreground'}`}>
-                      {isIncome ? '+' : ''}{formatCurrency(t.amount)}
+                    <p className={`text-sm font-medium tabular-nums ${isNegative || isIncome ? 'text-green-600' : 'text-foreground'}`}>
+                      {isNegative ? '-' : isIncome ? '+' : ''}{formatCurrency(t.amount)}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {format(new Date(t.date), 'MMM d')}
@@ -143,7 +131,7 @@ export function TransactionsView({
                   </div>
 
                   <button
-                    onClick={() => onDeleteTransaction(t.id)}
+                    onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t.id); }}
                     className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
                   >
                     <Trash2 size={14} />
