@@ -98,10 +98,8 @@ const Index = () => {
   }, [monthTransactions, fixedExpenses]);
   const titheSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.filter(e => e.group === 'tithe').map(e => e.id));
-    const fixedTitheSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
-    const givingCatSpent = spentByCategory[GIVING_VARIABLE_CATEGORY] || 0;
-    return fixedTitheSpent + givingCatSpent;
-  }, [monthTransactions, fixedExpenses, spentByCategory]);
+    return monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+  }, [monthTransactions, fixedExpenses]);
   const totalTithe = rawTithe;
   const totalBudget = totalVariableBudget + totalFixed + totalSavings + totalTithe;
 
