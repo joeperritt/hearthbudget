@@ -165,6 +165,7 @@ const Index = () => {
         <CategoryDetail
           category={{ id: cat.id, name: cat.name, budgeted: cat.budgeted }}
           categories={categories}
+          fixedExpenses={fixedExpenses}
           transactions={budgetTransactions.filter(t => t.categoryId === cat.id)}
           deposits={monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === cat.id)}
           transfers={monthTransfers}
@@ -186,6 +187,7 @@ const Index = () => {
         <CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
           categories={categories}
+          fixedExpenses={fixedExpenses}
           transactions={fixedTransactions}
           transfers={monthTransfers}
           spent={expFixedSpent}
