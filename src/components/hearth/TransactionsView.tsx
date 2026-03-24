@@ -86,12 +86,13 @@ export function TransactionsView({
               const isTransfer = t.categoryId === TRANSFER_CATEGORY;
               const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
               const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment;
+              const isIgnored = isIncome || isTransfer;
               
               return (
                 <div
                   key={t.id}
                   onClick={() => onEditTransaction(t)}
-                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isExcluded ? 'opacity-60' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-40' : ''}`}
                   style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                 >
                   {/* Left — account pill */}
