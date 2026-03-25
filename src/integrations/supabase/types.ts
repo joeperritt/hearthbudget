@@ -178,18 +178,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          planning_data: Json
         }
         Insert: {
           active_month?: string
           created_at?: string
           id?: string
           name?: string
+          planning_data?: Json
         }
         Update: {
           active_month?: string
           created_at?: string
           id?: string
           name?: string
+          planning_data?: Json
         }
         Relationships: []
       }

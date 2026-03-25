@@ -1,0 +1,1 @@
+ALTER TABLE public.households ADD COLUMN planning_data jsonb NOT NULL DEFAULT '{}'::jsonb;

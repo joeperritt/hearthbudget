@@ -30,6 +30,8 @@ const Index = () => {
     updateCategories,
     updateFixedExpenses,
     startNewMonth,
+    planningData,
+    updatePlanningData,
   } = useBudgetData();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -260,6 +262,8 @@ const Index = () => {
             currentMonth={currentMonthDate}
             categories={categories}
             fixedExpenses={fixedExpenses}
+            planningData={planningData}
+            onUpdatePlanningData={updatePlanningData}
             onBack={() => setMoreSubView('menu')}
           />
         )}

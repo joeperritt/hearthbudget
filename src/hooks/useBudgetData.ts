@@ -65,6 +65,7 @@ export function useBudgetData() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
   const [activeMonth, setActiveMonth] = useState<string>('');
+  const [planningData, setPlanningData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const initialLoad = useRef(true);
 
@@ -87,6 +88,9 @@ export function useBudgetData() {
     if (hhRes.data) {
       const hh = hhRes.data as unknown as Record<string, unknown>;
       setActiveMonth((hh.active_month as string) || format(new Date(), 'yyyy-MM'));
+      if (hh.planning_data && typeof hh.planning_data === 'object') {
+        setPlanningData(hh.planning_data as Record<string, string>);
+      }
     }
 
     if (initialLoad.current) {
@@ -256,12 +260,19 @@ export function useBudgetData() {
     setActiveMonth(nextMonth);
   }, [householdId, activeMonth, categories, fixedExpenses, transactions, updateCategories, updateFixedExpenses]);
 
+  const updatePlanningData = useCallback(async (data: Record<string, string>) => {
+    if (!householdId) return;
+    setPlanningData(data);
+    await supabase.from('households').update({ planning_data: data } as any).eq('id', householdId);
+  }, [householdId]);
+
   return {
     categories,
     fixedExpenses,
     transactions,
     transfers,
     activeMonth,
+    planningData,
     loading,
     addTransactions,
     deleteTransaction,
@@ -269,5 +280,6 @@ export function useBudgetData() {
     updateCategories,
     updateFixedExpenses,
     startNewMonth,
+    updatePlanningData,
   };
 }
