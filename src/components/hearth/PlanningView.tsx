@@ -198,7 +198,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           {(['estimate', 'actual'] as PayMode[]).map(mode => (
             <button
               key={mode}
-              onClick={() => setPayMode(mode)}
+              onClick={() => { setPayMode(mode); setTimeout(() => saveAll(), 0); }}
               className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
                 payMode === mode
                   ? 'bg-primary text-primary-foreground shadow-sm'
@@ -211,29 +211,29 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         </div>
 
         <div className="bg-card rounded-lg shadow-sm px-4 py-2">
-          <InputRow label="Gross Pay (Joe)" value={pay.grossPay} onChange={up('grossPay')} prefix="$" />
+          <InputRow label="Gross Pay (Joe)" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
 
           <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
             <DeductionRow label="Federal Income Tax" mode={payMode}
               rate={pay.fedTaxRate} onRateChange={up('fedTaxRate')}
               dollarAmt={pay.fedTaxAmt} onDollarChange={up('fedTaxAmt')}
-              computedAmt={fedTax} gross={gross} />
+              computedAmt={fedTax} gross={gross} onBlur={saveAll} />
             <DeductionRow label="Social Security" mode={payMode}
               rate={pay.ssTaxRate} onRateChange={up('ssTaxRate')}
               dollarAmt={pay.ssTaxAmt} onDollarChange={up('ssTaxAmt')}
-              computedAmt={ssTax} gross={gross} />
+              computedAmt={ssTax} gross={gross} onBlur={saveAll} />
             <DeductionRow label="Medicare" mode={payMode}
               rate={pay.medicareRate} onRateChange={up('medicareRate')}
               dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
-              computedAmt={medicareTax} gross={gross} />
+              computedAmt={medicareTax} gross={gross} onBlur={saveAll} />
             <DeductionRow label="SC Income Tax" mode={payMode}
               rate={pay.scTaxRate} onRateChange={up('scTaxRate')}
               dollarAmt={pay.scTaxAmt} onDollarChange={up('scTaxAmt')}
-              computedAmt={scTax} gross={gross} />
+              computedAmt={scTax} gross={gross} onBlur={saveAll} />
             <DeductionRow label="Roth 401k" mode={payMode}
               rate={pay.roth401kRate} onRateChange={up('roth401kRate')}
               dollarAmt={pay.roth401kAmt} onDollarChange={up('roth401kAmt')}
-              computedAmt={roth} gross={gross} />
+              computedAmt={roth} gross={gross} onBlur={saveAll} />
           </div>
 
           <InputRow label="Net Pay" computed={netPay} bold />
@@ -250,15 +250,15 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           </div>
 
           <InputRow label="Budget Total" computed={budgetTotal} bold />
-          <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} prefix="$" />
-          <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} prefix="$" />
+          <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
+          <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
           <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
           <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
 
           <div className="my-2 border-t border-border" />
 
-          <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} prefix="$" />
-          <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} prefix="$" />
+          <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
+          <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
           <InputRow label="Total Katie Pay" computed={totalKatiePay} />
 
           <div className="my-2 border-t border-border" />
