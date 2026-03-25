@@ -260,6 +260,8 @@ const Index = () => {
             currentMonth={currentMonthDate}
             categories={categories}
             fixedExpenses={fixedExpenses}
+            planningData={planningData}
+            onUpdatePlanningData={updatePlanningData}
             onBack={() => setMoreSubView('menu')}
           />
         )}
