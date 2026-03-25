@@ -208,11 +208,18 @@ Deno.serve(async (req) => {
                 }
 
                 // Check if a legacy row exists without a plaid_transaction_id (backfill it)
+                // Use ±3 day tolerance since manually entered dates may differ from Plaid dates
+                const txDate = new Date(row.date as string);
+                const dateMin = new Date(txDate);
+                dateMin.setDate(dateMin.getDate() - 3);
+                const dateMax = new Date(txDate);
+                dateMax.setDate(dateMax.getDate() + 3);
                 const { data: legacyMatch } = await serviceClient
                   .from("transactions")
                   .select("id")
                   .eq("household_id", row.household_id)
-                  .eq("date", row.date)
+                  .gte("date", dateMin.toISOString().slice(0, 10))
+                  .lte("date", dateMax.toISOString().slice(0, 10))
                   .eq("amount", row.amount)
                   .eq("account", row.account)
                   .is("plaid_transaction_id", null)
