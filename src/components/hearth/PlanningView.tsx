@@ -198,7 +198,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           {(['estimate', 'actual'] as PayMode[]).map(mode => (
             <button
               key={mode}
-              onClick={() => { setPayMode(mode); setTimeout(() => saveAll(), 0); }}
+              onClick={() => { setPayMode(mode); onUpdatePlanningData({ ...pay, payMode: mode }); }}
               className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
                 payMode === mode
                   ? 'bg-primary text-primary-foreground shadow-sm'
