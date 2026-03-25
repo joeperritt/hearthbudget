@@ -15,6 +15,8 @@ interface PlanningViewProps {
   currentMonth: Date;
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
+  planningData: Record<string, string>;
+  onUpdatePlanningData: (data: Record<string, string>) => void;
   onBack: () => void;
 }
 
@@ -124,14 +126,24 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   );
 }
 
-export function PlanningView({ currentMonth, categories, fixedExpenses, onBack }: PlanningViewProps) {
+export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthLabel = format(nextMonth, 'MMMM yyyy');
 
-  const [payMode, setPayMode] = useState<PayMode>('estimate');
-  const [pay, setPay] = useState<PayFields>(DEFAULT_FIELDS);
+  const [payMode, setPayMode] = useState<PayMode>(() => (planningData.payMode as PayMode) || 'estimate');
+  const [pay, setPay] = useState<PayFields>(() => {
+    const restored: PayFields = { ...DEFAULT_FIELDS };
+    for (const key of Object.keys(DEFAULT_FIELDS) as (keyof PayFields)[]) {
+      if (planningData[key] !== undefined) restored[key] = planningData[key];
+    }
+    return restored;
+  });
 
   const up = (field: keyof PayFields) => (v: string) => setPay(p => ({ ...p, [field]: v }));
+
+  const saveAll = () => {
+    onUpdatePlanningData({ ...pay, payMode });
+  };
 
   const gross = parseFloat(pay.grossPay) || 0;
 
