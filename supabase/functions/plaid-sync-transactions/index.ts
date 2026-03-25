@@ -242,8 +242,45 @@ Deno.serve(async (req) => {
           }
         }
 
-        totalModified += (syncData.modified || []).length;
-        totalRemoved += (syncData.removed || []).length;
+        // Process removed transactions (e.g. pending → posted transition removes old pending ID)
+        if (syncData.removed && syncData.removed.length > 0) {
+          const removedIds = syncData.removed.map((r: Record<string, unknown>) => r.transaction_id as string).filter(Boolean);
+          if (removedIds.length > 0) {
+            const { data: removedRows } = await serviceClient
+              .from("transactions")
+              .select("id, plaid_transaction_id")
+              .eq("household_id", profile.household_id)
+              .in("plaid_transaction_id", removedIds);
+            if (removedRows && removedRows.length > 0) {
+              await serviceClient
+                .from("transactions")
+                .delete()
+                .in("id", removedRows.map((r: { id: string }) => r.id));
+              totalRemoved += removedRows.length;
+            }
+          }
+        }
+
+        // Process modified transactions (update date/amount/description if changed)
+        if (syncData.modified && syncData.modified.length > 0) {
+          for (const tx of syncData.modified) {
+            const plaidTxId = tx.transaction_id as string;
+            if (!plaidTxId) continue;
+            const merchantName = (tx.merchant_name as string) || "";
+            const txName = (tx.name as string) || "";
+            const description = (merchantName.toLowerCase() === "venmo" && txName) ? txName : (merchantName || txName);
+            await serviceClient
+              .from("transactions")
+              .update({
+                date: tx.date as string,
+                amount: tx.amount as number,
+                description,
+              })
+              .eq("household_id", profile.household_id)
+              .eq("plaid_transaction_id", plaidTxId);
+            totalModified++;
+          }
+        }
 
         hasMore = syncData.has_more;
         cursor = syncData.next_cursor;
