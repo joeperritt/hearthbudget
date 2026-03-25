@@ -60,8 +60,8 @@ const DEFAULT_FIELDS: PayFields = {
   katiePay2: '',
 };
 
-function InputRow({ label, value, onChange, prefix, suffix, computed, bold }: {
-  label: string; value?: string; onChange?: (v: string) => void;
+function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold }: {
+  label: string; value?: string; onChange?: (v: string) => void; onBlur?: () => void;
   prefix?: string; suffix?: string; computed?: number; bold?: boolean;
 }) {
   return (
@@ -79,6 +79,7 @@ function InputRow({ label, value, onChange, prefix, suffix, computed, bold }: {
             step="0.01"
             value={value}
             onChange={e => onChange?.(e.target.value)}
+            onBlur={onBlur}
             placeholder="0"
             className="w-24 text-right px-2 py-1 rounded bg-card border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
@@ -89,7 +90,7 @@ function InputRow({ label, value, onChange, prefix, suffix, computed, bold }: {
   );
 }
 
-function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChange, computedAmt, gross }: {
+function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChange, computedAmt, gross, onBlur }: {
   label: string;
   mode: PayMode;
   rate: string;
@@ -98,6 +99,7 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   onDollarChange: (v: string) => void;
   computedAmt: number;
   gross: number;
+  onBlur?: () => void;
 }) {
   const actualPct = gross > 0 ? ((computedAmt / gross) * 100).toFixed(2) : '0.00';
 
@@ -108,6 +110,7 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
         {mode === 'estimate' ? (
           <>
             <input type="number" step="0.01" value={rate} onChange={e => onRateChange(e.target.value)}
+              onBlur={onBlur}
               className="w-16 text-right px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
             <span className="text-xs text-muted-foreground">%</span>
             <span className="text-xs tabular-nums text-muted-foreground w-20 text-right">{fmt(computedAmt)}</span>
@@ -116,6 +119,7 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
           <>
             <span className="text-xs text-muted-foreground">$</span>
             <input type="number" step="0.01" value={dollarAmt} onChange={e => onDollarChange(e.target.value)}
+              onBlur={onBlur}
               className="w-20 text-right px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
               placeholder="0.00" />
             <span className="text-[10px] tabular-nums text-muted-foreground w-14 text-right">{actualPct}%</span>
