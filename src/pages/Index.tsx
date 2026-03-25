@@ -30,6 +30,8 @@ const Index = () => {
     updateCategories,
     updateFixedExpenses,
     startNewMonth,
+    planningData,
+    updatePlanningData,
   } = useBudgetData();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
