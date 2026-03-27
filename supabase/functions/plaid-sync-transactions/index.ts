@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildTransactionDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,10 +164,7 @@ Deno.serve(async (req) => {
               // Plaid: positive = money leaving (debit/expense), negative = money entering (credit/deposit/payment)
               // Store the raw signed amount so credits/payments reduce account balances
               const isCredit = plaidAmount < 0;
-              const merchantName = (tx.merchant_name as string) || "";
-              const txName = (tx.name as string) || "";
-              // For Venmo, prefer the full tx name which includes the person's name
-              const description = (merchantName.toLowerCase() === "venmo" && txName) ? txName : (merchantName || txName);
+               const description = buildTransactionDescription(tx);
               const upperDesc = description.toUpperCase();
               // Auto-detect CC payments
               const isCcPayment = isCredit && (
@@ -176,25 +174,29 @@ Deno.serve(async (req) => {
                 upperDesc.includes("PAYMENT THANK YOU")
               );
               return {
-                household_id: profile.household_id,
-                date: tx.date as string,
-                description,
-                notes: "",
-                amount: plaidAmount,
-                category_slug: isCcPayment ? "cc-payment" : isCredit ? "ignore-income" : "unassigned",
-                account,
-                is_transfer_to_savings: false,
-                transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
-                entered_by: null,
-                plaid_transaction_id: (tx.transaction_id as string) || null,
-                budget_month: activeBudgetMonth,
+                 row: {
+                   household_id: profile.household_id,
+                   date: tx.date as string,
+                   description,
+                   notes: "",
+                   amount: plaidAmount,
+                   category_slug: isCcPayment ? "cc-payment" : isCredit ? "ignore-income" : "unassigned",
+                   account,
+                   is_transfer_to_savings: false,
+                   transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
+                   entered_by: null,
+                   plaid_transaction_id: (tx.transaction_id as string) || null,
+                   budget_month: activeBudgetMonth,
+                 },
+                 pending_transaction_id: (tx.pending_transaction_id as string) || null,
               };
             });
 
           if (txRows.length > 0) {
             // Deduplicate by Plaid transaction ID, with fallback to backfill existing rows
-            const deduped: typeof txRows = [];
-            for (const row of txRows) {
+            const deduped: Array<(typeof txRows)[number]["row"]> = [];
+            for (const txRow of txRows) {
+              const { row, pending_transaction_id } = txRow;
               if (row.plaid_transaction_id) {
                 // Check if this exact Plaid transaction ID already exists
                 const { data: existingById } = await serviceClient
@@ -207,30 +209,77 @@ Deno.serve(async (req) => {
                   continue; // Already imported with this Plaid ID — skip
                 }
 
-                // Check if a legacy row exists without a plaid_transaction_id (backfill it)
-                // Use ±3 day tolerance since manually entered dates may differ from Plaid dates
-                const txDate = new Date(row.date as string);
-                const dateMin = new Date(txDate);
-                dateMin.setDate(dateMin.getDate() - 3);
-                const dateMax = new Date(txDate);
-                dateMax.setDate(dateMax.getDate() + 3);
-                const { data: legacyMatch } = await serviceClient
+                 if (pending_transaction_id) {
+                   const { data: pendingMatch } = await serviceClient
+                     .from("transactions")
+                     .select("id")
+                     .eq("household_id", row.household_id)
+                     .eq("plaid_transaction_id", pending_transaction_id);
+
+                   if (pendingMatch && pendingMatch.length > 0) {
+                     await serviceClient
+                       .from("transactions")
+                       .update({
+                         plaid_transaction_id: row.plaid_transaction_id,
+                         date: row.date,
+                         amount: row.amount,
+                         description: row.description,
+                       })
+                       .eq("household_id", row.household_id)
+                       .eq("plaid_transaction_id", pending_transaction_id);
+                     totalModified += pendingMatch.length;
+                     continue;
+                   }
+                 }
+
+                 // Check if a legacy row or split group exists without a plaid_transaction_id
+                 // Use ±3 day tolerance since manually entered dates may differ from Plaid dates
+                 const txDate = new Date(row.date as string);
+                 const dateMin = new Date(txDate);
+                 dateMin.setDate(dateMin.getDate() - 3);
+                 const dateMax = new Date(txDate);
+                 dateMax.setDate(dateMax.getDate() + 3);
+                 const { data: legacyCandidates } = await serviceClient
                   .from("transactions")
-                  .select("id")
+                   .select("id, amount, date, description, account, plaid_transaction_id, created_at")
                   .eq("household_id", row.household_id)
-                  .gte("date", dateMin.toISOString().slice(0, 10))
-                  .lte("date", dateMax.toISOString().slice(0, 10))
-                  .eq("amount", row.amount)
                   .eq("account", row.account)
+                   .gte("date", dateMin.toISOString().slice(0, 10))
+                   .lte("date", dateMax.toISOString().slice(0, 10))
                   .is("plaid_transaction_id", null)
-                  .limit(1);
-                if (legacyMatch && legacyMatch.length > 0) {
-                  // Backfill the plaid_transaction_id on the existing row
-                  await serviceClient
-                    .from("transactions")
-                    .update({ plaid_transaction_id: row.plaid_transaction_id })
-                    .eq("id", legacyMatch[0].id);
-                  continue;
+                   .limit(50);
+
+                 const legacyMatch = findLegacyTransactionGroup(
+                   (legacyCandidates || []) as LegacyTransactionCandidate[],
+                   {
+                     amount: row.amount,
+                     date: row.date as string,
+                     description: row.description as string,
+                   }
+                 );
+
+                 if (legacyMatch && legacyMatch.length > 0) {
+                   if (legacyMatch.length === 1) {
+                     await serviceClient
+                       .from("transactions")
+                       .update({
+                         plaid_transaction_id: row.plaid_transaction_id,
+                         date: row.date,
+                         amount: row.amount,
+                         description: row.description,
+                       })
+                       .eq("id", legacyMatch[0].id);
+                   } else {
+                     await serviceClient
+                       .from("transactions")
+                       .update({
+                         date: row.date,
+                         description: row.description,
+                       })
+                       .in("id", legacyMatch.map((match) => match.id));
+                   }
+                   totalModified += legacyMatch.length;
+                   continue;
                 }
               }
               deduped.push(row);
@@ -266,9 +315,7 @@ Deno.serve(async (req) => {
           for (const tx of syncData.modified) {
             const plaidTxId = tx.transaction_id as string;
             if (!plaidTxId) continue;
-            const merchantName = (tx.merchant_name as string) || "";
-            const txName = (tx.name as string) || "";
-            const description = (merchantName.toLowerCase() === "venmo" && txName) ? txName : (merchantName || txName);
+            const description = buildTransactionDescription(tx);
             await serviceClient
               .from("transactions")
               .update({
