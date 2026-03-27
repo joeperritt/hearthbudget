@@ -1,0 +1,95 @@
+export interface LegacyTransactionCandidate {
+  id: string;
+  amount: number;
+  date: string;
+  description: string;
+  account: string;
+  plaid_transaction_id: string | null;
+  created_at: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CENT_EPSILON = 0.005;
+
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function descriptionsLookSimilar(left: string, right: string): boolean {
+  const normalizedLeft = normalizeText(left);
+  const normalizedRight = normalizeText(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return (
+    normalizedLeft === normalizedRight ||
+    normalizedLeft.includes(normalizedRight) ||
+    normalizedRight.includes(normalizedLeft)
+  );
+}
+
+function amountsMatch(left: number, right: number): boolean {
+  return Math.abs(Math.abs(left) - Math.abs(right)) < CENT_EPSILON;
+}
+
+function isWithinDateWindow(left: string, right: string, windowDays = 3): boolean {
+  const leftTime = Date.parse(`${left}T00:00:00Z`);
+  const rightTime = Date.parse(`${right}T00:00:00Z`);
+
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return false;
+  }
+
+  return Math.abs(leftTime - rightTime) <= windowDays * DAY_MS;
+}
+
+export function buildTransactionDescription(tx: Record<string, unknown>): string {
+  const merchantName = (tx.merchant_name as string) || "";
+  const txName = (tx.name as string) || "";
+
+  return merchantName.toLowerCase() === "venmo" && txName ? txName : (merchantName || txName);
+}
+
+export function findLegacyTransactionGroup(
+  candidates: LegacyTransactionCandidate[],
+  target: { amount: number; date: string; description: string }
+): LegacyTransactionCandidate[] | null {
+  const datedCandidates = candidates.filter((candidate) => isWithinDateWindow(candidate.date, target.date));
+  const similarDescriptionCandidates = datedCandidates.filter((candidate) =>
+    descriptionsLookSimilar(candidate.description, target.description)
+  );
+
+  const groupedByCreatedAt = new Map<string, LegacyTransactionCandidate[]>();
+  for (const candidate of similarDescriptionCandidates) {
+    const key = candidate.created_at || candidate.id;
+    const group = groupedByCreatedAt.get(key) || [];
+    group.push(candidate);
+    groupedByCreatedAt.set(key, group);
+  }
+
+  const rankedGroups = Array.from(groupedByCreatedAt.values()).sort((left, right) => {
+    const leftTime = Date.parse(left[0]?.created_at || "") || 0;
+    const rightTime = Date.parse(right[0]?.created_at || "") || 0;
+    return rightTime - leftTime;
+  });
+
+  for (const group of rankedGroups) {
+    const totalAmount = group.reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+    if (amountsMatch(totalAmount, target.amount)) {
+      return group;
+    }
+  }
+
+  const exactAmountFallback = datedCandidates.filter((candidate) => amountsMatch(candidate.amount, target.amount));
+  if (exactAmountFallback.length === 1) {
+    return [exactAmountFallback[0]];
+  }
+
+  return null;
+}
