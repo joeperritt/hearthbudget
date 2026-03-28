@@ -95,6 +95,14 @@ Deno.serve(async (req) => {
     }> = [];
 
     for (const item of plaidItems) {
+      // Skip items where all accounts are checking — avoids Plaid balance errors
+      const mappedAccounts = (item.plaid_accounts || []).filter((a: { app_account: string | null }) => a.app_account);
+      const allChecking = mappedAccounts.length > 0 && mappedAccounts.every((a: { app_account: string | null }) => a.app_account === "checking");
+      if (allChecking) {
+        console.log("Skipping balance fetch for checking-only item", item.id);
+        continue;
+      }
+
       const balRes = await fetch(`${plaidBaseUrl}/accounts/balance/get`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
