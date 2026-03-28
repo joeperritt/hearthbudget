@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw } from 'lucide-react';
 import { Transaction, AccountSource } from '@/types/budget';
