@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
           client_id: PLAID_CLIENT_ID,
           secret: PLAID_SECRET,
           access_token: item.access_token,
+          options: { include_pending: true },
         };
         if (cursor) syncBody.cursor = cursor;
 
