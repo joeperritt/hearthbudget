@@ -137,6 +137,11 @@ const Index = () => {
     [monthTransactions]
   );
 
+  const checkingSpent = useMemo(
+    () => monthTransactions.filter(t => t.account === 'checking' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
+    [monthTransactions]
+  );
+
   const unassignedTransactions = useMemo(
     () => monthTransactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t)),
     [monthTransactions]
@@ -225,6 +230,7 @@ const Index = () => {
             joeAmexGross={joeAmexGross}
             katieAmexGross={katieAmexGross}
             totalPayoffs={totalPayoffs}
+            checkingSpent={checkingSpent}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
           />
