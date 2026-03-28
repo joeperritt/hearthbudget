@@ -130,8 +130,7 @@ export function Dashboard({
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
-  const totalAllSpending = joeAmexGross + katieAmexGross + checkingSpent;
-  const totalRemaining = totalBudget - totalAllSpending;
+  const totalRemaining = totalBudget - totalSpent;
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
