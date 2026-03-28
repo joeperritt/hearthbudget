@@ -115,6 +115,7 @@ interface DashboardProps {
   joeAmexGross: number;
   katieAmexGross: number;
   totalPayoffs: number;
+  checkingSpent: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
@@ -124,35 +125,16 @@ export function Dashboard({
   monthLabel,
   totalBudget, variableBudget, variableSpent,
   fixedTotal, fixedSpent, onAddTransaction,
-  joeAmexGross, katieAmexGross, totalPayoffs,
+  joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
   unassignedTransactions, onEditTransaction, onSyncComplete,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
+  const totalAllSpending = joeAmexGross + katieAmexGross + checkingSpent;
+  const totalRemaining = totalBudget - totalAllSpending;
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const [checkingBalance, setCheckingBalance] = useState<number | null>(null);
-
-  const fetchCheckingBalance = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data, error } = await supabase.functions.invoke('plaid-get-balances', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!error && data?.balances) {
-        const checking = data.balances.find((b: any) => b.app_account === 'checking');
-        if (checking) setCheckingBalance(checking.available ?? checking.current);
-      }
-    } catch (e) {
-      console.error('Failed to fetch balances:', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCheckingBalance();
-  }, [fetchCheckingBalance]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -160,15 +142,7 @@ export function Dashboard({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const headers = { Authorization: `Bearer ${session.access_token}` };
-      await Promise.all([
-        supabase.functions.invoke('plaid-sync-transactions', { headers }),
-        supabase.functions.invoke('plaid-get-balances', { headers }).then(({ data, error }) => {
-          if (!error && data?.balances) {
-            const checking = data.balances.find((b: any) => b.app_account === 'checking');
-            if (checking) setCheckingBalance(checking.available ?? checking.current);
-          }
-        }),
-      ]);
+      await supabase.functions.invoke('plaid-sync-transactions', { headers });
       setLastSynced('Updated just now');
       onSyncComplete?.();
       setTimeout(() => setLastSynced(null), 5000);
@@ -242,20 +216,34 @@ export function Dashboard({
               <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(totalPayoffs)}</span>
             </div>
           )}
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-sm text-foreground">Checking Spent</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingSpent)}</span>
+          </div>
           <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
             <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Checking Balance</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">
-              {checkingBalance !== null ? formatCurrency(checkingBalance) : '—'}
-            </span>
           </div>
         </div>
         {lastSynced && (
           <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
         )}
+      </div>
+
+      {/* Budget Summary */}
+      <div className="px-6 mt-4 animate-fade-up" style={{ animationDelay: '320ms', animationFillMode: 'both' }}>
+        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-sm text-foreground">Total Budgeted</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
+          </div>
+          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
+            <span className="text-sm font-semibold text-foreground">Total Remaining</span>
+            <span className={`text-sm font-semibold tabular-nums ${totalRemaining < 0 ? 'text-destructive' : 'text-foreground'}`}>
+              {totalRemaining < 0 ? `-${formatCurrency(Math.abs(totalRemaining))}` : formatCurrency(totalRemaining)}
+            </span>
+          </div>
+        </div>
       </div>
 
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
