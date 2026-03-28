@@ -1,0 +1,1 @@
+UPDATE plaid_items SET cursor = NULL WHERE id = '3e92975a-4208-40b4-9b6f-24f4496101bc';
