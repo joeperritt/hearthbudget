@@ -216,13 +216,13 @@ export function Dashboard({
               <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(totalPayoffs)}</span>
             </div>
           )}
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Checking Spent</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingSpent)}</span>
-          </div>
           <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
             <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
+          </div>
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-sm text-foreground">Checking Spent</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingSpent)}</span>
           </div>
         </div>
         {lastSynced && (
