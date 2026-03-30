@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 const formatIsoDate = (date: Date) => date.toISOString().slice(0, 10);
+const PLAID_SYNC_MUTATION_ERROR = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
+const MAX_SYNC_RESTARTS = 2;
 
 type ImportedTransactionRow = {
   row: {
@@ -148,7 +150,9 @@ Deno.serve(async (req) => {
       }
 
       let hasMore = true;
-      let cursor = item.cursor || undefined;
+      const syncStartCursor = item.cursor || undefined;
+      let cursor = syncStartCursor;
+      let syncRestartCount = 0;
 
       const accountMap: Record<string, string> = {};
       for (const acc of item.plaid_accounts || []) {
@@ -328,6 +332,19 @@ Deno.serve(async (req) => {
         const syncData = await syncRes.json();
 
         if (!syncRes.ok) {
+          if (
+            syncData?.error_code === PLAID_SYNC_MUTATION_ERROR &&
+            syncRestartCount < MAX_SYNC_RESTARTS
+          ) {
+            syncRestartCount += 1;
+            cursor = syncStartCursor;
+            hasMore = true;
+            console.warn(
+              `Plaid sync pagination changed during refresh for item ${item.id}; restarting from saved cursor (${syncRestartCount}/${MAX_SYNC_RESTARTS})`
+            );
+            continue;
+          }
+
           console.error("Plaid sync error for item", item.id, syncData);
           break;
         }
