@@ -10,6 +10,9 @@ const corsHeaders = {
 const formatIsoDate = (date: Date) => date.toISOString().slice(0, 10);
 const PLAID_SYNC_MUTATION_ERROR = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
 const MAX_SYNC_RESTARTS = 2;
+const REFRESH_SETTLE_DELAY_MS = 2500;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type ImportedTransactionRow = {
   row: {
@@ -143,6 +146,7 @@ Deno.serve(async (req) => {
             console.error("Plaid transactions/refresh error for item", item.id, refreshData);
           } else {
             console.log("Plaid transactions/refresh triggered for item", item.id);
+            await sleep(REFRESH_SETTLE_DELAY_MS);
           }
         } catch (refreshErr) {
           console.error("Plaid transactions/refresh exception for item", item.id, refreshErr);
@@ -153,6 +157,7 @@ Deno.serve(async (req) => {
       const syncStartCursor = item.cursor || undefined;
       let cursor = syncStartCursor;
       let syncRestartCount = 0;
+      let syncPaginationMutated = false;
 
       const accountMap: Record<string, string> = {};
       for (const acc of item.plaid_accounts || []) {
@@ -342,7 +347,12 @@ Deno.serve(async (req) => {
             console.warn(
               `Plaid sync pagination changed during refresh for item ${item.id}; restarting from saved cursor (${syncRestartCount}/${MAX_SYNC_RESTARTS})`
             );
+            await sleep(REFRESH_SETTLE_DELAY_MS * syncRestartCount);
             continue;
+          }
+
+          if (syncData?.error_code === PLAID_SYNC_MUTATION_ERROR) {
+            syncPaginationMutated = true;
           }
 
           console.error("Plaid sync error for item", item.id, syncData);
@@ -447,13 +457,19 @@ Deno.serve(async (req) => {
 
         totalPendingTransactions = Number(pendingData.total_transactions) || 0;
 
-        const pendingRows = (pendingData.transactions || [])
-          .filter((tx: Record<string, unknown>) => tx.pending === true)
+        const recentRows = (pendingData.transactions || [])
+          .filter((tx: Record<string, unknown>) => syncPaginationMutated || tx.pending === true)
           .map((tx: Record<string, unknown>) => mapImportedTransaction(tx))
           .filter((txRow: ImportedTransactionRow | null): txRow is ImportedTransactionRow => Boolean(txRow));
 
-        if (pendingRows.length > 0) {
-          const { added, modified } = await persistImportedTransactions(pendingRows);
+        if (syncPaginationMutated && recentRows.length > 0) {
+          console.warn(
+            `Falling back to recent transactions/get import for item ${item.id} after sync pagination kept mutating`
+          );
+        }
+
+        if (recentRows.length > 0) {
+          const { added, modified } = await persistImportedTransactions(recentRows);
           totalAdded += added;
           totalModified += modified;
         }
