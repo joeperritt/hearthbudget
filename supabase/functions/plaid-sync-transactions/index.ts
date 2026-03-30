@@ -117,7 +117,36 @@ Deno.serve(async (req) => {
     let totalModified = 0;
     let totalRemoved = 0;
 
+    // Fire /transactions/refresh for Wells Fargo items (checking accounts)
+    // to get the freshest data. Skip Amex items.
     for (const item of plaidItems) {
+      const hasChecking = (item.plaid_accounts || []).some(
+        (acc: { type?: string; subtype?: string }) =>
+          acc.type === "depository" || acc.subtype === "checking"
+      );
+
+      if (hasChecking) {
+        try {
+          const refreshRes = await fetch(`${plaidBaseUrl}/transactions/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              client_id: PLAID_CLIENT_ID,
+              secret: PLAID_SECRET,
+              access_token: item.access_token,
+            }),
+          });
+          const refreshData = await refreshRes.json();
+          if (!refreshRes.ok) {
+            console.error("Plaid transactions/refresh error for item", item.id, refreshData);
+          } else {
+            console.log("Plaid transactions/refresh triggered for item", item.id);
+          }
+        } catch (refreshErr) {
+          console.error("Plaid transactions/refresh exception for item", item.id, refreshErr);
+        }
+      }
+
       let hasMore = true;
       let cursor = item.cursor || undefined;
 
