@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { BudgetCategory } from '@/types/budget';
 
 function formatCurrency(n: number) {
@@ -21,6 +21,10 @@ interface CategoryCarouselProps {
   onSelectCategory?: (id: string) => void;
 }
 
+const CARD_WIDTH = 110;
+const GAP = 12;
+const SPEED = 0.4; // px per frame
+
 export function CategoryCarousel({ categories, spentByCategory, transferAdjustments, onSelectCategory }: CategoryCarouselProps) {
   const items = useMemo(() => {
     return categories.map(c => {
@@ -32,7 +36,7 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     });
   }, [categories, spentByCategory, transferAdjustments]);
 
-  // Shuffle once on mount using a ref so it doesn't re-shuffle on data updates
+  // Shuffle once on mount
   const shuffleRef = useRef<string[] | null>(null);
   const shuffled = useMemo(() => {
     if (!shuffleRef.current || shuffleRef.current.length !== items.length) {
@@ -43,58 +47,98 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
       }
       shuffleRef.current = indices.map(i => items[i]?.id).filter(Boolean);
     }
-    // Re-order items by saved shuffle order
     const order = shuffleRef.current;
     const byId = new Map(items.map(it => [it.id, it]));
     return order.map(id => byId.get(id)).filter(Boolean) as typeof items;
   }, [items]);
 
-  // Duplicate the list for seamless infinite scroll
+  // Duplicate for seamless loop
   const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
+  const setWidth = shuffled.length * (CARD_WIDTH + GAP); // width of one full set
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(0);
+  const animRef = useRef(0);
+  const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
-  const scrollStart = useRef(0);
-  const animRef = useRef<number>(0);
-  const speedRef = useRef(0.5); // px per frame
+  const dragOffsetStart = useRef(0);
+  const lastPointerX = useRef(0);
+  const momentumRef = useRef(0);
 
-  // Auto-scroll ticker
-  const tick = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || isDragging.current) {
-      animRef.current = requestAnimationFrame(tick);
-      return;
+  const applyTransform = useCallback(() => {
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
     }
-    el.scrollLeft += speedRef.current;
-    // When we've scrolled past the first set, jump back seamlessly
-    const halfWidth = el.scrollWidth / 2;
-    if (el.scrollLeft >= halfWidth) {
-      el.scrollLeft -= halfWidth;
-    }
-    animRef.current = requestAnimationFrame(tick);
   }, []);
+
+  // Wrap offset so it stays within [0, setWidth)
+  const wrapOffset = useCallback(() => {
+    if (setWidth > 0) {
+      offsetRef.current = ((offsetRef.current % setWidth) + setWidth) % setWidth;
+    }
+  }, [setWidth]);
+
+  const tick = useCallback(() => {
+    if (!isDragging.current) {
+      // Apply momentum or default speed
+      if (Math.abs(momentumRef.current) > 0.1) {
+        offsetRef.current += momentumRef.current;
+        momentumRef.current *= 0.95; // friction
+      } else {
+        momentumRef.current = 0;
+        offsetRef.current += SPEED;
+      }
+    }
+    wrapOffset();
+    applyTransform();
+    animRef.current = requestAnimationFrame(tick);
+  }, [wrapOffset, applyTransform]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animRef.current);
   }, [tick]);
 
-  // Drag/touch handlers
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  // Touch / pointer handlers for drag
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    isDragging.current = true;
+    dragStartX.current = e.touches[0].clientX;
+    lastPointerX.current = e.touches[0].clientX;
+    dragOffsetStart.current = offsetRef.current;
+    momentumRef.current = 0;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const x = e.touches[0].clientX;
+    const dx = dragStartX.current - x;
+    offsetRef.current = dragOffsetStart.current + dx;
+    momentumRef.current = lastPointerX.current - x;
+    lastPointerX.current = x;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  // Mouse drag for desktop
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     isDragging.current = true;
     dragStartX.current = e.clientX;
-    scrollStart.current = scrollRef.current?.scrollLeft || 0;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    lastPointerX.current = e.clientX;
+    dragOffsetStart.current = offsetRef.current;
+    momentumRef.current = 0;
   }, []);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current || !scrollRef.current) return;
-    const dx = e.clientX - dragStartX.current;
-    scrollRef.current.scrollLeft = scrollStart.current - dx;
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const dx = dragStartX.current - e.clientX;
+    offsetRef.current = dragOffsetStart.current + dx;
+    momentumRef.current = lastPointerX.current - e.clientX;
+    lastPointerX.current = e.clientX;
   }, []);
 
-  const handlePointerUp = useCallback(() => {
+  const handleMouseUp = useCallback(() => {
     isDragging.current = false;
   }, []);
 
@@ -104,45 +148,52 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     <div className="mt-4 animate-fade-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
       <h3 className="px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Category Snapshot</h3>
       <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-hidden pb-2 pl-6 cursor-grab active:cursor-grabbing select-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        className="overflow-hidden pl-6"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
-        {tickerItems.map((item, idx) => {
-          const isOver = item.remaining < 0;
-          return (
-            <div
-              key={`${item.id}-${idx}`}
-              onPointerUp={(e) => {
-                // Only fire tap if not dragged
-                const dx = Math.abs(e.clientX - dragStartX.current);
-                if (dx < 5) onSelectCategory?.(item.id);
-              }}
-              className="shrink-0 w-[110px] h-[110px] bg-card rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
-            >
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight truncate">
-                {abbreviate(item.name)}
-              </p>
-              <div>
-                <p className={`text-lg font-display font-bold tabular-nums leading-none ${isOver ? 'text-destructive' : 'text-foreground'}`}>
-                  {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+        <div
+          ref={trackRef}
+          className="flex gap-3 will-change-transform select-none"
+          style={{ width: `${tickerItems.length * (CARD_WIDTH + GAP)}px` }}
+        >
+          {tickerItems.map((item, idx) => {
+            const isOver = item.remaining < 0;
+            return (
+              <div
+                key={`${item.id}-${idx}`}
+                onClick={(e) => {
+                  const dx = Math.abs((e as unknown as MouseEvent).clientX - dragStartX.current);
+                  if (dx < 8) onSelectCategory?.(item.id);
+                }}
+                className="shrink-0 w-[110px] h-[110px] bg-card rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+              >
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight truncate">
+                  {abbreviate(item.name)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {isOver ? 'over' : 'left'}
-                </p>
+                <div>
+                  <p className={`text-lg font-display font-bold tabular-nums leading-none ${isOver ? 'text-destructive' : 'text-foreground'}`}>
+                    {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {isOver ? 'over' : 'left'}
+                  </p>
+                </div>
+                <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-accent'}`}
+                    style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-1 rounded-full bg-secondary overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-accent'}`}
-                  style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
