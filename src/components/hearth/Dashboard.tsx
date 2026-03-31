@@ -120,6 +120,10 @@ interface DashboardProps {
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
+  categories?: BudgetCategory[];
+  spentByCategory?: Record<string, number>;
+  transferAdjustments?: Record<string, number>;
+  onSelectCategory?: (id: string) => void;
 }
 
 export function Dashboard({
