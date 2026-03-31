@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useCallback } from 'react';
 import { BudgetCategory } from '@/types/budget';
 
 function formatCurrency(n: number) {
@@ -7,7 +7,6 @@ function formatCurrency(n: number) {
 
 function abbreviate(name: string, maxLen = 10): string {
   if (name.length <= maxLen) return name;
-  // Try to split on space/dash and abbreviate
   const parts = name.split(/[\s\-\/]+/);
   if (parts.length > 1) {
     return parts.map(p => p.slice(0, 3)).join('/');
@@ -33,35 +32,96 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     });
   }, [categories, spentByCategory, transferAdjustments]);
 
-  // Shuffle once on mount
+  // Shuffle once on mount using a ref so it doesn't re-shuffle on data updates
+  const shuffleRef = useRef<string[] | null>(null);
   const shuffled = useMemo(() => {
-    const arr = [...items];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+    if (!shuffleRef.current || shuffleRef.current.length !== items.length) {
+      const indices = items.map((_, i) => i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      shuffleRef.current = indices.map(i => items[i]?.id).filter(Boolean);
     }
-    return arr;
+    // Re-order items by saved shuffle order
+    const order = shuffleRef.current;
+    const byId = new Map(items.map(it => [it.id, it]));
+    return order.map(id => byId.get(id)).filter(Boolean) as typeof items;
   }, [items]);
 
+  // Duplicate the list for seamless infinite scroll
+  const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const scrollStart = useRef(0);
+  const animRef = useRef<number>(0);
+  const speedRef = useRef(0.5); // px per frame
+
+  // Auto-scroll ticker
+  const tick = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || isDragging.current) {
+      animRef.current = requestAnimationFrame(tick);
+      return;
+    }
+    el.scrollLeft += speedRef.current;
+    // When we've scrolled past the first set, jump back seamlessly
+    const halfWidth = el.scrollWidth / 2;
+    if (el.scrollLeft >= halfWidth) {
+      el.scrollLeft -= halfWidth;
+    }
+    animRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  useEffect(() => {
+    animRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [tick]);
+
+  // Drag/touch handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    scrollStart.current = scrollRef.current?.scrollLeft || 0;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = e.clientX - dragStartX.current;
+    scrollRef.current.scrollLeft = scrollStart.current - dx;
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
 
   if (shuffled.length === 0) return null;
 
   return (
-    <div className="px-6 mt-4 animate-fade-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Category Snapshot</h3>
+    <div className="mt-4 animate-fade-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+      <h3 className="px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Category Snapshot</h3>
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        className="flex gap-3 overflow-x-hidden pb-2 pl-6 cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
-        {shuffled.map(item => {
+        {tickerItems.map((item, idx) => {
           const isOver = item.remaining < 0;
           return (
             <div
-              key={item.id}
-              onClick={() => onSelectCategory?.(item.id)}
-              className="snap-start shrink-0 w-[110px] h-[110px] bg-card rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+              key={`${item.id}-${idx}`}
+              onPointerUp={(e) => {
+                // Only fire tap if not dragged
+                const dx = Math.abs(e.clientX - dragStartX.current);
+                if (dx < 5) onSelectCategory?.(item.id);
+              }}
+              className="shrink-0 w-[110px] h-[110px] bg-card rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
             >
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight truncate">
                 {abbreviate(item.name)}
@@ -74,7 +134,6 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
                   {isOver ? 'over' : 'left'}
                 </p>
               </div>
-              {/* Mini progress bar */}
               <div className="h-1 rounded-full bg-secondary overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-accent'}`}
