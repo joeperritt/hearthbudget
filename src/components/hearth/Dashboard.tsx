@@ -175,7 +175,21 @@ export function Dashboard({
         </button>
       </div>
 
-      <div className="px-6 mb-6 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+      {/* 1. Unassigned */}
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
+
+      {/* 2. Category Snapshot */}
+      {varCategories && spentByCategory && transferAdjustments && (
+        <CategoryCarousel
+          categories={varCategories}
+          spentByCategory={spentByCategory}
+          transferAdjustments={transferAdjustments}
+          onSelectCategory={onSelectCategory}
+        />
+      )}
+
+      {/* 3. Your Household Budget */}
+      <div className="px-6 mt-6 mb-4 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
         <div className="bg-primary rounded-xl p-5 shadow-lg">
           <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
           <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
@@ -203,16 +217,23 @@ export function Dashboard({
         <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
 
-      {varCategories && spentByCategory && transferAdjustments && (
-        <CategoryCarousel
-          categories={varCategories}
-          spentByCategory={spentByCategory}
-          transferAdjustments={transferAdjustments}
-          onSelectCategory={onSelectCategory}
-        />
-      )}
+      {/* Budget Summary */}
+      <div className="px-6 mt-4 animate-fade-up" style={{ animationDelay: '320ms', animationFillMode: 'both' }}>
+        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-sm text-foreground">Total Budgeted</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
+          </div>
+          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
+            <span className="text-sm font-semibold text-foreground">Total Remaining</span>
+            <span className={`text-sm font-semibold tabular-nums ${totalRemaining < 0 ? 'text-destructive' : 'text-foreground'}`}>
+              {totalRemaining < 0 ? `-${formatCurrency(Math.abs(totalRemaining))}` : formatCurrency(totalRemaining)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {/* Account Snapshot */}
+      {/* 4. Account Snapshot */}
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
@@ -244,23 +265,7 @@ export function Dashboard({
         )}
       </div>
 
-      {/* Budget Summary */}
-      <div className="px-6 mt-4 animate-fade-up" style={{ animationDelay: '320ms', animationFillMode: 'both' }}>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Total Budgeted</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-            <span className="text-sm font-semibold text-foreground">Total Remaining</span>
-            <span className={`text-sm font-semibold tabular-nums ${totalRemaining < 0 ? 'text-destructive' : 'text-foreground'}`}>
-              {totalRemaining < 0 ? `-${formatCurrency(Math.abs(totalRemaining))}` : formatCurrency(totalRemaining)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
+      <div className="mb-6" />
 
       <button
         onClick={onAddTransaction}
