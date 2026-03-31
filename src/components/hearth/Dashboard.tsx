@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw } from 'lucide-react';
-import { Transaction, AccountSource } from '@/types/budget';
+import { Transaction, AccountSource, BudgetCategory } from '@/types/budget';
+import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
