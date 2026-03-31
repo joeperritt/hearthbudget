@@ -203,6 +203,15 @@ export function Dashboard({
         <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
 
+      {varCategories && spentByCategory && transferAdjustments && (
+        <CategoryCarousel
+          categories={varCategories}
+          spentByCategory={spentByCategory}
+          transferAdjustments={transferAdjustments}
+          onSelectCategory={onSelectCategory}
+        />
+      )}
+
       {/* Account Snapshot */}
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
