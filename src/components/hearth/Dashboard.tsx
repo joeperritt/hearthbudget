@@ -132,6 +132,7 @@ export function Dashboard({
   fixedTotal, fixedSpent, onAddTransaction,
   joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
   unassignedTransactions, onEditTransaction, onSyncComplete,
+  categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
