@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw } from 'lucide-react';
-import { Transaction, AccountSource } from '@/types/budget';
+import { Transaction, AccountSource, BudgetCategory } from '@/types/budget';
+import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
@@ -119,6 +120,10 @@ interface DashboardProps {
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
+  categories?: BudgetCategory[];
+  spentByCategory?: Record<string, number>;
+  transferAdjustments?: Record<string, number>;
+  onSelectCategory?: (id: string) => void;
 }
 
 export function Dashboard({
@@ -127,6 +132,7 @@ export function Dashboard({
   fixedTotal, fixedSpent, onAddTransaction,
   joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
   unassignedTransactions, onEditTransaction, onSyncComplete,
+  categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
   const totalSpent = variableSpent + fixedSpent;
@@ -196,6 +202,15 @@ export function Dashboard({
         <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
         <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
+
+      {varCategories && spentByCategory && transferAdjustments && (
+        <CategoryCarousel
+          categories={varCategories}
+          spentByCategory={spentByCategory}
+          transferAdjustments={transferAdjustments}
+          onSelectCategory={onSelectCategory}
+        />
+      )}
 
       {/* Account Snapshot */}
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>

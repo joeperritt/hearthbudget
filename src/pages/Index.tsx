@@ -239,6 +239,10 @@ const Index = () => {
             checkingSpent={checkingSpent}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
+            categories={categories}
+            spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
+            onSelectCategory={setSelectedCategoryId}
           />
         )}
         {activeTab === 'variable' && (
