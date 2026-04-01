@@ -48,7 +48,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   const notesRef = useRef<HTMLInputElement>(null);
 
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
-  const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories);
+  const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories, fixedExpenses);
 
   useEffect(() => {
     if (notesRequired && notesRef.current) {
