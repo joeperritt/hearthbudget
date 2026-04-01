@@ -268,7 +268,10 @@ const Index = () => {
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
-            onEditTransaction={setEditingTransaction}
+            onEditTransaction={(tx, splitSiblings) => {
+              setEditingTransaction(tx);
+              setEditingSplitSiblings(splitSiblings || []);
+            }}
           />
         )}
         {activeTab === 'more' && moreSubView === 'menu' && (
