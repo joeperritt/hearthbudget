@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRED_CATEGORIES, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, AccountSource, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { SplitEditor, SplitLine } from './SplitEditor';
