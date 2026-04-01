@@ -28,6 +28,7 @@ function dbToFixed(row: Record<string, unknown>): FixedExpense {
     name: row.name as string,
     amount: Number(row.amount),
     group: row.group as FixedExpense['group'],
+    notesRequired: (row.notes_required as boolean) ?? false,
   };
 }
 
