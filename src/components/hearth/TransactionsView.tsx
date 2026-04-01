@@ -54,7 +54,7 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
       groupMap.set(`__single_${t.id}`, [t]);
       continue;
     }
-    const key = `${t.description}||${t.date}||${t.account}||${t.notes}`;
+    const key = `${t.description}||${t.date}||${t.account}`;
     const existing = groupMap.get(key);
     if (existing) {
       existing.push(t);
