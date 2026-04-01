@@ -27,6 +27,7 @@ interface AddTransactionSheetProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   onAdd: (transactions: Omit<Transaction, 'id'>[]) => void;
+  monthTransactions?: Transaction[];
 }
 
 export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd }: AddTransactionSheetProps) {
