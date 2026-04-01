@@ -664,11 +664,7 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             </div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-muted-foreground">Tithe/Giving</span>
-              <span className="font-medium tabular-nums">{formatCurrency(rawTithe)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1 pl-3">
-              <span className="text-muted-foreground text-xs">+ Variable Tithe/Giving</span>
-              <span className="font-medium tabular-nums text-xs">{formatCurrency(hostingGiftsAmt)}</span>
+              <span className="font-medium tabular-nums">{formatCurrency(titheTotal)}</span>
             </div>
             <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
               <span className="font-semibold text-foreground">Total Budget</span>
