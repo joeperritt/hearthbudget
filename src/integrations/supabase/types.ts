@@ -22,6 +22,7 @@ export type Database = {
           household_id: string
           id: string
           name: string
+          notes_required: boolean
           slug: string
           sort_order: number
         }
@@ -32,6 +33,7 @@ export type Database = {
           household_id: string
           id?: string
           name: string
+          notes_required?: boolean
           slug: string
           sort_order?: number
         }
@@ -42,6 +44,7 @@ export type Database = {
           household_id?: string
           id?: string
           name?: string
+          notes_required?: boolean
           slug?: string
           sort_order?: number
         }
