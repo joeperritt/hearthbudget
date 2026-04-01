@@ -150,9 +150,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     if (notesRequired && !notes.trim()) return;
 
     if (isSplit && (mode === 'variable' || mode === 'fixed')) {
-      const txAmount = Math.abs(transaction.amount);
+      // Use total of all siblings if editing an existing split, otherwise use single tx amount
+      const totalAmount = splitSiblings.length > 1
+        ? splitSiblings.reduce((s, t) => s + t.amount, 0)
+        : Math.abs(transaction.amount);
       const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-      if (Math.abs(txAmount - allocated) >= 0.01) return;
+      if (Math.abs(totalAmount - allocated) >= 0.01) return;
 
       // Check per-line notes requirements
       const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
@@ -187,10 +190,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         return;
       }
 
-      const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
+      // Delete all sibling transactions (or just the one if not from a split group)
+      const idsToDelete = splitSiblings.length > 1
+        ? splitSiblings.map(s => s.id)
+        : [transaction.id];
+      const { error: deleteError } = await supabase.from('transactions').delete().in('id', idsToDelete);
       setSaving(false);
       if (deleteError) {
-        toast.error('Split created but failed to remove original');
+        toast.error('Split created but failed to remove originals');
       } else {
         toast.success(`Split into ${splitRows.length} transactions`);
         onOpenChange(false);
