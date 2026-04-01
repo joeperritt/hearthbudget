@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
             description,
             notes: "",
             amount: plaidAmount,
-            category_slug: isCcPayment ? "cc-payment" : isCredit ? "ignore-income" : "unassigned",
+            category_slug: isCcPayment ? "cc-payment" : "unassigned",
             account,
             is_transfer_to_savings: false,
             transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
