@@ -108,11 +108,15 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
       const remaining = Math.round((parsedAmount - allocated) * 100) / 100;
       if (Math.abs(remaining) >= 0.01) return; // Not balanced
 
+      // Check per-line notes requirements
+      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
+      if (missingNotes) return;
+
       const txns: Omit<Transaction, 'id'>[] = splitLines
         .filter(l => parseFloat(l.amount) > 0)
         .map(l => ({
           description: description || '',
-          notes: notes || '',
+          notes: l.notes?.trim() || notes || '',
           amount: parseFloat(l.amount),
           categoryId: l.categoryId,
           account: account as AccountSource,
