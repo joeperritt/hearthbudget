@@ -145,6 +145,10 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
       if (Math.abs(txAmount - allocated) >= 0.01) return;
 
+      // Check per-line notes requirements
+      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
+      if (missingNotes) return;
+
       setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
@@ -157,7 +161,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
           household_id: profile.household_id,
           date: transaction.date,
           description: transaction.description,
-          notes: notes || '',
+          notes: l.notes?.trim() || notes || '',
           amount: parseFloat(l.amount),
           category_slug: l.categoryId,
           account: transaction.account,
@@ -244,8 +248,9 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   ];
 
   const txAmount = Math.abs(transaction.amount);
+  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
   const splitBalanced = isSplit && Math.abs(txAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
-  const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || splitBalanced) && !saving;
+  const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes)) && !saving;
 
   const monthOptions = generateMonthOptions(activeMonth);
 
