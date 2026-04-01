@@ -3,6 +3,7 @@ import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRE
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { SplitEditor, SplitLine } from './SplitEditor';
+import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
