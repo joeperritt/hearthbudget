@@ -503,8 +503,8 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
                         </button>
                       </div>
                     </div>
+                  ))}
                 </div>
-              </div>
               </div>
             );
           })}
