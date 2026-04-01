@@ -137,12 +137,19 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       name: newFixedName.trim(),
       amount,
       group,
+      notesRequired: false,
     };
-    onUpdateFixedExpenses([...fixedExpenses, newExp]);
+    // New fixed expenses only apply to next month
     setNextFixed(exps => [...exps, { ...newExp }]);
     setNewFixedName('');
     setNewFixedAmount('');
     setShowAddFixed(null);
+  };
+
+  const toggleFixedNotesRequired = (id: string) => {
+    const updated = fixedExpenses.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e);
+    onUpdateFixedExpenses(updated);
+    setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e));
   };
 
   const moveCategory = (id: string, direction: 'up' | 'down') => {
