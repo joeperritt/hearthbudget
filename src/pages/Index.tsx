@@ -207,13 +207,15 @@ const Index = () => {
     const exp = fixedExpenses.find(e => e.id === selectedFixedExpenseId);
     if (exp) {
       const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
-      const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0);
+      const fixedDeposits = monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === exp.id);
+      const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0) - fixedDeposits.reduce((s, d) => s + Math.abs(d.amount), 0);
       return (
         <CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
           categories={categories}
           fixedExpenses={fixedExpenses}
           transactions={fixedTransactions}
+          deposits={fixedDeposits}
           transfers={monthTransfers}
           spent={expFixedSpent}
           transferAdjustment={transferAdjustments[exp.id] || 0}
