@@ -37,6 +37,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingSplitSiblings, setEditingSplitSiblings] = useState<Transaction[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
