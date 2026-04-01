@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
