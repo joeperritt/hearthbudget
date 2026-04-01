@@ -118,10 +118,12 @@ const Index = () => {
 
   const allFixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.map(e => e.id));
-    const rawSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+    const rawSpent = Object.entries(spentByCategory)
+      .filter(([id]) => ids.has(id))
+      .reduce((s, [, v]) => s + v, 0);
     const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
     return rawSpent - fixedTransferAdj;
-  }, [monthTransactions, fixedExpenses, transferAdjustments]);
+  }, [spentByCategory, fixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
