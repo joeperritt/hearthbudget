@@ -34,6 +34,12 @@ export interface BudgetCategory {
   name: string;
   budgeted: number;
   group: 'shared' | 'joe' | 'katie';
+  notesRequired: boolean;
+}
+
+/** Check if a category requires notes (works for both variable and fixed categories) */
+export function categoryRequiresNotes(categoryId: string, categories: BudgetCategory[]): boolean {
+  return categories.some(c => c.id === categoryId && c.notesRequired);
 }
 
 export interface FixedExpense {
@@ -60,7 +66,7 @@ export interface MonthlyBudget {
 
 export type TabId = 'dashboard' | 'variable' | 'transactions' | 'more';
 
-// Categories that require notes
+// Legacy constant kept for reference — use categoryRequiresNotes() instead
 export const NOTES_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
 
 // The Hosting/Gifts/Random category ID — rolls up into giving totals

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, categoryRequiresNotes } from '@/types/budget';
 import { Plus, Trash2 } from 'lucide-react';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 
@@ -56,7 +56,7 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
 
       <div className="space-y-2">
         {lines.map((line, i) => {
-          const needsNotes = NOTES_REQUIRED_CATEGORIES.includes(line.categoryId);
+          const needsNotes = categoryRequiresNotes(line.categoryId, categories);
           return (
             <div key={i}>
               <div className="flex gap-2 items-center">

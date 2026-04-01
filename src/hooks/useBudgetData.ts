@@ -18,6 +18,7 @@ function dbToCat(row: Record<string, unknown>): BudgetCategory {
     name: row.name as string,
     budgeted: Number(row.budgeted),
     group: row.group as BudgetCategory['group'],
+    notesRequired: (row.notes_required as boolean) ?? false,
   };
 }
 
@@ -179,7 +180,8 @@ export function useBudgetData() {
         budgeted: c.budgeted,
         group: c.group,
         sort_order: i,
-      }, { onConflict: 'household_id,slug' })
+        notes_required: c.notesRequired ?? false,
+      } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 

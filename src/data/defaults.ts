@@ -1,20 +1,20 @@
 import { BudgetCategory, FixedExpense } from '@/types/budget';
 
 export const DEFAULT_CATEGORIES: BudgetCategory[] = [
-  { id: 'car-gas', name: 'Car/Gas', budgeted: 375, group: 'shared' },
-  { id: 'groceries', name: 'Groceries', budgeted: 700, group: 'shared' },
-  { id: 'household', name: 'Household', budgeted: 100, group: 'shared' },
-  { id: 'kids', name: 'Kids', budgeted: 500, group: 'shared' },
-  { id: 'dates', name: 'Dates', budgeted: 450, group: 'shared' },
-  { id: 'dog', name: 'Dog', budgeted: 75, group: 'shared' },
-  { id: 'gifts', name: 'Gifts', budgeted: 100, group: 'shared' },
-  { id: 'random', name: 'Random', budgeted: 150, group: 'shared' },
-  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', budgeted: 800, group: 'shared' },
-  { id: 'j-eating', name: 'J-EO', budgeted: 100, group: 'joe' },
-  { id: 'j-misc', name: 'J-Misc', budgeted: 250, group: 'joe' },
-  { id: 'k-eating', name: 'K-EO', budgeted: 100, group: 'katie' },
-  { id: 'k-misc', name: 'K-Misc', budgeted: 200, group: 'katie' },
-  { id: 'k-selfcare', name: 'K-SC', budgeted: 100, group: 'katie' },
+  { id: 'car-gas', name: 'Car/Gas', budgeted: 375, group: 'shared', notesRequired: false },
+  { id: 'groceries', name: 'Groceries', budgeted: 700, group: 'shared', notesRequired: false },
+  { id: 'household', name: 'Household', budgeted: 100, group: 'shared', notesRequired: false },
+  { id: 'kids', name: 'Kids', budgeted: 500, group: 'shared', notesRequired: false },
+  { id: 'dates', name: 'Dates', budgeted: 450, group: 'shared', notesRequired: false },
+  { id: 'dog', name: 'Dog', budgeted: 75, group: 'shared', notesRequired: false },
+  { id: 'gifts', name: 'Gifts', budgeted: 100, group: 'shared', notesRequired: true },
+  { id: 'random', name: 'Random', budgeted: 150, group: 'shared', notesRequired: true },
+  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', budgeted: 800, group: 'shared', notesRequired: true },
+  { id: 'j-eating', name: 'J-EO', budgeted: 100, group: 'joe', notesRequired: false },
+  { id: 'j-misc', name: 'J-Misc', budgeted: 250, group: 'joe', notesRequired: false },
+  { id: 'k-eating', name: 'K-EO', budgeted: 100, group: 'katie', notesRequired: false },
+  { id: 'k-misc', name: 'K-Misc', budgeted: 200, group: 'katie', notesRequired: false },
+  { id: 'k-selfcare', name: 'K-SC', budgeted: 100, group: 'katie', notesRequired: false },
 ];
 
 export const DEFAULT_FIXED_EXPENSES: FixedExpense[] = [

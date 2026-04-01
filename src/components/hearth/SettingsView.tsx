@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
-import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { AccountManagement } from './AccountManagement';
@@ -114,12 +114,19 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       name: newCatName.trim(),
       budgeted: budget,
       group: newCatGroup,
+      notesRequired: false,
     };
-    onUpdateCategories([...categories, newCat]);
+    // New categories only apply to the next month, not the current one
     setNextCats(cats => [...cats, { ...newCat }]);
     setNewCatName('');
     setNewCatBudget('');
     setShowAddCategory(false);
+  };
+
+  const toggleNotesRequired = (id: string) => {
+    const updated = categories.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c);
+    onUpdateCategories(updated);
+    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c));
   };
 
   const addFixedExpense = (group: FixedGroupType) => {
@@ -247,47 +254,66 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
 
   function renderItemRow(item: { id: string; name: string }, value: number, saveEdit: (id: string) => void, isFixed: boolean, group: { items: { id: string }[] }) {
     const idx = group.items.findIndex(i => i.id === item.id);
+    const cat = !isFixed ? categories.find(c => c.id === item.id) : null;
     return (
-      <div key={item.id} className="flex items-center gap-2 px-3 py-2.5">
-        <div className="flex flex-col gap-0.5 shrink-0">
-          <button onClick={() => isFixed ? moveFixedExpense(item.id, 'up') : moveCategory(item.id, 'up')} disabled={idx === 0}
-            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-          <button onClick={() => isFixed ? moveFixedExpense(item.id, 'down') : moveCategory(item.id, 'down')} disabled={idx === group.items.length - 1}
-            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+      <div key={item.id} className="px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-0.5 shrink-0">
+            <button onClick={() => isFixed ? moveFixedExpense(item.id, 'up') : moveCategory(item.id, 'up')} disabled={idx === 0}
+              className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+            <button onClick={() => isFixed ? moveFixedExpense(item.id, 'down') : moveCategory(item.id, 'down')} disabled={idx === group.items.length - 1}
+              className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+          </div>
+          <div className="flex-1 min-w-0">
+            {renamingId === item.id ? (
+              <div className="flex gap-1.5">
+                <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(item.id, isFixed)} />
+                <button onClick={() => saveRename(item.id, isFixed)} className="text-xs text-accent font-medium">Save</button>
+              </div>
+            ) : (
+              <button onClick={() => startRename(item.id, item.name)} className="text-sm text-foreground text-left truncate block w-full">
+                {item.name}
+              </button>
+            )}
+          </div>
+          <div className="shrink-0">
+            {editingId === `cur-${item.id}` ? (
+              <div className="flex gap-1.5">
+                <input type="number" step="0.01" value={editValue} onChange={e => setEditValue(e.target.value)}
+                  className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  autoFocus onKeyDown={e => e.key === 'Enter' && saveEdit(item.id)} />
+                <button onClick={() => saveEdit(item.id)} className="text-xs text-accent font-medium">Save</button>
+              </div>
+            ) : (
+              <button onClick={() => startEdit(`cur-${item.id}`, value)}
+                className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                {formatCurrency(value)}
+              </button>
+            )}
+          </div>
+          <button onClick={() => isFixed ? deleteFixedExpense(item.id) : deleteCategory(item.id)}
+            className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+            <Trash2 size={12} />
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          {renamingId === item.id ? (
-            <div className="flex gap-1.5">
-              <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(item.id, isFixed)} />
-              <button onClick={() => saveRename(item.id, isFixed)} className="text-xs text-accent font-medium">Save</button>
-            </div>
-          ) : (
-            <button onClick={() => startRename(item.id, item.name)} className="text-sm text-foreground text-left truncate block w-full">
-              {item.name}
+        {/* Notes required toggle for variable categories */}
+        {cat && (
+          <div className="flex items-center gap-1.5 mt-1 ml-6">
+            <button
+              onClick={() => toggleNotesRequired(item.id)}
+              className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                cat.notesRequired
+                  ? 'bg-accent/15 text-accent'
+                  : 'bg-muted/50 text-muted-foreground/60'
+              }`}
+            >
+              <MessageSquare size={9} />
+              {cat.notesRequired ? 'Notes required' : 'No notes required'}
             </button>
-          )}
-        </div>
-        <div className="shrink-0">
-          {editingId === `cur-${item.id}` ? (
-            <div className="flex gap-1.5">
-              <input type="number" step="0.01" value={editValue} onChange={e => setEditValue(e.target.value)}
-                className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                autoFocus onKeyDown={e => e.key === 'Enter' && saveEdit(item.id)} />
-              <button onClick={() => saveEdit(item.id)} className="text-xs text-accent font-medium">Save</button>
-            </div>
-          ) : (
-            <button onClick={() => startEdit(`cur-${item.id}`, value)}
-              className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-              {formatCurrency(value)}
-            </button>
-          )}
-        </div>
-        <button onClick={() => isFixed ? deleteFixedExpense(item.id) : deleteCategory(item.id)}
-          className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-          <Trash2 size={12} />
-        </button>
+          </div>
+        )}
       </div>
     );
   }
