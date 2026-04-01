@@ -608,6 +608,14 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
                   </div>
                 ))}
               </div>
+              {/* Add fixed expense button */}
+              {renderAddFixedForm(key)}
+              {showAddFixed !== key && (
+                <button onClick={() => setShowAddFixed(key)}
+                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
+                  <Plus size={14} /> Add {label.replace(/s$/, '')}
+                </button>
+              )}
             </div>
           ))}
 
