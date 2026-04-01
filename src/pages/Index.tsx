@@ -228,11 +228,6 @@ const Index = () => {
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
-            totalBudget={totalBudget}
-            variableBudget={totalVariableBudget}
-            variableSpent={totalVariableSpent}
-            fixedTotal={totalFixedAll}
-            fixedSpent={allFixedSpent}
             onAddTransaction={() => setShowAddTransaction(true)}
             joeAmexGross={joeAmexGross}
             katieAmexGross={katieAmexGross}
@@ -258,6 +253,11 @@ const Index = () => {
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
+            totalBudget={totalBudget}
+            variableBudget={totalVariableBudget}
+            variableSpent={totalVariableSpent}
+            fixedTotal={totalFixedAll}
+            fixedSpent={allFixedSpent}
           />
         )}
         {activeTab === 'transactions' && (

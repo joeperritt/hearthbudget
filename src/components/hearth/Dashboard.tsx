@@ -10,30 +10,6 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgeted: number; spent?: number; delay: number }) {
-  return (
-    <div
-      className="bg-card rounded-lg p-4 shadow-sm animate-fade-up"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
-    >
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-xl font-display font-semibold text-foreground">{formatCurrency(budgeted)}</p>
-      {spent !== undefined && (
-        <>
-          <div className="flex justify-between text-xs text-muted-foreground mt-2 mb-1">
-            <span>{formatCurrency(spent)} spent</span>
-            {spent > budgeted ? (
-              <span className="text-destructive font-medium">-{formatCurrency(spent - budgeted)} over</span>
-            ) : (
-              <span>{formatCurrency(budgeted - spent)} left</span>
-            )}
-          </div>
-          <ProgressBar value={spent} max={budgeted} />
-        </>
-      )}
-    </div>
-  );
-}
 
 type AccountFilter = 'all' | AccountSource;
 
@@ -107,11 +83,6 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unas
 
 interface DashboardProps {
   monthLabel: string;
-  totalBudget: number;
-  variableBudget: number;
-  variableSpent: number;
-  fixedTotal: number;
-  fixedSpent: number;
   onAddTransaction: () => void;
   joeAmexGross: number;
   katieAmexGross: number;
@@ -127,16 +98,12 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  monthLabel,
-  totalBudget, variableBudget, variableSpent,
-  fixedTotal, fixedSpent, onAddTransaction,
+  monthLabel, onAddTransaction,
   joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
   unassignedTransactions, onEditTransaction, onSyncComplete,
   categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
-  const totalSpent = variableSpent + fixedSpent;
-  const totalRemaining = totalBudget - totalSpent;
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
@@ -188,52 +155,8 @@ export function Dashboard({
         />
       )}
 
-      {/* 3. Your Household Budget */}
-      <div className="px-6 mt-6 mb-4 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
-        <div className="bg-primary rounded-xl p-5 shadow-lg">
-          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
-          <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
-              <span>{formatCurrency(totalSpent)} committed</span>
-              {totalSpent > totalBudget ? (
-                <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
-              ) : (
-                <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
-              )}
-            </div>
-            <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500"
-                style={{ width: `${Math.min((totalSpent / totalBudget) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="px-6 grid grid-cols-2 gap-3">
-        <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
-        <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
-      </div>
-
-      {/* Budget Summary */}
-      <div className="px-6 mt-4 animate-fade-up" style={{ animationDelay: '320ms', animationFillMode: 'both' }}>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Total Budgeted</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-            <span className="text-sm font-semibold text-foreground">Total Remaining</span>
-            <span className={`text-sm font-semibold tabular-nums ${totalRemaining < 0 ? 'text-destructive' : 'text-foreground'}`}>
-              {totalRemaining < 0 ? `-${formatCurrency(Math.abs(totalRemaining))}` : formatCurrency(totalRemaining)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Account Snapshot */}
+      {/* Account Snapshot */}
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
