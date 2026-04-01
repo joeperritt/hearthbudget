@@ -448,28 +448,62 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                   {cats.map((c, idx) => (
-                    <div key={c.id} className="flex items-center gap-2 px-3 py-2.5">
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
-                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-                        <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
-                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
-                      </div>
-                      <span className="flex-1 text-sm text-foreground min-w-0 truncate">{c.name}</span>
-                      {editingId === `next-cat-${c.id}` ? (
-                        <div className="flex gap-1.5">
-                          <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
-                            className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                            autoFocus onKeyDown={e => e.key === 'Enter' && saveNextCatEdit(c.id)} />
-                          <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
+                    <div key={c.id} className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
+                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                          <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
+                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
                         </div>
-                      ) : (
-                        <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
-                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                          {fmtWhole(c.budgeted)}
+                        <div className="flex-1 min-w-0">
+                          {renamingId === c.id ? (
+                            <div className="flex gap-1.5">
+                              <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                                className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                                autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(c.id, false)} />
+                              <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
+                              {c.name}
+                            </button>
+                          )}
+                        </div>
+                        {editingId === `next-cat-${c.id}` ? (
+                          <div className="flex gap-1.5">
+                            <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
+                              className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                              autoFocus onKeyDown={e => e.key === 'Enter' && saveNextCatEdit(c.id)} />
+                            <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
+                            className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                            {fmtWhole(c.budgeted)}
+                          </button>
+                        )}
+                        <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                          className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                          <Trash2 size={12} />
                         </button>
-                      )}
+                      </div>
+                      {/* Notes required toggle */}
+                      <div className="flex items-center gap-1.5 mt-1 ml-6">
+                        <button
+                          onClick={() => toggleNotesRequired(c.id)}
+                          className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                            c.notesRequired
+                              ? 'bg-accent/15 text-accent'
+                              : 'bg-muted/50 text-muted-foreground/60'
+                          }`}
+                        >
+                          <MessageSquare size={9} />
+                          {c.notesRequired ? 'Notes required' : 'No notes required'}
+                        </button>
+                      </div>
                     </div>
+                  ))}
                   ))}
                 </div>
               </div>
