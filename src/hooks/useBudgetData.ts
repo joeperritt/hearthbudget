@@ -180,7 +180,8 @@ export function useBudgetData() {
         budgeted: c.budgeted,
         group: c.group,
         sort_order: i,
-      }, { onConflict: 'household_id,slug' })
+        notes_required: c.notesRequired ?? false,
+      } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 

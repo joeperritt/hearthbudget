@@ -66,7 +66,7 @@ export interface MonthlyBudget {
 
 export type TabId = 'dashboard' | 'variable' | 'transactions' | 'more';
 
-// Categories that require notes
+// Legacy constant kept for reference — use categoryRequiresNotes() instead
 export const NOTES_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
 
 // The Hosting/Gifts/Random category ID — rolls up into giving totals
