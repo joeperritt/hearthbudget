@@ -342,6 +342,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                 fixedExpenses={fixedExpenses}
                 lines={splitLines}
                 onChange={setSplitLines}
+                transactions={monthTransactions}
               />
             </div>
           )}
