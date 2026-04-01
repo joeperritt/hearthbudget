@@ -311,6 +311,7 @@ const Index = () => {
         categories={categories}
         fixedExpenses={fixedExpenses}
         onAdd={handleAddTransactions}
+        monthTransactions={monthTransactions}
       />
 
       <EditTransactionSheet
@@ -320,6 +321,7 @@ const Index = () => {
         categories={categories}
         fixedExpenses={fixedExpenses}
         activeMonth={activeMonth}
+        monthTransactions={monthTransactions}
       />
 
       {moveFundsCategoryId && (
