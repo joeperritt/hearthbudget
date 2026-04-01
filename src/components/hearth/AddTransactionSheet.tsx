@@ -3,6 +3,7 @@ import { BudgetCategory, FixedExpense, Transaction, AccountSource, NOTES_REQUIRE
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { SplitEditor, SplitLine } from './SplitEditor';
+import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
@@ -26,9 +27,10 @@ interface AddTransactionSheetProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   onAdd: (transactions: Omit<Transaction, 'id'>[]) => void;
+  monthTransactions?: Transaction[];
 }
 
-export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [] }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -274,6 +276,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
             </div>
           )}
 
@@ -316,6 +319,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   </optgroup>
                 )}
               </select>
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
             </div>
           )}
 

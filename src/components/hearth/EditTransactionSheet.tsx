@@ -5,6 +5,7 @@ import { format, subMonths, addMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
+import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
@@ -35,6 +36,7 @@ interface EditTransactionSheetProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   activeMonth: string;
+  monthTransactions?: Transaction[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
@@ -57,7 +59,7 @@ function deriveIgnoreType(categoryId: string): IgnoreType {
   return 'income';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [] }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -333,6 +335,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
             </div>
           )}
 
@@ -375,6 +378,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   </optgroup>
                 )}
               </select>
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
             </div>
           )}
 
