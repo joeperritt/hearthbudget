@@ -123,7 +123,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   if (!transaction) return null;
 
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
-  const notesRequired = !isSplit && NOTES_REQUIRED_CATEGORIES.includes(effectiveCategoryId);
+  const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories);
 
   const handleModeChange = (newMode: TxMode) => {
     setMode(newMode);
