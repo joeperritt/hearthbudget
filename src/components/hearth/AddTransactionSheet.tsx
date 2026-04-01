@@ -30,7 +30,7 @@ interface AddTransactionSheetProps {
   monthTransactions?: Transaction[];
 }
 
-export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [] }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
