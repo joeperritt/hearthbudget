@@ -36,6 +36,7 @@ interface EditTransactionSheetProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   activeMonth: string;
+  monthTransactions?: Transaction[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
