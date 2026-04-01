@@ -16,7 +16,7 @@ interface DetailCategory {
 interface CategoryDetailProps {
   category: DetailCategory;
   categories: BudgetCategory[];
-  fixedExpenses?: { id: string; name: string }[];
+  fixedExpenses?: FixedExpense[];
   transactions: Transaction[];
   deposits?: Transaction[];
   transfers: BudgetTransfer[];
