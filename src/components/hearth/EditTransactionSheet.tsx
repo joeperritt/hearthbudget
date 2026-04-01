@@ -37,6 +37,7 @@ interface EditTransactionSheetProps {
   fixedExpenses: FixedExpense[];
   activeMonth: string;
   monthTransactions?: Transaction[];
+  splitSiblings?: Transaction[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
@@ -59,7 +60,7 @@ function deriveIgnoreType(categoryId: string): IgnoreType {
   return 'income';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [] }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [] }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -79,8 +80,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   if (txId && txId !== lastId) {
     setLastId(txId);
     setNotes(transaction.notes);
-    setIsSplit(false);
-    setSplitLines([]);
+    setBudgetMonth(transaction.budgetMonth || activeMonth);
+
+    // Auto-enter split mode if opening a split group
+    if (splitSiblings.length > 1) {
+      setIsSplit(true);
+      setSplitLines(splitSiblings.map(s => ({ categoryId: s.categoryId, amount: s.amount.toString(), notes: s.notes || '' })));
+    } else {
+      setIsSplit(false);
+      setSplitLines([]);
+    }
     setBudgetMonth(transaction.budgetMonth || activeMonth);
 
     const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
@@ -141,9 +150,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     if (notesRequired && !notes.trim()) return;
 
     if (isSplit && (mode === 'variable' || mode === 'fixed')) {
-      const txAmount = Math.abs(transaction.amount);
+      // Use total of all siblings if editing an existing split, otherwise use single tx amount
+      const totalAmount = splitSiblings.length > 1
+        ? splitSiblings.reduce((s, t) => s + t.amount, 0)
+        : Math.abs(transaction.amount);
       const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-      if (Math.abs(txAmount - allocated) >= 0.01) return;
+      if (Math.abs(totalAmount - allocated) >= 0.01) return;
 
       // Check per-line notes requirements
       const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
@@ -178,10 +190,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         return;
       }
 
-      const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
+      // Delete all sibling transactions (or just the one if not from a split group)
+      const idsToDelete = splitSiblings.length > 1
+        ? splitSiblings.map(s => s.id)
+        : [transaction.id];
+      const { error: deleteError } = await supabase.from('transactions').delete().in('id', idsToDelete);
       setSaving(false);
       if (deleteError) {
-        toast.error('Split created but failed to remove original');
+        toast.error('Split created but failed to remove originals');
       } else {
         toast.success(`Split into ${splitRows.length} transactions`);
         onOpenChange(false);
@@ -247,7 +263,9 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     { id: 'ignore', label: 'Ignore' },
   ];
 
-  const txAmount = Math.abs(transaction.amount);
+  const txAmount = splitSiblings.length > 1
+    ? splitSiblings.reduce((s, t) => s + t.amount, 0)
+    : Math.abs(transaction.amount);
   const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
   const splitBalanced = isSplit && Math.abs(txAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
   const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes)) && !saving;

@@ -17,7 +17,7 @@ interface TransactionsViewProps {
   monthLabel: string;
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
-  onEditTransaction: (tx: Transaction) => void;
+  onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
 }
 
 const ACCOUNT_LABELS: Record<AccountSource, string> = {
@@ -121,7 +121,8 @@ export function TransactionsView({
     { id: 'checking', label: 'Checking' },
   ];
 
-  const renderSingleTx = (t: Transaction, i: number, indent = false) => {
+  const renderSingleTx = (t: Transaction, i: number, splitGroup?: SplitGroup) => {
+    const indent = !!splitGroup;
     const isCcPayment = t.transactionType === 'cc-payment' || t.categoryId === CC_PAYMENT_CATEGORY;
     const isIncome = !isCcPayment && (t.categoryId === INCOME_CATEGORY || (t.transactionType === 'income' && t.categoryId !== PRIOR_MONTH_CATEGORY));
     const isTransfer = t.categoryId === TRANSFER_CATEGORY;
@@ -130,10 +131,19 @@ export function TransactionsView({
     const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth;
     const isIgnored = isIncome || isTransfer || isPriorMonth;
 
+    const handleClick = () => {
+      if (splitGroup) {
+        // Open edit for the whole split group
+        onEditTransaction(splitGroup.transactions[0], splitGroup.transactions);
+      } else {
+        onEditTransaction(t);
+      }
+    };
+
     return (
       <div
         key={t.id}
-        onClick={() => onEditTransaction(t)}
+        onClick={handleClick}
         className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
@@ -304,7 +314,7 @@ export function TransactionsView({
 
                   {expanded && (
                     <div className="divide-y divide-border/50">
-                      {row.transactions.map((t, j) => renderSingleTx(t, j, true))}
+                      {row.transactions.map((t, j) => renderSingleTx(t, j, row))}
                     </div>
                   )}
                 </div>

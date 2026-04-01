@@ -37,6 +37,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingSplitSiblings, setEditingSplitSiblings] = useState<Transaction[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
@@ -267,7 +268,10 @@ const Index = () => {
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
-            onEditTransaction={setEditingTransaction}
+            onEditTransaction={(tx, splitSiblings) => {
+              setEditingTransaction(tx);
+              setEditingSplitSiblings(splitSiblings || []);
+            }}
           />
         )}
         {activeTab === 'more' && moreSubView === 'menu' && (
@@ -317,11 +321,12 @@ const Index = () => {
       <EditTransactionSheet
         transaction={editingTransaction}
         open={!!editingTransaction}
-        onOpenChange={open => { if (!open) setEditingTransaction(null); }}
+        onOpenChange={open => { if (!open) { setEditingTransaction(null); setEditingSplitSiblings([]); } }}
         categories={categories}
         fixedExpenses={fixedExpenses}
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
+        splitSiblings={editingSplitSiblings}
       />
 
       {moveFundsCategoryId && (
