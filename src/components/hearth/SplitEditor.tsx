@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { Plus, Trash2 } from 'lucide-react';
+import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 export interface SplitLine {
   categoryId: string;
@@ -14,6 +15,7 @@ interface SplitEditorProps {
   fixedExpenses: FixedExpense[];
   lines: SplitLine[];
   onChange: (lines: SplitLine[]) => void;
+  transactions?: Transaction[];
 }
 
 function formatCurrency(n: number) {
