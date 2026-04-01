@@ -80,8 +80,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   if (txId && txId !== lastId) {
     setLastId(txId);
     setNotes(transaction.notes);
-    setIsSplit(false);
-    setSplitLines([]);
+    setBudgetMonth(transaction.budgetMonth || activeMonth);
+
+    // Auto-enter split mode if opening a split group
+    if (splitSiblings.length > 1) {
+      setIsSplit(true);
+      setSplitLines(splitSiblings.map(s => ({ categoryId: s.categoryId, amount: s.amount.toString(), notes: s.notes || '' })));
+    } else {
+      setIsSplit(false);
+      setSplitLines([]);
+    }
     setBudgetMonth(transaction.budgetMonth || activeMonth);
 
     const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
