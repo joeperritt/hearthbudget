@@ -158,7 +158,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       if (Math.abs(totalAmount - allocated) >= 0.01) return;
 
       // Check per-line notes requirements
-      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories) && !l.notes?.trim());
+      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories, fixedExpenses) && !l.notes?.trim());
       if (missingNotes) return;
 
       setSaving(true);
