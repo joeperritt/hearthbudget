@@ -213,7 +213,8 @@ export function useBudgetData() {
         amount: e.amount,
         group: e.group,
         sort_order: i,
-      }, { onConflict: 'household_id,slug' })
+        notes_required: e.notesRequired ?? false,
+      } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 

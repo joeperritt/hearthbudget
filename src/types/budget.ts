@@ -49,6 +49,7 @@ export interface FixedExpense {
   name: string;
   amount: number;
   group: 'bills' | 'savings' | 'tithe';
+  notesRequired: boolean;
 }
 
 export interface BudgetTransfer {
