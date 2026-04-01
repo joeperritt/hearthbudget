@@ -5,6 +5,7 @@ import { format, subMonths, addMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
+import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 const ACCOUNTS: { id: AccountSource; label: string }[] = [
   { id: 'joe-amex', label: "Joe's Amex" },
