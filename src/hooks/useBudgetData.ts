@@ -18,6 +18,7 @@ function dbToCat(row: Record<string, unknown>): BudgetCategory {
     name: row.name as string,
     budgeted: Number(row.budgeted),
     group: row.group as BudgetCategory['group'],
+    notesRequired: (row.notes_required as boolean) ?? false,
   };
 }
 
