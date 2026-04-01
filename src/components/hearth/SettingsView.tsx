@@ -114,12 +114,19 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       name: newCatName.trim(),
       budgeted: budget,
       group: newCatGroup,
+      notesRequired: false,
     };
-    onUpdateCategories([...categories, newCat]);
+    // New categories only apply to the next month, not the current one
     setNextCats(cats => [...cats, { ...newCat }]);
     setNewCatName('');
     setNewCatBudget('');
     setShowAddCategory(false);
+  };
+
+  const toggleNotesRequired = (id: string) => {
+    const updated = categories.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c);
+    onUpdateCategories(updated);
+    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c));
   };
 
   const addFixedExpense = (group: FixedGroupType) => {
