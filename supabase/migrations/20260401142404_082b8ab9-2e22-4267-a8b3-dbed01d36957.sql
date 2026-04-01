@@ -1,0 +1,1 @@
+ALTER TABLE public.fixed_expenses ADD COLUMN notes_required boolean NOT NULL DEFAULT false;
