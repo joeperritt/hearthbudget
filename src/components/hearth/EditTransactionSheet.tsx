@@ -401,6 +401,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 fixedExpenses={fixedExpenses}
                 lines={splitLines}
                 onChange={setSplitLines}
+                transactions={monthTransactions}
               />
             </div>
           )}
