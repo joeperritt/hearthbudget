@@ -25,7 +25,7 @@ interface SettingsViewProps {
   unassignedCount?: number;
 }
 
-type GroupType = 'shared' | 'joe' | 'katie';
+type GroupType = 'shared' | 'joe' | 'katie' | 'giving';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
 
 export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack, unassignedCount = 0 }: SettingsViewProps) {
