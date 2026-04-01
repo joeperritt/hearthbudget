@@ -516,7 +516,32 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             );
           })}
 
-          {/* Next Month Fixed, Savings, Tithe */}
+          {/* Add Variable Category */}
+          {showAddCategory ? (
+            <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mb-4 space-y-2">
+              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Category name"
+                className="w-full px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30" autoFocus />
+              <div className="flex gap-2">
+                <select value={newCatGroup} onChange={e => setNewCatGroup(e.target.value as GroupType)}
+                  className="flex-1 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
+                  <option value="shared">Shared</option>
+                  <option value="joe">Joe's</option>
+                  <option value="katie">Katie's</option>
+                </select>
+                <input type="number" value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} placeholder="$0"
+                  className="w-24 px-3 py-2 rounded-lg bg-card border border-border text-sm tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={addCategory} className="flex-1 py-2 rounded-lg bg-accent text-accent-foreground text-xs font-semibold active:scale-[0.98] transition-transform">Add</button>
+                <button onClick={() => setShowAddCategory(false)} className="px-4 py-2 rounded-lg bg-card border border-border text-xs font-medium text-muted-foreground active:scale-[0.98] transition-transform">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowAddCategory(true)}
+              className="flex items-center gap-1.5 text-accent text-xs font-medium mb-6 active:scale-95 transition-transform">
+              <Plus size={14} /> Add Variable Category
+            </button>
+          )}
           {([
             { key: 'bills' as FixedGroupType, label: 'Fixed Bills', items: fixedBills },
             { key: 'savings' as FixedGroupType, label: 'Savings Buckets', items: savingsBuckets },
