@@ -56,7 +56,7 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
 
       <div className="space-y-2">
         {lines.map((line, i) => {
-          const needsNotes = categoryRequiresNotes(line.categoryId, categories);
+          const needsNotes = categoryRequiresNotes(line.categoryId, categories, fixedExpenses);
           return (
             <div key={i}>
               <div className="flex gap-2 items-center">

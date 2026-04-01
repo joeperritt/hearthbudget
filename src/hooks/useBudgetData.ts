@@ -28,6 +28,7 @@ function dbToFixed(row: Record<string, unknown>): FixedExpense {
     name: row.name as string,
     amount: Number(row.amount),
     group: row.group as FixedExpense['group'],
+    notesRequired: (row.notes_required as boolean) ?? false,
   };
 }
 
@@ -212,7 +213,8 @@ export function useBudgetData() {
         amount: e.amount,
         group: e.group,
         sort_order: i,
-      }, { onConflict: 'household_id,slug' })
+        notes_required: e.notesRequired ?? false,
+      } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 

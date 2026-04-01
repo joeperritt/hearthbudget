@@ -48,7 +48,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   const notesRef = useRef<HTMLInputElement>(null);
 
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
-  const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories);
+  const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories, fixedExpenses);
 
   useEffect(() => {
     if (notesRequired && notesRef.current) {
@@ -109,7 +109,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
       if (Math.abs(remaining) >= 0.01) return; // Not balanced
 
       // Check per-line notes requirements
-      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories) && !l.notes?.trim());
+      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories, fixedExpenses) && !l.notes?.trim());
       if (missingNotes) return;
 
       const txns: Omit<Transaction, 'id'>[] = splitLines
@@ -172,7 +172,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   };
 
   const parsedAmount = parseFloat(amount) || 0;
-  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories) && !l.notes?.trim());
+  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories, fixedExpenses) && !l.notes?.trim());
   const splitBalanced = isSplit && Math.abs(parsedAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
   const canSubmit = !!amount && !!account && (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes));
 

@@ -38,8 +38,10 @@ export interface BudgetCategory {
 }
 
 /** Check if a category requires notes (works for both variable and fixed categories) */
-export function categoryRequiresNotes(categoryId: string, categories: BudgetCategory[]): boolean {
-  return categories.some(c => c.id === categoryId && c.notesRequired);
+export function categoryRequiresNotes(categoryId: string, categories: BudgetCategory[], fixedExpenses?: FixedExpense[]): boolean {
+  if (categories.some(c => c.id === categoryId && c.notesRequired)) return true;
+  if (fixedExpenses?.some(e => e.id === categoryId && e.notesRequired)) return true;
+  return false;
 }
 
 export interface FixedExpense {
@@ -47,6 +49,7 @@ export interface FixedExpense {
   name: string;
   amount: number;
   group: 'bills' | 'savings' | 'tithe';
+  notesRequired: boolean;
 }
 
 export interface BudgetTransfer {

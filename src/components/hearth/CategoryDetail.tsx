@@ -1,4 +1,4 @@
-import { Transaction, BudgetCategory, BudgetTransfer, categoryRequiresNotes } from '@/types/budget';
+import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { ArrowLeft, Trash2, ArrowLeftRight, ArrowDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ interface DetailCategory {
 interface CategoryDetailProps {
   category: DetailCategory;
   categories: BudgetCategory[];
-  fixedExpenses?: { id: string; name: string }[];
+  fixedExpenses?: FixedExpense[];
   transactions: Transaction[];
   deposits?: Transaction[];
   transfers: BudgetTransfer[];
@@ -30,7 +30,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
-  const isDescriptionCategory = categoryRequiresNotes(category.id, categories);
+  const isDescriptionCategory = categoryRequiresNotes(category.id, categories, fixedExpenses);
   // Build a combined lookup map for both variable categories and fixed expenses
   const nameMap: Record<string, string> = {};
   categories.forEach(c => { nameMap[c.id] = c.name; });
