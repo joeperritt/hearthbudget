@@ -238,16 +238,44 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
   // Next month totals
-  const hostingGiftsAmt = nextCats.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const variableTotal = nextCats.filter(c => c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
+  // Giving variable categories (shown in Tithe/Giving section, not variable)
+  const givingVarCats = nextCats.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
+  const nonGivingCats = nextCats.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY);
+  const variableTotal = nonGivingCats.reduce((s, c) => s + c.budgeted, 0);
   const fixedBills = nextFixed.filter(e => e.group === 'bills');
   const savingsBuckets = nextFixed.filter(e => e.group === 'savings');
   const titheItems = nextFixed.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
+  const givingVarTotal = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
   const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
-  const titheTotal = rawTithe + hostingGiftsAmt;
+  const titheTotal = rawTithe + givingVarTotal;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
+
+  // Toggle a tithe/giving item between fixed and variable
+  const toggleTitheType = (id: string, currentlyFixed: boolean) => {
+    if (currentlyFixed) {
+      // Move from fixed → variable
+      const item = nextFixed.find(e => e.id === id);
+      if (!item) return;
+      const newCat: BudgetCategory = { id: item.id, name: item.name, budgeted: item.amount, group: 'giving', notesRequired: item.notesRequired };
+      setNextFixed(prev => prev.filter(e => e.id !== id));
+      setNextCats(prev => [...prev, newCat]);
+      // Also update current month
+      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+      onUpdateCategories([...categories, newCat]);
+    } else {
+      // Move from variable → fixed
+      const item = nextCats.find(c => c.id === id);
+      if (!item) return;
+      const newExp: FixedExpense = { id: item.id, name: item.name, amount: item.budgeted, group: 'tithe', notesRequired: item.notesRequired };
+      setNextCats(prev => prev.filter(c => c.id !== id));
+      setNextFixed(prev => [...prev, newExp]);
+      // Also update current month
+      onUpdateCategories(categories.filter(c => c.id !== id));
+      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+    }
+  };
 
   const handleStartMonthClick = () => {
     setShowConfirmation(true);
