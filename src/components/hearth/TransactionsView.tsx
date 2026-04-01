@@ -17,7 +17,7 @@ interface TransactionsViewProps {
   monthLabel: string;
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
-  onEditTransaction: (tx: Transaction) => void;
+  onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
 }
 
 const ACCOUNT_LABELS: Record<AccountSource, string> = {
