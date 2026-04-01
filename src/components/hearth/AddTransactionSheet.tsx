@@ -109,7 +109,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
       if (Math.abs(remaining) >= 0.01) return; // Not balanced
 
       // Check per-line notes requirements
-      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
+      const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories) && !l.notes?.trim());
       if (missingNotes) return;
 
       const txns: Omit<Transaction, 'id'>[] = splitLines
