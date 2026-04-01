@@ -83,6 +83,31 @@ function SectionLabel({ label, delay }: { label: string; delay: number }) {
   );
 }
 
+function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgeted: number; spent?: number; delay: number }) {
+  return (
+    <div
+      className="bg-card rounded-lg p-4 shadow-sm animate-fade-up"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+    >
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-xl font-display font-semibold text-foreground">{formatCurrency(budgeted)}</p>
+      {spent !== undefined && (
+        <>
+          <div className="flex justify-between text-xs text-muted-foreground mt-2 mb-1">
+            <span>{formatCurrency(spent)} spent</span>
+            {spent > budgeted ? (
+              <span className="text-destructive font-medium">-{formatCurrency(spent - budgeted)} over</span>
+            ) : (
+              <span>{formatCurrency(budgeted - spent)} left</span>
+            )}
+          </div>
+          <ProgressBar value={spent} max={budgeted} />
+        </>
+      )}
+    </div>
+  );
+}
+
 interface SpendingViewProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
@@ -94,12 +119,20 @@ interface SpendingViewProps {
   onMoveFunds: (fromCategoryId: string) => void;
   onMoveFundsFixed: (fromFixedId: string) => void;
   monthLabel: string;
+  totalBudget: number;
+  variableBudget: number;
+  variableSpent: number;
+  fixedTotal: number;
+  fixedSpent: number;
 }
 
 export function SpendingView({
   categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
+  totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
+
+  const totalSpent = variableSpent + fixedSpent;
 
   const shared = categories.filter(c => c.group === 'shared');
   const joe = categories.filter(c => c.group === 'joe');
@@ -109,7 +142,7 @@ export function SpendingView({
   const savings = fixedExpenses.filter(e => e.group === 'savings');
   const tithe = fixedExpenses.filter(e => e.group === 'tithe');
 
-  // Build spent map for fixed expenses — exclude CC Payment, Deposit, Income, Transfer
+  // Build spent map for fixed expenses
   const fixedSpentMap: Record<string, number> = {};
   transactions.filter(t =>
     t.transactionType === 'expense' &&
@@ -129,6 +162,35 @@ export function SpendingView({
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
+      </div>
+
+      {/* Total Monthly Budget */}
+      <div className="px-6 mt-4 mb-4 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+        <div className="bg-primary rounded-xl p-5 shadow-lg">
+          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
+          <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
+              <span>{formatCurrency(totalSpent)} committed</span>
+              {totalSpent > totalBudget ? (
+                <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+              ) : (
+                <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
+              )}
+            </div>
+            <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-500"
+                style={{ width: `${Math.min((totalSpent / totalBudget) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 grid grid-cols-2 gap-3 mb-4">
+        <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
+        <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
 
       {/* Segmented Toggle */}
