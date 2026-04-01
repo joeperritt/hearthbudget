@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, categoryRequiresNotes } from '@/types/budget';
 import { Plus, Trash2 } from 'lucide-react';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 
