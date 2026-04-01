@@ -172,8 +172,9 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
   };
 
   const parsedAmount = parseFloat(amount) || 0;
+  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
   const splitBalanced = isSplit && Math.abs(parsedAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
-  const canSubmit = !!amount && !!account && (!notesRequired || !!notes.trim()) && (!isSplit || splitBalanced);
+  const canSubmit = !!amount && !!account && (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
