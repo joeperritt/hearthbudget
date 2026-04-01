@@ -321,11 +321,12 @@ const Index = () => {
       <EditTransactionSheet
         transaction={editingTransaction}
         open={!!editingTransaction}
-        onOpenChange={open => { if (!open) setEditingTransaction(null); }}
+        onOpenChange={open => { if (!open) { setEditingTransaction(null); setEditingSplitSiblings([]); } }}
         categories={categories}
         fixedExpenses={fixedExpenses}
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
+        splitSiblings={editingSplitSiblings}
       />
 
       {moveFundsCategoryId && (
