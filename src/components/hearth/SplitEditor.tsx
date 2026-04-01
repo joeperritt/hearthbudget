@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
+import { BudgetCategory, FixedExpense, Transaction, NOTES_REQUIRED_CATEGORIES } from '@/types/budget';
 import { Plus, Trash2 } from 'lucide-react';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 
 export interface SplitLine {
   categoryId: string;
   amount: string;
+  notes?: string;
 }
 
 interface SplitEditorProps {
@@ -32,14 +33,13 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
   };
 
   const addLine = () => {
-    // Pre-fill amount with remaining if positive
     const prefill = remaining > 0 ? remaining.toFixed(2) : '';
     const defaultCat = mode === 'variable' ? 'unassigned' : (fixedExpenses[0]?.id || '');
-    onChange([...lines, { categoryId: defaultCat, amount: prefill }]);
+    onChange([...lines, { categoryId: defaultCat, amount: prefill, notes: '' }]);
   };
 
   const removeLine = (index: number) => {
-    if (lines.length <= 2) return; // Minimum 2 lines for a split
+    if (lines.length <= 2) return;
     onChange(lines.filter((_, i) => i !== index));
   };
 
@@ -55,74 +55,88 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
       </div>
 
       <div className="space-y-2">
-        {lines.map((line, i) => (
-          <div key={i}>
-            <div className="flex gap-2 items-center">
-              {mode === 'variable' ? (
-                <select
-                  value={line.categoryId}
-                  onChange={e => updateLine(i, { categoryId: e.target.value })}
-                  className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+        {lines.map((line, i) => {
+          const needsNotes = NOTES_REQUIRED_CATEGORIES.includes(line.categoryId);
+          return (
+            <div key={i}>
+              <div className="flex gap-2 items-center">
+                {mode === 'variable' ? (
+                  <select
+                    value={line.categoryId}
+                    onChange={e => updateLine(i, { categoryId: e.target.value })}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  >
+                    <option value="unassigned">Unassigned</option>
+                    {sortedCategories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={line.categoryId}
+                    onChange={e => updateLine(i, { categoryId: e.target.value })}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  >
+                    {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
+                      <optgroup label="Bills">
+                        {fixedExpenses.filter(e => e.group === 'bills').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
+                      <optgroup label="Savings">
+                        {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
+                      <optgroup label="Tithe / Giving">
+                        {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
+                <input
+                  type="number"
+                  step="0.01"
+                  value={line.amount}
+                  onChange={e => updateLine(i, { amount: e.target.value })}
+                  placeholder="$0.00"
+                  className="w-24 px-2.5 py-2 rounded-lg bg-card border border-border text-sm text-foreground tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLine(i)}
+                  disabled={lines.length <= 2}
+                  className="p-1.5 text-muted-foreground/50 hover:text-destructive active:scale-90 transition-all disabled:opacity-30"
                 >
-                  <option value="unassigned">Unassigned</option>
-                  {sortedCategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  value={line.categoryId}
-                  onChange={e => updateLine(i, { categoryId: e.target.value })}
-                  className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                >
-                  {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
-                    <optgroup label="Bills">
-                      {fixedExpenses.filter(e => e.group === 'bills').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                        <option key={e.id} value={e.id}>{e.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
-                    <optgroup label="Savings">
-                      {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                        <option key={e.id} value={e.id}>{e.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
-                    <optgroup label="Tithe / Giving">
-                      {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                        <option key={e.id} value={e.id}>{e.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              {needsNotes && (
+                <input
+                  type="text"
+                  value={line.notes || ''}
+                  onChange={e => updateLine(i, { notes: e.target.value })}
+                  placeholder="Note required for this category"
+                  className={`mt-1 w-full px-2.5 py-1.5 rounded-lg bg-card border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+                    !line.notes?.trim() ? 'border-destructive/50' : 'border-border'
+                  }`}
+                />
               )}
-              <input
-                type="number"
-                step="0.01"
-                value={line.amount}
-                onChange={e => updateLine(i, { amount: e.target.value })}
-                placeholder="$0.00"
-                className="w-24 px-2.5 py-2 rounded-lg bg-card border border-border text-sm text-foreground tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-accent/30"
+              <CategoryBudgetMini
+                categoryId={line.categoryId}
+                categories={categories}
+                fixedExpenses={fixedExpenses}
+                transactions={transactions}
               />
-              <button
-                type="button"
-                onClick={() => removeLine(i)}
-                disabled={lines.length <= 2}
-                className="p-1.5 text-muted-foreground/50 hover:text-destructive active:scale-90 transition-all disabled:opacity-30"
-              >
-                <Trash2 size={14} />
-              </button>
             </div>
-            <CategoryBudgetMini
-              categoryId={line.categoryId}
-              categories={categories}
-              fixedExpenses={fixedExpenses}
-              transactions={transactions}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between">
