@@ -142,19 +142,8 @@ export function SpendingView({
   const savings = fixedExpenses.filter(e => e.group === 'savings');
   const tithe = fixedExpenses.filter(e => e.group === 'tithe');
 
-  // Build spent map for fixed expenses
-  const fixedSpentMap: Record<string, number> = {};
-  transactions.filter(t =>
-    t.transactionType === 'expense' &&
-    t.categoryId !== INCOME_CATEGORY &&
-    t.categoryId !== DEPOSIT_CATEGORY &&
-    t.categoryId !== TRANSFER_CATEGORY &&
-    t.categoryId !== CC_PAYMENT_CATEGORY
-  ).forEach(t => {
-    if (fixedExpenses.some(e => e.id === t.categoryId)) {
-      fixedSpentMap[t.categoryId] = (fixedSpentMap[t.categoryId] || 0) + t.amount;
-    }
-  });
+  // Use the same spentByCategory map for fixed expenses (already includes deposit offsets)
+  const fixedSpentMap = spentByCategory;
 
   let delay = 0;
 

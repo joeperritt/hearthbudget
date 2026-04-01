@@ -118,10 +118,12 @@ const Index = () => {
 
   const allFixedSpent = useMemo(() => {
     const ids = new Set(fixedExpenses.map(e => e.id));
-    const rawSpent = monthTransactions.filter(t => ids.has(t.categoryId) && t.transactionType === 'expense' && !isExcluded(t)).reduce((s, t) => s + t.amount, 0);
+    const rawSpent = Object.entries(spentByCategory)
+      .filter(([id]) => ids.has(id))
+      .reduce((s, [, v]) => s + v, 0);
     const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
     return rawSpent - fixedTransferAdj;
-  }, [monthTransactions, fixedExpenses, transferAdjustments]);
+  }, [spentByCategory, fixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
@@ -205,13 +207,15 @@ const Index = () => {
     const exp = fixedExpenses.find(e => e.id === selectedFixedExpenseId);
     if (exp) {
       const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
-      const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0);
+      const fixedDeposits = monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === exp.id);
+      const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0) - fixedDeposits.reduce((s, d) => s + Math.abs(d.amount), 0);
       return (
         <CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
           categories={categories}
           fixedExpenses={fixedExpenses}
           transactions={fixedTransactions}
+          deposits={fixedDeposits}
           transfers={monthTransfers}
           spent={expFixedSpent}
           transferAdjustment={transferAdjustments[exp.id] || 0}
