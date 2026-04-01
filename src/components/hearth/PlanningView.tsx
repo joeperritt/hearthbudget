@@ -158,15 +158,16 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
   const netPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
 
-  const hostingGiftsAmt = categories.find(c => c.id === GIVING_VARIABLE_CATEGORY)?.budgeted || 0;
-  const variableTotal = categories.filter(c => c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
+  const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
+  const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const variableTotal = categories.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
   const fixedBills = fixedExpenses.filter(e => e.group === 'bills');
   const savingsBuckets = fixedExpenses.filter(e => e.group === 'savings');
   const titheItems = fixedExpenses.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
   const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
-  const titheAmt = rawTithe + hostingGiftsAmt;
+  const titheAmt = rawTithe + givingVarAmt;
   const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 

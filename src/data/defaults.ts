@@ -9,7 +9,7 @@ export const DEFAULT_CATEGORIES: BudgetCategory[] = [
   { id: 'dog', name: 'Dog', budgeted: 75, group: 'shared', notesRequired: false },
   { id: 'gifts', name: 'Gifts', budgeted: 100, group: 'shared', notesRequired: true },
   { id: 'random', name: 'Random', budgeted: 150, group: 'shared', notesRequired: true },
-  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', budgeted: 800, group: 'shared', notesRequired: true },
+  { id: 'hosting-gifts', name: 'Hosting/Gifts/Random', budgeted: 800, group: 'giving', notesRequired: true },
   { id: 'j-eating', name: 'J-EO', budgeted: 100, group: 'joe', notesRequired: false },
   { id: 'j-misc', name: 'J-Misc', budgeted: 250, group: 'joe', notesRequired: false },
   { id: 'k-eating', name: 'K-EO', budgeted: 100, group: 'katie', notesRequired: false },
