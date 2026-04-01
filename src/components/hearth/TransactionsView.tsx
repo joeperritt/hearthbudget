@@ -314,7 +314,7 @@ export function TransactionsView({
 
                   {expanded && (
                     <div className="divide-y divide-border/50">
-                      {row.transactions.map((t, j) => renderSingleTx(t, j, true))}
+                      {row.transactions.map((t, j) => renderSingleTx(t, j, row))}
                     </div>
                   )}
                 </div>
