@@ -228,11 +228,6 @@ const Index = () => {
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
-            totalBudget={totalBudget}
-            variableBudget={totalVariableBudget}
-            variableSpent={totalVariableSpent}
-            fixedTotal={totalFixedAll}
-            fixedSpent={allFixedSpent}
             onAddTransaction={() => setShowAddTransaction(true)}
             joeAmexGross={joeAmexGross}
             katieAmexGross={katieAmexGross}
