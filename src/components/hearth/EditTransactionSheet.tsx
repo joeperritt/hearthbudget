@@ -266,7 +266,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const txAmount = splitSiblings.length > 1
     ? splitSiblings.reduce((s, t) => s + t.amount, 0)
     : Math.abs(transaction.amount);
-  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && NOTES_REQUIRED_CATEGORIES.includes(l.categoryId) && !l.notes?.trim());
+  const splitMissingNotes = isSplit && splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories) && !l.notes?.trim());
   const splitBalanced = isSplit && Math.abs(txAmount - splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)) < 0.01;
   const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes)) && !saving;
 

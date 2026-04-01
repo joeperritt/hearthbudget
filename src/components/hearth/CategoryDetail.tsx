@@ -30,7 +30,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
   const adjustedBudget = category.budgeted + transferAdjustment;
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
-  const isDescriptionCategory = NOTES_REQUIRED_CATEGORIES.includes(category.id);
+  const isDescriptionCategory = categoryRequiresNotes(category.id, categories);
   // Build a combined lookup map for both variable categories and fixed expenses
   const nameMap: Record<string, string> = {};
   categories.forEach(c => { nameMap[c.id] = c.name; });
