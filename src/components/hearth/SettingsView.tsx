@@ -478,7 +478,7 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
           {/* Next Month Variable */}
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Variable Budgets</h3>
           {(['shared', 'joe', 'katie'] as GroupType[]).map(group => {
-            const cats = nextCats.filter(c => c.group === group);
+            const cats = nonGivingCats.filter(c => c.group === group);
             return (
               <div key={group} className="mb-4">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
