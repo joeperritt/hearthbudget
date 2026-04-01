@@ -83,11 +83,6 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unas
 
 interface DashboardProps {
   monthLabel: string;
-  totalBudget: number;
-  variableBudget: number;
-  variableSpent: number;
-  fixedTotal: number;
-  fixedSpent: number;
   onAddTransaction: () => void;
   joeAmexGross: number;
   katieAmexGross: number;
@@ -103,16 +98,12 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  monthLabel,
-  totalBudget, variableBudget, variableSpent,
-  fixedTotal, fixedSpent, onAddTransaction,
+  monthLabel, onAddTransaction,
   joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
   unassignedTransactions, onEditTransaction, onSyncComplete,
   categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
 }: DashboardProps) {
   const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
-  const totalSpent = variableSpent + fixedSpent;
-  const totalRemaining = totalBudget - totalSpent;
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
