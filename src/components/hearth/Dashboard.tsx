@@ -10,30 +10,6 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-function SummaryCard({ label, budgeted, spent, delay }: { label: string; budgeted: number; spent?: number; delay: number }) {
-  return (
-    <div
-      className="bg-card rounded-lg p-4 shadow-sm animate-fade-up"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
-    >
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-xl font-display font-semibold text-foreground">{formatCurrency(budgeted)}</p>
-      {spent !== undefined && (
-        <>
-          <div className="flex justify-between text-xs text-muted-foreground mt-2 mb-1">
-            <span>{formatCurrency(spent)} spent</span>
-            {spent > budgeted ? (
-              <span className="text-destructive font-medium">-{formatCurrency(spent - budgeted)} over</span>
-            ) : (
-              <span>{formatCurrency(budgeted - spent)} left</span>
-            )}
-          </div>
-          <ProgressBar value={spent} max={budgeted} />
-        </>
-      )}
-    </div>
-  );
-}
 
 type AccountFilter = 'all' | AccountSource;
 
