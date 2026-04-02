@@ -133,6 +133,7 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
                 categories={categories}
                 fixedExpenses={fixedExpenses}
                 transactions={transactions}
+                pendingAmount={parseFloat(line.amount) || 0}
               />
             </div>
           );
