@@ -9,9 +9,11 @@ interface CategoryBudgetMiniProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   transactions: Transaction[];
+  /** Amount of the current transaction being assigned (positive = expense, shown as pending) */
+  pendingAmount?: number;
 }
 
-export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions }: CategoryBudgetMiniProps) {
+export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions, pendingAmount = 0 }: CategoryBudgetMiniProps) {
   if (!categoryId || categoryId === 'unassigned') return null;
 
   const cat = categories.find(c => c.id === categoryId);
@@ -31,23 +33,52 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
 
   const netSpent = spent - deposits;
   const remaining = budgeted - netSpent;
-  const pct = Math.min(Math.max((netSpent / budgeted) * 100, 0), 100);
+  const spentPct = Math.min(Math.max((netSpent / budgeted) * 100, 0), 100);
   const over = netSpent > budgeted;
+
+  // Pending transaction projection
+  const hasPending = pendingAmount > 0;
+  const projectedSpent = netSpent + pendingAmount;
+  const projectedRemaining = budgeted - projectedSpent;
+  const pendingPct = hasPending
+    ? Math.min(Math.max((projectedSpent / budgeted) * 100, 0), 100) - spentPct
+    : 0;
+  const projectedOver = projectedSpent > budgeted;
 
   return (
     <div className="mt-1.5">
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
         <div
-          className={`h-full rounded-full transition-all duration-500 ease-out ${over ? 'bg-destructive' : 'bg-accent'}`}
-          style={{ width: `${pct}%` }}
+          className={`h-full rounded-l-full transition-all duration-500 ease-out ${over ? 'bg-destructive' : 'bg-accent'}`}
+          style={{ width: `${spentPct}%` }}
         />
+        {hasPending && pendingPct > 0 && (
+          <div
+            className={`h-full transition-all duration-500 ease-out ${projectedOver ? 'bg-destructive/50' : 'bg-accent/50'}`}
+            style={{ width: `${pendingPct}%` }}
+          />
+        )}
       </div>
       <div className="flex justify-between mt-1">
         <span className="text-[10px] text-muted-foreground tabular-nums">
           {formatCurrency(netSpent)} spent
         </span>
-        <span className={`text-[10px] tabular-nums font-medium ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
-          {over ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
+        <span className="text-[10px] tabular-nums font-medium flex items-center gap-1.5">
+          {hasPending ? (
+            <>
+              <span className="text-muted-foreground">
+                {over ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
+              </span>
+              <span className="text-muted-foreground">→</span>
+              <span className={projectedOver ? 'text-destructive' : 'text-primary'}>
+                {projectedOver ? `-${formatCurrency(Math.abs(projectedRemaining))} over` : `${formatCurrency(projectedRemaining)} left`}
+              </span>
+            </>
+          ) : (
+            <span className={over ? 'text-destructive' : 'text-muted-foreground'}>
+              {over ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
+            </span>
+          )}
         </span>
       </div>
     </div>

@@ -281,7 +281,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} />
             </div>
           )}
 
@@ -324,7 +324,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   </optgroup>
                 )}
               </select>
-              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} />
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} />
             </div>
           )}
 
