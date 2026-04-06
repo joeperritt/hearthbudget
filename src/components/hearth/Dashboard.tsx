@@ -306,7 +306,7 @@ export function Dashboard({
             barSegments={[
               ...creditRows.map((r, i) => ({
                 value: r.value,
-                color: i === 0 ? 'hsl(0 84% 60%)' : 'hsl(25 95% 53%)',
+                color: i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.6)',
                 label: r.label,
               })),
               { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
