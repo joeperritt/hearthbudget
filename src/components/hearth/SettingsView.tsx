@@ -5,7 +5,6 @@ import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare, ChevronL
 import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
-import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 
 function formatCurrency(n: number) {
