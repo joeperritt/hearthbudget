@@ -59,7 +59,7 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   const [cardholders, setCardholders] = useState<Cardholder[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
-  const [loadingBalances, setLoadingBalances] = useState(false);
+  
   const [editingNickname, setEditingNickname] = useState<string | null>(null);
   const [nicknameValue, setNicknameValue] = useState('');
   const [addingCardholder, setAddingCardholder] = useState<string | null>(null);
