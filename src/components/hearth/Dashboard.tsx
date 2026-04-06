@@ -5,20 +5,13 @@ import { Transaction, AccountSource, BudgetCategory } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import { AppAccount } from '@/hooks/useAccounts';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-
-type AccountFilter = 'all' | AccountSource;
-
-const ACCOUNT_FILTERS: { id: AccountFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'joe-amex', label: 'Joe' },
-  { id: 'katie-amex', label: 'Katie' },
-  { id: 'checking', label: 'Checking' },
-];
+type AccountFilter = 'all' | string;
 
 function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
