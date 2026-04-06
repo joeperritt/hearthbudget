@@ -64,7 +64,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
 
   // Duplicate for seamless loop
   const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
-  const setWidth = shuffled.length * (CARD_WIDTH + GAP);
+  const setWidth = shuffled.length * (cardW + GAP);
 
   const offsetRef = useRef(0);
   const animRef = useRef(0);
