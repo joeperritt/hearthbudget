@@ -11,9 +11,11 @@ interface CategoryBudgetMiniProps {
   transactions: Transaction[];
   /** Amount of the current transaction being assigned (positive = expense, shown as pending) */
   pendingAmount?: number;
+  /** IDs of transactions being edited — excluded from spent calculation to avoid double-counting */
+  excludeTransactionIds?: string[];
 }
 
-export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions, pendingAmount = 0 }: CategoryBudgetMiniProps) {
+export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions, pendingAmount = 0, excludeTransactionIds = [] }: CategoryBudgetMiniProps) {
   if (!categoryId || categoryId === 'unassigned') return null;
 
   const cat = categories.find(c => c.id === categoryId);
