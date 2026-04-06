@@ -340,6 +340,9 @@ const Index = () => {
             onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
             unassignedCount={unassignedTransactions.length}
+            spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
+            monthTransactions={monthTransactions}
           />
         )}
         {activeTab === 'more' && moreSubView === 'past-months' && (
