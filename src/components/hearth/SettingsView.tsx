@@ -315,7 +315,7 @@ export function SettingsView({
   };
 
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving', savings: 'Savings' };
-  const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
+  const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed', savings: 'Savings', tithe: 'Tithe/Giving' };
 
   // Next month totals
   const savingsVarCats = nextCats.filter(c => c.group === 'savings');
@@ -504,7 +504,7 @@ export function SettingsView({
           <div className="px-6 pb-4">
             {fixedBillsRO.length > 0 && (
               <div className="mb-3">
-                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Bills</h4>
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed</h4>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                   {fixedBillsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
@@ -634,7 +634,7 @@ export function SettingsView({
               <span className="font-medium tabular-nums">{formatCurrency(varTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed Bills</span>
+              <span className="text-muted-foreground">Fixed</span>
               <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
@@ -778,7 +778,7 @@ export function SettingsView({
         {viewTab === 'fixed' && (
           <div className="px-6 pb-4">
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed Bills</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                 {fixedBills.map((e, idx) => (
                   <div key={e.id} className="px-3 py-2.5">
@@ -839,7 +839,7 @@ export function SettingsView({
               {showAddFixed !== 'bills' && (
                 <button onClick={() => setShowAddFixed('bills')}
                   className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                  <Plus size={14} /> Add Fixed Bill
+                  <Plus size={14} /> Add Fixed Item
                 </button>
               )}
             </div>
@@ -1096,7 +1096,7 @@ export function SettingsView({
               <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed Bills</span>
+              <span className="text-muted-foreground">Fixed</span>
               <span className="font-medium tabular-nums">{formatCurrency(fixedTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">

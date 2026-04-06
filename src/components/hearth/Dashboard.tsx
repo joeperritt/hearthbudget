@@ -296,7 +296,7 @@ export function Dashboard({
       {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
         <CategoryCarousel
-          title="Variable Categories"
+          title="Variable"
           items={varCategories.map(c => ({ id: c.id, name: c.name, budgeted: c.budgeted }))}
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
@@ -307,7 +307,7 @@ export function Dashboard({
       {/* 2b. Fixed Bills */}
       {fixedExpenses.length > 0 && spentByCategory && transferAdjustments && (
         <CategoryCarousel
-          title="Fixed Bills"
+          title="Fixed"
           items={fixedExpenses.map(e => ({ id: e.id, name: e.name, budgeted: e.amount }))}
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
