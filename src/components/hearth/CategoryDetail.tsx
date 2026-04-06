@@ -156,7 +156,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
                   {isDescriptionCategory && t.description && (
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>
                   )}
-                  <span className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d, yyyy')}</span>
+                  <span className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d, yyyy')} · {accountLabelMap[t.account] || t.account}</span>
                 </div>
                 <button
                   onClick={() => onDeleteTransaction(t.id)}
