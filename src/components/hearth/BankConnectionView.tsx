@@ -228,7 +228,6 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
     else {
       toast.success('Bank disconnected');
       fetchLinkedItems();
-      setBalances([]);
     }
   };
 
