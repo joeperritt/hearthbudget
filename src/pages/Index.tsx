@@ -173,16 +173,6 @@ const Index = () => {
     if (tab === 'more') setMoreSubView('menu');
   };
 
-  if (loading || !activeMonth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-primary-foreground font-display text-lg font-bold">H</span>
-        </div>
-      </div>
-    );
-  }
-
   const handleGoToTransaction = useCallback((transactionId: string) => {
     setSelectedCategoryId(null);
     setSelectedFixedExpenseId(null);
@@ -196,6 +186,17 @@ const Index = () => {
       }
     }, 150);
   }, []);
+
+  if (loading || !activeMonth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
+          <span className="text-primary-foreground font-display text-lg font-bold">H</span>
+        </div>
+      </div>
+    );
+  }
+
 
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
