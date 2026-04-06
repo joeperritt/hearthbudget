@@ -215,7 +215,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             <div>
               <label className="text-xs text-muted-foreground uppercase">Account</label>
               <div className="flex gap-2 mt-1">
-                {ACCOUNTS.map(a => (
+                {accounts.map(a => (
                   <button
                     key={a.id}
                     type="button"
