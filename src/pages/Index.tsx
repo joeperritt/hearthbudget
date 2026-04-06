@@ -275,6 +275,7 @@ const Index = () => {
               setEditingTransaction(tx);
               setEditingSplitSiblings(splitSiblings || []);
             }}
+            accounts={accounts}
           />
         )}
         {activeTab === 'more' && moreSubView === 'menu' && (
