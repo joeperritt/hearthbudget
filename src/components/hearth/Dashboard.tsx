@@ -61,7 +61,7 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
             <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 cursor-pointer active:bg-muted/50 transition-colors">
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
-                <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
+                <span className="text-[11px] text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
               </div>
               {(() => {
                 const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
