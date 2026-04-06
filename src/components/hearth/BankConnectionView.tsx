@@ -265,34 +265,8 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
           <div className="flex gap-3">
             <button onClick={handleSync} disabled={syncing} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
               <RefreshCw size={16} className={`text-accent ${syncing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-medium text-foreground">{syncing ? 'Syncing...' : 'Sync'}</span>
+              <span className="text-xs font-medium text-foreground">{syncing ? 'Syncing...' : 'Sync Transactions'}</span>
             </button>
-            <button onClick={handleGetBalances} disabled={loadingBalances} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
-              <Building2 size={16} className="text-primary" />
-              <span className="text-xs font-medium text-foreground">{loadingBalances ? 'Loading...' : 'Balances'}</span>
-            </button>
-            <button onClick={handleRemapCardholders} disabled={syncing} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
-              <RefreshCw size={16} className={`text-primary ${syncing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-medium text-foreground">{syncing ? '...' : 'Fix Cards'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Balances */}
-        {balances.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Live Balances</h3>
-            <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-              {balances.map((b, i) => (
-                <div key={i} className="flex justify-between items-center px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{b.account_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{b.type} {b.subtype ? `· ${b.subtype}` : ''} {b.mask ? `····${b.mask}` : ''}</p>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(b.current)}</span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
