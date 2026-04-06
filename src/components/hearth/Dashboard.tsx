@@ -296,7 +296,7 @@ export function Dashboard({
       {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
         <CategoryCarousel
-          title="Variable Categories"
+          title="Variable"
           items={varCategories.map(c => ({ id: c.id, name: c.name, budgeted: c.budgeted }))}
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
