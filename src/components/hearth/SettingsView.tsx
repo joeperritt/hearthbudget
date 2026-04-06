@@ -318,8 +318,9 @@ export function SettingsView({
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
   // Next month totals
+  const savingsVarCats = nextCats.filter(c => c.group === 'savings');
   const givingVarCats = nextCats.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
-  const nonGivingCats = nextCats.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY);
+  const nonGivingCats = nextCats.filter(c => c.group !== 'giving' && c.group !== 'savings' && c.id !== GIVING_VARIABLE_CATEGORY);
   const variableTotal = nonGivingCats.reduce((s, c) => s + c.budgeted, 0);
   const fixedBills = nextFixed.filter(e => e.group === 'bills');
   const savingsBuckets = nextFixed.filter(e => e.group === 'savings');
