@@ -114,9 +114,7 @@ export function TransactionsView({
 
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
-    { id: 'joe-amex', label: "Joe's Amex" },
-    { id: 'katie-amex', label: "Katie's Amex" },
-    { id: 'checking', label: 'Checking' },
+    ...accounts.map(a => ({ id: a.id, label: a.label })),
   ];
 
   const renderSingleTx = (t: Transaction, i: number, splitGroup?: SplitGroup) => {
