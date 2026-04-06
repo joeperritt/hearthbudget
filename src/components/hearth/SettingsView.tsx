@@ -46,7 +46,7 @@ interface SettingsViewProps {
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
-type ViewTab = 'variable' | 'fixed' | 'giving';
+type ViewTab = 'variable' | 'fixed' | 'savings' | 'giving';
 
 export function SettingsView({
   categories, fixedExpenses, currentMonth,
