@@ -3,6 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Building2, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaidLink } from 'react-plaid-link';
+import { useAuth } from '@/hooks/useAuth';
+import { AccountManagement } from './AccountManagement';
+import { ArrowLeft, Building2, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank } from 'lucide-react';
+import { toast } from 'sonner';
+import { usePlaidLink } from 'react-plaid-link';
 
 interface PlaidAccount {
   id: string;
