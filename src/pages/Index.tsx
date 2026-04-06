@@ -14,7 +14,7 @@ import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
-import { PastMonthsView } from '@/components/hearth/PastMonthsView';
+
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 
 const Index = () => {
@@ -45,7 +45,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'past-months' | 'bank-connections'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections'>('menu');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -340,10 +340,10 @@ const Index = () => {
             onStartMonth={handleStartMonth}
             onBack={() => setMoreSubView('menu')}
             unassignedCount={unassignedTransactions.length}
+            spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
+            monthTransactions={monthTransactions}
           />
-        )}
-        {activeTab === 'more' && moreSubView === 'past-months' && (
-          <PastMonthsView onBack={() => setMoreSubView('menu')} />
         )}
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />

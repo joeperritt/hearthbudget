@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
+import { useState, useEffect, useMemo } from 'react';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
+import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { AccountManagement } from './AccountManagement';
+import { ProgressBar } from './ProgressBar';
+import { supabase } from '@/integrations/supabase/client';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -12,6 +14,19 @@ function formatCurrency(n: number) {
 
 function fmtWhole(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+}
+
+interface MonthSnapshot {
+  id: string;
+  month: string;
+  categories: any[];
+  fixed_expenses: any[];
+  transactions_summary: {
+    totalTransactions?: number;
+    totalExpenses?: number;
+    totalSpent?: number;
+  };
+  created_at: string;
 }
 
 interface SettingsViewProps {
@@ -23,17 +38,68 @@ interface SettingsViewProps {
   onStartMonth: (nextMonth: Date, cats: BudgetCategory[], expenses: FixedExpense[]) => void;
   onBack: () => void;
   unassignedCount?: number;
+  // Current month spending data
+  spentByCategory?: Record<string, number>;
+  transferAdjustments?: Record<string, number>;
+  monthTransactions?: Transaction[];
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
+type ViewTab = 'variable' | 'fixed' | 'giving';
 
-export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack, unassignedCount = 0 }: SettingsViewProps) {
+export function SettingsView({
+  categories, fixedExpenses, currentMonth,
+  onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack,
+  unassignedCount = 0,
+  spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
+}: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
+  const activeMonthKey = format(currentMonth, 'yyyy-MM');
   const nextMonth = addMonths(currentMonth, 1);
-  const nextMonthShort = format(nextMonth, 'MMMM');
-  const currentMonthShort = format(currentMonth, 'MMMM');
+  const nextMonthKey = format(nextMonth, 'yyyy-MM');
 
+  // Month navigation
+  const [viewMonthDate, setViewMonthDate] = useState<Date>(nextMonth);
+  const viewMonthKey = format(viewMonthDate, 'yyyy-MM');
+  const viewMonthLabel = format(viewMonthDate, 'MMMM yyyy');
+
+  const isCurrentMonth = viewMonthKey === activeMonthKey;
+  const isPastMonth = viewMonthKey < activeMonthKey;
+  const isFutureMonth = viewMonthKey > activeMonthKey;
+  const isNextMonth = viewMonthKey === nextMonthKey;
+
+  // Past month snapshot
+  const [snapshots, setSnapshots] = useState<MonthSnapshot[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [allSnapshotMonths, setAllSnapshotMonths] = useState<string[]>([]);
+
+  // Fetch all snapshots once
+  useEffect(() => {
+    async function fetch() {
+      setSnapshotsLoading(true);
+      const { data } = await supabase
+        .from('budget_month_snapshots' as any)
+        .select('*')
+        .order('month', { ascending: false });
+      if (data) {
+        setSnapshots(data as unknown as MonthSnapshot[]);
+        setAllSnapshotMonths((data as any[]).map((d: any) => d.month));
+      }
+      setSnapshotsLoading(false);
+    }
+    fetch();
+  }, []);
+
+  const currentSnapshot = useMemo(
+    () => snapshots.find(s => s.month === viewMonthKey),
+    [snapshots, viewMonthKey]
+  );
+
+  // View tab for read-only modes
+  const [viewTab, setViewTab] = useState<ViewTab>('variable');
+
+  // Editing state (for future months)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -41,21 +107,32 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [starting, setStarting] = useState(false);
 
-  // Add category state
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatGroup, setNewCatGroup] = useState<GroupType>('shared');
   const [newCatBudget, setNewCatBudget] = useState('');
 
-  // Add fixed expense state
   const [showAddFixed, setShowAddFixed] = useState<FixedGroupType | null>(null);
   const [newFixedName, setNewFixedName] = useState('');
   const [newFixedAmount, setNewFixedAmount] = useState('');
 
-  // Next month budgets
   const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => categories.map(c => ({ ...c })));
   const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => fixedExpenses.map(e => ({ ...e })));
 
+  // Reset next cats/fixed when categories change
+  useEffect(() => {
+    setNextCats(categories.map(c => ({ ...c })));
+  }, [categories]);
+  useEffect(() => {
+    setNextFixed(fixedExpenses.map(e => ({ ...e })));
+  }, [fixedExpenses]);
+
+  const navigateMonth = (dir: 'prev' | 'next') => {
+    setViewMonthDate(d => dir === 'prev' ? subMonths(d, 1) : addMonths(d, 1));
+    setViewTab('variable');
+  };
+
+  // --- Mutations (only for future months) ---
   const startEdit = (id: string, currentVal: number) => {
     setEditingId(id);
     setEditValue(String(currentVal));
@@ -117,7 +194,6 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       group: newCatGroup,
       notesRequired: false,
     };
-    // New categories only apply to the next month, not the current one
     setNextCats(cats => [...cats, { ...newCat }]);
     setNewCatName('');
     setNewCatBudget('');
@@ -140,7 +216,6 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
       group,
       notesRequired: false,
     };
-    // New fixed expenses only apply to next month
     setNextFixed(exps => [...exps, { ...newExp }]);
     setNewFixedName('');
     setNewFixedAmount('');
@@ -153,43 +228,6 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e));
   };
 
-  const moveCategory = (id: string, direction: 'up' | 'down') => {
-    const group = categories.find(c => c.id === id)?.group;
-    if (!group) return;
-    const newCats = [...categories];
-    const gItems = newCats.filter(c => c.group === group);
-    const gIdx = gItems.findIndex(c => c.id === id);
-    if (direction === 'up' && gIdx > 0) {
-      [gItems[gIdx - 1], gItems[gIdx]] = [gItems[gIdx], gItems[gIdx - 1]];
-    } else if (direction === 'down' && gIdx < gItems.length - 1) {
-      [gItems[gIdx], gItems[gIdx + 1]] = [gItems[gIdx + 1], gItems[gIdx]];
-    }
-    const result = newCats.filter(c => c.group !== group);
-    const insertAt = categories.findIndex(c => c.group === group);
-    result.splice(insertAt, 0, ...gItems);
-    onUpdateCategories(result);
-    setNextCats(result.map(c => ({ ...c })));
-  };
-
-  const moveFixedExpense = (id: string, direction: 'up' | 'down') => {
-    const group = fixedExpenses.find(e => e.id === id)?.group;
-    if (!group) return;
-    const newExps = [...fixedExpenses];
-    const gItems = newExps.filter(e => e.group === group);
-    const gIdx = gItems.findIndex(e => e.id === id);
-    if (direction === 'up' && gIdx > 0) {
-      [gItems[gIdx - 1], gItems[gIdx]] = [gItems[gIdx], gItems[gIdx - 1]];
-    } else if (direction === 'down' && gIdx < gItems.length - 1) {
-      [gItems[gIdx], gItems[gIdx + 1]] = [gItems[gIdx + 1], gItems[gIdx]];
-    }
-    const result = newExps.filter(e => e.group !== group);
-    const insertAt = fixedExpenses.findIndex(e => e.group === group);
-    result.splice(insertAt, 0, ...gItems);
-    onUpdateFixedExpenses(result);
-    setNextFixed(result.map(e => ({ ...e })));
-  };
-
-  // Next month budget edit
   const saveNextCatEdit = (id: string) => {
     const v = parseFloat(editValue);
     if (!isNaN(v)) setNextCats(cats => cats.map(c => c.id === id ? { ...c, budgeted: v } : c));
@@ -234,11 +272,30 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     });
   };
 
+  const toggleTitheType = (id: string, currentlyFixed: boolean) => {
+    if (currentlyFixed) {
+      const item = nextFixed.find(e => e.id === id);
+      if (!item) return;
+      const newCat: BudgetCategory = { id: item.id, name: item.name, budgeted: item.amount, group: 'giving', notesRequired: item.notesRequired };
+      setNextFixed(prev => prev.filter(e => e.id !== id));
+      setNextCats(prev => [...prev, newCat]);
+      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+      onUpdateCategories([...categories, newCat]);
+    } else {
+      const item = nextCats.find(c => c.id === id);
+      if (!item) return;
+      const newExp: FixedExpense = { id: item.id, name: item.name, amount: item.budgeted, group: 'tithe', notesRequired: item.notesRequired };
+      setNextCats(prev => prev.filter(c => c.id !== id));
+      setNextFixed(prev => [...prev, newExp]);
+      onUpdateCategories(categories.filter(c => c.id !== id));
+      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+    }
+  };
+
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving' };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
   // Next month totals
-  // Giving variable categories (shown in Tithe/Giving section, not variable)
   const givingVarCats = nextCats.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const nonGivingCats = nextCats.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY);
   const variableTotal = nonGivingCats.reduce((s, c) => s + c.budgeted, 0);
@@ -252,34 +309,7 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
   const titheTotal = rawTithe + givingVarTotal;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
-  // Toggle a tithe/giving item between fixed and variable
-  const toggleTitheType = (id: string, currentlyFixed: boolean) => {
-    if (currentlyFixed) {
-      // Move from fixed → variable
-      const item = nextFixed.find(e => e.id === id);
-      if (!item) return;
-      const newCat: BudgetCategory = { id: item.id, name: item.name, budgeted: item.amount, group: 'giving', notesRequired: item.notesRequired };
-      setNextFixed(prev => prev.filter(e => e.id !== id));
-      setNextCats(prev => [...prev, newCat]);
-      // Also update current month
-      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
-      onUpdateCategories([...categories, newCat]);
-    } else {
-      // Move from variable → fixed
-      const item = nextCats.find(c => c.id === id);
-      if (!item) return;
-      const newExp: FixedExpense = { id: item.id, name: item.name, amount: item.budgeted, group: 'tithe', notesRequired: item.notesRequired };
-      setNextCats(prev => prev.filter(c => c.id !== id));
-      setNextFixed(prev => [...prev, newExp]);
-      // Also update current month
-      onUpdateCategories(categories.filter(c => c.id !== id));
-      onUpdateFixedExpenses([...fixedExpenses, newExp]);
-    }
-  };
-
-  const handleStartMonthClick = () => {
-    setShowConfirmation(true);
-  };
+  const handleStartMonthClick = () => setShowConfirmation(true);
 
   const handleConfirmStart = async () => {
     setStarting(true);
@@ -287,72 +317,6 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     setStarting(false);
     setShowConfirmation(false);
   };
-
-  function renderItemRow(item: { id: string; name: string }, value: number, saveEdit: (id: string) => void, isFixed: boolean, group: { items: { id: string }[] }) {
-    const idx = group.items.findIndex(i => i.id === item.id);
-    const cat = !isFixed ? categories.find(c => c.id === item.id) : null;
-    return (
-      <div key={item.id} className="px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-0.5 shrink-0">
-            <button onClick={() => isFixed ? moveFixedExpense(item.id, 'up') : moveCategory(item.id, 'up')} disabled={idx === 0}
-              className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-            <button onClick={() => isFixed ? moveFixedExpense(item.id, 'down') : moveCategory(item.id, 'down')} disabled={idx === group.items.length - 1}
-              className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
-          </div>
-          <div className="flex-1 min-w-0">
-            {renamingId === item.id ? (
-              <div className="flex gap-1.5">
-                <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                  className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(item.id, isFixed)} />
-                <button onClick={() => saveRename(item.id, isFixed)} className="text-xs text-accent font-medium">Save</button>
-              </div>
-            ) : (
-              <button onClick={() => startRename(item.id, item.name)} className="text-sm text-foreground text-left truncate block w-full">
-                {item.name}
-              </button>
-            )}
-          </div>
-          <div className="shrink-0">
-            {editingId === `cur-${item.id}` ? (
-              <div className="flex gap-1.5">
-                <input type="number" step="0.01" value={editValue} onChange={e => setEditValue(e.target.value)}
-                  className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  autoFocus onKeyDown={e => e.key === 'Enter' && saveEdit(item.id)} />
-                <button onClick={() => saveEdit(item.id)} className="text-xs text-accent font-medium">Save</button>
-              </div>
-            ) : (
-              <button onClick={() => startEdit(`cur-${item.id}`, value)}
-                className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                {formatCurrency(value)}
-              </button>
-            )}
-          </div>
-          <button onClick={() => isFixed ? deleteFixedExpense(item.id) : deleteCategory(item.id)}
-            className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-            <Trash2 size={12} />
-          </button>
-        </div>
-        {/* Notes required toggle for variable categories */}
-        {cat && (
-          <div className="flex items-center gap-1.5 mt-1 ml-6">
-            <button
-              onClick={() => toggleNotesRequired(item.id)}
-              className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                cat.notesRequired
-                  ? 'bg-accent/15 text-accent'
-                  : 'bg-muted/50 text-muted-foreground/60'
-              }`}
-            >
-              <MessageSquare size={9} />
-              {cat.notesRequired ? 'Notes required' : 'No notes required'}
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   function renderAddFixedForm(group: FixedGroupType) {
     if (showAddFixed !== group) return null;
@@ -370,8 +334,595 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
     );
   }
 
+  // ============================================
+  // READ-ONLY VIEW for current & past months
+  // ============================================
+  function renderReadOnlyMonth() {
+    let cats: { id: string; name: string; budgeted: number; group: string }[] = [];
+    let fixed: { id: string; name: string; amount: number; group: string }[] = [];
+    let spent: Record<string, number> = {};
+    let transfers: Record<string, number> = {};
+    let summary: { totalSpent?: number; totalTransactions?: number } = {};
+
+    if (isCurrentMonth) {
+      cats = categories.map(c => ({ id: c.id, name: c.name, budgeted: c.budgeted, group: c.group }));
+      fixed = fixedExpenses.map(e => ({ id: e.id, name: e.name, amount: e.amount, group: e.group }));
+      spent = spentByCategory;
+      transfers = transferAdjustments;
+      const totalSpentVal = Object.entries(spent).reduce((s, [, v]) => s + Math.max(0, v), 0);
+      summary = { totalSpent: totalSpentVal, totalTransactions: monthTransactions.length };
+    } else if (isPastMonth && currentSnapshot) {
+      cats = (currentSnapshot.categories || []).map((c: any) => ({
+        id: c.id, name: c.name, budgeted: c.budgeted || 0, group: c.group || 'shared',
+      }));
+      fixed = (currentSnapshot.fixed_expenses || []).map((e: any) => ({
+        id: e.id, name: e.name, amount: e.amount || 0, group: e.group || 'bills',
+      }));
+      summary = currentSnapshot.transactions_summary || {};
+      // Past months don't have per-category spending in snapshot — show budgeted only
+    } else if (isPastMonth && !currentSnapshot) {
+      return (
+        <div className="px-6 mt-6">
+          <div className="bg-card rounded-lg shadow-sm px-4 py-10 flex flex-col items-center justify-center">
+            <p className="text-sm text-muted-foreground font-medium">No data for this month</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-1">This month has no snapshot data</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Separate categories
+    const varCats = cats.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY);
+    const givingCats = cats.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
+    const fixedBillsRO = fixed.filter(e => e.group === 'bills');
+    const savingsRO = fixed.filter(e => e.group === 'savings');
+    const titheRO = fixed.filter(e => e.group === 'tithe');
+
+    const varTotal = varCats.reduce((s, c) => s + c.budgeted, 0);
+    const fixedBillsTotal = fixedBillsRO.reduce((s, e) => s + e.amount, 0);
+    const savingsROTotal = savingsRO.reduce((s, e) => s + e.amount, 0);
+    const givingCatsTotal = givingCats.reduce((s, c) => s + c.budgeted, 0);
+    const titheROTotal = titheRO.reduce((s, e) => s + e.amount, 0);
+    const givingTotal = givingCatsTotal + titheROTotal;
+    const totalBudgetRO = varTotal + fixedBillsTotal + savingsROTotal + givingTotal;
+
+    const varSpent = varCats.reduce((s, c) => s + (spent[c.id] || 0), 0);
+    const fixedSpentVal = [...fixedBillsRO, ...savingsRO].reduce((s, e) => s + (spent[e.id] || 0), 0);
+    const givingSpent = [...givingCats, ...titheRO].reduce((s, e) => s + (spent['id' in e ? e.id : (e as any).id] || 0), 0);
+
+    const shared = varCats.filter(c => c.group === 'shared');
+    const joe = varCats.filter(c => c.group === 'joe');
+    const katie = varCats.filter(c => c.group === 'katie');
+
+    function renderCatRow(item: { id: string; name: string; budgeted: number }, isFixedItem = false) {
+      const amount = isFixedItem ? (item as any).amount ?? item.budgeted : item.budgeted;
+      const s = spent[item.id] || 0;
+      const adj = transfers[item.id] || 0;
+      const adjustedBudget = amount + adj;
+      const remaining = adjustedBudget - s;
+      const hasSpending = isCurrentMonth; // Only show progress for current month
+
+      return (
+        <div key={item.id} className="px-4 py-3">
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-sm font-medium text-foreground">{item.name}</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(amount)}</span>
+          </div>
+          {hasSpending && (
+            <>
+              <ProgressBar value={Math.max(0, s)} max={adjustedBudget} className="mb-1" />
+              <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                <span>{formatCurrency(s)} spent</span>
+                <span className={remaining < 0 ? 'text-destructive' : ''}>
+                  {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {/* Toggle */}
+        <div className="px-6 mb-4">
+          <div className="flex bg-card rounded-lg p-1 shadow-sm">
+            {(['variable', 'fixed', 'giving'] as ViewTab[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setViewTab(m)}
+                className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  viewTab === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                {m === 'variable' ? 'Variable' : m === 'fixed' ? 'Fixed' : 'Giving'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {viewTab === 'variable' && (
+          <div className="px-6 pb-4">
+            {([
+              { label: 'Shared', items: shared },
+              { label: "Joe's", items: joe },
+              { label: "Katie's", items: katie },
+            ] as const).map(({ label, items }) => items.length > 0 && (
+              <div key={label} className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {items.map(c => renderCatRow(c))}
+                </div>
+              </div>
+            ))}
+            {isCurrentMonth && (
+              <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Variable Budget</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(varTotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(varSpent)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewTab === 'fixed' && (
+          <div className="px-6 pb-4">
+            {([
+              { label: 'Fixed Bills', items: fixedBillsRO },
+              { label: 'Savings Buckets', items: savingsRO },
+            ] as const).map(({ label, items }) => items.length > 0 && (
+              <div key={label} className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {items.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
+                </div>
+              </div>
+            ))}
+            {isCurrentMonth && (
+              <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Fixed Budget</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal + savingsROTotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(fixedSpentVal)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewTab === 'giving' && (
+          <div className="px-6 pb-4">
+            {titheRO.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Tithe</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {titheRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
+                </div>
+              </div>
+            )}
+            {givingCats.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Variable Giving</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {givingCats.map(c => renderCatRow(c))}
+                </div>
+              </div>
+            )}
+            {isCurrentMonth && (
+              <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Giving Budget</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(givingTotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(givingSpent)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Budget Summary */}
+        <div className="px-6 pb-6">
+          <div className="bg-primary rounded-xl p-5 shadow-lg">
+            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
+            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudgetRO)}</p>
+            {isCurrentMonth && (
+              <div className="mt-4">
+                {(() => {
+                  const totalSpentAll = varSpent + fixedSpentVal + givingSpent;
+                  const remaining = totalBudgetRO - totalSpentAll;
+                  return (
+                    <>
+                      <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
+                        <span>{formatCurrency(totalSpentAll)} spent</span>
+                        <span>{remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `-${formatCurrency(Math.abs(remaining))} over`}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all duration-500"
+                          style={{ width: `${Math.min((totalSpentAll / totalBudgetRO) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            {isPastMonth && summary.totalSpent !== undefined && (
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-primary-foreground/70">
+                  <span>{summary.totalTransactions || 0} transactions</span>
+                  <span>{formatCurrency(summary.totalSpent)} total spent</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-muted-foreground">Variable</span>
+              <span className="font-medium tabular-nums">{formatCurrency(varTotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-muted-foreground">Fixed Bills + Savings</span>
+              <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal + savingsROTotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-muted-foreground">Tithe/Giving</span>
+              <span className="font-medium tabular-nums">{formatCurrency(givingTotal)}</span>
+            </div>
+            <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
+              <span className="font-semibold text-foreground">Total</span>
+              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(totalBudgetRO)}</span>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ============================================
+  // FUTURE MONTH (editable) — existing behavior
+  // ============================================
+  function renderFutureMonth() {
+    const nextMonthShort = format(viewMonthDate, 'MMMM');
+
+    return (
+      <>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Variable Budgets</h3>
+        {(['shared', 'joe', 'katie'] as GroupType[]).map(group => {
+          const cats = nonGivingCats.filter(c => c.group === group);
+          return (
+            <div key={group} className="mb-4">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                {cats.map((c, idx) => (
+                  <div key={c.id} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                        <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {renamingId === c.id ? (
+                          <div className="flex gap-1.5">
+                            <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                              className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                              autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(c.id, false)} />
+                            <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
+                            {c.name}
+                          </button>
+                        )}
+                      </div>
+                      {editingId === `next-cat-${c.id}` ? (
+                        <div className="flex gap-1.5">
+                          <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
+                            className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                            autoFocus onKeyDown={e => e.key === 'Enter' && saveNextCatEdit(c.id)} />
+                          <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
+                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                          {fmtWhole(c.budgeted)}
+                        </button>
+                      )}
+                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                        className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 ml-6">
+                      <button
+                        onClick={() => toggleNotesRequired(c.id)}
+                        className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                          c.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                        }`}
+                      >
+                        <MessageSquare size={9} />
+                        {c.notesRequired ? 'Notes required' : 'No notes required'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {showAddCategory ? (
+          <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mb-4 space-y-2">
+            <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Category name"
+              className="w-full px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30" autoFocus />
+            <div className="flex gap-2">
+              <select value={newCatGroup} onChange={e => setNewCatGroup(e.target.value as GroupType)}
+                className="flex-1 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
+                <option value="shared">Shared</option>
+                <option value="joe">Joe's</option>
+                <option value="katie">Katie's</option>
+              </select>
+              <input type="number" value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} placeholder="$0"
+                className="w-24 px-3 py-2 rounded-lg bg-card border border-border text-sm tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={addCategory} className="flex-1 py-2 rounded-lg bg-accent text-accent-foreground text-xs font-semibold active:scale-[0.98] transition-transform">Add</button>
+              <button onClick={() => setShowAddCategory(false)} className="px-4 py-2 rounded-lg bg-card border border-border text-xs font-medium text-muted-foreground active:scale-[0.98] transition-transform">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowAddCategory(true)}
+            className="flex items-center gap-1.5 text-accent text-xs font-medium mb-6 active:scale-95 transition-transform">
+            <Plus size={14} /> Add Variable Category
+          </button>
+        )}
+
+        {([
+          { key: 'bills' as FixedGroupType, label: 'Fixed Bills', items: fixedBills },
+          { key: 'savings' as FixedGroupType, label: 'Savings Buckets', items: savingsBuckets },
+        ]).map(({ key, label, items }) => (
+          <div key={key} className="mb-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{label}</h3>
+            <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+              {items.map((e, idx) => (
+                <div key={e.id} className="px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button onClick={() => moveNextFixed(e.id, 'up', key)} disabled={idx === 0}
+                        className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                      <button onClick={() => moveNextFixed(e.id, 'down', key)} disabled={idx === items.length - 1}
+                        className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {renamingId === e.id ? (
+                        <div className="flex gap-1.5">
+                          <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                            className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
+                          <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
+                          {e.name}
+                        </button>
+                      )}
+                    </div>
+                    {editingId === `next-fix-${e.id}` ? (
+                      <div className="flex gap-1.5">
+                        <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                          className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                          autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
+                        <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
+                        className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                        {formatCurrency(e.amount)}
+                      </button>
+                    )}
+                    <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 ml-6">
+                    <button
+                      onClick={() => toggleFixedNotesRequired(e.id)}
+                      className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                        e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                      }`}
+                    >
+                      <MessageSquare size={9} />
+                      {e.notesRequired ? 'Notes required' : 'No notes required'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {renderAddFixedForm(key)}
+            {showAddFixed !== key && (
+              <button onClick={() => setShowAddFixed(key)}
+                className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
+                <Plus size={14} /> Add {label.replace(/s$/, '')}
+              </button>
+            )}
+          </div>
+        ))}
+
+        {/* Tithe/Giving */}
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tithe/Giving</h3>
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {titheItems.map((e) => (
+              <div key={e.id} className="px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    {renamingId === e.id ? (
+                      <div className="flex gap-1.5">
+                        <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                          className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                          autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
+                        <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
+                        {e.name}
+                      </button>
+                    )}
+                  </div>
+                  {editingId === `next-fix-${e.id}` ? (
+                    <div className="flex gap-1.5">
+                      <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                        className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
+                      <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
+                      className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                      {formatCurrency(e.amount)}
+                    </button>
+                  )}
+                  <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                    className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 ml-0">
+                  <div className="flex items-center gap-1.5">
+                    <Switch checked={false} onCheckedChange={() => toggleTitheType(e.id, true)} className="scale-75 origin-left" />
+                    <span className="text-[10px] font-medium text-muted-foreground">Fixed</span>
+                  </div>
+                  <button
+                    onClick={() => toggleFixedNotesRequired(e.id)}
+                    className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                      e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                    }`}
+                  >
+                    <MessageSquare size={9} />
+                    {e.notesRequired ? 'Notes required' : 'No notes required'}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {givingVarCats.map((c) => (
+              <div key={c.id} className="px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    {renamingId === c.id ? (
+                      <div className="flex gap-1.5">
+                        <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                          className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                          autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(c.id, false)} />
+                        <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
+                        {c.name}
+                      </button>
+                    )}
+                  </div>
+                  {editingId === `next-cat-${c.id}` ? (
+                    <div className="flex gap-1.5">
+                      <input type="number" step="1" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                        className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextCatEdit(c.id)} />
+                      <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
+                      className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                      {fmtWhole(c.budgeted)}
+                    </button>
+                  )}
+                  <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                    className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 ml-0">
+                  <div className="flex items-center gap-1.5">
+                    <Switch checked={true} onCheckedChange={() => toggleTitheType(c.id, false)} className="scale-75 origin-left" />
+                    <span className="text-[10px] font-medium text-accent">Variable</span>
+                  </div>
+                  <button
+                    onClick={() => toggleNotesRequired(c.id)}
+                    className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                      c.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                    }`}
+                  >
+                    <MessageSquare size={9} />
+                    {c.notesRequired ? 'Notes required' : 'No notes required'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {renderAddFixedForm('tithe')}
+          {showAddFixed !== 'tithe' && (
+            <button onClick={() => setShowAddFixed('tithe')}
+              className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
+              <Plus size={14} /> Add Tithe/Giving Item
+            </button>
+          )}
+        </div>
+
+        {/* Budget Summary */}
+        <div className="bg-card rounded-lg shadow-sm px-4 py-3 mb-4">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Variable Total</span>
+            <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Fixed Bills</span>
+            <span className="font-medium tabular-nums">{formatCurrency(fixedTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Savings Buckets</span>
+            <span className="font-medium tabular-nums">{formatCurrency(savingsTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Tithe/Giving</span>
+            <span className="font-medium tabular-nums">{formatCurrency(titheTotal)}</span>
+          </div>
+          <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
+            <span className="font-semibold text-foreground">Total Budget</span>
+            <span className="font-semibold tabular-nums text-foreground">{formatCurrency(budgetTotal)}</span>
+          </div>
+        </div>
+
+        {/* Start Month Button - only for next month */}
+        {isNextMonth && (
+          <button
+            onClick={handleStartMonthClick}
+            className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
+          >
+            Start {format(viewMonthDate, 'MMMM')}
+          </button>
+        )}
+      </>
+    );
+  }
+
   // Confirmation screen
   if (showConfirmation) {
+    const nextMonthShort = format(nextMonth, 'MMMM');
+    const currentMonthShort = format(currentMonth, 'MMMM');
     return (
       <div className="max-w-lg mx-auto pb-28">
         <div className="px-6 pt-12 safe-top">
@@ -386,18 +937,9 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
           <div className="bg-card rounded-lg shadow-sm p-5 space-y-3">
             <h3 className="text-sm font-semibold text-foreground">What will happen</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex gap-2">
-                <span className="text-accent">•</span>
-                {currentMonthShort} budget & transactions will be locked and saved to Past Months
-              </li>
-              <li className="flex gap-2">
-                <span className="text-accent">•</span>
-                {nextMonthShort} will be initialized with the budget amounts shown in Settings
-              </li>
-              <li className="flex gap-2">
-                <span className="text-accent">•</span>
-                All new Plaid transactions will be assigned to {nextMonthShort}
-              </li>
+              <li className="flex gap-2"><span className="text-accent">•</span>{currentMonthShort} budget & transactions will be locked and saved to Past Months</li>
+              <li className="flex gap-2"><span className="text-accent">•</span>{nextMonthShort} will be initialized with the budget amounts shown in Settings</li>
+              <li className="flex gap-2"><span className="text-accent">•</span>All new Plaid transactions will be assigned to {nextMonthShort}</li>
             </ul>
           </div>
 
@@ -405,12 +947,8 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex gap-3 items-start">
               <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  {unassignedCount} unassigned transaction{unassignedCount > 1 ? 's' : ''} in {currentMonthShort}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  These will remain unassigned in the {currentMonthShort} archive. You can still edit them later via Past Months, or tag them as "Prior Month" next month.
-                </p>
+                <p className="text-sm font-medium text-foreground">{unassignedCount} unassigned transaction{unassignedCount > 1 ? 's' : ''} in {currentMonthShort}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">These will remain unassigned in the {currentMonthShort} archive.</p>
               </div>
             </div>
           )}
@@ -448,8 +986,10 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage budget amounts & categories</p>
+        <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
+        </p>
       </div>
 
       <div className="px-6 mt-6 pb-6">
@@ -457,7 +997,7 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
         {isAdmin && <AccountManagement />}
 
         {/* Profiles */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
           <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
             <div className="flex-1 text-center">
@@ -471,333 +1011,25 @@ export function SettingsView({ categories, fixedExpenses, currentMonth, onUpdate
           </div>
         </div>
 
-        {/* Next Month Budget */}
-        <div className="mt-8">
-          <h2 className="font-display text-lg font-bold text-foreground mb-4">{nextMonthShort} Budget</h2>
-
-          {/* Next Month Variable */}
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Variable Budgets</h3>
-          {(['shared', 'joe', 'katie'] as GroupType[]).map(group => {
-            const cats = nonGivingCats.filter(c => c.group === group);
-            return (
-              <div key={group} className="mb-4">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                  {cats.map((c, idx) => (
-                    <div key={c.id} className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
-                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-                          <button onClick={() => moveNextCat(c.id, 'down', group)} disabled={idx === cats.length - 1}
-                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {renamingId === c.id ? (
-                            <div className="flex gap-1.5">
-                              <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                                className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                autoFocus onKeyDown={e => e.key === 'Enter' && saveRename(c.id, false)} />
-                              <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
-                              {c.name}
-                            </button>
-                          )}
-                        </div>
-                        {editingId === `next-cat-${c.id}` ? (
-                          <div className="flex gap-1.5">
-                            <input type="number" step="1" value={editValue} onChange={e => setEditValue(e.target.value)}
-                              className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                              autoFocus onKeyDown={e => e.key === 'Enter' && saveNextCatEdit(c.id)} />
-                            <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
-                            className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                            {fmtWhole(c.budgeted)}
-                          </button>
-                        )}
-                        <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
-                          className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                      {/* Notes required toggle */}
-                      <div className="flex items-center gap-1.5 mt-1 ml-6">
-                        <button
-                          onClick={() => toggleNotesRequired(c.id)}
-                          className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                            c.notesRequired
-                              ? 'bg-accent/15 text-accent'
-                              : 'bg-muted/50 text-muted-foreground/60'
-                          }`}
-                        >
-                          <MessageSquare size={9} />
-                          {c.notesRequired ? 'Notes required' : 'No notes required'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Add Variable Category */}
-          {showAddCategory ? (
-            <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 mb-4 space-y-2">
-              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Category name"
-                className="w-full px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30" autoFocus />
-              <div className="flex gap-2">
-                <select value={newCatGroup} onChange={e => setNewCatGroup(e.target.value as GroupType)}
-                  className="flex-1 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
-                  <option value="shared">Shared</option>
-                  <option value="joe">Joe's</option>
-                  <option value="katie">Katie's</option>
-                </select>
-                <input type="number" value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} placeholder="$0"
-                  className="w-24 px-3 py-2 rounded-lg bg-card border border-border text-sm tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={addCategory} className="flex-1 py-2 rounded-lg bg-accent text-accent-foreground text-xs font-semibold active:scale-[0.98] transition-transform">Add</button>
-                <button onClick={() => setShowAddCategory(false)} className="px-4 py-2 rounded-lg bg-card border border-border text-xs font-medium text-muted-foreground active:scale-[0.98] transition-transform">Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => setShowAddCategory(true)}
-              className="flex items-center gap-1.5 text-accent text-xs font-medium mb-6 active:scale-95 transition-transform">
-              <Plus size={14} /> Add Variable Category
-            </button>
-          )}
-          {([
-            { key: 'bills' as FixedGroupType, label: 'Fixed Bills', items: fixedBills },
-            { key: 'savings' as FixedGroupType, label: 'Savings Buckets', items: savingsBuckets },
-          ]).map(({ key, label, items }) => (
-            <div key={key} className="mb-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{label}</h3>
-              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                {items.map((e, idx) => (
-                  <div key={e.id} className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button onClick={() => moveNextFixed(e.id, 'up', key)} disabled={idx === 0}
-                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-                        <button onClick={() => moveNextFixed(e.id, 'down', key)} disabled={idx === items.length - 1}
-                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {renamingId === e.id ? (
-                          <div className="flex gap-1.5">
-                            <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
-                              className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                              autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
-                            <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
-                            {e.name}
-                          </button>
-                        )}
-                      </div>
-                      {editingId === `next-fix-${e.id}` ? (
-                        <div className="flex gap-1.5">
-                          <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                            className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
-                          <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
-                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                          {formatCurrency(e.amount)}
-                        </button>
-                      )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
-                        className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                    {/* Notes required toggle */}
-                    <div className="flex items-center gap-1.5 mt-1 ml-6">
-                      <button
-                        onClick={() => toggleFixedNotesRequired(e.id)}
-                        className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                          e.notesRequired
-                            ? 'bg-accent/15 text-accent'
-                            : 'bg-muted/50 text-muted-foreground/60'
-                        }`}
-                      >
-                        <MessageSquare size={9} />
-                        {e.notesRequired ? 'Notes required' : 'No notes required'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {renderAddFixedForm(key)}
-              {showAddFixed !== key && (
-                <button onClick={() => setShowAddFixed(key)}
-                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                  <Plus size={14} /> Add {label.replace(/s$/, '')}
-                </button>
-              )}
-            </div>
-          ))}
-
-          {/* Tithe/Giving — unified section with fixed/variable toggle */}
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tithe/Giving</h3>
-            <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-              {/* Fixed tithe items */}
-              {titheItems.map((e) => (
-                <div key={e.id} className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                      {renamingId === e.id ? (
-                        <div className="flex gap-1.5">
-                          <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
-                            className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
-                          <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
-                          {e.name}
-                        </button>
-                      )}
-                    </div>
-                    {editingId === `next-fix-${e.id}` ? (
-                      <div className="flex gap-1.5">
-                        <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                          className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                          autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
-                        <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
-                        className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                        {formatCurrency(e.amount)}
-                      </button>
-                    )}
-                    <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
-                      className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 ml-0">
-                    <div className="flex items-center gap-1.5">
-                      <Switch checked={false} onCheckedChange={() => toggleTitheType(e.id, true)} className="scale-75 origin-left" />
-                      <span className="text-[10px] font-medium text-muted-foreground">Fixed</span>
-                    </div>
-                    <button
-                      onClick={() => toggleFixedNotesRequired(e.id)}
-                      className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                        e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
-                      }`}
-                    >
-                      <MessageSquare size={9} />
-                      {e.notesRequired ? 'Notes required' : 'No notes required'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {/* Variable giving categories */}
-              {givingVarCats.map((c) => (
-                <div key={c.id} className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                      {renamingId === c.id ? (
-                        <div className="flex gap-1.5">
-                          <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
-                            className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(c.id, false)} />
-                          <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
-                          {c.name}
-                        </button>
-                      )}
-                    </div>
-                    {editingId === `next-cat-${c.id}` ? (
-                      <div className="flex gap-1.5">
-                        <input type="number" step="1" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                          className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                          autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextCatEdit(c.id)} />
-                        <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
-                        className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                        {fmtWhole(c.budgeted)}
-                      </button>
-                    )}
-                    <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
-                      className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 ml-0">
-                    <div className="flex items-center gap-1.5">
-                      <Switch checked={true} onCheckedChange={() => toggleTitheType(c.id, false)} className="scale-75 origin-left" />
-                      <span className="text-[10px] font-medium text-accent">Variable</span>
-                    </div>
-                    <button
-                      onClick={() => toggleNotesRequired(c.id)}
-                      className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                        c.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
-                      }`}
-                    >
-                      <MessageSquare size={9} />
-                      {c.notesRequired ? 'Notes required' : 'No notes required'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {renderAddFixedForm('tithe')}
-            {showAddFixed !== 'tithe' && (
-              <button onClick={() => setShowAddFixed('tithe')}
-                className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                <Plus size={14} /> Add Tithe/Giving Item
-              </button>
-            )}
+        {/* Month Navigator */}
+        <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
+          <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="text-center">
+            <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
+            </p>
           </div>
-
-          {/* Budget Summary */}
-          <div className="bg-card rounded-lg shadow-sm px-4 py-3 mb-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Variable Total</span>
-              <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed Bills</span>
-              <span className="font-medium tabular-nums">{formatCurrency(fixedTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Savings Buckets</span>
-              <span className="font-medium tabular-nums">{formatCurrency(savingsTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Tithe/Giving</span>
-              <span className="font-medium tabular-nums">{formatCurrency(titheTotal)}</span>
-            </div>
-            <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
-              <span className="font-semibold text-foreground">Total Budget</span>
-              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(budgetTotal)}</span>
-            </div>
-          </div>
-
-          {/* Start Month Button */}
-          <button
-            onClick={handleStartMonthClick}
-            className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
-          >
-            Start {nextMonthShort}
+          <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
+            <ChevronRight size={20} />
           </button>
         </div>
+
+        {/* Content based on month */}
+        {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
+        {isFutureMonth && renderFutureMonth()}
 
         {/* Log Out */}
         <div className="mt-12 mb-8">
