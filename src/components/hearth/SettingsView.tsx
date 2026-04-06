@@ -666,7 +666,7 @@ export function SettingsView({
         {/* Toggle */}
         <div className="px-6 mb-4">
           <div className="flex bg-card rounded-lg p-1 shadow-sm">
-            {(['variable', 'fixed', 'giving'] as ViewTab[]).map(m => (
+            {(['variable', 'fixed', 'savings', 'giving'] as ViewTab[]).map(m => (
               <button
                 key={m}
                 onClick={() => setViewTab(m)}
@@ -674,7 +674,7 @@ export function SettingsView({
                   viewTab === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
                 }`}
               >
-                {m === 'variable' ? 'Variable' : m === 'fixed' ? 'Fixed' : 'Giving'}
+                {m === 'variable' ? 'Variable' : m === 'fixed' ? 'Fixed' : m === 'savings' ? 'Savings' : 'Giving'}
               </button>
             ))}
           </div>
