@@ -634,8 +634,12 @@ export function SettingsView({
               <span className="font-medium tabular-nums">{formatCurrency(varTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed Bills + Savings</span>
-              <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal + savingsROTotal)}</span>
+              <span className="text-muted-foreground">Fixed Bills</span>
+              <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-muted-foreground">Savings</span>
+              <span className="font-medium tabular-nums">{formatCurrency(savingsROTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-muted-foreground">Tithe/Giving</span>
