@@ -502,26 +502,56 @@ export function SettingsView({
 
         {viewTab === 'fixed' && (
           <div className="px-6 pb-4">
-            {([
-              { label: 'Fixed Bills', items: fixedBillsRO },
-              { label: 'Savings Buckets', items: savingsRO },
-            ] as const).map(({ label, items }) => items.length > 0 && (
-              <div key={label} className="mb-3">
-                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
+            {fixedBillsRO.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Bills</h4>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                  {items.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
+                  {fixedBillsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
               </div>
-            ))}
+            )}
             {isCurrentMonth && (
               <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Fixed Budget</span>
-                  <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal + savingsROTotal)}</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(fixedBillsTotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-muted-foreground">Spent</span>
                   <span className="font-medium tabular-nums">{formatCurrency(fixedSpentVal)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewTab === 'savings' && (
+          <div className="px-6 pb-4">
+            {savingsRO.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Savings</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {savingsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
+                </div>
+              </div>
+            )}
+            {savingsVarCatsRO.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Variable Savings</h4>
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                  {savingsVarCatsRO.map(c => renderCatRow(c))}
+                </div>
+              </div>
+            )}
+            {isCurrentMonth && (
+              <div className="bg-card rounded-lg shadow-sm px-4 py-3 mt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Savings Budget</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(savingsROTotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(savingsSpent)}</span>
                 </div>
               </div>
             )}
