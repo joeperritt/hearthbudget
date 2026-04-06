@@ -82,10 +82,8 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
 interface DashboardProps {
   monthLabel: string;
   onAddTransaction: () => void;
-  joeAmexGross: number;
-  katieAmexGross: number;
+  accountSpending: { label: string; amount: number; type: string }[];
   totalPayoffs: number;
-  checkingSpent: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
@@ -93,15 +91,18 @@ interface DashboardProps {
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  accounts?: AppAccount[];
 }
 
 export function Dashboard({
   monthLabel, onAddTransaction,
-  joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
+  accountSpending, totalPayoffs,
   unassignedTransactions, onEditTransaction, onSyncComplete,
   categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
+  accounts = [],
 }: DashboardProps) {
-  const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
+  const creditSpending = accountSpending.filter(a => a.type === 'credit_card');
+  const combinedCredit = Math.max(creditSpending.reduce((s, a) => s + a.amount, 0) - totalPayoffs, 0);
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
