@@ -166,7 +166,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
         <div
           ref={trackRef}
           className="flex gap-3 will-change-transform select-none"
-          style={{ width: `${tickerItems.length * (CARD_WIDTH + GAP)}px` }}
+          style={{ width: `${tickerItems.length * (cardW + GAP)}px` }}
         >
           {tickerItems.map((item, idx) => {
             const isOver = item.remaining < 0;
