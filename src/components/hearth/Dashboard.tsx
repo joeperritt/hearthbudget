@@ -13,9 +13,14 @@ function formatCurrency(n: number) {
 
 type AccountFilter = 'all' | string;
 
-function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void }) {
+function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts = [] }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void; accounts?: AppAccount[] }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
   const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+
+  const accountFilters: { id: AccountFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    ...accounts.map(a => ({ id: a.id, label: a.label })),
+  ];
 
   return (
     <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
