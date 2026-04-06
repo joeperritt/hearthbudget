@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
-import { AccountManagement } from './AccountManagement';
+import { ProgressBar } from './ProgressBar';
 import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 

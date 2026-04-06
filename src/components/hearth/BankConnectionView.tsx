@@ -275,11 +275,13 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Bank Connections</h1>
-        <p className="text-sm text-muted-foreground mt-1">Link your bank accounts to auto-import transactions and view balances</p>
+        <h1 className="font-display text-xl font-bold text-foreground">Accounts & Connections</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage users & linked bank accounts</p>
       </div>
 
       <div className="px-6 mt-6 space-y-6">
+        {/* Admin Account Management */}
+        {isAdmin && <AccountManagement />}
         {/* Connect */}
         <button onClick={createLinkToken} className="w-full flex items-center gap-4 bg-accent text-accent-foreground rounded-lg p-4 shadow-sm active:scale-[0.98] transition-transform">
           <Link2 size={20} />
