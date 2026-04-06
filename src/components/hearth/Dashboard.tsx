@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw } from 'lucide-react';
-import { Transaction, AccountSource, BudgetCategory } from '@/types/budget';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3 } from 'lucide-react';
+import { Transaction, AccountSource, BudgetCategory, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
@@ -79,6 +79,87 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
   );
 }
 
+/** Stacked horizontal bar showing spending vs payoffs/deposits */
+function StackedBar({ segments }: { segments: { value: number; color: string; label: string }[] }) {
+  const total = segments.reduce((s, seg) => s + Math.abs(seg.value), 0);
+  if (total === 0) return null;
+
+  return (
+    <div className="flex h-3 rounded-full overflow-hidden bg-muted">
+      {segments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
+        <div
+          key={i}
+          className="h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full"
+          style={{
+            width: `${(Math.abs(seg.value) / total) * 100}%`,
+            backgroundColor: seg.color,
+          }}
+          title={`${seg.label}: ${formatCurrency(Math.abs(seg.value))}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BankSection({
+  icon,
+  title,
+  rows,
+  netLabel,
+  netValue,
+  barSegments,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  rows: { label: string; value: number; color?: string }[];
+  netLabel: string;
+  netValue: number;
+  barSegments: { value: number; color: string; label: string }[];
+}) {
+  return (
+    <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        {icon}
+        <span className="text-sm font-semibold text-foreground">{title}</span>
+      </div>
+
+      {/* Stacked bar */}
+      <div className="px-4 pt-3 pb-1">
+        <StackedBar segments={barSegments} />
+        <div className="flex gap-3 mt-1.5 flex-wrap">
+          {barSegments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
+              <span className="text-[10px] text-muted-foreground">{seg.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rows */}
+      <div className="divide-y divide-border">
+        {rows.map((row, i) => (
+          <div key={i} className="flex justify-between items-center px-4 py-2.5">
+            <span className="text-sm text-muted-foreground">{row.label}</span>
+            <span className={`text-sm font-medium tabular-nums ${row.color || 'text-foreground'}`}>
+              {row.value < 0 ? '−' : ''}{formatCurrency(Math.abs(row.value))}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Net total */}
+      <div className="flex justify-between items-center px-4 py-3 bg-accent/5 border-t border-border">
+        <span className="text-sm font-semibold text-foreground">{netLabel}</span>
+        <span className={`text-sm font-bold tabular-nums ${netValue < 0 ? 'text-accent' : 'text-foreground'}`}>
+          {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 interface DashboardProps {
   monthLabel: string;
   onAddTransaction: () => void;
@@ -92,6 +173,8 @@ interface DashboardProps {
   transferAdjustments?: Record<string, number>;
   onSelectCategory?: (id: string) => void;
   accounts?: AppAccount[];
+  monthTransactions?: Transaction[];
+  totalBudget?: number;
 }
 
 export function Dashboard({
@@ -100,10 +183,9 @@ export function Dashboard({
   unassignedTransactions, onEditTransaction, onSyncComplete,
   categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
   accounts = [],
+  monthTransactions = [],
+  totalBudget = 0,
 }: DashboardProps) {
-  const creditSpending = accountSpending.filter(a => a.type === 'credit_card');
-  const combinedCredit = Math.max(creditSpending.reduce((s, a) => s + a.amount, 0) - totalPayoffs, 0);
-
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
 
@@ -123,6 +205,58 @@ export function Dashboard({
       setSyncing(false);
     }
   };
+
+  // Compute per-bank-group data
+  const creditAccounts = accounts.filter(a => a.type === 'credit_card');
+  const checkingAccounts = accounts.filter(a => a.type === 'checking');
+
+  // Credit card spending by sub-account
+  const creditRows = useMemo(() => {
+    return creditAccounts.map(acct => {
+      const spent = monthTransactions
+        .filter(t => t.account === acct.id && t.transactionType === 'expense')
+        .reduce((s, t) => s + t.amount, 0);
+      return { label: acct.label, value: spent };
+    });
+  }, [creditAccounts, monthTransactions]);
+
+  const totalCreditSpent = creditRows.reduce((s, r) => s + r.value, 0);
+
+  // CC payments (payoffs) — money going back
+  const creditPayoffs = useMemo(() => {
+    return monthTransactions
+      .filter(t => creditAccounts.some(a => a.id === t.account) && t.transactionType === 'cc-payment')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions, creditAccounts]);
+
+  const creditNet = totalCreditSpent - creditPayoffs;
+
+  // Checking spending
+  const checkingSpent = useMemo(() => {
+    return monthTransactions
+      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+  }, [monthTransactions, checkingAccounts]);
+
+  // Checking deposits toward budget
+  const checkingDeposits = useMemo(() => {
+    return monthTransactions
+      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'deposit')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions, checkingAccounts]);
+
+  const checkingNet = checkingSpent - checkingDeposits;
+
+  // Overall totals
+  const overallSpent = totalCreditSpent + checkingSpent;
+  const overallReturns = creditPayoffs + checkingDeposits;
+  const overallNet = overallSpent - overallReturns;
+  const budgetDifference = totalBudget - overallNet;
+
+  // Colors
+  const spentColor = 'hsl(var(--destructive))';
+  const payoffColor = 'hsl(var(--accent))';
+  const depositColor = 'hsl(142 71% 45%)'; // green
 
   return (
     <div className="max-w-lg mx-auto">
@@ -154,30 +288,106 @@ export function Dashboard({
         />
       )}
 
+      {/* 3. Account Snapshot — By Bank */}
+      <div className="px-6 mt-6 space-y-4 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account Snapshot</h3>
 
-      {/* Account Snapshot */}
-      <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          {accountSpending.map((acct, i) => (
-            <div key={i} className="flex justify-between items-center px-4 py-3">
-              <span className="text-sm text-foreground">{acct.label}</span>
-              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(acct.amount)}</span>
+        {/* AMEX Section */}
+        {creditAccounts.length > 0 && (
+          <BankSection
+            icon={<CreditCard size={16} className="text-accent" />}
+            title="American Express"
+            rows={[
+              ...creditRows.map(r => ({ label: r.label, value: r.value })),
+              { label: 'Payoffs toward budget', value: -creditPayoffs, color: 'text-accent' },
+            ]}
+            netLabel="Net Credit This Month"
+            netValue={creditNet}
+            barSegments={[
+              ...creditRows.map((r, i) => ({
+                value: r.value,
+                color: i === 0 ? 'hsl(0 84% 60%)' : 'hsl(25 95% 53%)',
+                label: r.label,
+              })),
+              { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
+            ]}
+          />
+        )}
+
+        {/* Checking Section */}
+        {checkingAccounts.length > 0 && (
+          <BankSection
+            icon={<Building2 size={16} className="text-accent" />}
+            title={checkingAccounts.length === 1 ? checkingAccounts[0].label : 'Checking'}
+            rows={[
+              { label: 'Total Spent', value: checkingSpent },
+              { label: 'Deposits toward budget', value: -checkingDeposits, color: 'text-accent' },
+            ]}
+            netLabel="Net Checking This Month"
+            netValue={checkingNet}
+            barSegments={[
+              { value: checkingSpent, color: spentColor, label: 'Spent' },
+              { value: checkingDeposits, color: depositColor, label: 'Deposits' },
+            ]}
+          />
+        )}
+
+        {/* Overall Summary */}
+        <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+            <BarChart3 size={16} className="text-accent" />
+            <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
+          </div>
+
+          <div className="px-4 pt-3 pb-1">
+            <StackedBar segments={[
+              { value: overallSpent, color: spentColor, label: 'Total Spent' },
+              { value: overallReturns, color: payoffColor, label: 'Payoffs & Deposits' },
+            ]} />
+            <div className="flex gap-3 mt-1.5">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spentColor }} />
+                <span className="text-[10px] text-muted-foreground">Spent</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payoffColor }} />
+                <span className="text-[10px] text-muted-foreground">Payoffs & Deposits</span>
+              </div>
             </div>
-          ))}
-          {totalPayoffs > 0 && (
-            <div className="flex justify-between items-center px-4 py-3">
-              <span className="text-sm text-muted-foreground">Total Payoffs</span>
-              <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(totalPayoffs)}</span>
+          </div>
+
+          <div className="divide-y divide-border">
+            <div className="flex justify-between items-center px-4 py-2.5">
+              <span className="text-sm text-muted-foreground">Total Spent</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
             </div>
-          )}
-          {creditSpending.length > 0 && (
+            <div className="flex justify-between items-center px-4 py-2.5">
+              <span className="text-sm text-muted-foreground">Payoffs & Deposits</span>
+              <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallReturns)}</span>
+            </div>
             <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-              <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
-              <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
+              <span className="text-sm font-semibold text-foreground">Net Total</span>
+              <span className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
             </div>
-          )}
+          </div>
+
+          {/* Budget comparison */}
+          <div className="border-t border-border divide-y divide-border">
+            <div className="flex justify-between items-center px-4 py-2.5">
+              <span className="text-sm text-muted-foreground">Total Budgeted</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
+            </div>
+            <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
+              <span className="text-sm font-semibold text-foreground">
+                {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+              </span>
+              <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+              </span>
+            </div>
+          </div>
         </div>
+
         {lastSynced && (
           <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
         )}
