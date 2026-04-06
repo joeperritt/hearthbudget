@@ -294,7 +294,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             <div className="flex justify-between">
               <span className="text-xs text-muted-foreground uppercase">Account</span>
               <span className="text-sm text-foreground">
-                {ACCOUNTS.find(a => a.id === transaction.account)?.label}
+                {accounts.find(a => a.id === transaction.account)?.label || transaction.account}
               </span>
             </div>
             <div className="flex justify-between items-center">
