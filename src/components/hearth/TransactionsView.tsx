@@ -139,8 +139,9 @@ export function TransactionsView({
     return (
       <div
         key={t.id}
+        id={`tx-${t.id}`}
         onClick={handleClick}
-        className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
+        className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${

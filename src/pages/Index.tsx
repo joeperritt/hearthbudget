@@ -173,6 +173,20 @@ const Index = () => {
     if (tab === 'more') setMoreSubView('menu');
   };
 
+  const handleGoToTransaction = useCallback((transactionId: string) => {
+    setSelectedCategoryId(null);
+    setSelectedFixedExpenseId(null);
+    setActiveTab('transactions');
+    setTimeout(() => {
+      const el = document.getElementById(`tx-${transactionId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-background');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-background'), 2000);
+      }
+    }, 150);
+  }, []);
+
   if (loading || !activeMonth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -182,6 +196,7 @@ const Index = () => {
       </div>
     );
   }
+
 
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
@@ -198,6 +213,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[cat.id] || 0}
           onBack={() => setSelectedCategoryId(null)}
           onDeleteTransaction={deleteTransaction}
+          onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />
       );
@@ -222,6 +238,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[exp.id] || 0}
           onBack={() => setSelectedFixedExpenseId(null)}
           onDeleteTransaction={deleteTransaction}
+          onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />
       );
