@@ -155,19 +155,6 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   };
 
 
-  const handleGetBalances = async () => {
-    setLoadingBalances(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('plaid-get-balances');
-      if (error) throw error;
-      setBalances(data.balances || []);
-    } catch {
-      toast.error('Failed to get balances');
-    } finally {
-      setLoadingBalances(false);
-    }
-  };
-
   // Account management
   const updateAccountCategory = async (accountId: string, category: string) => {
     const slug = category === 'credit_card' ? null : undefined;
