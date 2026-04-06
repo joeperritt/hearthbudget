@@ -404,16 +404,48 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
                             <p className="text-[11px] text-muted-foreground/60 italic">No cardholders added yet</p>
                           )}
                           {accCardholders.map(ch => (
-                            <div key={ch.id} className="flex items-center justify-between bg-muted/30 rounded-md px-3 py-2">
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{ch.name}</p>
-                                {ch.match_patterns.length > 0 && (
-                                  <p className="text-[10px] text-muted-foreground">Matches: {ch.match_patterns.join(', ')}</p>
-                                )}
-                              </div>
-                              <button onClick={() => removeCardholder(ch.id)} className="text-destructive/50 hover:text-destructive active:scale-90 transition-all">
-                                <X size={14} />
-                              </button>
+                            <div key={ch.id} className="bg-muted/30 rounded-md px-3 py-2">
+                              {editingCardholder === ch.id ? (
+                                <div className="space-y-2">
+                                  <input
+                                    value={editCardholderName}
+                                    onChange={e => setEditCardholderName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && updateCardholder(ch.id)}
+                                    placeholder="Name"
+                                    className="w-full text-sm px-2 py-1.5 rounded bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                                    autoFocus
+                                  />
+                                  <input
+                                    value={editCardholderPatterns}
+                                    onChange={e => setEditCardholderPatterns(e.target.value)}
+                                    placeholder="Match patterns (comma-separated)"
+                                    className="w-full text-sm px-2 py-1.5 rounded bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                                  />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => updateCardholder(ch.id)} className="text-xs font-medium text-accent active:scale-95">Save</button>
+                                    <button onClick={() => setEditingCardholder(null)} className="text-xs text-muted-foreground">Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    onClick={() => {
+                                      setEditingCardholder(ch.id);
+                                      setEditCardholderName(ch.name);
+                                      setEditCardholderPatterns(ch.match_patterns.join(', '));
+                                    }}
+                                    className="text-left flex-1"
+                                  >
+                                    <p className="text-sm font-medium text-foreground hover:underline decoration-dotted underline-offset-4">{ch.name}</p>
+                                    {ch.match_patterns.length > 0 && (
+                                      <p className="text-[10px] text-muted-foreground">Matches: {ch.match_patterns.join(', ')}</p>
+                                    )}
+                                  </button>
+                                  <button onClick={() => removeCardholder(ch.id)} className="text-destructive/50 hover:text-destructive active:scale-90 transition-all ml-2">
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                           {addingCardholder === acc.id ? (
