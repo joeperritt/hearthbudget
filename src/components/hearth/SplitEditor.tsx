@@ -24,7 +24,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, lines, onChange, transactions = [] }: SplitEditorProps) {
+export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, lines, onChange, transactions = [], excludeTransactionIds = [] }: SplitEditorProps) {
   const allocated = lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
   const remaining = Math.round((totalAmount - allocated) * 100) / 100;
 
