@@ -142,7 +142,7 @@ export function Dashboard({
       </div>
 
       {/* 1. Unassigned */}
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
 
       {/* 2. Category Snapshot */}
       {varCategories && spentByCategory && transferAdjustments && (
