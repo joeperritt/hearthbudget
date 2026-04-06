@@ -292,6 +292,28 @@ export function SettingsView({
     }
   };
 
+  const toggleSavingsType = (id: string, currentlyFixed: boolean) => {
+    if (currentlyFixed) {
+      // Move from fixed savings to variable savings category
+      const item = nextFixed.find(e => e.id === id);
+      if (!item) return;
+      const newCat: BudgetCategory = { id: item.id, name: item.name, budgeted: item.amount, group: 'savings' as any, notesRequired: item.notesRequired };
+      setNextFixed(prev => prev.filter(e => e.id !== id));
+      setNextCats(prev => [...prev, newCat]);
+      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+      onUpdateCategories([...categories, newCat]);
+    } else {
+      // Move from variable savings category to fixed savings
+      const item = nextCats.find(c => c.id === id);
+      if (!item) return;
+      const newExp: FixedExpense = { id: item.id, name: item.name, amount: item.budgeted, group: 'savings', notesRequired: item.notesRequired };
+      setNextCats(prev => prev.filter(c => c.id !== id));
+      setNextFixed(prev => [...prev, newExp]);
+      onUpdateCategories(categories.filter(c => c.id !== id));
+      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+    }
+  };
+
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving' };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
 
