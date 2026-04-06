@@ -53,8 +53,8 @@ export function MoreView({ onSelect }: MoreViewProps) {
             <Building2 size={20} className="text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Bank Connections</p>
-            <p className="text-xs text-muted-foreground">Link accounts & auto-import transactions</p>
+            <p className="text-sm font-semibold text-foreground">Accounts & Connections</p>
+            <p className="text-xs text-muted-foreground">Manage users & linked bank accounts</p>
           </div>
         </button>
       </div>
