@@ -1200,8 +1200,6 @@ export function SettingsView({
       </div>
 
       <div className="px-6 mt-6 pb-6">
-        {/* Admin Account Management */}
-        {isAdmin && <AccountManagement />}
 
         {/* Profiles */}
         <div className="mb-6">
