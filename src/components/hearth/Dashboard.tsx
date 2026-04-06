@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3 } from 'lucide-react';
-import { Transaction, AccountSource, BudgetCategory, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
@@ -174,9 +174,11 @@ interface DashboardProps {
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
   categories?: BudgetCategory[];
+  fixedExpenses?: FixedExpense[];
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  onSelectFixedExpense?: (id: string) => void;
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
@@ -186,7 +188,7 @@ export function Dashboard({
   monthLabel, onAddTransaction,
   accountSpending, totalPayoffs,
   unassignedTransactions, onEditTransaction, onSyncComplete,
-  categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
+  categories: varCategories, fixedExpenses = [], spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense,
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
@@ -291,13 +293,25 @@ export function Dashboard({
       {/* 1. Unassigned */}
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
 
-      {/* 2. Category Snapshot */}
+      {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
         <CategoryCarousel
-          categories={varCategories}
+          title="Variable Categories"
+          items={varCategories.map(c => ({ id: c.id, name: c.name, budgeted: c.budgeted }))}
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
           onSelectCategory={onSelectCategory}
+        />
+      )}
+
+      {/* 2b. Fixed Bills */}
+      {fixedExpenses.length > 0 && spentByCategory && transferAdjustments && (
+        <CategoryCarousel
+          title="Fixed Bills"
+          items={fixedExpenses.map(e => ({ id: e.id, name: e.name, budgeted: e.amount }))}
+          spentByCategory={spentByCategory}
+          transferAdjustments={transferAdjustments}
+          onSelectCategory={onSelectFixedExpense}
         />
       )}
 
