@@ -16,6 +16,11 @@ type AccountFilter = 'all' | string;
 function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts = [] }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void; accounts?: AppAccount[] }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
   const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+  const labelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    accounts.forEach(a => { m[a.id] = a.label; });
+    return m;
+  }, [accounts]);
 
   const accountFilters: { id: AccountFilter; label: string }[] = [
     { id: 'all', label: 'All' },
