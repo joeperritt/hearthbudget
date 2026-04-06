@@ -1,0 +1,1 @@
+UPDATE public.plaid_accounts SET app_account = 'checking' WHERE app_account = 'wf-checking';

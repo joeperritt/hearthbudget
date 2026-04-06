@@ -193,11 +193,7 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
 
   const saveNickname = async (accountId: string) => {
     if (!nicknameValue.trim()) return;
-    const acc = linkedItems.flatMap(i => i.plaid_accounts).find(a => a.id === accountId);
     const update: Record<string, any> = { nickname: nicknameValue.trim() };
-    if (acc?.account_category !== 'credit_card') {
-      update.app_account = slugify(nicknameValue.trim());
-    }
     const { error } = await supabase.from('plaid_accounts').update(update as any).eq('id', accountId);
     if (error) toast.error('Failed to update nickname');
     else {
