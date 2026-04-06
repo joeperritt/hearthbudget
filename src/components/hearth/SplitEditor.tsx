@@ -135,6 +135,7 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
                 fixedExpenses={fixedExpenses}
                 transactions={transactions}
                 pendingAmount={parseFloat(line.amount) || 0}
+                excludeTransactionIds={excludeTransactionIds}
               />
             </div>
           );
