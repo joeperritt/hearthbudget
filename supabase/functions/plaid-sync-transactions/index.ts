@@ -122,11 +122,11 @@ Deno.serve(async (req) => {
     let totalModified = 0;
     let totalRemoved = 0;
 
-    // Fire /transactions/refresh for Wells Fargo items (checking accounts)
-    // to get the freshest data. Skip Amex items.
+    // Fire /transactions/refresh for depository items (checking/savings)
     for (const item of plaidItems) {
-      const hasChecking = (item.plaid_accounts || []).some(
-        (acc: { type?: string; subtype?: string }) =>
+      const hasDepository = (item.plaid_accounts || []).some(
+        (acc: { account_category?: string; type?: string; subtype?: string }) =>
+          acc.account_category === 'checking' || acc.account_category === 'savings' ||
           acc.type === "depository" || acc.subtype === "checking"
       );
 
