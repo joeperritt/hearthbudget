@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from 'react';
-import { BudgetCategory } from '@/types/budget';
+import { Check } from 'lucide-react';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -14,8 +14,15 @@ function abbreviate(name: string, maxLen = 10): string {
   return name.slice(0, maxLen);
 }
 
+export interface CarouselItem {
+  id: string;
+  name: string;
+  budgeted: number;
+}
+
 interface CategoryCarouselProps {
-  categories: BudgetCategory[];
+  title: string;
+  items: CarouselItem[];
   spentByCategory: Record<string, number>;
   transferAdjustments: Record<string, number>;
   onSelectCategory?: (id: string) => void;
@@ -25,36 +32,36 @@ const CARD_WIDTH = 110;
 const GAP = 12;
 const SPEED = 0.4; // px per frame
 
-export function CategoryCarousel({ categories, spentByCategory, transferAdjustments, onSelectCategory }: CategoryCarouselProps) {
-  const items = useMemo(() => {
-    return categories.map(c => {
+export function CategoryCarousel({ title, items, spentByCategory, transferAdjustments, onSelectCategory }: CategoryCarouselProps) {
+  const computed = useMemo(() => {
+    return items.map(c => {
       const spent = spentByCategory[c.id] || 0;
       const adj = transferAdjustments[c.id] || 0;
       const remaining = c.budgeted + adj - spent;
       const pct = c.budgeted > 0 ? Math.min(spent / (c.budgeted + adj), 1) : 0;
       return { ...c, spent, remaining, pct };
     });
-  }, [categories, spentByCategory, transferAdjustments]);
+  }, [items, spentByCategory, transferAdjustments]);
 
   // Shuffle once on mount
   const shuffleRef = useRef<string[] | null>(null);
   const shuffled = useMemo(() => {
-    if (!shuffleRef.current || shuffleRef.current.length !== items.length) {
-      const indices = items.map((_, i) => i);
+    if (!shuffleRef.current || shuffleRef.current.length !== computed.length) {
+      const indices = computed.map((_, i) => i);
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [indices[i], indices[j]] = [indices[j], indices[i]];
       }
-      shuffleRef.current = indices.map(i => items[i]?.id).filter(Boolean);
+      shuffleRef.current = indices.map(i => computed[i]?.id).filter(Boolean);
     }
     const order = shuffleRef.current;
-    const byId = new Map(items.map(it => [it.id, it]));
-    return order.map(id => byId.get(id)).filter(Boolean) as typeof items;
-  }, [items]);
+    const byId = new Map(computed.map(it => [it.id, it]));
+    return order.map(id => byId.get(id)).filter(Boolean) as typeof computed;
+  }, [computed]);
 
   // Duplicate for seamless loop
   const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
-  const setWidth = shuffled.length * (CARD_WIDTH + GAP); // width of one full set
+  const setWidth = shuffled.length * (CARD_WIDTH + GAP);
 
   const offsetRef = useRef(0);
   const animRef = useRef(0);
@@ -71,7 +78,6 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     }
   }, []);
 
-  // Wrap offset so it stays within [0, setWidth)
   const wrapOffset = useCallback(() => {
     if (setWidth > 0) {
       offsetRef.current = ((offsetRef.current % setWidth) + setWidth) % setWidth;
@@ -80,10 +86,9 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
 
   const tick = useCallback(() => {
     if (!isDragging.current) {
-      // Apply momentum or default speed
       if (Math.abs(momentumRef.current) > 0.1) {
         offsetRef.current += momentumRef.current;
-        momentumRef.current *= 0.95; // friction
+        momentumRef.current *= 0.95;
       } else {
         momentumRef.current = 0;
         offsetRef.current += SPEED;
@@ -99,7 +104,6 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     return () => cancelAnimationFrame(animRef.current);
   }, [tick]);
 
-  // Touch / pointer handlers for drag
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     isDragging.current = true;
     dragStartX.current = e.touches[0].clientX;
@@ -121,7 +125,6 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
     isDragging.current = false;
   }, []);
 
-  // Mouse drag for desktop
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     isDragging.current = true;
     dragStartX.current = e.clientX;
@@ -146,7 +149,7 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
 
   return (
     <div className="mt-4 animate-fade-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
-      <h3 className="px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Category Snapshot</h3>
+      <h3 className="px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
       <div
         className="overflow-hidden pl-6"
         onTouchStart={handleTouchStart}
@@ -164,6 +167,26 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
         >
           {tickerItems.map((item, idx) => {
             const isOver = item.remaining < 0;
+            const isPerfect = item.budgeted > 0 && item.remaining === 0;
+
+            // Card style based on state
+            let cardBg = 'bg-card';
+            let labelColor = 'text-muted-foreground';
+            let amountColor = 'text-foreground';
+            let subColor = 'text-muted-foreground';
+
+            if (isOver) {
+              cardBg = 'bg-destructive';
+              labelColor = 'text-destructive-foreground';
+              amountColor = 'text-destructive-foreground';
+              subColor = 'text-destructive-foreground/80';
+            } else if (isPerfect) {
+              cardBg = 'bg-accent/20';
+              labelColor = 'text-accent-foreground';
+              amountColor = 'text-accent';
+              subColor = 'text-accent';
+            }
+
             return (
               <div
                 key={`${item.id}-${idx}`}
@@ -171,25 +194,42 @@ export function CategoryCarousel({ categories, spentByCategory, transferAdjustme
                   const dx = Math.abs((e as unknown as MouseEvent).clientX - dragStartX.current);
                   if (dx < 8) onSelectCategory?.(item.id);
                 }}
-                className="shrink-0 w-[110px] h-[110px] bg-card rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+                className={`shrink-0 w-[110px] h-[110px] ${cardBg} rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}
               >
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight truncate">
+                <p className={`text-[11px] font-semibold uppercase tracking-wide leading-tight truncate ${labelColor}`}>
                   {abbreviate(item.name)}
                 </p>
                 <div>
-                  <p className={`text-lg font-display font-bold tabular-nums leading-none ${isOver ? 'text-destructive' : 'text-foreground'}`}>
-                    {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {isOver ? 'over' : 'left'}
-                  </p>
+                  {isPerfect ? (
+                    <div className="flex items-center gap-1.5">
+                      <Check size={20} className="text-accent" strokeWidth={3} />
+                      <p className={`text-sm font-display font-bold ${amountColor}`}>Paid</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className={`text-lg font-display font-bold tabular-nums leading-none ${amountColor}`}>
+                        {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+                      </p>
+                      <p className={`text-[10px] mt-0.5 ${subColor}`}>
+                        {isOver ? 'over' : 'left'}
+                      </p>
+                    </>
+                  )}
                 </div>
-                <div className="h-1 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-accent'}`}
-                    style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
-                  />
-                </div>
+                {!isOver && !isPerfect && (
+                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all bg-accent"
+                      style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
+                    />
+                  </div>
+                )}
+                {isOver && (
+                  <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
+                    <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
+                  </div>
+                )}
+                {isPerfect && <div className="h-1" />}
               </div>
             );
           })}
