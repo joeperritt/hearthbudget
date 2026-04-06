@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { AppAccount } from '@/hooks/useAccounts';
-import { ArrowLeft, Trash2, ArrowLeftRight, ArrowDownLeft, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowDownLeft, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
@@ -65,7 +65,8 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
     return (
       <div
         key={t.id}
-        className={`flex items-center gap-3 px-4 py-3 animate-fade-up ${isIgnored ? 'opacity-30 grayscale' : ''}`}
+        onClick={() => onGoToTransaction?.(t.id)}
+        className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors ${isIgnored ? 'opacity-30 grayscale' : ''}`}
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
@@ -107,22 +108,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
           </p>
         </div>
 
-        {onGoToTransaction && (
-          <button
-            onClick={() => onGoToTransaction(t.id)}
-            className="p-1.5 text-muted-foreground/60 hover:text-accent active:scale-95 transition-all"
-            title="View in Activity"
-          >
-            <Search size={14} />
-          </button>
-        )}
-
-        <button
-          onClick={() => onDeleteTransaction(t.id)}
-          className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
-        >
-          <Trash2 size={14} />
-        </button>
+        <Search size={14} className="text-muted-foreground/40 shrink-0" />
       </div>
     );
   };

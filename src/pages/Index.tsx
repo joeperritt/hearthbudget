@@ -178,14 +178,30 @@ const Index = () => {
     setSelectedFixedExpenseId(null);
     setActiveTab('transactions');
     setTimeout(() => {
+      // Find the transaction and open edit sheet
+      const tx = transactions.find(t => t.id === transactionId);
+      if (tx) {
+        // Check if it's part of a split group
+        const siblings = transactions.filter(
+          t => t.id !== tx.id && t.description === tx.description && t.date === tx.date && t.account === tx.account && t.transactionType === 'expense'
+        );
+        if (siblings.length > 0 && tx.transactionType === 'expense') {
+          setEditingTransaction(tx);
+          setEditingSplitSiblings([tx, ...siblings]);
+        } else {
+          setEditingTransaction(tx);
+          setEditingSplitSiblings([]);
+        }
+      }
+      // Also scroll to it
       const el = document.getElementById(`tx-${transactionId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-background');
         setTimeout(() => el.classList.remove('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-background'), 2000);
       }
-    }, 150);
-  }, []);
+    }, 200);
+  }, [transactions]);
 
   if (loading || !activeMonth) {
     return (
