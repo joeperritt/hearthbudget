@@ -23,6 +23,7 @@ interface AddTransactionSheetProps {
   fixedExpenses: FixedExpense[];
   onAdd: (transactions: Omit<Transaction, 'id'>[]) => void;
   monthTransactions?: Transaction[];
+  accounts?: AppAccount[];
 }
 
 export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [] }: AddTransactionSheetProps) {
