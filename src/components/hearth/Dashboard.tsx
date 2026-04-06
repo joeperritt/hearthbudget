@@ -159,28 +159,24 @@ export function Dashboard({
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Joe's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexGross)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Katie's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexGross)}</span>
-          </div>
+          {accountSpending.map((acct, i) => (
+            <div key={i} className="flex justify-between items-center px-4 py-3">
+              <span className="text-sm text-foreground">{acct.label}</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(acct.amount)}</span>
+            </div>
+          ))}
           {totalPayoffs > 0 && (
             <div className="flex justify-between items-center px-4 py-3">
               <span className="text-sm text-muted-foreground">Total Payoffs</span>
               <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(totalPayoffs)}</span>
             </div>
           )}
-          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-            <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Checking Spent</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingSpent)}</span>
-          </div>
+          {creditSpending.length > 0 && (
+            <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
+              <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
+              <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
+            </div>
+          )}
         </div>
         {lastSynced && (
           <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
