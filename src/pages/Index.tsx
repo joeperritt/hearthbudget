@@ -332,6 +332,7 @@ const Index = () => {
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
         splitSiblings={editingSplitSiblings}
+        accounts={accounts}
       />
 
       {moveFundsCategoryId && (
