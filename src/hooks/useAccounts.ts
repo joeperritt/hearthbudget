@@ -17,9 +17,9 @@ export function useAccounts() {
       .from('plaid_accounts')
       .select('id, nickname, account_category, app_account');
 
-    const { data: cardholders } = await supabase
-      .from('plaid_cardholders' as any)
-      .select('id, plaid_account_id, name, slug');
+    const { data: cardholders } = await (supabase as any)
+      .from('plaid_cardholders')
+      .select('id, plaid_account_id, name, slug') as { data: any[] | null };
 
     const result: AppAccount[] = [];
     const seen = new Set<string>();
