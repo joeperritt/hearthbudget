@@ -17,6 +17,7 @@ interface SplitEditorProps {
   lines: SplitLine[];
   onChange: (lines: SplitLine[]) => void;
   transactions?: Transaction[];
+  excludeTransactionIds?: string[];
 }
 
 function formatCurrency(n: number) {
