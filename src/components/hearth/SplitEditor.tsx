@@ -17,13 +17,14 @@ interface SplitEditorProps {
   lines: SplitLine[];
   onChange: (lines: SplitLine[]) => void;
   transactions?: Transaction[];
+  excludeTransactionIds?: string[];
 }
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
-export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, lines, onChange, transactions = [] }: SplitEditorProps) {
+export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, lines, onChange, transactions = [], excludeTransactionIds = [] }: SplitEditorProps) {
   const allocated = lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
   const remaining = Math.round((totalAmount - allocated) * 100) / 100;
 
@@ -134,6 +135,7 @@ export function SplitEditor({ totalAmount, mode, categories, fixedExpenses, line
                 fixedExpenses={fixedExpenses}
                 transactions={transactions}
                 pendingAmount={parseFloat(line.amount) || 0}
+                excludeTransactionIds={excludeTransactionIds}
               />
             </div>
           );

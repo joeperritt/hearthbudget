@@ -354,7 +354,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={Math.abs(transaction.amount)} />
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={Math.abs(transaction.amount)} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} />
             </div>
           )}
 
@@ -397,7 +397,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   </optgroup>
                 )}
               </select>
-              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={Math.abs(transaction.amount)} />
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={Math.abs(transaction.amount)} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} />
             </div>
           )}
 
@@ -421,6 +421,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 lines={splitLines}
                 onChange={setSplitLines}
                 transactions={monthTransactions}
+                excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]}
               />
             </div>
           )}

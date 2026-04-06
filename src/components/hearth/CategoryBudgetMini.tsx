@@ -11,9 +11,11 @@ interface CategoryBudgetMiniProps {
   transactions: Transaction[];
   /** Amount of the current transaction being assigned (positive = expense, shown as pending) */
   pendingAmount?: number;
+  /** IDs of transactions being edited — excluded from spent calculation to avoid double-counting */
+  excludeTransactionIds?: string[];
 }
 
-export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions, pendingAmount = 0 }: CategoryBudgetMiniProps) {
+export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, transactions, pendingAmount = 0, excludeTransactionIds = [] }: CategoryBudgetMiniProps) {
   if (!categoryId || categoryId === 'unassigned') return null;
 
   const cat = categories.find(c => c.id === categoryId);
@@ -23,12 +25,14 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
 
   const EXCLUDED_CATS = new Set([DEPOSIT_CATEGORY, INCOME_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY]);
 
+  const excludeSet = new Set(excludeTransactionIds);
+
   const spent = transactions
-    .filter(t => t.categoryId === categoryId && t.transactionType === 'expense' && !EXCLUDED_CATS.has(t.categoryId))
+    .filter(t => t.categoryId === categoryId && t.transactionType === 'expense' && !EXCLUDED_CATS.has(t.categoryId) && !excludeSet.has(t.id))
     .reduce((s, t) => s + t.amount, 0);
 
   const deposits = transactions
-    .filter(t => t.categoryId === categoryId && t.transactionType === 'deposit')
+    .filter(t => t.categoryId === categoryId && t.transactionType === 'deposit' && !excludeSet.has(t.id))
     .reduce((s, t) => s + Math.abs(t.amount), 0);
 
   const netSpent = spent - deposits;
