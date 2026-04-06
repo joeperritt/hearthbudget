@@ -345,9 +345,6 @@ const Index = () => {
             monthTransactions={monthTransactions}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'past-months' && (
-          <PastMonthsView onBack={() => setMoreSubView('menu')} />
-        )}
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />
         )}
