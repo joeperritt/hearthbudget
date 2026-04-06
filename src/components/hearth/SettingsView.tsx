@@ -599,7 +599,7 @@ export function SettingsView({
             {isCurrentMonth && (
               <div className="mt-4">
                 {(() => {
-                  const totalSpentAll = varSpent + fixedSpentVal + givingSpent;
+                  const totalSpentAll = varSpent + fixedSpentVal + savingsSpent + givingSpent;
                   const remaining = totalBudgetRO - totalSpentAll;
                   return (
                     <>
