@@ -25,13 +25,17 @@ interface CategoryCarouselProps {
   spentByCategory: Record<string, number>;
   transferAdjustments: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  compact?: boolean;
 }
 
 const CARD_WIDTH = 110;
+const CARD_WIDTH_COMPACT = 100;
 const GAP = 12;
-const SPEED = 0.4; // px per frame
+const SPEED = 0.4;
 
-export function CategoryCarousel({ title, items, spentByCategory, transferAdjustments, onSelectCategory }: CategoryCarouselProps) {
+export function CategoryCarousel({ title, items, spentByCategory, transferAdjustments, onSelectCategory, compact = false }: CategoryCarouselProps) {
+  const cardW = compact ? CARD_WIDTH_COMPACT : CARD_WIDTH;
+  const cardH = compact ? 56 : 110;
   const computed = useMemo(() => {
     return items.map(c => {
       const spent = spentByCategory[c.id] || 0;
@@ -60,7 +64,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
 
   // Duplicate for seamless loop
   const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
-  const setWidth = shuffled.length * (CARD_WIDTH + GAP);
+  const setWidth = shuffled.length * (cardW + GAP);
 
   const offsetRef = useRef(0);
   const animRef = useRef(0);
@@ -162,7 +166,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
         <div
           ref={trackRef}
           className="flex gap-3 will-change-transform select-none"
-          style={{ width: `${tickerItems.length * (CARD_WIDTH + GAP)}px` }}
+          style={{ width: `${tickerItems.length * (cardW + GAP)}px` }}
         >
           {tickerItems.map((item, idx) => {
             const isOver = item.remaining < 0;
@@ -193,48 +197,66 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                   const dx = Math.abs((e as unknown as MouseEvent).clientX - dragStartX.current);
                   if (dx < 8) onSelectCategory?.(item.id);
                 }}
-                className={`shrink-0 w-[110px] h-[110px] ${cardBg} rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}
+                className={`shrink-0 ${cardBg} rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2' : 'p-3 flex flex-col justify-between'}`}
+                style={{ width: `${cardW}px`, height: `${cardH}px` }}
               >
-                <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
-                  {item.name}
-                </p>
-                <div>
-                {isPerfect ? (
-                    <div>
-                      <div className="flex items-center gap-1">
-                        <Check size={14} className="text-accent" strokeWidth={3} />
-                        <p className={`text-xs font-display font-bold ${amountColor}`}>Done</p>
-                      </div>
-                      <p className={`text-[10px] mt-0.5 ${subColor}`}>$0 left</p>
-                    </div>
-                  ) : (
-                    <>
-                      <p className={`text-lg font-display font-bold tabular-nums leading-none ${amountColor}`}>
+                {compact ? (
+                  <>
+                    <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+                      {item.name}
+                    </p>
+                    {isPerfect ? (
+                      <Check size={14} className="text-accent shrink-0" strokeWidth={3} />
+                    ) : (
+                      <p className={`text-xs font-display font-bold tabular-nums shrink-0 ${amountColor}`}>
                         {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
                       </p>
-                      <p className={`text-[10px] mt-0.5 ${subColor}`}>
-                        {isOver ? 'over' : 'left'}
-                      </p>
-                    </>
-                  )}
-                </div>
-                {!isOver && !isPerfect && (
-                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all bg-accent"
-                      style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
-                    />
-                  </div>
-                )}
-                {isOver && (
-                  <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
-                    <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
-                  </div>
-                )}
-                {isPerfect && (
-                  <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
-                    <div className="h-full rounded-full bg-accent w-full" />
-                  </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+                      {item.name}
+                    </p>
+                    <div>
+                    {isPerfect ? (
+                        <div>
+                          <div className="flex items-center gap-1">
+                            <Check size={14} className="text-accent" strokeWidth={3} />
+                            <p className={`text-xs font-display font-bold ${amountColor}`}>Done</p>
+                          </div>
+                          <p className={`text-[10px] mt-0.5 ${subColor}`}>$0 left</p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className={`text-lg font-display font-bold tabular-nums leading-none ${amountColor}`}>
+                            {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+                          </p>
+                          <p className={`text-[10px] mt-0.5 ${subColor}`}>
+                            {isOver ? 'over' : 'left'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {!isOver && !isPerfect && (
+                      <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all bg-accent"
+                          style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
+                        />
+                      </div>
+                    )}
+                    {isOver && (
+                      <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
+                        <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
+                      </div>
+                    )}
+                    {isPerfect && (
+                      <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
+                        <div className="h-full rounded-full bg-accent w-full" />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

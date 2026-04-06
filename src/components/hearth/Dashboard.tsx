@@ -312,6 +312,7 @@ export function Dashboard({
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
           onSelectCategory={onSelectFixedExpense}
+          compact
         />
       )}
 
