@@ -33,14 +33,6 @@ interface PlaidItem {
   plaid_accounts: PlaidAccount[];
 }
 
-interface Balance {
-  account_name: string;
-  current: number;
-  available: number | null;
-  type: string;
-  subtype: string | null;
-  mask: string | null;
-}
 
 const ACCOUNT_CATEGORIES = [
   { value: 'checking', label: 'Checking', icon: Landmark },
