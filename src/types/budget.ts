@@ -33,7 +33,7 @@ export interface BudgetCategory {
   id: string;
   name: string;
   budgeted: number;
-  group: 'shared' | 'joe' | 'katie' | 'giving';
+  group: 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
   notesRequired: boolean;
 }
 
