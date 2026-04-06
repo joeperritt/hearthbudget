@@ -27,7 +27,7 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
         <div className="flex gap-1">
-          {ACCOUNT_FILTERS.map(f => (
+          {accountFilters.map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
