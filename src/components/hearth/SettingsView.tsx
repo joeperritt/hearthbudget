@@ -315,7 +315,7 @@ export function SettingsView({
   };
 
   const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving', savings: 'Savings' };
-  const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed Bills', savings: 'Savings Buckets', tithe: 'Tithe/Giving' };
+  const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed', savings: 'Savings', tithe: 'Tithe/Giving' };
 
   // Next month totals
   const savingsVarCats = nextCats.filter(c => c.group === 'savings');
