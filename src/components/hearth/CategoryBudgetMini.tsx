@@ -25,12 +25,14 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
 
   const EXCLUDED_CATS = new Set([DEPOSIT_CATEGORY, INCOME_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY]);
 
+  const excludeSet = new Set(excludeTransactionIds);
+
   const spent = transactions
-    .filter(t => t.categoryId === categoryId && t.transactionType === 'expense' && !EXCLUDED_CATS.has(t.categoryId))
+    .filter(t => t.categoryId === categoryId && t.transactionType === 'expense' && !EXCLUDED_CATS.has(t.categoryId) && !excludeSet.has(t.id))
     .reduce((s, t) => s + t.amount, 0);
 
   const deposits = transactions
-    .filter(t => t.categoryId === categoryId && t.transactionType === 'deposit')
+    .filter(t => t.categoryId === categoryId && t.transactionType === 'deposit' && !excludeSet.has(t.id))
     .reduce((s, t) => s + Math.abs(t.amount), 0);
 
   const netSpent = spent - deposits;
