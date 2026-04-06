@@ -233,16 +233,15 @@ const Index = () => {
           <Dashboard
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
-            joeAmexGross={joeAmexGross}
-            katieAmexGross={katieAmexGross}
+            accountSpending={accountSpending}
             totalPayoffs={totalPayoffs}
-            checkingSpent={checkingSpent}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
             categories={categories}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
+            accounts={accounts}
           />
         )}
         {activeTab === 'variable' && (
