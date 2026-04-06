@@ -35,6 +35,8 @@ const Index = () => {
     updatePlanningData,
   } = useBudgetData();
 
+  const { accounts } = useAccounts();
+
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
