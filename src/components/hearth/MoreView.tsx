@@ -19,19 +19,6 @@ export function MoreView({ onSelect }: MoreViewProps) {
 
       <div className="px-6 mt-6 space-y-3">
         <button
-          onClick={() => onSelect('planning')}
-          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <CalendarDays size={20} className="text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Planning</p>
-            <p className="text-xs text-muted-foreground">Pay calculator & next month budget</p>
-          </div>
-        </button>
-
-        <button
           onClick={() => onSelect('settings')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
         >
@@ -39,8 +26,21 @@ export function MoreView({ onSelect }: MoreViewProps) {
             <Settings size={20} className="text-accent" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Settings</p>
+            <p className="text-sm font-semibold text-foreground">Budget Planning</p>
             <p className="text-xs text-muted-foreground">Manage categories & budget amounts</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('planning')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <CalendarDays size={20} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Income Planning</p>
+            <p className="text-xs text-muted-foreground">Pay calculator & next month budget</p>
           </div>
         </button>
 
