@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
           acc.type === "depository" || acc.subtype === "checking"
       );
 
-      if (hasChecking) {
+      if (hasDepository) {
         try {
           const refreshRes = await fetch(`${plaidBaseUrl}/transactions/refresh`, {
             method: "POST",
