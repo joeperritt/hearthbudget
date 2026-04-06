@@ -415,7 +415,8 @@ export function SettingsView({
     const totalBudgetRO = varTotal + fixedBillsTotal + savingsROTotal + givingTotal;
 
     const varSpent = varCats.reduce((s, c) => s + (spent[c.id] || 0), 0);
-    const fixedSpentVal = [...fixedBillsRO, ...savingsRO].reduce((s, e) => s + (spent[e.id] || 0), 0);
+    const fixedSpentVal = fixedBillsRO.reduce((s, e) => s + (spent[e.id] || 0), 0);
+    const savingsSpent = [...savingsRO, ...savingsVarCatsRO].reduce((s, e) => s + (spent[e.id] || 0), 0);
     const givingSpent = [...givingCats, ...titheRO].reduce((s, e) => s + (spent['id' in e ? e.id : (e as any).id] || 0), 0);
 
     const shared = varCats.filter(c => c.group === 'shared');
