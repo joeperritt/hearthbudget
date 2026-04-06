@@ -237,12 +237,11 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
 
   const updateCardholder = async (id: string) => {
     if (!editCardholderName.trim()) return;
-    const slug = slugify(editCardholderName.trim());
     const patterns = editCardholderPatterns.split(',').map(p => p.trim().toLowerCase()).filter(Boolean);
 
     const { error } = await (supabase as any)
       .from('plaid_cardholders')
-      .update({ name: editCardholderName.trim(), slug, match_patterns: patterns })
+      .update({ name: editCardholderName.trim(), match_patterns: patterns })
       .eq('id', id);
 
     if (error) toast.error('Failed to update cardholder');
