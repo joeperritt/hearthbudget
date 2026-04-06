@@ -95,11 +95,13 @@ Deno.serve(async (req) => {
     }> = [];
 
     for (const item of plaidItems) {
-      // Skip items where all accounts are checking — avoids Plaid balance errors
-      const mappedAccounts = (item.plaid_accounts || []).filter((a: { app_account: string | null }) => a.app_account);
-      const allChecking = mappedAccounts.length > 0 && mappedAccounts.every((a: { app_account: string | null }) => a.app_account === "checking");
-      if (allChecking) {
-        console.log("Skipping balance fetch for checking-only item", item.id);
+      // Skip items where all accounts are checking/savings — avoids Plaid balance errors on some banks
+      const mappedAccounts = (item.plaid_accounts || []).filter((a: { app_account: string | null; account_category?: string }) => a.app_account || a.account_category);
+      const allDepository = mappedAccounts.length > 0 && mappedAccounts.every((a: { account_category?: string; app_account?: string | null }) => 
+        a.account_category === 'checking' || a.account_category === 'savings' || a.app_account === 'checking'
+      );
+      if (allDepository) {
+        console.log("Skipping balance fetch for depository-only item", item.id);
         continue;
       }
 

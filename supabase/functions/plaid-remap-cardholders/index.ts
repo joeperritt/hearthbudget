@@ -85,14 +85,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch all cardholders for this household
+    const { data: allCardholders } = await serviceClient
+      .from("plaid_cardholders")
+      .select("*")
+      .eq("household_id", profile.household_id);
+
     let totalUpdated = 0;
 
     for (const item of plaidItems) {
-      // Check if any account is an Amex
-      const hasAmex = (item.plaid_accounts || []).some(
-        (acc: Record<string, unknown>) => ((acc.app_account as string) || "").includes("amex")
+      // Find credit card accounts with cardholders
+      const creditAccounts = (item.plaid_accounts || []).filter(
+        (acc: Record<string, unknown>) => (acc.account_category as string) === "credit_card"
       );
-      if (!hasAmex) continue;
+      if (creditAccounts.length === 0) continue;
+
+      // Build cardholder lookup for this item's accounts
+      const cardholdersByPlaidAccountId: Record<string, Array<{ slug: string; patterns: string[] }>> = {};
+      for (const acc of creditAccounts) {
+        const holders = (allCardholders || []).filter((h: any) => h.plaid_account_id === acc.id);
+        if (holders.length > 0) {
+          cardholdersByPlaidAccountId[acc.plaid_account_id] = holders.map((h: any) => ({
+            slug: h.slug,
+            patterns: h.match_patterns || [],
+          }));
+        }
+      }
+
+      if (Object.keys(cardholdersByPlaidAccountId).length === 0) continue;
 
       // Use /transactions/get to pull all historical transactions with account_owner
       let offset = 0;
@@ -127,20 +147,43 @@ Deno.serve(async (req) => {
 
         // For each transaction, check cardholder and update matching DB records
         for (const tx of getData.transactions) {
+          const plaidAccountId = tx.account_id;
+          const holders = cardholdersByPlaidAccountId[plaidAccountId];
+          if (!holders || holders.length === 0) continue;
+
           const owner = (tx.account_owner || "").toLowerCase();
           const txName = (tx.name || "").toLowerCase();
           const searchText = owner || txName;
 
           let newAccount: string | null = null;
-          if (searchText.includes("katherine") || searchText.includes("katie")) {
-            newAccount = "katie-amex";
-          } else if (searchText.includes("joseph") || searchText.includes("joe")) {
-            newAccount = "joe-amex";
+          for (const holder of holders) {
+            if (holder.patterns.some(p => searchText.includes(p.toLowerCase()))) {
+              newAccount = holder.slug;
+              break;
+            }
           }
 
           if (!newAccount) continue;
 
-          // Match by date + amount + description in our DB
+          // Match by plaid_transaction_id first, then by date + amount + description
+          if (tx.transaction_id) {
+            const { data: matchByPlaidId } = await serviceClient
+              .from("transactions")
+              .select("id, account")
+              .eq("household_id", profile.household_id)
+              .eq("plaid_transaction_id", tx.transaction_id)
+              .limit(1);
+
+            if (matchByPlaidId && matchByPlaidId.length > 0 && matchByPlaidId[0].account !== newAccount) {
+              await serviceClient
+                .from("transactions")
+                .update({ account: newAccount })
+                .eq("id", matchByPlaidId[0].id);
+              totalUpdated++;
+              continue;
+            }
+          }
+
           const merchantName = tx.merchant_name || tx.name || "";
           const amount = Math.abs(tx.amount);
           const date = tx.date;
@@ -155,7 +198,7 @@ Deno.serve(async (req) => {
 
           if (matchingTxs && matchingTxs.length > 0) {
             for (const dbTx of matchingTxs) {
-              if (dbTx.account !== newAccount && dbTx.account.includes("amex")) {
+              if (dbTx.account !== newAccount) {
                 await serviceClient
                   .from("transactions")
                   .update({ account: newAccount })
