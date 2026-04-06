@@ -253,8 +253,8 @@ export function Dashboard({
   const overallNet = overallSpent - overallReturns;
   const budgetDifference = totalBudget - overallNet;
 
-  // Colors
-  const spentColor = 'hsl(var(--destructive))';
+  // Colors — blue & gold theme
+  const spentColor = 'hsl(var(--primary))';
   const payoffColor = 'hsl(var(--accent))';
   const depositColor = 'hsl(142 71% 45%)'; // green
 
