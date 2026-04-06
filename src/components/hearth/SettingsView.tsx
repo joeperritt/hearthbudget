@@ -778,7 +778,7 @@ export function SettingsView({
         {viewTab === 'fixed' && (
           <div className="px-6 pb-4">
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed Bills</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                 {fixedBills.map((e, idx) => (
                   <div key={e.id} className="px-3 py-2.5">
