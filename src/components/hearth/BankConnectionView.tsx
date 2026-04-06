@@ -71,6 +71,9 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   const [addingCardholder, setAddingCardholder] = useState<string | null>(null);
   const [newCardholderName, setNewCardholderName] = useState('');
   const [newCardholderPatterns, setNewCardholderPatterns] = useState('');
+  const [editingCardholder, setEditingCardholder] = useState<string | null>(null);
+  const [editCardholderName, setEditCardholderName] = useState('');
+  const [editCardholderPatterns, setEditCardholderPatterns] = useState('');
 
   const fetchLinkedItems = useCallback(async () => {
     const { data, error } = await supabase
