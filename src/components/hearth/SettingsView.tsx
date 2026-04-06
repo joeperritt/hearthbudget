@@ -400,7 +400,7 @@ export function SettingsView({
       const adj = transfers[item.id] || 0;
       const adjustedBudget = amount + adj;
       const remaining = adjustedBudget - s;
-      const hasSpending = isCurrentMonth; // Only show progress for current month
+      const hasSpending = isCurrentMonth || isPastMonth;
 
       return (
         <div key={item.id} className="px-4 py-3">
