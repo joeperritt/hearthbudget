@@ -188,7 +188,7 @@ export function Dashboard({
   monthLabel, onAddTransaction,
   accountSpending, totalPayoffs,
   unassignedTransactions, onEditTransaction, onSyncComplete,
-  categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
+  categories: varCategories, fixedExpenses = [], spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense,
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
