@@ -240,9 +240,11 @@ const Index = () => {
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
             categories={categories}
+            fixedExpenses={fixedExpenses}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
+            onSelectFixedExpense={setSelectedFixedExpenseId}
             accounts={accounts}
             monthTransactions={monthTransactions}
             totalBudget={totalBudget}
