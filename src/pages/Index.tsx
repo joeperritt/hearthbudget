@@ -320,6 +320,7 @@ const Index = () => {
         fixedExpenses={fixedExpenses}
         onAdd={handleAddTransactions}
         monthTransactions={monthTransactions}
+        accounts={accounts}
       />
 
       <EditTransactionSheet
