@@ -397,7 +397,8 @@ export function SettingsView({
     }
 
     // Separate categories
-    const varCats = cats.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY);
+    const varCats = cats.filter(c => c.group !== 'giving' && c.group !== 'savings' && c.id !== GIVING_VARIABLE_CATEGORY);
+    const savingsVarCatsRO = cats.filter(c => c.group === 'savings');
     const givingCats = cats.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
     const fixedBillsRO = fixed.filter(e => e.group === 'bills');
     const savingsRO = fixed.filter(e => e.group === 'savings');
@@ -405,7 +406,9 @@ export function SettingsView({
 
     const varTotal = varCats.reduce((s, c) => s + c.budgeted, 0);
     const fixedBillsTotal = fixedBillsRO.reduce((s, e) => s + e.amount, 0);
-    const savingsROTotal = savingsRO.reduce((s, e) => s + e.amount, 0);
+    const savingsFixedROTotal = savingsRO.reduce((s, e) => s + e.amount, 0);
+    const savingsVarROTotal = savingsVarCatsRO.reduce((s, c) => s + c.budgeted, 0);
+    const savingsROTotal = savingsFixedROTotal + savingsVarROTotal;
     const givingCatsTotal = givingCats.reduce((s, c) => s + c.budgeted, 0);
     const titheROTotal = titheRO.reduce((s, e) => s + e.amount, 0);
     const givingTotal = givingCatsTotal + titheROTotal;
