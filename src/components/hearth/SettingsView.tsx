@@ -44,7 +44,7 @@ interface SettingsViewProps {
   monthTransactions?: Transaction[];
 }
 
-type GroupType = 'shared' | 'joe' | 'katie' | 'giving';
+type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
 type FixedGroupType = 'bills' | 'savings' | 'tithe';
 type ViewTab = 'variable' | 'fixed' | 'savings' | 'giving';
 
