@@ -242,6 +242,8 @@ const Index = () => {
             transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
             accounts={accounts}
+            monthTransactions={monthTransactions}
+            totalBudget={totalBudget}
           />
         )}
         {activeTab === 'variable' && (
