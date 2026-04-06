@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
+import { AppAccount } from '@/hooks/useAccounts';
 import { ArrowLeft, Trash2, ArrowLeftRight, ArrowDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -24,10 +26,16 @@ interface CategoryDetailProps {
   transferAdjustment: number;
   onBack: () => void;
   onDeleteTransaction: (id: string) => void;
+  accounts?: AppAccount[];
 }
 
-export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction, accounts = [] }: CategoryDetailProps) {
   const adjustedBudget = category.budgeted + transferAdjustment;
+  const accountLabelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    accounts.forEach(a => { m[a.id] = a.label; });
+    return m;
+  }, [accounts]);
   const remaining = adjustedBudget - spent;
   const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
   const isDescriptionCategory = categoryRequiresNotes(category.id, categories, fixedExpenses);
@@ -148,7 +156,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
                   {isDescriptionCategory && t.description && (
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>
                   )}
-                  <span className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d, yyyy')}</span>
+                  <span className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d, yyyy')} · {accountLabelMap[t.account] || t.account}</span>
                 </div>
                 <button
                   onClick={() => onDeleteTransaction(t.id)}

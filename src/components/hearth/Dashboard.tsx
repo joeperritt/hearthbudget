@@ -16,6 +16,11 @@ type AccountFilter = 'all' | string;
 function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts = [] }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void; accounts?: AppAccount[] }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
   const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+  const labelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    accounts.forEach(a => { m[a.id] = a.label; });
+    return m;
+  }, [accounts]);
 
   const accountFilters: { id: AccountFilter; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -56,7 +61,7 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
             <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 cursor-pointer active:bg-muted/50 transition-colors">
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
-                <span className="text-[11px] text-muted-foreground">{tx.date} · {tx.account}</span>
+                <span className="text-[11px] text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
               </div>
               {(() => {
                 const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
@@ -253,10 +258,18 @@ export function Dashboard({
   const overallNet = overallSpent - overallReturns;
   const budgetDifference = totalBudget - overallNet;
 
-  // Colors — blue & gold theme
-  const spentColor = 'hsl(var(--primary))';
+  // Colors — lighter blue & gold theme
+  const spentColor = 'hsl(220 42% 38%)';
+  const spentColorAlt = 'hsl(220 42% 52%)';
   const payoffColor = 'hsl(var(--accent))';
   const depositColor = 'hsl(142 71% 45%)'; // green
+
+  // Build a lookup from account slug → display label
+  const accountLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    accounts.forEach(a => { map[a.id] = a.label; });
+    return map;
+  }, [accounts]);
 
   return (
     <div className="max-w-lg mx-auto">
@@ -306,7 +319,7 @@ export function Dashboard({
             barSegments={[
               ...creditRows.map((r, i) => ({
                 value: r.value,
-                color: i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.6)',
+                color: i === 0 ? spentColor : spentColorAlt,
                 label: r.label,
               })),
               { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
