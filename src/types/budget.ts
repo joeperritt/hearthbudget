@@ -1,4 +1,4 @@
-export type AccountSource = 'joe-amex' | 'katie-amex' | 'checking';
+export type AccountSource = string;
 
 export type TransactionType = 'expense' | 'budget-adjustment' | 'income' | 'deposit' | 'cc-payment';
 
