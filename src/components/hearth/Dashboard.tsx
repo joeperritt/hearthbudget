@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3 } from 'lucide-react';
-import { Transaction, AccountSource, BudgetCategory, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
