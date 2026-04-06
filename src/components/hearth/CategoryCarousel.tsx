@@ -25,6 +25,7 @@ interface CategoryCarouselProps {
   spentByCategory: Record<string, number>;
   transferAdjustments: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  compact?: boolean;
 }
 
 const CARD_WIDTH = 110;
