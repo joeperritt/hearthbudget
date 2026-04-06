@@ -293,13 +293,25 @@ export function Dashboard({
       {/* 1. Unassigned */}
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
 
-      {/* 2. Category Snapshot */}
+      {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
         <CategoryCarousel
-          categories={varCategories}
+          title="Variable Categories"
+          items={varCategories.map(c => ({ id: c.id, name: c.name, budgeted: c.budgeted }))}
           spentByCategory={spentByCategory}
           transferAdjustments={transferAdjustments}
           onSelectCategory={onSelectCategory}
+        />
+      )}
+
+      {/* 2b. Fixed Bills */}
+      {fixedExpenses.length > 0 && spentByCategory && transferAdjustments && (
+        <CategoryCarousel
+          title="Fixed Bills"
+          items={fixedExpenses.map(e => ({ id: e.id, name: e.name, budgeted: e.amount }))}
+          spentByCategory={spentByCategory}
+          transferAdjustments={transferAdjustments}
+          onSelectCategory={onSelectFixedExpense}
         />
       )}
 
