@@ -6,12 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
-
-const ACCOUNTS: { id: AccountSource; label: string }[] = [
-  { id: 'joe-amex', label: "Joe's Amex" },
-  { id: 'katie-amex', label: "Katie's Amex" },
-  { id: 'checking', label: 'Checking' },
-];
+import { AppAccount } from '@/hooks/useAccounts';
 
 type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
 type IgnoreType = 'income' | 'transfer' | 'prior-month';
