@@ -174,9 +174,11 @@ interface DashboardProps {
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
   categories?: BudgetCategory[];
+  fixedExpenses?: FixedExpense[];
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  onSelectFixedExpense?: (id: string) => void;
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
