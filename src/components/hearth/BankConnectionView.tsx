@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Building2, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaidLink } from 'react-plaid-link';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,14 +33,6 @@ interface PlaidItem {
   plaid_accounts: PlaidAccount[];
 }
 
-interface Balance {
-  account_name: string;
-  current: number;
-  available: number | null;
-  type: string;
-  subtype: string | null;
-  mask: string | null;
-}
 
 const ACCOUNT_CATEGORIES = [
   { value: 'checking', label: 'Checking', icon: Landmark },
@@ -65,10 +57,9 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkedItems, setLinkedItems] = useState<PlaidItem[]>([]);
   const [cardholders, setCardholders] = useState<Cardholder[]>([]);
-  const [balances, setBalances] = useState<Balance[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
-  const [loadingBalances, setLoadingBalances] = useState(false);
+  
   const [editingNickname, setEditingNickname] = useState<string | null>(null);
   const [nicknameValue, setNicknameValue] = useState('');
   const [addingCardholder, setAddingCardholder] = useState<string | null>(null);
@@ -154,31 +145,6 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
     }
   };
 
-  const handleRemapCardholders = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('plaid-remap-cardholders');
-      if (error) throw error;
-      toast.success(`Remapped ${data.updated} transactions`);
-    } catch {
-      toast.error('Failed to remap cardholders');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleGetBalances = async () => {
-    setLoadingBalances(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('plaid-get-balances');
-      if (error) throw error;
-      setBalances(data.balances || []);
-    } catch {
-      toast.error('Failed to get balances');
-    } finally {
-      setLoadingBalances(false);
-    }
-  };
 
   // Account management
   const updateAccountCategory = async (accountId: string, category: string) => {
@@ -262,7 +228,6 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
     else {
       toast.success('Bank disconnected');
       fetchLinkedItems();
-      setBalances([]);
     }
   };
 
@@ -290,34 +255,8 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
           <div className="flex gap-3">
             <button onClick={handleSync} disabled={syncing} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
               <RefreshCw size={16} className={`text-accent ${syncing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-medium text-foreground">{syncing ? 'Syncing...' : 'Sync'}</span>
+              <span className="text-xs font-medium text-foreground">{syncing ? 'Syncing...' : 'Sync Transactions'}</span>
             </button>
-            <button onClick={handleGetBalances} disabled={loadingBalances} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
-              <Building2 size={16} className="text-primary" />
-              <span className="text-xs font-medium text-foreground">{loadingBalances ? 'Loading...' : 'Balances'}</span>
-            </button>
-            <button onClick={handleRemapCardholders} disabled={syncing} className="flex-1 flex items-center justify-center gap-2 bg-card rounded-lg p-3 shadow-sm border border-border active:scale-[0.98] transition-transform disabled:opacity-50">
-              <RefreshCw size={16} className={`text-primary ${syncing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-medium text-foreground">{syncing ? '...' : 'Fix Cards'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Balances */}
-        {balances.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Live Balances</h3>
-            <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-              {balances.map((b, i) => (
-                <div key={i} className="flex justify-between items-center px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{b.account_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{b.type} {b.subtype ? `· ${b.subtype}` : ''} {b.mask ? `····${b.mask}` : ''}</p>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(b.current)}</span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
