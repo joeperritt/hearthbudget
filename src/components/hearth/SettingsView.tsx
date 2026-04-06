@@ -777,77 +777,193 @@ export function SettingsView({
 
         {viewTab === 'fixed' && (
           <div className="px-6 pb-4">
-            {([
-              { key: 'bills' as FixedGroupType, label: 'Fixed Bills', items: fixedBills },
-              { key: 'savings' as FixedGroupType, label: 'Savings Buckets', items: savingsBuckets },
-            ]).map(({ key, label, items }) => (
-              <div key={key} className="mb-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{label}</h3>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-                  {items.map((e, idx) => (
-                    <div key={e.id} className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button onClick={() => moveNextFixed(e.id, 'up', key)} disabled={idx === 0}
-                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
-                          <button onClick={() => moveNextFixed(e.id, 'down', key)} disabled={idx === items.length - 1}
-                            className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {renamingId === e.id ? (
-                            <div className="flex gap-1.5">
-                              <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
-                                className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
-                              <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
-                              {e.name}
-                            </button>
-                          )}
-                        </div>
-                        {editingId === `next-fix-${e.id}` ? (
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed Bills</h3>
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                {fixedBills.map((e, idx) => (
+                  <div key={e.id} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveNextFixed(e.id, 'up', 'bills')} disabled={idx === 0}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▲</button>
+                        <button onClick={() => moveNextFixed(e.id, 'down', 'bills')} disabled={idx === fixedBills.length - 1}
+                          className="text-muted-foreground/40 disabled:opacity-20 active:scale-90 transition-all text-[10px] leading-none">▼</button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {renamingId === e.id ? (
                           <div className="flex gap-1.5">
-                            <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
-                              className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
-                              autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
-                            <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
+                            <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                              className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                              autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
+                            <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
                           </div>
                         ) : (
-                          <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
-                            className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
-                            {formatCurrency(e.amount)}
+                          <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
+                            {e.name}
                           </button>
                         )}
-                        <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
-                          className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
-                          <Trash2 size={12} />
-                        </button>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1 ml-6">
-                        <button
-                          onClick={() => toggleFixedNotesRequired(e.id)}
-                          className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
-                            e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
-                          }`}
-                        >
-                          <MessageSquare size={9} />
-                          {e.notesRequired ? 'Notes required' : 'No notes required'}
+                      {editingId === `next-fix-${e.id}` ? (
+                        <div className="flex gap-1.5">
+                          <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                            className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
+                          <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
+                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                          {formatCurrency(e.amount)}
                         </button>
-                      </div>
+                      )}
+                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                        className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                  ))}
-                </div>
-                {renderAddFixedForm(key)}
-                {showAddFixed !== key && (
-                  <button onClick={() => setShowAddFixed(key)}
-                    className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                    <Plus size={14} /> Add {label.replace(/s$/, '')}
-                  </button>
-                )}
+                    <div className="flex items-center gap-1.5 mt-1 ml-6">
+                      <button
+                        onClick={() => toggleFixedNotesRequired(e.id)}
+                        className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                          e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                        }`}
+                      >
+                        <MessageSquare size={9} />
+                        {e.notesRequired ? 'Notes required' : 'No notes required'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+              {renderAddFixedForm('bills')}
+              {showAddFixed !== 'bills' && (
+                <button onClick={() => setShowAddFixed('bills')}
+                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
+                  <Plus size={14} /> Add Fixed Bill
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {viewTab === 'savings' && (
+          <div className="px-6 pb-4">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Savings</h3>
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+                {savingsBuckets.map((e) => (
+                  <div key={e.id} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renamingId === e.id ? (
+                          <div className="flex gap-1.5">
+                            <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                              className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                              autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(e.id, true)} />
+                            <button onClick={() => saveRename(e.id, true)} className="text-xs text-accent font-medium">Save</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startRename(e.id, e.name)} className="text-sm text-foreground text-left truncate block w-full">
+                            {e.name}
+                          </button>
+                        )}
+                      </div>
+                      {editingId === `next-fix-${e.id}` ? (
+                        <div className="flex gap-1.5">
+                          <input type="number" step="0.01" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                            className="w-24 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextFixedEdit(e.id)} />
+                          <button onClick={() => saveNextFixedEdit(e.id)} className="text-xs text-accent font-medium">Save</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(`next-fix-${e.id}`, e.amount)}
+                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                          {formatCurrency(e.amount)}
+                        </button>
+                      )}
+                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                        className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 ml-0">
+                      <div className="flex items-center gap-1.5">
+                        <Switch checked={false} onCheckedChange={() => toggleSavingsType(e.id, true)} className="scale-75 origin-left" />
+                        <span className="text-[10px] font-medium text-muted-foreground">Fixed</span>
+                      </div>
+                      <button
+                        onClick={() => toggleFixedNotesRequired(e.id)}
+                        className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                          e.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                        }`}
+                      >
+                        <MessageSquare size={9} />
+                        {e.notesRequired ? 'Notes required' : 'No notes required'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {savingsVarCats.map((c) => (
+                  <div key={c.id} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        {renamingId === c.id ? (
+                          <div className="flex gap-1.5">
+                            <input value={renameValue} onChange={ev => setRenameValue(ev.target.value)}
+                              className="flex-1 px-2 py-1 text-sm rounded bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30"
+                              autoFocus onKeyDown={ev => ev.key === 'Enter' && saveRename(c.id, false)} />
+                            <button onClick={() => saveRename(c.id, false)} className="text-xs text-accent font-medium">Save</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startRename(c.id, c.name)} className="text-sm text-foreground text-left truncate block w-full">
+                            {c.name}
+                          </button>
+                        )}
+                      </div>
+                      {editingId === `next-cat-${c.id}` ? (
+                        <div className="flex gap-1.5">
+                          <input type="number" step="1" value={editValue} onChange={ev => setEditValue(ev.target.value)}
+                            className="w-20 px-2 py-1 text-right text-sm rounded bg-background border border-border tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/30"
+                            autoFocus onKeyDown={ev => ev.key === 'Enter' && saveNextCatEdit(c.id)} />
+                          <button onClick={() => saveNextCatEdit(c.id)} className="text-xs text-accent font-medium">Save</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(`next-cat-${c.id}`, c.budgeted)}
+                          className="text-sm font-medium tabular-nums text-foreground active:scale-95 transition-transform">
+                          {fmtWhole(c.budgeted)}
+                        </button>
+                      )}
+                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                        className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 ml-0">
+                      <div className="flex items-center gap-1.5">
+                        <Switch checked={true} onCheckedChange={() => toggleSavingsType(c.id, false)} className="scale-75 origin-left" />
+                        <span className="text-[10px] font-medium text-accent">Variable</span>
+                      </div>
+                      <button
+                        onClick={() => toggleNotesRequired(c.id)}
+                        className={`flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 transition-colors ${
+                          c.notesRequired ? 'bg-accent/15 text-accent' : 'bg-muted/50 text-muted-foreground/60'
+                        }`}
+                      >
+                        <MessageSquare size={9} />
+                        {c.notesRequired ? 'Notes required' : 'No notes required'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {renderAddFixedForm('savings')}
+              {showAddFixed !== 'savings' && (
+                <button onClick={() => setShowAddFixed('savings')}
+                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
+                  <Plus size={14} /> Add Savings Item
+                </button>
+              )}
+            </div>
           </div>
         )}
 
