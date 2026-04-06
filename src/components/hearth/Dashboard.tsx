@@ -5,31 +5,29 @@ import { Transaction, AccountSource, BudgetCategory } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import { AppAccount } from '@/hooks/useAccounts';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
 
+type AccountFilter = 'all' | string;
 
-type AccountFilter = 'all' | AccountSource;
-
-const ACCOUNT_FILTERS: { id: AccountFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'joe-amex', label: 'Joe' },
-  { id: 'katie-amex', label: 'Katie' },
-  { id: 'checking', label: 'Checking' },
-];
-
-function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void }) {
+function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts = [] }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void; accounts?: AppAccount[] }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
   const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+
+  const accountFilters: { id: AccountFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    ...accounts.map(a => ({ id: a.id, label: a.label })),
+  ];
 
   return (
     <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
         <div className="flex gap-1">
-          {ACCOUNT_FILTERS.map(f => (
+          {accountFilters.map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
@@ -84,10 +82,8 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction }: { unas
 interface DashboardProps {
   monthLabel: string;
   onAddTransaction: () => void;
-  joeAmexGross: number;
-  katieAmexGross: number;
+  accountSpending: { label: string; amount: number; type: string }[];
   totalPayoffs: number;
-  checkingSpent: number;
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   onSyncComplete?: () => void;
@@ -95,15 +91,18 @@ interface DashboardProps {
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   onSelectCategory?: (id: string) => void;
+  accounts?: AppAccount[];
 }
 
 export function Dashboard({
   monthLabel, onAddTransaction,
-  joeAmexGross, katieAmexGross, totalPayoffs, checkingSpent,
+  accountSpending, totalPayoffs,
   unassignedTransactions, onEditTransaction, onSyncComplete,
   categories: varCategories, spentByCategory, transferAdjustments, onSelectCategory,
+  accounts = [],
 }: DashboardProps) {
-  const combinedCredit = Math.max(joeAmexGross + katieAmexGross - totalPayoffs, 0);
+  const creditSpending = accountSpending.filter(a => a.type === 'credit_card');
+  const combinedCredit = Math.max(creditSpending.reduce((s, a) => s + a.amount, 0) - totalPayoffs, 0);
 
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
@@ -143,7 +142,7 @@ export function Dashboard({
       </div>
 
       {/* 1. Unassigned */}
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} />
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
 
       {/* 2. Category Snapshot */}
       {varCategories && spentByCategory && transferAdjustments && (
@@ -160,28 +159,24 @@ export function Dashboard({
       <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Account Snapshot</h3>
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Joe's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(joeAmexGross)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Katie's Amex</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(katieAmexGross)}</span>
-          </div>
+          {accountSpending.map((acct, i) => (
+            <div key={i} className="flex justify-between items-center px-4 py-3">
+              <span className="text-sm text-foreground">{acct.label}</span>
+              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(acct.amount)}</span>
+            </div>
+          ))}
           {totalPayoffs > 0 && (
             <div className="flex justify-between items-center px-4 py-3">
               <span className="text-sm text-muted-foreground">Total Payoffs</span>
               <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(totalPayoffs)}</span>
             </div>
           )}
-          <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-            <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
-            <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-foreground">Checking Spent</span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(checkingSpent)}</span>
-          </div>
+          {creditSpending.length > 0 && (
+            <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
+              <span className="text-sm font-semibold text-foreground">Combined Credit Due</span>
+              <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(combinedCredit)}</span>
+            </div>
+          )}
         </div>
         {lastSynced && (
           <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>

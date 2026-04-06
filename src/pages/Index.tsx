@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
+import { useAccounts } from '@/hooks/useAccounts';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
@@ -33,6 +34,8 @@ const Index = () => {
     planningData,
     updatePlanningData,
   } = useBudgetData();
+
+  const { accounts } = useAccounts();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
@@ -133,22 +136,19 @@ const Index = () => {
     return ids;
   }, [categories, fixedExpenses]);
 
-  const joeAmexGross = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0),
-    [monthTransactions, assignedCategoryIds]
-  );
-  const katieAmexGross = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0),
-    [monthTransactions, assignedCategoryIds]
-  );
-  const totalPayoffs = useMemo(
-    () => monthTransactions.filter(t => (t.account === 'joe-amex' || t.account === 'katie-amex') && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
-    [monthTransactions]
-  );
+  const accountSpending = useMemo(() => {
+    return accounts.map(acct => ({
+      label: acct.label,
+      type: acct.type,
+      amount: monthTransactions
+        .filter(t => t.account === acct.id && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId))
+        .reduce((s, t) => s + t.amount, 0),
+    }));
+  }, [accounts, monthTransactions, assignedCategoryIds]);
 
-  const checkingSpent = useMemo(
-    () => monthTransactions.filter(t => t.account === 'checking' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
-    [monthTransactions]
+  const totalPayoffs = useMemo(
+    () => monthTransactions.filter(t => accounts.some(a => a.type === 'credit_card' && a.id === t.account) && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
+    [monthTransactions, accounts]
   );
 
   const unassignedTransactions = useMemo(
@@ -233,16 +233,15 @@ const Index = () => {
           <Dashboard
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
-            joeAmexGross={joeAmexGross}
-            katieAmexGross={katieAmexGross}
+            accountSpending={accountSpending}
             totalPayoffs={totalPayoffs}
-            checkingSpent={checkingSpent}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
             categories={categories}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
+            accounts={accounts}
           />
         )}
         {activeTab === 'variable' && (
@@ -276,6 +275,7 @@ const Index = () => {
               setEditingTransaction(tx);
               setEditingSplitSiblings(splitSiblings || []);
             }}
+            accounts={accounts}
           />
         )}
         {activeTab === 'more' && moreSubView === 'menu' && (
@@ -320,6 +320,7 @@ const Index = () => {
         fixedExpenses={fixedExpenses}
         onAdd={handleAddTransactions}
         monthTransactions={monthTransactions}
+        accounts={accounts}
       />
 
       <EditTransactionSheet
@@ -331,6 +332,7 @@ const Index = () => {
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
         splitSiblings={editingSplitSiblings}
+        accounts={accounts}
       />
 
       {moveFundsCategoryId && (

@@ -4,12 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { format } from 'date-fns';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
-
-const ACCOUNTS: { id: AccountSource; label: string }[] = [
-  { id: 'joe-amex', label: "Joe's Amex" },
-  { id: 'katie-amex', label: "Katie's Amex" },
-  { id: 'checking', label: 'Checking' },
-];
+import { AppAccount } from '@/hooks/useAccounts';
 
 type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
 
@@ -28,9 +23,10 @@ interface AddTransactionSheetProps {
   fixedExpenses: FixedExpense[];
   onAdd: (transactions: Omit<Transaction, 'id'>[]) => void;
   monthTransactions?: Transaction[];
+  accounts?: AppAccount[];
 }
 
-export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [] }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [], accounts = [] }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -219,7 +215,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             <div>
               <label className="text-xs text-muted-foreground uppercase">Account</label>
               <div className="flex gap-2 mt-1">
-                {ACCOUNTS.map(a => (
+                {accounts.map(a => (
                   <button
                     key={a.id}
                     type="button"

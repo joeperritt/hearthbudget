@@ -3,12 +3,13 @@ import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGO
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import { AppAccount } from '@/hooks/useAccounts';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | AccountSource;
+type Filter = 'all' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -18,13 +19,8 @@ interface TransactionsViewProps {
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
   onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
+  accounts?: AppAccount[];
 }
-
-const ACCOUNT_LABELS: Record<AccountSource, string> = {
-  'joe-amex': "Joe's Amex",
-  'katie-amex': "Katie's Amex",
-  'checking': 'Checking',
-};
 
 interface SplitGroup {
   type: 'split';
@@ -94,10 +90,12 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
 }
 
 export function TransactionsView({
-  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction,
+  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [],
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
+
+  const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
   const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
@@ -116,9 +114,7 @@ export function TransactionsView({
 
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
-    { id: 'joe-amex', label: "Joe's Amex" },
-    { id: 'katie-amex', label: "Katie's Amex" },
-    { id: 'checking', label: 'Checking' },
+    ...accounts.map(a => ({ id: a.id, label: a.label })),
   ];
 
   const renderSingleTx = (t: Transaction, i: number, splitGroup?: SplitGroup) => {
@@ -148,13 +144,13 @@ export function TransactionsView({
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
-          t.account === 'joe-amex'
+          accounts.findIndex(a => a.id === t.account) === 0
             ? 'bg-primary text-primary-foreground'
-            : t.account === 'katie-amex'
+            : accounts.findIndex(a => a.id === t.account) === 1
               ? 'bg-accent text-accent-foreground'
               : 'bg-muted text-muted-foreground'
         }`}>
-          {ACCOUNT_LABELS[t.account]}
+          {accountLabels[t.account] || t.account}
         </span>
 
         <div className="flex-1 min-w-0">
@@ -277,13 +273,13 @@ export function TransactionsView({
                     style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                   >
                     <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
-                      row.account === 'joe-amex'
+                      accounts.findIndex(a => a.id === row.account) === 0
                         ? 'bg-primary text-primary-foreground'
-                        : row.account === 'katie-amex'
+                        : accounts.findIndex(a => a.id === row.account) === 1
                           ? 'bg-accent text-accent-foreground'
                           : 'bg-muted text-muted-foreground'
                     }`}>
-                      {ACCOUNT_LABELS[row.account]}
+                      {accountLabels[row.account] || row.account}
                     </span>
 
                     <div className="flex-1 min-w-0">

@@ -122,15 +122,15 @@ Deno.serve(async (req) => {
     let totalModified = 0;
     let totalRemoved = 0;
 
-    // Fire /transactions/refresh for Wells Fargo items (checking accounts)
-    // to get the freshest data. Skip Amex items.
+    // Fire /transactions/refresh for depository items (checking/savings)
     for (const item of plaidItems) {
-      const hasChecking = (item.plaid_accounts || []).some(
-        (acc: { type?: string; subtype?: string }) =>
+      const hasDepository = (item.plaid_accounts || []).some(
+        (acc: { account_category?: string; type?: string; subtype?: string }) =>
+          acc.account_category === 'checking' || acc.account_category === 'savings' ||
           acc.type === "depository" || acc.subtype === "checking"
       );
 
-      if (hasChecking) {
+      if (hasDepository) {
         try {
           const refreshRes = await fetch(`${plaidBaseUrl}/transactions/refresh`, {
             method: "POST",
@@ -160,9 +160,39 @@ Deno.serve(async (req) => {
       let syncPaginationMutated = false;
 
       const accountMap: Record<string, string> = {};
+      const cardholderMap: Record<string, Array<{ slug: string; patterns: string[] }>> = {};
+      
       for (const acc of item.plaid_accounts || []) {
-        if (acc.app_account) {
+        const cat = acc.account_category || 'credit_card';
+        if (cat === 'credit_card') {
+          // Don't set a default mapping — will use cardholders below
+        } else if (acc.app_account) {
           accountMap[acc.plaid_account_id] = acc.app_account;
+        } else if (acc.nickname) {
+          const slug = acc.nickname.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          accountMap[acc.plaid_account_id] = slug;
+        }
+      }
+
+      // Fetch cardholders for this item's credit card accounts
+      const creditAccountIds = (item.plaid_accounts || [])
+        .filter((a: any) => (a.account_category || 'credit_card') === 'credit_card')
+        .map((a: any) => a.id);
+
+      if (creditAccountIds.length > 0) {
+        const { data: holders } = await serviceClient
+          .from('plaid_cardholders')
+          .select('plaid_account_id, name, slug, match_patterns')
+          .in('plaid_account_id', creditAccountIds);
+
+        for (const h of holders || []) {
+          if (!cardholderMap[h.plaid_account_id]) cardholderMap[h.plaid_account_id] = [];
+          cardholderMap[h.plaid_account_id].push({ slug: h.slug, patterns: h.match_patterns || [] });
+          // Also map the plaid_account_id to the first cardholder as default
+          const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.id === h.plaid_account_id);
+          if (plaidAcc && !accountMap[plaidAcc.plaid_account_id]) {
+            accountMap[plaidAcc.plaid_account_id] = h.slug;
+          }
         }
       }
 
@@ -171,12 +201,18 @@ Deno.serve(async (req) => {
         const txName = ((tx.name as string) || "").toLowerCase();
         const searchText = owner || txName;
 
-        if (searchText.includes("katherine") || searchText.includes("katie")) {
-          return "katie-amex";
+        // Find the plaid_account internal id for this tx
+        const plaidAccountId = tx.account_id as string;
+        const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.plaid_account_id === plaidAccountId);
+        
+        if (plaidAcc && cardholderMap[plaidAcc.id]) {
+          for (const holder of cardholderMap[plaidAcc.id]) {
+            if (holder.patterns.some(p => searchText.includes(p.toLowerCase()))) {
+              return holder.slug;
+            }
+          }
         }
-        if (searchText.includes("joseph") || searchText.includes("joe")) {
-          return "joe-amex";
-        }
+
         return fallback;
       };
 
@@ -184,7 +220,10 @@ Deno.serve(async (req) => {
         const baseAccount = accountMap[tx.account_id as string];
         if (!baseAccount) return null;
 
-        const account = baseAccount.includes("amex")
+        // For credit card accounts, try to resolve cardholder
+        const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.plaid_account_id === tx.account_id);
+        const isCreditCard = plaidAcc && (plaidAcc.account_category === 'credit_card' || (!plaidAcc.account_category && plaidAcc.type === 'credit'));
+        const account = isCreditCard
           ? resolveAccount(tx, baseAccount)
           : baseAccount;
         const plaidAmount = Number(tx.amount);

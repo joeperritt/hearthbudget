@@ -6,12 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
-
-const ACCOUNTS: { id: AccountSource; label: string }[] = [
-  { id: 'joe-amex', label: "Joe's Amex" },
-  { id: 'katie-amex', label: "Katie's Amex" },
-  { id: 'checking', label: 'Checking' },
-];
+import { AppAccount } from '@/hooks/useAccounts';
 
 type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
 type IgnoreType = 'income' | 'transfer' | 'prior-month';
@@ -38,6 +33,7 @@ interface EditTransactionSheetProps {
   activeMonth: string;
   monthTransactions?: Transaction[];
   splitSiblings?: Transaction[];
+  accounts?: AppAccount[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
@@ -60,7 +56,7 @@ function deriveIgnoreType(categoryId: string): IgnoreType {
   return 'income';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [] }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [] }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -298,7 +294,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             <div className="flex justify-between">
               <span className="text-xs text-muted-foreground uppercase">Account</span>
               <span className="text-sm text-foreground">
-                {ACCOUNTS.find(a => a.id === transaction.account)?.label}
+                {accounts.find(a => a.id === transaction.account)?.label || transaction.account}
               </span>
             </div>
             <div className="flex justify-between items-center">
