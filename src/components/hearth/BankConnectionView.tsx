@@ -64,6 +64,7 @@ interface BankConnectionViewProps {
 }
 
 export function BankConnectionView({ onBack }: BankConnectionViewProps) {
+  const { isAdmin } = useAuth();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkedItems, setLinkedItems] = useState<PlaidItem[]>([]);
   const [cardholders, setCardholders] = useState<Cardholder[]>([]);
