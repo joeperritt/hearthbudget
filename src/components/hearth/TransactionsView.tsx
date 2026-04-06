@@ -3,12 +3,13 @@ import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGO
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import { AppAccount } from '@/hooks/useAccounts';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | AccountSource;
+type Filter = 'all' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -18,13 +19,8 @@ interface TransactionsViewProps {
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void;
   onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
+  accounts?: AppAccount[];
 }
-
-const ACCOUNT_LABELS: Record<AccountSource, string> = {
-  'joe-amex': "Joe's Amex",
-  'katie-amex': "Katie's Amex",
-  'checking': 'Checking',
-};
 
 interface SplitGroup {
   type: 'split';
