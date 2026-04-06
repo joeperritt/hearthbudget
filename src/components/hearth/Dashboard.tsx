@@ -339,23 +339,6 @@ export function Dashboard({
             <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
           </div>
 
-          <div className="px-4 pt-3 pb-1">
-            <StackedBar segments={[
-              { value: overallSpent, color: spentColor, label: 'Total Spent' },
-              { value: overallReturns, color: payoffColor, label: 'Payoffs & Deposits' },
-            ]} />
-            <div className="flex gap-3 mt-1.5">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spentColor }} />
-                <span className="text-[10px] text-muted-foreground">Spent</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payoffColor }} />
-                <span className="text-[10px] text-muted-foreground">Payoffs & Deposits</span>
-              </div>
-            </div>
-          </div>
-
           <div className="divide-y divide-border">
             <div className="flex justify-between items-center px-4 py-2.5">
               <span className="text-sm text-muted-foreground">Total Spent</span>
