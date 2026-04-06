@@ -136,22 +136,19 @@ const Index = () => {
     return ids;
   }, [categories, fixedExpenses]);
 
-  const joeAmexGross = useMemo(
-    () => monthTransactions.filter(t => t.account === 'joe-amex' && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0),
-    [monthTransactions, assignedCategoryIds]
-  );
-  const katieAmexGross = useMemo(
-    () => monthTransactions.filter(t => t.account === 'katie-amex' && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0),
-    [monthTransactions, assignedCategoryIds]
-  );
-  const totalPayoffs = useMemo(
-    () => monthTransactions.filter(t => (t.account === 'joe-amex' || t.account === 'katie-amex') && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
-    [monthTransactions]
-  );
+  const accountSpending = useMemo(() => {
+    return accounts.map(acct => ({
+      label: acct.label,
+      type: acct.type,
+      amount: monthTransactions
+        .filter(t => t.account === acct.id && t.transactionType === 'expense' && assignedCategoryIds.has(t.categoryId))
+        .reduce((s, t) => s + t.amount, 0),
+    }));
+  }, [accounts, monthTransactions, assignedCategoryIds]);
 
-  const checkingSpent = useMemo(
-    () => monthTransactions.filter(t => t.account === 'checking' && t.transactionType === 'expense').reduce((s, t) => s + t.amount, 0),
-    [monthTransactions]
+  const totalPayoffs = useMemo(
+    () => monthTransactions.filter(t => accounts.some(a => a.type === 'credit_card' && a.id === t.account) && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
+    [monthTransactions, accounts]
   );
 
   const unassignedTransactions = useMemo(
