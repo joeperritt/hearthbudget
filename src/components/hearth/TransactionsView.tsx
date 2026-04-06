@@ -90,10 +90,12 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
 }
 
 export function TransactionsView({
-  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction,
+  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [],
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
+
+  const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
   const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
