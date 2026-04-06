@@ -219,7 +219,7 @@ export function SpendingView({
         </div>
       ) : (
         <div className="px-6 pb-6 space-y-1">
-          <SectionLabel label="Fixed Bills" delay={0} />
+          <SectionLabel label="Fixed" delay={0} />
           {bills.map((e, i) => (
             <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
               onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />

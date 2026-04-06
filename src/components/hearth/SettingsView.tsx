@@ -1096,7 +1096,7 @@ export function SettingsView({
               <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed Bills</span>
+              <span className="text-muted-foreground">Fixed</span>
               <span className="font-medium tabular-nums">{formatCurrency(fixedTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mb-1">
