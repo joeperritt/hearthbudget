@@ -253,8 +253,8 @@ export function Dashboard({
   const overallNet = overallSpent - overallReturns;
   const budgetDifference = totalBudget - overallNet;
 
-  // Colors
-  const spentColor = 'hsl(var(--destructive))';
+  // Colors — blue & gold theme
+  const spentColor = 'hsl(var(--primary))';
   const payoffColor = 'hsl(var(--accent))';
   const depositColor = 'hsl(142 71% 45%)'; // green
 
@@ -306,7 +306,7 @@ export function Dashboard({
             barSegments={[
               ...creditRows.map((r, i) => ({
                 value: r.value,
-                color: i === 0 ? 'hsl(0 84% 60%)' : 'hsl(25 95% 53%)',
+                color: i === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.6)',
                 label: r.label,
               })),
               { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
@@ -337,23 +337,6 @@ export function Dashboard({
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <BarChart3 size={16} className="text-accent" />
             <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
-          </div>
-
-          <div className="px-4 pt-3 pb-1">
-            <StackedBar segments={[
-              { value: overallSpent, color: spentColor, label: 'Total Spent' },
-              { value: overallReturns, color: payoffColor, label: 'Payoffs & Deposits' },
-            ]} />
-            <div className="flex gap-3 mt-1.5">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: spentColor }} />
-                <span className="text-[10px] text-muted-foreground">Spent</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payoffColor }} />
-                <span className="text-[10px] text-muted-foreground">Payoffs & Deposits</span>
-              </div>
-            </div>
           </div>
 
           <div className="divide-y divide-border">
