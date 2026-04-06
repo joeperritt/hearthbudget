@@ -220,7 +220,10 @@ Deno.serve(async (req) => {
         const baseAccount = accountMap[tx.account_id as string];
         if (!baseAccount) return null;
 
-        const account = baseAccount.includes("amex")
+        // For credit card accounts, try to resolve cardholder
+        const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.plaid_account_id === tx.account_id);
+        const isCreditCard = plaidAcc && (plaidAcc.account_category === 'credit_card' || (!plaidAcc.account_category && plaidAcc.type === 'credit'));
+        const account = isCreditCard
           ? resolveAccount(tx, baseAccount)
           : baseAccount;
         const plaidAmount = Number(tx.amount);
