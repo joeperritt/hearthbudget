@@ -5,13 +5,12 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
 
-function abbreviate(name: string, maxLen = 10): string {
-  if (name.length <= maxLen) return name;
-  const parts = name.split(/[\s\-\/]+/);
-  if (parts.length > 1) {
-    return parts.map(p => p.slice(0, 3)).join('/');
-  }
-  return name.slice(0, maxLen);
+function getFontSize(name: string): string {
+  const len = name.length;
+  if (len <= 6) return 'text-[11px]';
+  if (len <= 10) return 'text-[10px]';
+  if (len <= 14) return 'text-[9px]';
+  return 'text-[8px]';
 }
 
 export interface CarouselItem {
@@ -196,8 +195,8 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                 }}
                 className={`shrink-0 w-[110px] h-[110px] ${cardBg} rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}
               >
-                <p className={`text-[11px] font-semibold uppercase tracking-wide leading-tight truncate ${labelColor}`}>
-                  {abbreviate(item.name)}
+                <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+                  {item.name}
                 </p>
                 <div>
                 {isPerfect ? (
