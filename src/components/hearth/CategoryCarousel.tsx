@@ -232,7 +232,11 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                     <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
                   </div>
                 )}
-                {isPerfect && <div className="h-1" />}
+                {isPerfect && (
+                  <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
+                    <div className="h-full rounded-full bg-accent w-full" />
+                  </div>
+                )}
               </div>
             );
           })}
