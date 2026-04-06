@@ -200,10 +200,13 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                   {abbreviate(item.name)}
                 </p>
                 <div>
-                  {isPerfect ? (
-                    <div className="flex items-center gap-1.5">
-                      <Check size={20} className="text-accent" strokeWidth={3} />
-                      <p className={`text-sm font-display font-bold ${amountColor}`}>Paid</p>
+                {isPerfect ? (
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <Check size={14} className="text-accent" strokeWidth={3} />
+                        <p className={`text-xs font-display font-bold ${amountColor}`}>Done</p>
+                      </div>
+                      <p className={`text-[10px] mt-0.5 ${subColor}`}>$0 left</p>
                     </div>
                   ) : (
                     <>
