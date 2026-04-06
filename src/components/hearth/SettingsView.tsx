@@ -326,7 +326,9 @@ export function SettingsView({
   const savingsBuckets = nextFixed.filter(e => e.group === 'savings');
   const titheItems = nextFixed.filter(e => e.group === 'tithe');
   const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
-  const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
+  const savingsFixedTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
+  const savingsVarTotal = savingsVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const savingsTotal = savingsFixedTotal + savingsVarTotal;
   const givingVarTotal = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
   const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
   const titheTotal = rawTithe + givingVarTotal;
