@@ -26,6 +26,7 @@ interface CategoryDetailProps {
   transferAdjustment: number;
   onBack: () => void;
   onDeleteTransaction: (id: string) => void;
+  accounts?: AppAccount[];
 }
 
 export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction }: CategoryDetailProps) {
