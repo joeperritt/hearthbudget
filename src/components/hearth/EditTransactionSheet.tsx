@@ -421,6 +421,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 lines={splitLines}
                 onChange={setSplitLines}
                 transactions={monthTransactions}
+                excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]}
               />
             </div>
           )}
