@@ -253,10 +253,18 @@ export function Dashboard({
   const overallNet = overallSpent - overallReturns;
   const budgetDifference = totalBudget - overallNet;
 
-  // Colors — blue & gold theme
-  const spentColor = 'hsl(var(--primary))';
+  // Colors — lighter blue & gold theme
+  const spentColor = 'hsl(220 42% 38%)';
+  const spentColorAlt = 'hsl(220 42% 52%)';
   const payoffColor = 'hsl(var(--accent))';
   const depositColor = 'hsl(142 71% 45%)'; // green
+
+  // Build a lookup from account slug → display label
+  const accountLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    accounts.forEach(a => { map[a.id] = a.label; });
+    return map;
+  }, [accounts]);
 
   return (
     <div className="max-w-lg mx-auto">
