@@ -839,7 +839,7 @@ export function SettingsView({
               {showAddFixed !== 'bills' && (
                 <button onClick={() => setShowAddFixed('bills')}
                   className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                  <Plus size={14} /> Add Fixed Bill
+                  <Plus size={14} /> Add Fixed Item
                 </button>
               )}
             </div>
