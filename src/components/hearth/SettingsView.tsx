@@ -504,7 +504,7 @@ export function SettingsView({
           <div className="px-6 pb-4">
             {fixedBillsRO.length > 0 && (
               <div className="mb-3">
-                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Bills</h4>
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed</h4>
                 <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                   {fixedBillsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
