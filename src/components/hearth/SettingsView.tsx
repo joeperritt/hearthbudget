@@ -598,7 +598,8 @@ export function SettingsView({
   function renderFutureMonth() {
     const nextMonthShort = format(viewMonthDate, 'MMMM');
 
-    return (
+    // Content grouped by tab
+    const variableContent = (
       <>
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Variable Budgets</h3>
         {(['shared', 'joe', 'katie'] as GroupType[]).map(group => {
