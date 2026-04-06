@@ -29,10 +29,13 @@ interface CategoryCarouselProps {
 }
 
 const CARD_WIDTH = 110;
+const CARD_WIDTH_COMPACT = 100;
 const GAP = 12;
-const SPEED = 0.4; // px per frame
+const SPEED = 0.4;
 
-export function CategoryCarousel({ title, items, spentByCategory, transferAdjustments, onSelectCategory }: CategoryCarouselProps) {
+export function CategoryCarousel({ title, items, spentByCategory, transferAdjustments, onSelectCategory, compact = false }: CategoryCarouselProps) {
+  const cardW = compact ? CARD_WIDTH_COMPACT : CARD_WIDTH;
+  const cardH = compact ? 56 : 110;
   const computed = useMemo(() => {
     return items.map(c => {
       const spent = spentByCategory[c.id] || 0;
