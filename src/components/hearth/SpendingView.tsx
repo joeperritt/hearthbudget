@@ -179,7 +179,7 @@ export function SpendingView({
 
       <div className="px-6 grid grid-cols-2 gap-3 mb-4">
         <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
-        <SummaryCard label="Fixed Bills" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
+        <SummaryCard label="Fixed" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
       </div>
 
       {/* Segmented Toggle */}
