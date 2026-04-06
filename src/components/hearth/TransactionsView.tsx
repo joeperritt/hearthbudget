@@ -144,13 +144,13 @@ export function TransactionsView({
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
-          t.account === 'joe-amex'
+          accounts.findIndex(a => a.id === t.account) === 0
             ? 'bg-primary text-primary-foreground'
-            : t.account === 'katie-amex'
+            : accounts.findIndex(a => a.id === t.account) === 1
               ? 'bg-accent text-accent-foreground'
               : 'bg-muted text-muted-foreground'
         }`}>
-          {ACCOUNT_LABELS[t.account]}
+          {accountLabels[t.account] || t.account}
         </span>
 
         <div className="flex-1 min-w-0">
