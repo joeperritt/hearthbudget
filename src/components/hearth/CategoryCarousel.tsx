@@ -195,8 +195,8 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                 }}
                 className={`shrink-0 w-[110px] h-[110px] ${cardBg} rounded-xl shadow-sm p-3 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}
               >
-                <p className={`text-[11px] font-semibold uppercase tracking-wide leading-tight truncate ${labelColor}`}>
-                  {abbreviate(item.name)}
+                <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+                  {item.name}
                 </p>
                 <div>
                 {isPerfect ? (
