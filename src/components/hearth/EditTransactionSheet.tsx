@@ -56,7 +56,7 @@ function deriveIgnoreType(categoryId: string): IgnoreType {
   return 'income';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [] }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [] }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
