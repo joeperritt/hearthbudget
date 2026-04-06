@@ -204,12 +204,14 @@ export type Database = {
       }
       plaid_accounts: {
         Row: {
+          account_category: string
           app_account: string | null
           created_at: string
           household_id: string
           id: string
           mask: string | null
           name: string
+          nickname: string | null
           official_name: string | null
           plaid_account_id: string
           plaid_item_id: string
@@ -217,12 +219,14 @@ export type Database = {
           type: string
         }
         Insert: {
+          account_category?: string
           app_account?: string | null
           created_at?: string
           household_id: string
           id?: string
           mask?: string | null
           name?: string
+          nickname?: string | null
           official_name?: string | null
           plaid_account_id: string
           plaid_item_id: string
@@ -230,12 +234,14 @@ export type Database = {
           type?: string
         }
         Update: {
+          account_category?: string
           app_account?: string | null
           created_at?: string
           household_id?: string
           id?: string
           mask?: string | null
           name?: string
+          nickname?: string | null
           official_name?: string | null
           plaid_account_id?: string
           plaid_item_id?: string
@@ -255,6 +261,51 @@ export type Database = {
             columns: ["plaid_item_id"]
             isOneToOne: false
             referencedRelation: "plaid_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plaid_cardholders: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          match_patterns: string[]
+          name: string
+          plaid_account_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          match_patterns?: string[]
+          name: string
+          plaid_account_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          match_patterns?: string[]
+          name?: string
+          plaid_account_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaid_cardholders_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plaid_cardholders_plaid_account_id_fkey"
+            columns: ["plaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "plaid_accounts"
             referencedColumns: ["id"]
           },
         ]
