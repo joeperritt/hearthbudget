@@ -14,7 +14,7 @@ import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
-import { PastMonthsView } from '@/components/hearth/PastMonthsView';
+
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 
 const Index = () => {
