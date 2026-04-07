@@ -102,8 +102,8 @@ export function SettingsView({
   const [editValue, setEditValue] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [showConfirmation] = useState(false);
+  const [starting] = useState(false);
 
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
