@@ -390,7 +390,15 @@ const Index = () => {
             onRefresh={() => fetchInsights(true)}
           />
         )}
-      </div>
+        {activeTab === 'more' && moreSubView === 'trends' && (
+          <SpendingTrendsView
+            activeMonth={activeMonth}
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            spentByCategory={spentByCategory}
+            onBack={() => setMoreSubView('menu')}
+          />
+        )}
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
