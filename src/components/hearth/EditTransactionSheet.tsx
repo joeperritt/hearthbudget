@@ -222,7 +222,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         break;
       case 'ignore':
         slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : ignoreType === 'prior-month' ? PRIOR_MONTH_CATEGORY : INCOME_CATEGORY;
-        txType = 'income';
+        txType = ignoreType === 'transfer' ? 'transfer' : ignoreType === 'prior-month' ? 'prior-month' : 'income';
         break;
     }
 
