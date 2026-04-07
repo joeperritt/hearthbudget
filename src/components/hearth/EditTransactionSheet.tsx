@@ -71,10 +71,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [budgetMonth, setBudgetMonth] = useState('');
 
   // Sync local state when transaction changes
-  const txId = transaction?.id;
-  const [lastId, setLastId] = useState('');
-  if (txId && txId !== lastId) {
-    setLastId(txId);
+  useEffect(() => {
+    if (!transaction?.id) return;
     setNotes(transaction.notes);
     setBudgetMonth(transaction.budgetMonth || activeMonth);
 
@@ -86,7 +84,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       setIsSplit(false);
       setSplitLines([]);
     }
-    setBudgetMonth(transaction.budgetMonth || activeMonth);
 
     const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
     setMode(m);
@@ -114,7 +111,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     } else if (m === 'ignore') {
       setIgnoreType(deriveIgnoreType(transaction.categoryId));
     }
-  }
+  }, [transaction?.id]);
 
   if (!transaction) return null;
 
