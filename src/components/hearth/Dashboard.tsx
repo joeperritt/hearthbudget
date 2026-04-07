@@ -369,6 +369,9 @@ export function Dashboard({
         </div>
       </div>
 
+      {/* End-of-month unassigned warning */}
+      <EndOfMonthBanner count={unassignedTransactions.length} />
+
       {/* 1. Unassigned */}
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
 
