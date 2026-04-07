@@ -467,9 +467,6 @@ export function Dashboard({
           )}
         </div>
 
-        {lastSynced && (
-          <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
-        )}
       </div>
 
       <div className="mb-6" />
