@@ -160,10 +160,11 @@ export function SpendingTrendsView({
           name: exp?.name || id,
           current: Math.max(0, currentFixedSpent[id] || 0),
           previous: Math.max(0, prevFixed[id] || 0),
+          sortOrder: exp?.sortOrder ?? 999,
         };
       })
       .filter(r => r.current > 0 || r.previous > 0)
-      .sort((a, b) => b.current - a.current);
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [currentFixedSpent, previousSnapshot, fixedExpenses]);
 
   const maxVariable = useMemo(

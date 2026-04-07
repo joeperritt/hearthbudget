@@ -9,6 +9,20 @@ export interface Insight {
   body: string;
 }
 
+interface CategoryChange {
+  name: string;
+  slug: string;
+  currentSpent: number;
+  priorSpent: number;
+  dollarChange: number;
+  percentChange: number;
+}
+
+interface PriorMonthData {
+  month: string;
+  spentByCategory: Record<string, number>;
+}
+
 interface BudgetSummary {
   currentMonth: string;
   daysRemaining: number;
@@ -23,9 +37,11 @@ interface BudgetSummary {
   savingsBuckets: { name: string; amount: number; contributed: number }[];
   accountTotals: { label: string; amount: number }[];
   unassignedCount: number;
+  priorMonth?: PriorMonthData;
+  categoryChanges?: CategoryChange[];
 }
 
-function buildBudgetSummary(
+async function buildBudgetSummary(
   activeMonth: string,
   categories: BudgetCategory[],
   fixedExpenses: FixedExpense[],
@@ -35,7 +51,8 @@ function buildBudgetSummary(
   accountSpending: { label: string; amount: number }[],
   unassignedCount: number,
   totalBudget: number,
-): BudgetSummary {
+  householdId: string,
+): Promise<BudgetSummary> {
   const today = new Date();
   const nextMonth = startOfMonth(addMonths(today, 1));
   const daysRemaining = differenceInDays(nextMonth, today);
@@ -80,6 +97,61 @@ function buildBudgetSummary(
     ...givingCats.map(c => ({ name: c.name, budgeted: c.budgeted, spent: spentByCategory[c.id] || 0, type: 'variable' as const })),
   ];
 
+  // Fetch prior month snapshot
+  let priorMonth: PriorMonthData | undefined;
+  let categoryChanges: CategoryChange[] | undefined;
+
+  if (householdId) {
+    const { data: snapData } = await supabase
+      .from('budget_month_snapshots')
+      .select('month, transactions_summary')
+      .eq('household_id', householdId)
+      .lt('month', activeMonth)
+      .order('month', { ascending: false })
+      .limit(1);
+
+    if (snapData && snapData.length > 0) {
+      const snap = snapData[0];
+      const summary = snap.transactions_summary as Record<string, unknown> | null;
+      const priorSpent = (summary?.spentByCategory as Record<string, number>) || {};
+      const priorTotal = Object.values(priorSpent).reduce((s, v) => s + v, 0);
+
+      if (priorTotal > 0) {
+        const d = new Date(snap.month + '-01T00:00:00');
+        priorMonth = {
+          month: format(d, 'MMMM yyyy'),
+          spentByCategory: priorSpent,
+        };
+
+        // Build category name lookup from categories + fixedExpenses
+        const nameMap: Record<string, string> = {};
+        categories.forEach(c => { nameMap[c.id] = c.name; });
+        fixedExpenses.forEach(e => { nameMap[e.id] = e.name; });
+
+        const allSlugs = new Set([...Object.keys(spentByCategory), ...Object.keys(priorSpent)]);
+        const changes: CategoryChange[] = [];
+        for (const slug of allSlugs) {
+          const cur = spentByCategory[slug] || 0;
+          const prev = priorSpent[slug] || 0;
+          const dollarChange = cur - prev;
+          if (Math.abs(dollarChange) > 10) {
+            changes.push({
+              name: nameMap[slug] || slug,
+              slug,
+              currentSpent: cur,
+              priorSpent: prev,
+              dollarChange,
+              percentChange: prev > 0 ? Math.round((dollarChange / prev) * 100) : (cur > 0 ? 100 : 0),
+            });
+          }
+        }
+        // Sort by absolute change descending
+        changes.sort((a, b) => Math.abs(b.dollarChange) - Math.abs(a.dollarChange));
+        categoryChanges = changes;
+      }
+    }
+  }
+
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
@@ -94,6 +166,8 @@ function buildBudgetSummary(
     savingsBuckets,
     accountTotals: accountSpending,
     unassignedCount,
+    priorMonth,
+    categoryChanges,
   };
 }
 
@@ -107,6 +181,7 @@ export function useBudgetInsights(
   accountSpending: { label: string; amount: number }[],
   unassignedCount: number,
   totalBudget: number,
+  householdId: string,
 ) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -117,10 +192,10 @@ export function useBudgetInsights(
   const cacheKey = useRef<string>('');
   const insightsRef = useRef<Insight[]>([]);
 
-  const summary = useCallback(() => buildBudgetSummary(
+  const getSummary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
-    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget,
-  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget]);
+    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId,
+  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId]);
 
   const fetchInsights = useCallback(async (force = false) => {
     const spentTotal = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
@@ -132,8 +207,9 @@ export function useBudgetInsights(
     setError(null);
     try {
       console.log('[Insights] Calling budget-insights edge function...');
+      const summaryData = await getSummary();
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: { budgetSummary: summary() },
+        body: { budgetSummary: summaryData },
       });
       
       if (fnError) {
@@ -152,7 +228,6 @@ export function useBudgetInsights(
         throw new Error('Empty content in response');
       }
 
-      // Parse JSON from the response - might be wrapped in markdown code fences
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as Insight[];
@@ -170,7 +245,7 @@ export function useBudgetInsights(
     } finally {
       setLoading(false);
     }
-  }, [summary, activeMonth, monthTransactions.length]);
+  }, [getSummary, activeMonth, monthTransactions.length]);
 
   const sendChatMessage = useCallback(async (message: string) => {
     const userMsg = { role: 'user' as const, content: message };
@@ -179,8 +254,9 @@ export function useBudgetInsights(
     setChatLoading(true);
 
     try {
+      const summaryData = await getSummary();
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: { budgetSummary: summary(), chatMessages: newMessages },
+        body: { budgetSummary: summaryData, chatMessages: newMessages },
       });
       if (fnError) throw fnError;
       const content = data?.content || 'Sorry, I couldn\'t generate a response.';
@@ -191,7 +267,7 @@ export function useBudgetInsights(
     } finally {
       setChatLoading(false);
     }
-  }, [chatMessages, summary]);
+  }, [chatMessages, getSummary]);
 
   return {
     insights,
