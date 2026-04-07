@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
       let cursor = syncStartCursor;
       let syncRestartCount = 0;
       let syncPaginationMutated = false;
+      let insertFailed = false;
 
       const accountMap: Record<string, string> = {};
       const cardholderMap: Record<string, Array<{ slug: string; patterns: string[] }>> = {};
