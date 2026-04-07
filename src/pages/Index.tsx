@@ -306,8 +306,10 @@ const Index = () => {
               <InsightsSection
                 insights={insights}
                 loading={insightsLoading}
+                error={insightsError}
                 lastUpdated={insightsLastUpdated}
                 onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
+                onRefresh={() => fetchInsights(true)}
               />
             }
           />
