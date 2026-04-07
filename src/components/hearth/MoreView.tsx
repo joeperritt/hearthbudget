@@ -1,7 +1,7 @@
-import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3 } from 'lucide-react';
+import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends';
+type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -67,6 +67,19 @@ export function MoreView({ onSelect }: MoreViewProps) {
           <div>
             <p className="text-sm font-semibold text-foreground">Trends</p>
             <p className="text-xs text-muted-foreground">Month over month spending comparison</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('past-months')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+            <Clock size={20} className="text-accent" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Past Months</p>
+            <p className="text-xs text-muted-foreground">Previous budget & spending history</p>
           </div>
         </button>
 

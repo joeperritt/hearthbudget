@@ -19,6 +19,7 @@ import { InsightsSection } from '@/components/hearth/InsightsSection';
 import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
+import { PastMonthsView } from '@/components/hearth/PastMonthsView';
 
 const Index = () => {
   const {
@@ -49,7 +50,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months'>('menu');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -399,6 +400,9 @@ const Index = () => {
             spentByCategory={spentByCategory}
             onBack={() => setMoreSubView('menu')}
           />
+        )}
+        {activeTab === 'more' && moreSubView === 'past-months' && (
+          <PastMonthsView onBack={() => setMoreSubView('menu')} />
         )}
       </div>
 
