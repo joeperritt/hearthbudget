@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
       let cursor = syncStartCursor;
       let syncRestartCount = 0;
       let syncPaginationMutated = false;
+      let insertFailed = false;
 
       const accountMap: Record<string, string> = {};
       const cardholderMap: Record<string, Array<{ slug: string; patterns: string[] }>> = {};
@@ -216,6 +217,13 @@ Deno.serve(async (req) => {
         return fallback;
       };
 
+      // Patterns that indicate payroll / direct deposit on checking accounts
+      const INCOME_PATTERNS = [
+        "PAYROLL", "DIRECT DEP", "DIRECT DEPOSIT", "DIR DEP",
+        "SALARY", "WAGES", "PAYCHECK", "ACH CREDIT",
+        "EMPLOYER", "GUSTO", "ADP", "INTUIT",
+      ];
+
       const mapImportedTransaction = (tx: Record<string, unknown>): ImportedTransactionRow | null => {
         const baseAccount = accountMap[tx.account_id as string];
         if (!baseAccount) return null;
@@ -223,6 +231,7 @@ Deno.serve(async (req) => {
         // For credit card accounts, try to resolve cardholder
         const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.plaid_account_id === tx.account_id);
         const isCreditCard = plaidAcc && (plaidAcc.account_category === 'credit_card' || (!plaidAcc.account_category && plaidAcc.type === 'credit'));
+        const isCheckingAccount = plaidAcc && (plaidAcc.account_category === 'checking' || plaidAcc.subtype === 'checking');
         const account = isCreditCard
           ? resolveAccount(tx, baseAccount)
           : baseAccount;
@@ -237,6 +246,23 @@ Deno.serve(async (req) => {
           upperDesc.includes("PAYMENT THANK YOU")
         );
 
+        // Determine transaction type for credits
+        let transactionType = "expense";
+        let categorySlug = "unassigned";
+        if (isCcPayment) {
+          transactionType = "cc-payment";
+          categorySlug = "cc-payment";
+        } else if (isCredit) {
+          if (isCheckingAccount && INCOME_PATTERNS.some(p => upperDesc.includes(p))) {
+            // Only checking account credits matching payroll/deposit patterns are income
+            transactionType = "income";
+          } else {
+            // Credit card refunds, merchant credits, and other checking credits → deposit for manual review
+            transactionType = "deposit";
+          }
+          categorySlug = "unassigned";
+        }
+
         return {
           row: {
             household_id: profile.household_id,
@@ -244,10 +270,10 @@ Deno.serve(async (req) => {
             description,
             notes: "",
             amount: plaidAmount,
-            category_slug: isCcPayment ? "cc-payment" : "unassigned",
+            category_slug: categorySlug,
             account,
             is_transfer_to_savings: false,
-            transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
+            transaction_type: transactionType,
             entered_by: null,
             plaid_transaction_id: (tx.transaction_id as string) || null,
             budget_month: activeBudgetMonth,
@@ -352,11 +378,15 @@ Deno.serve(async (req) => {
         }
 
         if (deduped.length > 0) {
-          await serviceClient.from("transactions").insert(deduped);
+          const { error: insertError } = await serviceClient.from("transactions").insert(deduped);
+          if (insertError) {
+            console.error("Failed to insert transactions:", insertError);
+            return { added, modified, insertFailed: true };
+          }
           added += deduped.length;
         }
 
-        return { added, modified };
+        return { added, modified, insertFailed: false };
       };
 
       while (hasMore) {
@@ -405,9 +435,15 @@ Deno.serve(async (req) => {
             .filter((txRow): txRow is ImportedTransactionRow => Boolean(txRow));
 
           if (txRows.length > 0) {
-            const { added, modified } = await persistImportedTransactions(txRows);
-            totalAdded += added;
-            totalModified += modified;
+            const result = await persistImportedTransactions(txRows);
+            totalAdded += result.added;
+            totalModified += result.modified;
+            if (result.insertFailed) {
+              insertFailed = true;
+              console.error(`Insert failed for item ${item.id}, stopping sync to preserve cursor`);
+              hasMore = false;
+              continue;
+            }
           }
         }
 
@@ -453,12 +489,14 @@ Deno.serve(async (req) => {
         cursor = syncData.next_cursor;
       }
 
-      // Update cursor
-      if (cursor) {
+      // Update cursor — skip if insert failed so transactions are retried next sync
+      if (cursor && !insertFailed) {
         await serviceClient
           .from("plaid_items")
           .update({ cursor, last_synced_at: new Date().toISOString() })
           .eq("id", item.id);
+      } else if (insertFailed) {
+        console.warn(`Skipping cursor update for item ${item.id} due to insert failure — transactions will be retried`);
       }
 
       const pendingStartDate = new Date();
