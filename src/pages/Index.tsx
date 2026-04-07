@@ -18,6 +18,7 @@ import { SettingsView } from '@/components/hearth/SettingsView';
 import { InsightsSection } from '@/components/hearth/InsightsSection';
 import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
+import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 
 const Index = () => {
   const {

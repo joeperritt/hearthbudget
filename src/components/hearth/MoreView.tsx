@@ -1,7 +1,7 @@
-import { CalendarDays, Settings, LogOut, Building2, Sparkles } from 'lucide-react';
+import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor';
+type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
