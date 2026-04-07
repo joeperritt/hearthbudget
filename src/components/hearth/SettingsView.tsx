@@ -48,7 +48,7 @@ type ViewTab = 'variable' | 'fixed' | 'savings' | 'giving';
 
 export function SettingsView({
   categories, fixedExpenses, currentMonth,
-  onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack,
+  onUpdateCategories, onUpdateFixedExpenses, onBack,
   unassignedCount = 0,
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
 }: SettingsViewProps) {
