@@ -1,0 +1,1 @@
+ALTER TABLE public.budget_month_snapshots ADD COLUMN transfers jsonb NOT NULL DEFAULT '[]'::jsonb;

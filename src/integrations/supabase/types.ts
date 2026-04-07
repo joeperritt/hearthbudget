@@ -67,6 +67,7 @@ export type Database = {
           id: string
           month: string
           transactions_summary: Json
+          transfers: Json
         }
         Insert: {
           categories?: Json
@@ -76,6 +77,7 @@ export type Database = {
           id?: string
           month: string
           transactions_summary?: Json
+          transfers?: Json
         }
         Update: {
           categories?: Json
@@ -85,6 +87,7 @@ export type Database = {
           id?: string
           month?: string
           transactions_summary?: Json
+          transfers?: Json
         }
         Relationships: [
           {
