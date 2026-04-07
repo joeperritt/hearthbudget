@@ -73,6 +73,11 @@ function buildBudgetSummary(
     contributed: spentByCategory[e.id] || 0,
   }));
 
+  const givingBreakdown = [
+    ...givingFixed.map(e => ({ name: e.name, budgeted: e.amount, spent: spentByCategory[e.id] || 0, type: 'fixed' as const })),
+    ...givingCats.map(c => ({ name: c.name, budgeted: c.budgeted, spent: spentByCategory[c.id] || 0, type: 'variable' as const })),
+  ];
+
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
@@ -81,6 +86,8 @@ function buildBudgetSummary(
     variableCategories,
     fixedBills,
     totalGiving: totalGivingSpent,
+    totalGivingBudgeted,
+    givingBreakdown,
     givingPercentOfSpending: totalSpent > 0 ? Math.round((totalGivingSpent / totalSpent) * 100) : 0,
     savingsBuckets,
     accountTotals: accountSpending,
