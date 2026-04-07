@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useBudgetData } from '@/hooks/useBudgetData';
+import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
@@ -14,7 +15,8 @@ import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
-
+import { InsightsSection } from '@/components/hearth/InsightsSection';
+import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 
 const Index = () => {
@@ -45,7 +47,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor'>('menu');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -156,9 +158,27 @@ const Index = () => {
     [monthTransactions]
   );
 
+  // AI Insights
+  const {
+    insights, loading: insightsLoading, lastUpdated: insightsLastUpdated,
+    fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
+  } = useBudgetInsights(
+    activeMonth, categories, fixedExpenses, monthTransactions,
+    spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
+  );
+
+  // Auto-fetch insights on first dashboard load
+  useEffect(() => {
+    if (activeMonth && categories.length > 0) {
+      fetchInsights();
+    }
+  }, [activeMonth, categories.length]);
+
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     await addTransactions(txns);
     setShowAddTransaction(false);
+    // Refresh insights when transaction added
+    setTimeout(() => fetchInsights(true), 1000);
   };
 
   const handleStartMonth = async (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
@@ -281,6 +301,15 @@ const Index = () => {
             accounts={accounts}
             monthTransactions={monthTransactions}
             totalBudget={totalBudget}
+            onSyncComplete={() => fetchInsights(true)}
+            insightsSection={
+              <InsightsSection
+                insights={insights}
+                loading={insightsLoading}
+                lastUpdated={insightsLastUpdated}
+                onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
+              />
+            }
           />
         )}
         {activeTab === 'variable' && (
@@ -347,6 +376,17 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />
+        )}
+        {activeTab === 'more' && moreSubView === 'ai-advisor' && (
+          <AIAdvisorView
+            insights={insights}
+            loading={insightsLoading}
+            chatMessages={chatMessages}
+            chatLoading={chatLoading}
+            onSendMessage={sendChatMessage}
+            onBack={() => setMoreSubView('menu')}
+            onRefresh={() => fetchInsights(true)}
+          />
         )}
       </div>
 

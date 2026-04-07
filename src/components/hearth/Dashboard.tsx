@@ -201,6 +201,7 @@ interface DashboardProps {
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
+  insightsSection?: React.ReactNode;
 }
 
 export function Dashboard({
@@ -211,6 +212,7 @@ export function Dashboard({
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
+  insightsSection,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -468,6 +470,9 @@ export function Dashboard({
         </div>
 
       </div>
+
+      {/* 4. AI Insights */}
+      {insightsSection}
 
       <div className="mb-6" />
 
