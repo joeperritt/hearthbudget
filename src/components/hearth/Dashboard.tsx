@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { format, differenceInDays, startOfMonth, addMonths } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3 } from 'lucide-react';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
