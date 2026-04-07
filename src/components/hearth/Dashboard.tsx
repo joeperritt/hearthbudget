@@ -184,6 +184,29 @@ function BankSection({
   );
 }
 
+/** Banner shown last 3 days of month if unassigned transactions exist */
+function EndOfMonthBanner({ count }: { count: number }) {
+  const today = new Date();
+  const nextMonth = startOfMonth(addMonths(today, 1));
+  const daysLeft = differenceInDays(nextMonth, today);
+
+  if (daysLeft > 3 || count === 0) return null;
+
+  return (
+    <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
+      <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-medium text-foreground">
+          {count} unassigned transaction{count > 1 ? 's' : ''}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Month rolls over automatically on the 1st — clean these up before then.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface DashboardProps {
   monthLabel: string;
   onAddTransaction: () => void;
