@@ -214,7 +214,24 @@ export function Dashboard({
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [lastSyncedLabel, setLastSyncedLabel] = useState<string | null>(null);
+  const [flashLabel, setFlashLabel] = useState<string | null>(null);
+
+  // Fetch last sync time from plaid_items
+  useEffect(() => {
+    const fetchLastSync = async () => {
+      const { data } = await supabase
+        .from('plaid_items')
+        .select('last_synced_at')
+        .not('last_synced_at', 'is', null)
+        .order('last_synced_at', { ascending: false })
+        .limit(1);
+      if (data && data.length > 0 && data[0].last_synced_at) {
+        setLastSyncedLabel(formatDistanceToNow(new Date(data[0].last_synced_at), { addSuffix: true }));
+      }
+    };
+    fetchLastSync();
+  }, []);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -223,9 +240,10 @@ export function Dashboard({
       if (!session) return;
       const headers = { Authorization: `Bearer ${session.access_token}` };
       await supabase.functions.invoke('plaid-sync-transactions', { headers });
-      setLastSynced('Updated just now');
+      setLastSyncedLabel('just now');
+      setFlashLabel('Synced!');
       onSyncComplete?.();
-      setTimeout(() => setLastSynced(null), 5000);
+      setTimeout(() => setFlashLabel(null), 3000);
     } catch (e) {
       console.error('Sync failed:', e);
     } finally {
