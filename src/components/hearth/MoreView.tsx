@@ -69,6 +69,9 @@ export function MoreView({ onSelect }: MoreViewProps) {
             <p className="text-xs text-muted-foreground">Month over month spending comparison</p>
           </div>
         </button>
+
+        <button
+          onClick={() => onSelect('bank-connections')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
         >
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
