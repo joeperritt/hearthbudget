@@ -17,6 +17,8 @@ interface BudgetSummary {
   variableCategories: { name: string; budgeted: number; spent: number; percentUsed: number }[];
   fixedBills: { name: string; amount: number; paid: boolean; amountPaid: number }[];
   totalGiving: number;
+  totalGivingBudgeted: number;
+  givingBreakdown: { name: string; budgeted: number; spent: number; type: 'fixed' | 'variable' }[];
   givingPercentOfSpending: number;
   savingsBuckets: { name: string; amount: number; contributed: number }[];
   accountTotals: { label: string; amount: number }[];
@@ -64,6 +66,7 @@ function buildBudgetSummary(
   const givingCats = categories.filter(c => c.group === 'giving');
   const givingFixed = fixedExpenses.filter(e => e.group === 'tithe');
   const totalGivingSpent = [...givingCats, ...givingFixed].reduce((s, c) => s + (spentByCategory[c.id] || 0), 0);
+  const totalGivingBudgeted = givingCats.reduce((s, c) => s + c.budgeted, 0) + givingFixed.reduce((s, e) => s + e.amount, 0);
   const totalSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
 
   const savingsBuckets = fixedExpenses.filter(e => e.group === 'savings').map(e => ({
@@ -71,6 +74,11 @@ function buildBudgetSummary(
     amount: e.amount,
     contributed: spentByCategory[e.id] || 0,
   }));
+
+  const givingBreakdown = [
+    ...givingFixed.map(e => ({ name: e.name, budgeted: e.amount, spent: spentByCategory[e.id] || 0, type: 'fixed' as const })),
+    ...givingCats.map(c => ({ name: c.name, budgeted: c.budgeted, spent: spentByCategory[c.id] || 0, type: 'variable' as const })),
+  ];
 
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
@@ -80,6 +88,8 @@ function buildBudgetSummary(
     variableCategories,
     fixedBills,
     totalGiving: totalGivingSpent,
+    totalGivingBudgeted,
+    givingBreakdown,
     givingPercentOfSpending: totalSpent > 0 ? Math.round((totalGivingSpent / totalSpent) * 100) : 0,
     savingsBuckets,
     accountTotals: accountSpending,
