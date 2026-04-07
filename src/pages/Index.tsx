@@ -158,9 +158,27 @@ const Index = () => {
     [monthTransactions]
   );
 
+  // AI Insights
+  const {
+    insights, loading: insightsLoading, lastUpdated: insightsLastUpdated,
+    fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
+  } = useBudgetInsights(
+    activeMonth, categories, fixedExpenses, monthTransactions,
+    spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
+  );
+
+  // Auto-fetch insights on first dashboard load
+  useEffect(() => {
+    if (activeMonth && categories.length > 0) {
+      fetchInsights();
+    }
+  }, [activeMonth, categories.length]);
+
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     await addTransactions(txns);
     setShowAddTransaction(false);
+    // Refresh insights when transaction added
+    setTimeout(() => fetchInsights(true), 1000);
   };
 
   const handleStartMonth = async (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
