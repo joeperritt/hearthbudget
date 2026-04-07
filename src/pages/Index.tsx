@@ -365,7 +365,7 @@ const Index = () => {
             currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
-            onStartMonth={handleStartMonth}
+            
             onBack={() => setMoreSubView('menu')}
             unassignedCount={unassignedTransactions.length}
             spentByCategory={spentByCategory}

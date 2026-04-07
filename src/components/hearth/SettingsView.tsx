@@ -332,14 +332,7 @@ export function SettingsView({
   const titheTotal = rawTithe + givingVarTotal;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
-  const handleStartMonthClick = () => setShowConfirmation(true);
-
-  const handleConfirmStart = async () => {
-    setStarting(true);
-    await onStartMonth(nextMonth, nextCats, nextFixed);
-    setStarting(false);
-    setShowConfirmation(false);
-  };
+  const handleStartMonthClick = () => {}; // No longer used — auto transition
 
   function renderAddFixedForm(group: FixedGroupType) {
     if (showAddFixed !== group) return null;
