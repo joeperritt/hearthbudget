@@ -327,14 +327,21 @@ export function Dashboard({
             );
           })()}
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all mt-1"
-          title="Sync accounts"
-        >
-          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex flex-col items-center gap-1 mt-1">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all"
+            title="Sync accounts"
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+          </button>
+          {(flashLabel || lastSyncedLabel) && (
+            <span className="text-[10px] text-muted-foreground leading-none">
+              {flashLabel || `Synced ${lastSyncedLabel}`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 1. Unassigned */}
