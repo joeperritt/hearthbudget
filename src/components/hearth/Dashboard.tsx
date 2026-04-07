@@ -224,6 +224,8 @@ interface DashboardProps {
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
+  totalVariableSpent?: number;
+  totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
 }
 
