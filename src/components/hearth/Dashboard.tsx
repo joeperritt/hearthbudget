@@ -224,6 +224,8 @@ interface DashboardProps {
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
+  totalVariableSpent?: number;
+  totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
 }
 
@@ -235,6 +237,8 @@ export function Dashboard({
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
+  totalVariableSpent = 0,
+  totalFixedSpent = 0,
   insightsSection,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -318,9 +322,9 @@ export function Dashboard({
   const checkingNet = checkingSpent - checkingDeposits;
 
   // Overall totals
-  const overallSpent = totalCreditSpent + checkingSpent;
-  const overallReturns = creditPayoffs + checkingDeposits;
-  const overallNet = overallSpent - overallReturns;
+  // Use the same totals as the Spending tab (passed from Index.tsx)
+  const overallSpent = totalVariableSpent + totalFixedSpent;
+  const overallNet = overallSpent;
   const budgetDifference = totalBudget - overallNet;
 
   // Colors — lighter blue & gold theme
@@ -466,10 +470,6 @@ export function Dashboard({
                 <div className="flex justify-between items-center px-4 py-2.5">
                   <span className="text-sm text-muted-foreground">Total Spent</span>
                   <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
-                </div>
-                <div className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-sm text-muted-foreground">Payoffs & Deposits</span>
-                  <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallReturns)}</span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
                   <span className="text-sm font-semibold text-foreground">Net Total</span>
