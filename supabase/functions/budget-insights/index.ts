@@ -20,12 +20,12 @@ serve(async (req) => {
     const messages = isChat
       ? [
           { role: "system", content: SYSTEM_PROMPT.replace('Format your response as a JSON array of insight objects, each with a "type" field (one of: warning, encouragement, tip, giving, savings), a "title" field (5 words or less), and a "body" field (2-3 sentences max referencing real numbers from their data).', 'When answering follow-up questions, respond conversationally and specifically using the budget data provided. Be concise and helpful.') },
-          { role: "user", content: `Here is the current budget data:\n${JSON.stringify(budgetSummary, null, 2)}` },
+          { role: "user", content: `The current active budget month is ${budgetSummary.currentMonth}. Here is the budget data for ${budgetSummary.currentMonth}:\n${JSON.stringify(budgetSummary, null, 2)}` },
           ...chatMessages,
         ]
       : [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Here is the current budget data:\n${JSON.stringify(budgetSummary, null, 2)}` },
+          { role: "user", content: `The current active budget month is ${budgetSummary.currentMonth}. Here is the budget data for ${budgetSummary.currentMonth}:\n${JSON.stringify(budgetSummary, null, 2)}` },
         ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

@@ -123,7 +123,8 @@ export function useBudgetInsights(
   ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget]);
 
   const fetchInsights = useCallback(async (force = false) => {
-    const key = JSON.stringify({ activeMonth, txCount: monthTransactions.length });
+    const spentTotal = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
+    const key = JSON.stringify({ activeMonth, txCount: monthTransactions.length, spentTotal });
     if (!force && key === cacheKey.current && insightsRef.current.length > 0) return;
     cacheKey.current = key;
 
