@@ -301,6 +301,15 @@ const Index = () => {
             accounts={accounts}
             monthTransactions={monthTransactions}
             totalBudget={totalBudget}
+            onSyncComplete={() => { onSyncComplete?.(); fetchInsights(true); }}
+            insightsSection={
+              <InsightsSection
+                insights={insights}
+                loading={insightsLoading}
+                lastUpdated={insightsLastUpdated}
+                onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
+              />
+            }
           />
         )}
         {activeTab === 'variable' && (
