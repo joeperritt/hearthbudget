@@ -64,6 +64,7 @@ function buildBudgetSummary(
   const givingCats = categories.filter(c => c.group === 'giving');
   const givingFixed = fixedExpenses.filter(e => e.group === 'tithe');
   const totalGivingSpent = [...givingCats, ...givingFixed].reduce((s, c) => s + (spentByCategory[c.id] || 0), 0);
+  const totalGivingBudgeted = givingCats.reduce((s, c) => s + c.budgeted, 0) + givingFixed.reduce((s, e) => s + e.amount, 0);
   const totalSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
 
   const savingsBuckets = fixedExpenses.filter(e => e.group === 'savings').map(e => ({
