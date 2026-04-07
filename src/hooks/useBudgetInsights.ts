@@ -17,6 +17,8 @@ interface BudgetSummary {
   variableCategories: { name: string; budgeted: number; spent: number; percentUsed: number }[];
   fixedBills: { name: string; amount: number; paid: boolean; amountPaid: number }[];
   totalGiving: number;
+  totalGivingBudgeted: number;
+  givingBreakdown: { name: string; budgeted: number; spent: number; type: 'fixed' | 'variable' }[];
   givingPercentOfSpending: number;
   savingsBuckets: { name: string; amount: number; contributed: number }[];
   accountTotals: { label: string; amount: number }[];
