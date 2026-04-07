@@ -489,12 +489,14 @@ Deno.serve(async (req) => {
         cursor = syncData.next_cursor;
       }
 
-      // Update cursor
-      if (cursor) {
+      // Update cursor — skip if insert failed so transactions are retried next sync
+      if (cursor && !insertFailed) {
         await serviceClient
           .from("plaid_items")
           .update({ cursor, last_synced_at: new Date().toISOString() })
           .eq("id", item.id);
+      } else if (insertFailed) {
+        console.warn(`Skipping cursor update for item ${item.id} due to insert failure — transactions will be retried`);
       }
 
       const pendingStartDate = new Date();
