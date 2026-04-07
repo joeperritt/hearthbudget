@@ -18,6 +18,7 @@ import { SettingsView } from '@/components/hearth/SettingsView';
 import { InsightsSection } from '@/components/hearth/InsightsSection';
 import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
+import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 
 const Index = () => {
   const {
@@ -47,7 +48,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'>('menu');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -230,7 +231,6 @@ const Index = () => {
     );
   }
 
-
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
     if (cat) {
@@ -387,6 +387,15 @@ const Index = () => {
             onSendMessage={sendChatMessage}
             onBack={() => setMoreSubView('menu')}
             onRefresh={() => fetchInsights(true)}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'trends' && (
+          <SpendingTrendsView
+            activeMonth={activeMonth}
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            spentByCategory={spentByCategory}
+            onBack={() => setMoreSubView('menu')}
           />
         )}
       </div>
