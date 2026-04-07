@@ -377,11 +377,15 @@ Deno.serve(async (req) => {
         }
 
         if (deduped.length > 0) {
-          await serviceClient.from("transactions").insert(deduped);
+          const { error: insertError } = await serviceClient.from("transactions").insert(deduped);
+          if (insertError) {
+            console.error("Failed to insert transactions:", insertError);
+            return { added, modified, insertFailed: true };
+          }
           added += deduped.length;
         }
 
-        return { added, modified };
+        return { added, modified, insertFailed: false };
       };
 
       while (hasMore) {
