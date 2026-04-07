@@ -122,46 +122,64 @@ function BankSection({
   netValue: number;
   barSegments: { value: number; color: string; label: string }[];
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        {icon}
-        <span className="text-sm font-semibold text-foreground">{title}</span>
-      </div>
-
-      {/* Stacked bar */}
-      <div className="px-4 pt-3 pb-1">
-        <StackedBar segments={barSegments} />
-        <div className="flex gap-3 mt-1.5 flex-wrap">
-          {barSegments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
-              <span className="text-[10px] text-muted-foreground">{seg.label}</span>
-            </div>
-          ))}
+      {/* Collapsed summary row */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-sm font-semibold text-foreground">{title}</span>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold tabular-nums text-foreground">
+            Total {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
+          </span>
+          {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+        </div>
+      </button>
 
-      {/* Rows */}
-      <div className="divide-y divide-border">
-        {rows.map((row, i) => (
-          <div key={i} className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">{row.label}</span>
-            <span className={`text-sm font-medium tabular-nums ${row.color || 'text-foreground'}`}>
-              {row.value < 0 ? '−' : ''}{formatCurrency(Math.abs(row.value))}
+      {/* Expanded details */}
+      {open && (
+        <>
+          {/* Stacked bar */}
+          <div className="px-4 pt-3 pb-1 border-t border-border">
+            <StackedBar segments={barSegments} />
+            <div className="flex gap-3 mt-1.5 flex-wrap">
+              {barSegments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
+                  <span className="text-[10px] text-muted-foreground">{seg.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-border">
+            {rows.map((row, i) => (
+              <div key={i} className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">{row.label}</span>
+                <span className={`text-sm font-medium tabular-nums ${row.color || 'text-foreground'}`}>
+                  {row.value < 0 ? '−' : ''}{formatCurrency(Math.abs(row.value))}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Net total */}
+          <div className="flex justify-between items-center px-4 py-3 bg-accent/5 border-t border-border">
+            <span className="text-sm font-semibold text-foreground">{netLabel}</span>
+            <span className={`text-sm font-bold tabular-nums ${netValue < 0 ? 'text-accent' : 'text-foreground'}`}>
+              {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
             </span>
           </div>
-        ))}
-      </div>
-
-      {/* Net total */}
-      <div className="flex justify-between items-center px-4 py-3 bg-accent/5 border-t border-border">
-        <span className="text-sm font-semibold text-foreground">{netLabel}</span>
-        <span className={`text-sm font-bold tabular-nums ${netValue < 0 ? 'text-accent' : 'text-foreground'}`}>
-          {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
-        </span>
-      </div>
+        </>
+      )}
     </div>
   );
 }
