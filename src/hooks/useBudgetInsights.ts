@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { differenceInDays, startOfMonth, addMonths, format } from 'date-fns';
 
 export interface Insight {
