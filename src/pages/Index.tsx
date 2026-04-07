@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useBudgetData } from '@/hooks/useBudgetData';
+import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
@@ -14,7 +15,8 @@ import { PlanningView } from '@/components/hearth/PlanningView';
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
-
+import { InsightsSection } from '@/components/hearth/InsightsSection';
+import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 
 const Index = () => {
