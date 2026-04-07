@@ -28,6 +28,7 @@ const Index = () => {
     transfers,
     activeMonth,
     loading,
+    householdId,
     addTransactions,
     deleteTransaction,
     addTransfer,
