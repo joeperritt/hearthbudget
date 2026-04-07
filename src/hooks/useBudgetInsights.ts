@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { differenceInDays, startOfMonth, addMonths, format } from 'date-fns';
 
 export interface Insight {
@@ -63,7 +63,7 @@ function buildBudgetSummary(
     };
   });
 
-  const givingCats = categories.filter(c => c.group === 'giving');
+  const givingCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingFixed = fixedExpenses.filter(e => e.group === 'tithe');
   const totalGivingSpent = [...givingCats, ...givingFixed].reduce((s, c) => s + (spentByCategory[c.id] || 0), 0);
   const totalGivingBudgeted = givingCats.reduce((s, c) => s + c.budgeted, 0) + givingFixed.reduce((s, e) => s + e.amount, 0);
