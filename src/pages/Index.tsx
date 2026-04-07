@@ -398,6 +398,7 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
+      </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
