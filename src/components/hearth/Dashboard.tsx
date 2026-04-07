@@ -212,6 +212,7 @@ export function Dashboard({
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
+  insightsSection,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
