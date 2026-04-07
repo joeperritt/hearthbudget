@@ -471,6 +471,9 @@ export function Dashboard({
 
       </div>
 
+      {/* 4. AI Insights */}
+      {insightsSection}
+
       <div className="mb-6" />
 
       <button
