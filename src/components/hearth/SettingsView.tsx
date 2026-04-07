@@ -34,7 +34,6 @@ interface SettingsViewProps {
   currentMonth: Date;
   onUpdateCategories: (cats: BudgetCategory[]) => void;
   onUpdateFixedExpenses: (exps: FixedExpense[]) => void;
-  onStartMonth: (nextMonth: Date, cats: BudgetCategory[], expenses: FixedExpense[]) => void;
   onBack: () => void;
   unassignedCount?: number;
   // Current month spending data
