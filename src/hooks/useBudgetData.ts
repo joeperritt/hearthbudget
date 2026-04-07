@@ -286,22 +286,9 @@ export function useBudgetData() {
   const startNewMonth = useCallback(async (nextMonth: string, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
     if (!householdId) return;
 
-    // Snapshot current month
-    const monthTxns = transactions.filter(t => t.budgetMonth === activeMonth);
-    const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
-    const summary = {
-      totalTransactions: monthTxns.length,
-      totalExpenses: expenseTxns.length,
-      totalSpent: expenseTxns.reduce((s, t) => s + t.amount, 0),
-    };
-
-    await supabase.from('budget_month_snapshots' as any).insert({
-      household_id: householdId,
-      month: activeMonth,
-      categories: categories,
-      fixed_expenses: fixedExpenses,
-      transactions_summary: summary,
-    } as any);
+    // Snapshot current month using shared helper
+    const snapshotData = buildSnapshotData(activeMonth, categories, fixedExpenses);
+    await supabase.from('budget_month_snapshots' as any).insert(snapshotData as any);
 
     // Update categories and fixed expenses to new amounts
     await updateCategories(nextCats);
@@ -310,7 +297,7 @@ export function useBudgetData() {
     // Update active_month on household
     await supabase.from('households').update({ active_month: nextMonth } as any).eq('id', householdId);
     setActiveMonth(nextMonth);
-  }, [householdId, activeMonth, categories, fixedExpenses, transactions, updateCategories, updateFixedExpenses]);
+  }, [householdId, activeMonth, categories, fixedExpenses, buildSnapshotData, updateCategories, updateFixedExpenses]);
 
   const updatePlanningData = useCallback(async (data: Record<string, string>) => {
     if (!householdId) return;
