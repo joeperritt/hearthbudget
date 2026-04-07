@@ -212,6 +212,7 @@ export function Dashboard({
   monthTransactions = [],
   totalBudget = 0,
 }: DashboardProps) {
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
 
