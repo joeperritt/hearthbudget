@@ -175,7 +175,7 @@ export function SpendingTrendsView({
     [fixedRows]
   );
 
-  const hasTwoMonths = !!previousSnapshot;
+  
 
   return (
     <div className="max-w-lg mx-auto pb-8">
