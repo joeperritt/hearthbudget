@@ -237,6 +237,8 @@ export function Dashboard({
   accounts = [],
   monthTransactions = [],
   totalBudget = 0,
+  totalVariableSpent = 0,
+  totalFixedSpent = 0,
   insightsSection,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
