@@ -1112,15 +1112,7 @@ export function SettingsView({
             </div>
           </div>
 
-          {/* Start Month Button - only for next month */}
-          {isNextMonth && (
-            <button
-              onClick={handleStartMonthClick}
-              className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
-            >
-              Start {format(viewMonthDate, 'MMMM')}
-            </button>
-          )}
+          {/* Month transitions happen automatically on the 1st */}
         </div>
       </>
     );
