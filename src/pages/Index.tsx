@@ -401,6 +401,9 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
+        {activeTab === 'more' && moreSubView === 'past-months' && (
+          <PastMonthsView onBack={() => setMoreSubView('menu')} />
+        )}
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
