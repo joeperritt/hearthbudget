@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { format, differenceInDays, startOfMonth, addMonths } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3 } from 'lucide-react';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,46 +122,64 @@ function BankSection({
   netValue: number;
   barSegments: { value: number; color: string; label: string }[];
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        {icon}
-        <span className="text-sm font-semibold text-foreground">{title}</span>
-      </div>
-
-      {/* Stacked bar */}
-      <div className="px-4 pt-3 pb-1">
-        <StackedBar segments={barSegments} />
-        <div className="flex gap-3 mt-1.5 flex-wrap">
-          {barSegments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
-              <span className="text-[10px] text-muted-foreground">{seg.label}</span>
-            </div>
-          ))}
+      {/* Collapsed summary row */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-sm font-semibold text-foreground">{title}</span>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold tabular-nums text-foreground">
+            Total {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
+          </span>
+          {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+        </div>
+      </button>
 
-      {/* Rows */}
-      <div className="divide-y divide-border">
-        {rows.map((row, i) => (
-          <div key={i} className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">{row.label}</span>
-            <span className={`text-sm font-medium tabular-nums ${row.color || 'text-foreground'}`}>
-              {row.value < 0 ? '−' : ''}{formatCurrency(Math.abs(row.value))}
+      {/* Expanded details */}
+      {open && (
+        <>
+          {/* Stacked bar */}
+          <div className="px-4 pt-3 pb-1 border-t border-border">
+            <StackedBar segments={barSegments} />
+            <div className="flex gap-3 mt-1.5 flex-wrap">
+              {barSegments.filter(s => Math.abs(s.value) > 0).map((seg, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
+                  <span className="text-[10px] text-muted-foreground">{seg.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-border">
+            {rows.map((row, i) => (
+              <div key={i} className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">{row.label}</span>
+                <span className={`text-sm font-medium tabular-nums ${row.color || 'text-foreground'}`}>
+                  {row.value < 0 ? '−' : ''}{formatCurrency(Math.abs(row.value))}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Net total */}
+          <div className="flex justify-between items-center px-4 py-3 bg-accent/5 border-t border-border">
+            <span className="text-sm font-semibold text-foreground">{netLabel}</span>
+            <span className={`text-sm font-bold tabular-nums ${netValue < 0 ? 'text-accent' : 'text-foreground'}`}>
+              {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
             </span>
           </div>
-        ))}
-      </div>
-
-      {/* Net total */}
-      <div className="flex justify-between items-center px-4 py-3 bg-accent/5 border-t border-border">
-        <span className="text-sm font-semibold text-foreground">{netLabel}</span>
-        <span className={`text-sm font-bold tabular-nums ${netValue < 0 ? 'text-accent' : 'text-foreground'}`}>
-          {netValue < 0 ? '−' : ''}{formatCurrency(Math.abs(netValue))}
-        </span>
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -193,6 +212,7 @@ export function Dashboard({
   monthTransactions = [],
   totalBudget = 0,
 }: DashboardProps) {
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
 
@@ -278,7 +298,16 @@ export function Dashboard({
       <div className="px-6 pt-12 pb-2 safe-top flex items-start justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Your household budget</p>
+          {(() => {
+            const today = new Date();
+            const nextMonth = startOfMonth(addMonths(today, 1));
+            const daysLeft = differenceInDays(nextMonth, today);
+            return (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {format(today, 'EEEE, MMMM d')} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+              </p>
+            );
+          })()}
         </div>
         <button
           onClick={handleSync}
@@ -362,41 +391,55 @@ export function Dashboard({
 
         {/* Overall Summary */}
         <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-            <BarChart3 size={16} className="text-accent" />
-            <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
-          </div>
-
-          <div className="divide-y divide-border">
-            <div className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-muted-foreground">Total Spent</span>
-              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
+          <button
+            onClick={() => setSummaryOpen(!summaryOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 size={16} className="text-accent" />
+              <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
             </div>
-            <div className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-muted-foreground">Payoffs & Deposits</span>
-              <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallReturns)}</span>
-            </div>
-            <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-              <span className="text-sm font-semibold text-foreground">Net Total</span>
-              <span className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
-            </div>
-          </div>
-
-          {/* Budget comparison */}
-          <div className="border-t border-border divide-y divide-border">
-            <div className="flex justify-between items-center px-4 py-2.5">
-              <span className="text-sm text-muted-foreground">Total Budgeted</span>
-              <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
-            </div>
-            <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
-              <span className="text-sm font-semibold text-foreground">
-                {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
-              </span>
+            <div className="flex items-center gap-2">
               <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+                {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
               </span>
+              {summaryOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
             </div>
-          </div>
+          </button>
+
+          {summaryOpen && (
+            <>
+              <div className="divide-y divide-border border-t border-border">
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">Total Spent</span>
+                  <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">Payoffs & Deposits</span>
+                  <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallReturns)}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
+                  <span className="text-sm font-semibold text-foreground">Net Total</span>
+                  <span className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-border divide-y divide-border">
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">Total Budgeted</span>
+                  <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
+                  <span className="text-sm font-semibold text-foreground">
+                    {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+                  </span>
+                  <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                    {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {lastSynced && (
