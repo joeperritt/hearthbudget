@@ -116,6 +116,8 @@ export function SpendingTrendsView({
   const prevTotal = previousSnapshot
     ? Object.values(previousSnapshot.spentByCategory).reduce((s, v) => s + Math.max(0, v), 0)
     : 0;
+  const hasMeaningfulPrior = prevTotal > 0;
+  const hasTwoMonths = !!previousSnapshot && hasMeaningfulPrior;
   const pctChange = prevTotal > 0 ? ((currentTotal - prevTotal) / prevTotal) * 100 : 0;
   const spendingDecreased = currentTotal < prevTotal;
 
