@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { differenceInDays, startOfMonth, addMonths, format } from 'date-fns';
@@ -72,13 +72,11 @@ function buildBudgetSummary(
     contributed: spentByCategory[e.id] || 0,
   }));
 
-  const totalCommitted = totalSpent;
-
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
     totalBudget,
-    totalCommitted,
+    totalCommitted: totalSpent,
     variableCategories,
     fixedBills,
     totalGiving: totalGivingSpent,
@@ -102,10 +100,12 @@ export function useBudgetInsights(
 ) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const cacheKey = useRef<string>('');
+  const insightsRef = useRef<Insight[]>([]);
 
   const summary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
@@ -114,29 +114,52 @@ export function useBudgetInsights(
 
   const fetchInsights = useCallback(async (force = false) => {
     const key = JSON.stringify({ activeMonth, txCount: monthTransactions.length });
-    if (!force && key === cacheKey.current && insights.length > 0) return;
+    if (!force && key === cacheKey.current && insightsRef.current.length > 0) return;
     cacheKey.current = key;
 
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('budget-insights', {
+      console.log('[Insights] Calling budget-insights edge function...');
+      const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { budgetSummary: summary() },
       });
-      if (error) throw error;
+      
+      if (fnError) {
+        console.error('[Insights] Function error:', fnError);
+        throw new Error(fnError.message || 'Edge function returned an error');
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from edge function');
+      }
+
+      console.log('[Insights] Response received:', typeof data, data);
+      
       const content = data?.content || '';
+      if (!content) {
+        throw new Error('Empty content in response');
+      }
+
       // Parse JSON from the response - might be wrapped in markdown code fences
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as Insight[];
         setInsights(parsed);
+        insightsRef.current = parsed;
         setLastUpdated(new Date());
+        console.log('[Insights] Parsed', parsed.length, 'insights');
+      } else {
+        throw new Error('Could not parse insights JSON from response');
       }
-    } catch (e) {
-      console.error('Failed to fetch insights:', e);
+    } catch (e: any) {
+      const msg = e?.message || 'Unknown error generating insights';
+      console.error('[Insights] Failed:', msg, e);
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [summary, activeMonth, monthTransactions.length, insights.length]);
+  }, [summary, activeMonth, monthTransactions.length]);
 
   const sendChatMessage = useCallback(async (message: string) => {
     const userMsg = { role: 'user' as const, content: message };
@@ -145,10 +168,10 @@ export function useBudgetInsights(
     setChatLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('budget-insights', {
+      const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { budgetSummary: summary(), chatMessages: newMessages },
       });
-      if (error) throw error;
+      if (fnError) throw fnError;
       const content = data?.content || 'Sorry, I couldn\'t generate a response.';
       setChatMessages(prev => [...prev, { role: 'assistant', content }]);
     } catch (e) {
@@ -162,6 +185,7 @@ export function useBudgetInsights(
   return {
     insights,
     loading,
+    error,
     lastUpdated,
     fetchInsights,
     chatMessages,
