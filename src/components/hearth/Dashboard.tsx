@@ -322,9 +322,9 @@ export function Dashboard({
   const checkingNet = checkingSpent - checkingDeposits;
 
   // Overall totals
-  const overallSpent = totalCreditSpent + checkingSpent;
-  const overallReturns = creditPayoffs + checkingDeposits;
-  const overallNet = overallSpent - overallReturns;
+  // Use the same totals as the Spending tab (passed from Index.tsx)
+  const overallSpent = totalVariableSpent + totalFixedSpent;
+  const overallNet = overallSpent;
   const budgetDifference = totalBudget - overallNet;
 
   // Colors — lighter blue & gold theme
