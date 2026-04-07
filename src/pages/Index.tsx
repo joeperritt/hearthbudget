@@ -298,6 +298,8 @@ const Index = () => {
             accounts={accounts}
             monthTransactions={monthTransactions}
             totalBudget={totalBudget}
+            totalVariableSpent={totalVariableSpent}
+            totalFixedSpent={allFixedSpent}
             onSyncComplete={() => fetchInsights(true)}
             insightsSection={
               <InsightsSection
