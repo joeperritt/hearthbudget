@@ -230,8 +230,7 @@ const Index = () => {
       </div>
     );
   }
-
-
+      </div>
   if (selectedCategoryId) {
     const cat = categories.find(c => c.id === selectedCategoryId);
     if (cat) {
