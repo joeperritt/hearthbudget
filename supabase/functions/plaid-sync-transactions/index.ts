@@ -216,6 +216,13 @@ Deno.serve(async (req) => {
         return fallback;
       };
 
+      // Patterns that indicate payroll / direct deposit on checking accounts
+      const INCOME_PATTERNS = [
+        "PAYROLL", "DIRECT DEP", "DIRECT DEPOSIT", "DIR DEP",
+        "SALARY", "WAGES", "PAYCHECK", "ACH CREDIT",
+        "EMPLOYER", "GUSTO", "ADP", "INTUIT",
+      ];
+
       const mapImportedTransaction = (tx: Record<string, unknown>): ImportedTransactionRow | null => {
         const baseAccount = accountMap[tx.account_id as string];
         if (!baseAccount) return null;
@@ -223,6 +230,7 @@ Deno.serve(async (req) => {
         // For credit card accounts, try to resolve cardholder
         const plaidAcc = (item.plaid_accounts || []).find((a: any) => a.plaid_account_id === tx.account_id);
         const isCreditCard = plaidAcc && (plaidAcc.account_category === 'credit_card' || (!plaidAcc.account_category && plaidAcc.type === 'credit'));
+        const isCheckingAccount = plaidAcc && (plaidAcc.account_category === 'checking' || plaidAcc.subtype === 'checking');
         const account = isCreditCard
           ? resolveAccount(tx, baseAccount)
           : baseAccount;
@@ -237,6 +245,23 @@ Deno.serve(async (req) => {
           upperDesc.includes("PAYMENT THANK YOU")
         );
 
+        // Determine transaction type for credits
+        let transactionType = "expense";
+        let categorySlug = "unassigned";
+        if (isCcPayment) {
+          transactionType = "cc-payment";
+          categorySlug = "cc-payment";
+        } else if (isCredit) {
+          if (isCheckingAccount && INCOME_PATTERNS.some(p => upperDesc.includes(p))) {
+            // Only checking account credits matching payroll/deposit patterns are income
+            transactionType = "income";
+          } else {
+            // Credit card refunds, merchant credits, and other checking credits → deposit for manual review
+            transactionType = "deposit";
+          }
+          categorySlug = "unassigned";
+        }
+
         return {
           row: {
             household_id: profile.household_id,
@@ -244,10 +269,10 @@ Deno.serve(async (req) => {
             description,
             notes: "",
             amount: plaidAmount,
-            category_slug: isCcPayment ? "cc-payment" : "unassigned",
+            category_slug: categorySlug,
             account,
             is_transfer_to_savings: false,
-            transaction_type: isCcPayment ? "cc-payment" : isCredit ? "income" : "expense",
+            transaction_type: transactionType,
             entered_by: null,
             plaid_transaction_id: (tx.transaction_id as string) || null,
             budget_month: activeBudgetMonth,
