@@ -160,7 +160,7 @@ const Index = () => {
 
   // AI Insights
   const {
-    insights, loading: insightsLoading, lastUpdated: insightsLastUpdated,
+    insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
     fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
   } = useBudgetInsights(
     activeMonth, categories, fixedExpenses, monthTransactions,
