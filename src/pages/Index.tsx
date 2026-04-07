@@ -28,6 +28,7 @@ const Index = () => {
     transfers,
     activeMonth,
     loading,
+    householdId,
     addTransactions,
     deleteTransaction,
     addTransfer,
@@ -166,6 +167,7 @@ const Index = () => {
   } = useBudgetInsights(
     activeMonth, categories, fixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
+    householdId,
   );
 
   // Auto-fetch insights on first dashboard load

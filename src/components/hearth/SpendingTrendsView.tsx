@@ -154,16 +154,18 @@ export function SpendingTrendsView({
     ]);
     return Array.from(allIds)
       .map(id => {
-        const exp = fixedExpenses.find(e => e.id === id);
+        const expIdx = fixedExpenses.findIndex(e => e.id === id);
+        const exp = expIdx >= 0 ? fixedExpenses[expIdx] : undefined;
         return {
           id,
           name: exp?.name || id,
           current: Math.max(0, currentFixedSpent[id] || 0),
           previous: Math.max(0, prevFixed[id] || 0),
+          sortIdx: expIdx >= 0 ? expIdx : 999,
         };
       })
       .filter(r => r.current > 0 || r.previous > 0)
-      .sort((a, b) => b.current - a.current);
+      .sort((a, b) => a.sortIdx - b.sortIdx);
   }, [currentFixedSpent, previousSnapshot, fixedExpenses]);
 
   const maxVariable = useMemo(
