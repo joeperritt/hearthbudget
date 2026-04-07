@@ -301,7 +301,7 @@ const Index = () => {
             accounts={accounts}
             monthTransactions={monthTransactions}
             totalBudget={totalBudget}
-            onSyncComplete={() => { onSyncComplete?.(); fetchInsights(true); }}
+            onSyncComplete={() => fetchInsights(true)}
             insightsSection={
               <InsightsSection
                 insights={insights}
