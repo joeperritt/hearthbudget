@@ -313,6 +313,7 @@ export function useBudgetData() {
     activeMonth,
     planningData,
     loading,
+    householdId: householdId || '',
     addTransactions,
     deleteTransaction,
     addTransfer,
