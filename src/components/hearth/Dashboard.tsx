@@ -279,7 +279,16 @@ export function Dashboard({
       <div className="px-6 pt-12 pb-2 safe-top flex items-start justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Your household budget</p>
+          {(() => {
+            const today = new Date();
+            const nextMonth = startOfMonth(addMonths(today, 1));
+            const daysLeft = differenceInDays(nextMonth, today);
+            return (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {format(today, 'EEEE, MMMM d')} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+              </p>
+            );
+          })()}
         </div>
         <button
           onClick={handleSync}
