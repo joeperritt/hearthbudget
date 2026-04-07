@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { format, differenceInDays, startOfMonth, addMonths } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
+import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
@@ -214,7 +214,24 @@ export function Dashboard({
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [lastSyncedLabel, setLastSyncedLabel] = useState<string | null>(null);
+  const [flashLabel, setFlashLabel] = useState<string | null>(null);
+
+  // Fetch last sync time from plaid_items
+  useEffect(() => {
+    const fetchLastSync = async () => {
+      const { data } = await supabase
+        .from('plaid_items')
+        .select('last_synced_at')
+        .not('last_synced_at', 'is', null)
+        .order('last_synced_at', { ascending: false })
+        .limit(1);
+      if (data && data.length > 0 && data[0].last_synced_at) {
+        setLastSyncedLabel(formatDistanceToNow(new Date(data[0].last_synced_at), { addSuffix: true }));
+      }
+    };
+    fetchLastSync();
+  }, []);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -223,9 +240,10 @@ export function Dashboard({
       if (!session) return;
       const headers = { Authorization: `Bearer ${session.access_token}` };
       await supabase.functions.invoke('plaid-sync-transactions', { headers });
-      setLastSynced('Updated just now');
+      setLastSyncedLabel('just now');
+      setFlashLabel('Synced!');
       onSyncComplete?.();
-      setTimeout(() => setLastSynced(null), 5000);
+      setTimeout(() => setFlashLabel(null), 3000);
     } catch (e) {
       console.error('Sync failed:', e);
     } finally {
@@ -309,14 +327,21 @@ export function Dashboard({
             );
           })()}
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all mt-1"
-          title="Sync accounts"
-        >
-          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex flex-col items-center gap-1 mt-1">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all"
+            title="Sync accounts"
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+          </button>
+          {(flashLabel || lastSyncedLabel) && (
+            <span className="text-[10px] text-muted-foreground leading-none">
+              {flashLabel || `Synced ${lastSyncedLabel}`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 1. Unassigned */}
@@ -442,9 +467,6 @@ export function Dashboard({
           )}
         </div>
 
-        {lastSynced && (
-          <p className="text-[10px] text-accent text-center mt-1.5 animate-fade-in">{lastSynced}</p>
-        )}
       </div>
 
       <div className="mb-6" />
