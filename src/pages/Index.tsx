@@ -47,7 +47,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor'>('menu');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
