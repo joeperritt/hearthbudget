@@ -377,6 +377,17 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />
         )}
+        {activeTab === 'more' && moreSubView === 'ai-advisor' && (
+          <AIAdvisorView
+            insights={insights}
+            loading={insightsLoading}
+            chatMessages={chatMessages}
+            chatLoading={chatLoading}
+            onSendMessage={sendChatMessage}
+            onBack={() => setMoreSubView('menu')}
+            onRefresh={() => fetchInsights(true)}
+          />
+        )}
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
