@@ -1,4 +1,4 @@
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank, ChevronRight } from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank, ChevronRight, RefreshCw } from 'lucide-react';
 import { Insight } from '@/hooks/useBudgetInsights';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -13,11 +13,13 @@ const iconMap: Record<Insight['type'], { icon: typeof AlertTriangle; color: stri
 interface InsightsSectionProps {
   insights: Insight[];
   loading: boolean;
+  error: string | null;
   lastUpdated: Date | null;
   onSeeAll: () => void;
+  onRefresh: () => void;
 }
 
-export function InsightsSection({ insights, loading, lastUpdated, onSeeAll }: InsightsSectionProps) {
+export function InsightsSection({ insights, loading, error, lastUpdated, onSeeAll, onRefresh }: InsightsSectionProps) {
   const displayInsights = insights.slice(0, 3);
 
   return (
@@ -27,11 +29,21 @@ export function InsightsSection({ insights, loading, lastUpdated, onSeeAll }: In
           <Sparkles size={14} className="text-accent" />
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Insights</h3>
         </div>
-        {insights.length > 0 && (
-          <button onClick={onSeeAll} className="flex items-center gap-0.5 text-xs text-accent font-medium active:opacity-70">
-            See all <ChevronRight size={12} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="flex items-center gap-1 text-xs text-accent font-medium active:opacity-70 disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Loading…' : 'Refresh'}
           </button>
-        )}
+          {insights.length > 0 && (
+            <button onClick={onSeeAll} className="flex items-center gap-0.5 text-xs text-accent font-medium active:opacity-70">
+              See all <ChevronRight size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && displayInsights.length === 0 ? (
@@ -44,10 +56,20 @@ export function InsightsSection({ insights, loading, lastUpdated, onSeeAll }: In
             </div>
           ))}
         </div>
+      ) : error ? (
+        <div className="bg-card rounded-lg shadow-sm px-4 py-4 border-l-[3px] border-l-destructive">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle size={16} className="text-destructive mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Insights unavailable</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{error}</p>
+            </div>
+          </div>
+        </div>
       ) : displayInsights.length === 0 ? (
         <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center">
           <Sparkles size={20} className="text-muted-foreground/30 mb-2" />
-          <p className="text-sm text-muted-foreground">Tap sync to generate insights</p>
+          <p className="text-sm text-muted-foreground">Tap Refresh to generate insights</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -72,7 +94,7 @@ export function InsightsSection({ insights, loading, lastUpdated, onSeeAll }: In
         </div>
       )}
 
-      {lastUpdated && (
+      {lastUpdated && !error && (
         <p className="text-[10px] text-muted-foreground/60 mt-1.5 text-center">
           Insights updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
         </p>
