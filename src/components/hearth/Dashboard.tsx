@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
@@ -184,6 +184,29 @@ function BankSection({
   );
 }
 
+/** Banner shown last 3 days of month if unassigned transactions exist */
+function EndOfMonthBanner({ count }: { count: number }) {
+  const today = new Date();
+  const nextMonth = startOfMonth(addMonths(today, 1));
+  const daysLeft = differenceInDays(nextMonth, today);
+
+  if (daysLeft > 3 || count === 0) return null;
+
+  return (
+    <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
+      <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-medium text-foreground">
+          {count} unassigned transaction{count > 1 ? 's' : ''}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          Month rolls over automatically on the 1st — clean these up before then.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface DashboardProps {
   monthLabel: string;
   onAddTransaction: () => void;
@@ -345,6 +368,9 @@ export function Dashboard({
           )}
         </div>
       </div>
+
+      {/* End-of-month unassigned warning */}
+      <EndOfMonthBanner count={unassignedTransactions.length} />
 
       {/* 1. Unassigned */}
       <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />

@@ -34,7 +34,6 @@ interface SettingsViewProps {
   currentMonth: Date;
   onUpdateCategories: (cats: BudgetCategory[]) => void;
   onUpdateFixedExpenses: (exps: FixedExpense[]) => void;
-  onStartMonth: (nextMonth: Date, cats: BudgetCategory[], expenses: FixedExpense[]) => void;
   onBack: () => void;
   unassignedCount?: number;
   // Current month spending data
@@ -49,7 +48,7 @@ type ViewTab = 'variable' | 'fixed' | 'savings' | 'giving';
 
 export function SettingsView({
   categories, fixedExpenses, currentMonth,
-  onUpdateCategories, onUpdateFixedExpenses, onStartMonth, onBack,
+  onUpdateCategories, onUpdateFixedExpenses, onBack,
   unassignedCount = 0,
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
 }: SettingsViewProps) {
@@ -103,8 +102,8 @@ export function SettingsView({
   const [editValue, setEditValue] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [showConfirmation] = useState(false);
+  const [starting] = useState(false);
 
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -333,14 +332,7 @@ export function SettingsView({
   const titheTotal = rawTithe + givingVarTotal;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
-  const handleStartMonthClick = () => setShowConfirmation(true);
-
-  const handleConfirmStart = async () => {
-    setStarting(true);
-    await onStartMonth(nextMonth, nextCats, nextFixed);
-    setStarting(false);
-    setShowConfirmation(false);
-  };
+  const handleStartMonthClick = () => {}; // No longer used — auto transition
 
   function renderAddFixedForm(group: FixedGroupType) {
     if (showAddFixed !== group) return null;
@@ -1112,80 +1104,12 @@ export function SettingsView({
             </div>
           </div>
 
-          {/* Start Month Button - only for next month */}
-          {isNextMonth && (
-            <button
-              onClick={handleStartMonthClick}
-              className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg"
-            >
-              Start {format(viewMonthDate, 'MMMM')}
-            </button>
-          )}
+          {/* Month transitions happen automatically on the 1st */}
         </div>
       </>
     );
   }
 
-  // Confirmation screen
-  if (showConfirmation) {
-    const nextMonthShort = format(nextMonth, 'MMMM');
-    const currentMonthShort = format(currentMonth, 'MMMM');
-    return (
-      <div className="max-w-lg mx-auto pb-28">
-        <div className="px-6 pt-12 safe-top">
-          <button onClick={() => setShowConfirmation(false)} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
-            <ArrowLeft size={16} /> Back
-          </button>
-          <h1 className="font-display text-xl font-bold text-foreground">Start {nextMonthShort}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Confirm month transition</p>
-        </div>
-
-        <div className="px-6 mt-6 space-y-4">
-          <div className="bg-card rounded-lg shadow-sm p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">What will happen</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex gap-2"><span className="text-accent">•</span>{currentMonthShort} budget & transactions will be locked and saved to Past Months</li>
-              <li className="flex gap-2"><span className="text-accent">•</span>{nextMonthShort} will be initialized with the budget amounts shown in Settings</li>
-              <li className="flex gap-2"><span className="text-accent">•</span>All new Plaid transactions will be assigned to {nextMonthShort}</li>
-            </ul>
-          </div>
-
-          {unassignedCount > 0 && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex gap-3 items-start">
-              <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">{unassignedCount} unassigned transaction{unassignedCount > 1 ? 's' : ''} in {currentMonthShort}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">These will remain unassigned in the {currentMonthShort} archive.</p>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-card rounded-lg shadow-sm px-4 py-3">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Variable Total</span>
-              <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed + Savings + Tithe</span>
-              <span className="font-medium tabular-nums">{formatCurrency(fixedTotal + savingsTotal + titheTotal)}</span>
-            </div>
-            <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
-              <span className="font-semibold text-foreground">{nextMonthShort} Budget</span>
-              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(budgetTotal)}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleConfirmStart}
-            disabled={starting}
-            className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-display font-semibold text-base active:scale-[0.98] transition-transform shadow-lg disabled:opacity-50"
-          >
-            {starting ? 'Starting…' : `Confirm — Start ${nextMonthShort}`}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-lg mx-auto pb-28">

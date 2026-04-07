@@ -105,6 +105,39 @@ export function useBudgetData() {
     fetchAll();
   }, [fetchAll]);
 
+  // Auto month transition: on first load, if activeMonth is behind current calendar month,
+  // automatically snapshot and advance to the current month
+  const autoTransitionDone = useRef(false);
+  useEffect(() => {
+    if (!householdId || !activeMonth || loading || autoTransitionDone.current) return;
+    const currentCalendarMonth = format(new Date(), 'yyyy-MM');
+    if (activeMonth < currentCalendarMonth && categories.length > 0) {
+      autoTransitionDone.current = true;
+      // Perform the transition: snapshot old month, keep same budgets, advance to current month
+      (async () => {
+        const monthTxns = transactions.filter(t => t.budgetMonth === activeMonth);
+        const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
+        const summary = {
+          totalTransactions: monthTxns.length,
+          totalExpenses: expenseTxns.length,
+          totalSpent: expenseTxns.reduce((s, t) => s + t.amount, 0),
+        };
+
+        await supabase.from('budget_month_snapshots' as any).insert({
+          household_id: householdId,
+          month: activeMonth,
+          categories: categories,
+          fixed_expenses: fixedExpenses,
+          transactions_summary: summary,
+        } as any);
+
+        // Advance to current calendar month (keep same category amounts)
+        await supabase.from('households').update({ active_month: currentCalendarMonth } as any).eq('id', householdId);
+        setActiveMonth(currentCalendarMonth);
+      })();
+    }
+  }, [householdId, activeMonth, loading, categories, fixedExpenses, transactions]);
+
   // Real-time subscriptions
   useEffect(() => {
     if (!householdId) return;

@@ -181,11 +181,8 @@ const Index = () => {
     setTimeout(() => fetchInsights(true), 1000);
   };
 
-  const handleStartMonth = async (nextMonthDate: Date, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
-    const nextMonthKey = format(nextMonthDate, 'yyyy-MM');
-    await startNewMonth(nextMonthKey, nextCats, nextFixed);
-    setActiveTab('dashboard');
-    setMoreSubView('menu');
+  const handleStartMonth = async (_nextMonthDate: Date, _nextCats: BudgetCategory[], _nextFixed: FixedExpense[]) => {
+    // Month transitions now happen automatically — this is kept for compatibility
   };
 
   const handleTabChange = (tab: TabId) => {
@@ -368,7 +365,7 @@ const Index = () => {
             currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
-            onStartMonth={handleStartMonth}
+            
             onBack={() => setMoreSubView('menu')}
             unassignedCount={unassignedTransactions.length}
             spentByCategory={spentByCategory}
