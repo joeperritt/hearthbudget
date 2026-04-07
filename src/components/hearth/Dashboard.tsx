@@ -201,6 +201,7 @@ interface DashboardProps {
   accounts?: AppAccount[];
   monthTransactions?: Transaction[];
   totalBudget?: number;
+  insightsSection?: React.ReactNode;
 }
 
 export function Dashboard({
