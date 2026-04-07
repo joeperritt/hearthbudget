@@ -435,9 +435,15 @@ Deno.serve(async (req) => {
             .filter((txRow): txRow is ImportedTransactionRow => Boolean(txRow));
 
           if (txRows.length > 0) {
-            const { added, modified } = await persistImportedTransactions(txRows);
-            totalAdded += added;
-            totalModified += modified;
+            const result = await persistImportedTransactions(txRows);
+            totalAdded += result.added;
+            totalModified += result.modified;
+            if (result.insertFailed) {
+              insertFailed = true;
+              console.error(`Insert failed for item ${item.id}, stopping sync to preserve cursor`);
+              hasMore = false;
+              continue;
+            }
           }
         }
 
