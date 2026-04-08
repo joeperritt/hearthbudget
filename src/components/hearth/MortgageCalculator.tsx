@@ -12,12 +12,6 @@ function pct(n: number) {
   return (n * 100).toFixed(1) + '%';
 }
 
-const FREQ_MULTIPLIERS: Record<string, number> = {
-  monthly: 1,
-  semimonthly: 2,
-  biweekly: 26 / 12,
-  weekly: 52 / 12,
-};
 
 interface MortgageCalculatorProps {
   planningData: Record<string, string>;
