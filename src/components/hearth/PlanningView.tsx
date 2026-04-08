@@ -460,6 +460,29 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         <p className="text-sm text-muted-foreground mt-0.5">Setup & Pay Calculator</p>
       </div>
 
+      {/* ───── MODE SELECTOR ───── */}
+      <div className="px-6 mt-4">
+        <div className="flex w-full rounded-lg bg-muted p-1">
+          {(['basic', 'standard', 'advanced'] as PlanningMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m);
+                onUpdatePlanningData({ ...pay, planningMode: m });
+              }}
+              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-md text-center transition-all ${
+                mode === m
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <span className="text-sm font-medium">{MODE_LABELS[m]}</span>
+              <span className="text-[10px] leading-tight opacity-70">{MODE_DESCRIPTIONS[m]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ───── SETUP SECTION (Standard & Advanced only) ───── */}
       {mode !== 'basic' && (
         <div className="px-6 mt-5">
