@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
 import { ArrowLeft, ChevronDown, ChevronUp, Info, Plus, Minus, Calculator } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   estimateFederalTax,
   estimateFICA,
@@ -27,6 +28,7 @@ interface PlanningViewProps {
 }
 
 type PayFrequency = 'monthly' | 'semimonthly' | 'biweekly' | 'weekly';
+type PlanningMode = 'basic' | 'standard' | 'advanced';
 
 const FREQ_LABELS: Record<PayFrequency, string> = {
   monthly: 'Monthly (12x)',
@@ -61,6 +63,18 @@ const FILING_STATUS_LABELS: Record<FilingStatus, string> = {
   married_jointly: 'Married Filing Jointly',
   married_separately: 'Married Filing Separately',
   head_of_household: 'Head of Household',
+};
+
+const MODE_LABELS: Record<PlanningMode, string> = {
+  basic: 'Basic',
+  standard: 'Standard',
+  advanced: 'Advanced',
+};
+
+const MODE_DESCRIPTIONS: Record<PlanningMode, string> = {
+  basic: 'Take-Home Only',
+  standard: 'Summary',
+  advanced: 'Deduction Breakdown',
 };
 
 interface PayFields {
@@ -285,10 +299,20 @@ function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string
   return perPaycheckNet * FREQ_MULTIPLIERS[freq];
 }
 
+function resolveSavedMode(planningData: Record<string, string>): PlanningMode {
+  const saved = planningData.planningMode;
+  if (saved === 'basic' || saved === 'standard' || saved === 'advanced') return saved;
+  // Migrate legacy values
+  if (planningData.incomeMode === 'gross') return 'advanced';
+  if (planningData.incomeMode === 'net') return 'standard';
+  return 'basic';
+}
+
 export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack, primaryName, partnerName }: PlanningViewProps) {
   const pName = primaryName || 'Primary';
   const ptName = partnerName || 'Partner';
-  const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
+  const [mode, setMode] = useState<PlanningMode>(() => resolveSavedMode(planningData));
+  const [grossOpen, setGrossOpen] = useState(false);
   const [pay, setPay] = useState<PayFields>(() => {
     const restored: PayFields = { ...DEFAULT_FIELDS };
     for (const key of Object.keys(DEFAULT_FIELDS) as (keyof PayFields)[]) {
@@ -301,19 +325,21 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const up = (field: keyof PayFields) => (v: string) => setPay(p => ({ ...p, [field]: v }));
 
   const saveAll = () => {
-    onUpdatePlanningData({ ...pay, incomeMode: advancedMode ? 'gross' : 'net' });
+    onUpdatePlanningData({ ...pay, planningMode: mode });
   };
 
   const updateAndSave = (updates: Partial<PayFields>) => {
     const updated = { ...pay, ...updates };
     setPay(updated);
-    onUpdatePlanningData({ ...updated, incomeMode: advancedMode ? 'gross' : 'net' });
+    onUpdatePlanningData({ ...updated, planningMode: mode });
   };
 
-  const toggleMode = () => {
-    const next = !advancedMode;
-    setAdvancedMode(next);
-    onUpdatePlanningData({ ...pay, incomeMode: next ? 'gross' : 'net' });
+  const cycleMode = () => {
+    const order: PlanningMode[] = ['basic', 'standard', 'advanced'];
+    const idx = order.indexOf(mode);
+    const next = order[(idx + 1) % order.length];
+    setMode(next);
+    onUpdatePlanningData({ ...pay, planningMode: next });
   };
 
   const togglePartner = () => {
@@ -329,6 +355,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const partnerIncomeType = (pay.partnerIncomeType || 'w2') as IncomeType;
   const partnerStateCode = pay.partnerStateCode || '';
   const showPartner = filingStatus === 'married_jointly' || filingStatus === 'married_separately';
+  const hasPartnerProfile = !!partnerName;
 
   // Frequencies
   const primaryFreq = (pay.payFrequency || 'monthly') as PayFrequency;
@@ -346,7 +373,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const partnerPerPaycheckGross = partnerAnnualGross / FREQ_PERIODS[partnerFreq];
   const partnerMonthlyNet = calcMonthlyNet(pay.partnerGrossPay, pay.partnerFedTaxAmt, pay.partnerSsTaxAmt, pay.partnerMedicareAmt, pay.partnerStateTaxAmt, pay.partnerRetirementAmt, pay.partnerSavingsDeductions, pay.partnerOtherDeductions, partnerFreq);
 
-  // Simple mode net incomes — auto-calculate from annual gross if available
+  // For basic/standard: use entered take-home or calculated from gross
   const simpleNetPrimary = primaryAnnualGross > 0 ? primaryMonthlyNet : (parseFloat(pay.netIncome) || 0);
   const simpleNetPartner = showPartner && partnerAnnualGross > 0 ? partnerMonthlyNet : (parseFloat(pay.katieNetIncome) || 0);
 
@@ -363,7 +390,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const titheAmt = rawTithe + givingVarAmt;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
-  // Simple mode totals
+  // Totals
   const totalHouseholdIncome = simpleNetPrimary + simpleNetPartner;
   const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
@@ -403,7 +430,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
 
   // Estimate handlers — partner
   const estimatePartnerFed = () => {
-    // For married filing jointly, use partner's income with the same filing status
     const annualTax = estimateFederalTax(partnerAnnualGross, filingStatus === 'married_jointly' ? 'married_jointly' : filingStatus);
     const perPaycheck = (annualTax / FREQ_PERIODS[partnerFreq]).toFixed(2);
     updateAndSave({ partnerFedTaxAmt: perPaycheck });
@@ -434,185 +460,271 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         <p className="text-sm text-muted-foreground mt-0.5">Setup & Pay Calculator</p>
       </div>
 
-      {/* ───── SETUP SECTION ───── */}
-      <div className="px-6 mt-5">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Income Setup</h2>
-        <div className="bg-card rounded-lg shadow-sm px-4 py-3 space-y-3">
+      {/* ───── SETUP SECTION (Standard & Advanced only) ───── */}
+      {mode !== 'basic' && (
+        <div className="px-6 mt-5">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Income Setup</h2>
+          <div className="bg-card rounded-lg shadow-sm px-4 py-3 space-y-3">
 
-          {/* Income Type */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">Income Type</span>
-            <Select value={incomeType} onValueChange={v => updateAndSave({ incomeType: v })}>
-              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
-                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Filing Status */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">Filing Status</span>
-            <Select value={filingStatus} onValueChange={v => {
-              const isMarried = v === 'married_jointly' || v === 'married_separately';
-              updateAndSave({
-                filingStatus: v,
-                partnerEnabled: isMarried ? pay.partnerEnabled : 'false',
-              });
-              if (!isMarried) setPartnerOpen(false);
-            }}>
-              <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.entries(FILING_STATUS_LABELS) as [FilingStatus, string][]).map(([k, l]) => (
-                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* State */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">State</span>
-            <Select value={stateCode} onValueChange={v => updateAndSave({ stateCode: v })}>
-              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Select state" /></SelectTrigger>
-              <SelectContent className="max-h-60">
-                {STATES.map(s => (
-                  <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="border-t border-border/50 pt-3" />
-
-          {/* Primary Annual Gross Income */}
-          <div>
+            {/* Income Type */}
             <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-semibold text-foreground">{pName}'s Annual Gross Income</span>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(primaryMonthlyGross)}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">$</span>
-                <input
-                  type="number" step="1" value={pay.grossPay}
-                  onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
-                  onBlur={saveAll}
-                  placeholder="0"
-                  className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-              </div>
+              <span className="text-sm text-foreground">Income Type</span>
+              <Select value={incomeType} onValueChange={v => updateAndSave({ incomeType: v })}>
+                <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
+                    <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          {/* Primary Pay Frequency */}
-          <div className="flex items-center justify-between">
+            {/* Filing Status */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Filing Status</span>
+              <Select value={filingStatus} onValueChange={v => {
+                const isMarried = v === 'married_jointly' || v === 'married_separately';
+                updateAndSave({
+                  filingStatus: v,
+                  partnerEnabled: isMarried ? pay.partnerEnabled : 'false',
+                });
+                if (!isMarried) setPartnerOpen(false);
+              }}>
+                <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(FILING_STATUS_LABELS) as [FilingStatus, string][]).map(([k, l]) => (
+                    <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* State */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">State</span>
+              <Select value={stateCode} onValueChange={v => updateAndSave({ stateCode: v })}>
+                <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Select state" /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {STATES.map(s => (
+                    <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="border-t border-border/50 pt-3" />
+
+            {/* Primary Annual Gross Income */}
             <div>
-              <span className="text-sm text-foreground">Pay Frequency</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(primaryPerPaycheckGross)}</p>
-            </div>
-            <Select value={primaryFreq} onValueChange={v => updateAndSave({ payFrequency: v })}>
-              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
-                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Partner section */}
-          {showPartner && (
-            <>
-              <div className="border-t border-border/50 pt-3" />
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{ptName}</p>
-
-              {/* Partner Income Type */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">Income Type</span>
-                <Select value={partnerIncomeType} onValueChange={v => updateAndSave({ partnerIncomeType: v })}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
-                      <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Partner State (optional, defaults to primary) */}
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm text-foreground">State</span>
-                  <p className="text-[10px] text-muted-foreground">Defaults to {pName}'s if blank</p>
-                </div>
-                <Select value={partnerStateCode} onValueChange={v => updateAndSave({ partnerStateCode: v })}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder={`Same as ${pName}`} /></SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {STATES.map(s => (
-                      <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Partner Annual Gross */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-semibold text-foreground">{ptName}'s Annual Gross Income</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(partnerMonthlyGross)}</p>
+                  <span className="text-sm font-semibold text-foreground">{pName}'s Annual Gross Income</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(primaryMonthlyGross)}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-muted-foreground">$</span>
                   <input
-                    type="number" step="1" value={pay.partnerGrossPay}
-                    onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
+                    type="number" step="1" value={pay.grossPay}
+                    onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
                     onBlur={saveAll}
                     placeholder="0"
                     className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-accent/30"
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Partner Pay Frequency */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-foreground">Pay Frequency</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(partnerPerPaycheckGross)}</p>
-                </div>
-                <Select value={partnerFreq} onValueChange={v => updateAndSave({ partnerPayFrequency: v })}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
-                      <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Primary Pay Frequency */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-foreground">Pay Frequency</span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(primaryPerPaycheckGross)}</p>
               </div>
-            </>
-          )}
+              <Select value={primaryFreq} onValueChange={v => updateAndSave({ payFrequency: v })}>
+                <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
+                    <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Partner section */}
+            {showPartner && (
+              <>
+                <div className="border-t border-border/50 pt-3" />
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{ptName}</p>
+
+                {/* Partner Income Type */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-foreground">Income Type</span>
+                  <Select value={partnerIncomeType} onValueChange={v => updateAndSave({ partnerIncomeType: v })}>
+                    <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
+                        <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Partner State */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-foreground">State</span>
+                    <p className="text-[10px] text-muted-foreground">Defaults to {pName}'s if blank</p>
+                  </div>
+                  <Select value={partnerStateCode} onValueChange={v => updateAndSave({ partnerStateCode: v })}>
+                    <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder={`Same as ${pName}`} /></SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {STATES.map(s => (
+                        <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Partner Annual Gross */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold text-foreground">{ptName}'s Annual Gross Income</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(partnerMonthlyGross)}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">$</span>
+                    <input
+                      type="number" step="1" value={pay.partnerGrossPay}
+                      onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
+                      onBlur={saveAll}
+                      placeholder="0"
+                      className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Partner Pay Frequency */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-foreground">Pay Frequency</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(partnerPerPaycheckGross)}</p>
+                  </div>
+                  <Select value={partnerFreq} onValueChange={v => updateAndSave({ partnerPayFrequency: v })}>
+                    <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
+                        <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ───── MODE TOGGLE ───── */}
       <div className="px-6 mt-5">
-        <button onClick={toggleMode}
+        <button onClick={cycleMode}
           className="flex items-center justify-between w-full mb-4 px-4 py-2.5 rounded-lg bg-card border border-border shadow-sm active:scale-[0.99] transition-transform">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground">
-              {advancedMode ? 'Advanced View' : 'Simple View'}
+              {MODE_LABELS[mode]}
             </span>
             <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-              {advancedMode ? 'Deduction Breakdown' : 'Summary'}
+              {MODE_DESCRIPTIONS[mode]}
             </span>
           </div>
-          {advancedMode ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Tap to change</span>
+            <ChevronDown size={14} className="text-muted-foreground" />
+          </div>
         </button>
 
-        {/* ───── SIMPLE MODE ───── */}
-        {!advancedMode && (
+        {/* ───── BASIC MODE ───── */}
+        {mode === 'basic' && (
+          <div className="bg-card rounded-lg shadow-sm px-4 py-2">
+            {/* Primary monthly take-home */}
+            <InputRow
+              label={`Monthly Take-Home Pay${hasPartnerProfile ? ` (${pName})` : ''}`}
+              value={pay.netIncome}
+              onChange={up('netIncome')}
+              onBlur={saveAll}
+              prefix="$"
+              bold
+            />
+            {/* Partner monthly take-home — show if there's another household member */}
+            {hasPartnerProfile && (
+              <InputRow
+                label={`Monthly Take-Home Pay (${ptName})`}
+                value={pay.katieNetIncome}
+                onChange={up('katieNetIncome')}
+                onBlur={saveAll}
+                prefix="$"
+                bold
+              />
+            )}
+
+            {/* Optional annual gross income — collapsed by default */}
+            <Collapsible open={grossOpen} onOpenChange={setGrossOpen}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 w-full py-2.5 border-b border-border/50">
+                <ChevronDown size={12} className={`text-muted-foreground transition-transform duration-200 ${grossOpen ? 'rotate-180' : ''}`} />
+                <span className="text-xs text-muted-foreground">Annual Gross Income — used for AI insights &amp; Financial Tools</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="py-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">{hasPartnerProfile ? `${pName}'s` : ''} Annual Gross</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">$</span>
+                      <input
+                        type="number" step="1" value={pay.grossPay}
+                        onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
+                        onBlur={saveAll}
+                        placeholder="0"
+                        className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                      />
+                    </div>
+                  </div>
+                  {hasPartnerProfile && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-foreground">{ptName}'s Annual Gross</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">$</span>
+                        <input
+                          type="number" step="1" value={pay.partnerGrossPay}
+                          onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
+                          onBlur={saveAll}
+                          placeholder="0"
+                          className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-1.5 pt-1">
+                    <Info size={10} className="text-muted-foreground mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Powers mortgage ratios, retirement planner, and AI giving-percentage insights. Not required for basic budgeting.
+                    </p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className="my-2 border-t border-border" />
+            <InputRow label="Budget Total" computed={budgetTotal} bold />
+            <InputRow
+              label={surplusLabel(totalHouseholdIncome - budgetTotal)}
+              computed={totalHouseholdIncome - budgetTotal}
+              bold
+              highlight={surplusHighlight(totalHouseholdIncome - budgetTotal)}
+            />
+          </div>
+        )}
+
+        {/* ───── STANDARD MODE ───── */}
+        {mode === 'standard' && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
             <InputRow label={`Monthly Take-Home (${pName})`} computed={simpleNetPrimary} bold
               sublabel={primaryAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
@@ -632,7 +744,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         )}
 
         {/* ───── ADVANCED MODE ───── */}
-        {advancedMode && (
+        {mode === 'advanced' && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
             <IncomeBreakdown
               label={`${pName}'s Income`}
