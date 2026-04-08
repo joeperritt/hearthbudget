@@ -209,6 +209,7 @@ export function useBudgetInsights(
   unassignedCount: number,
   totalBudget: number,
   householdId: string,
+  planningData: Record<string, string>,
 ) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -221,8 +222,8 @@ export function useBudgetInsights(
 
   const getSummary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
-    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId,
-  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId]);
+    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData,
+  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData]);
 
   const fetchInsights = useCallback(async (force = false) => {
     const spentTotal = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
