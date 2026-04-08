@@ -25,18 +25,17 @@ interface PayFields {
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
-  scTaxRate: string;
-  roth401kRate: string;
+  stateTaxRate: string;
+  retirementRate: string;
   fedTaxAmt: string;
   ssTaxAmt: string;
   medicareAmt: string;
-  scTaxAmt: string;
-  roth401kAmt: string;
+  stateTaxAmt: string;
+  retirementAmt: string;
   titheAmt: string;
   creditCardTotal: string;
   checkingTotal: string;
-  katiePay1: string;
-  katiePay2: string;
+  additionalIncome: string;
 }
 
 const DEFAULT_FIELDS: PayFields = {
@@ -46,18 +45,17 @@ const DEFAULT_FIELDS: PayFields = {
   fedTaxRate: '15.15',
   ssTaxRate: '6.20',
   medicareRate: '1.45',
-  scTaxRate: '5.70',
-  roth401kRate: '6.00',
+  stateTaxRate: '5.70',
+  retirementRate: '6.00',
   fedTaxAmt: '',
   ssTaxAmt: '',
   medicareAmt: '',
-  scTaxAmt: '',
-  roth401kAmt: '',
+  stateTaxAmt: '',
+  retirementAmt: '',
   titheAmt: '3000',
   creditCardTotal: '',
   checkingTotal: '',
-  katiePay1: '',
-  katiePay2: '',
+  additionalIncome: '',
 };
 
 function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold, sublabel }: {
@@ -164,9 +162,9 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
   const medicareTax = payMode === 'estimate' ? gross * (parseFloat(pay.medicareRate) || 0) / 100 : (parseFloat(pay.medicareAmt) || 0);
-  const scTax = payMode === 'estimate' ? gross * (parseFloat(pay.scTaxRate) || 0) / 100 : (parseFloat(pay.scTaxAmt) || 0);
-  const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
-  const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
+  const stateTax = payMode === 'estimate' ? gross * (parseFloat(pay.stateTaxRate) || 0) / 100 : (parseFloat(pay.stateTaxAmt) || 0);
+  const retirement = payMode === 'estimate' ? gross * (parseFloat(pay.retirementRate) || 0) / 100 : (parseFloat(pay.retirementAmt) || 0);
+  const computedNetPay = gross - fedTax - ssTax - medicareTax - stateTax - retirement;
 
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
@@ -185,18 +183,14 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
   // Advanced mode totals
-  const creditCard = parseFloat(pay.creditCardTotal) || 0;
-  const checking = parseFloat(pay.checkingTotal) || 0;
-  const totalCheckingNeed = budgetTotal + creditCard - checking;
-  const netForSavings = computedNetPay - totalCheckingNeed;
-
-  const katiePay1 = parseFloat(pay.katiePay1) || 0;
-  const katiePay2 = parseFloat(pay.katiePay2) || 0;
-  const totalKatiePay = katiePay1 + katiePay2;
-  const totalMonthlySavings = netForSavings + totalKatiePay;
+  const additionalIncome = parseFloat(pay.additionalIncome) || 0;
+  const householdNetForSavings = computedNetPay + additionalIncome - budgetTotal;
 
   // Gross-mode percentages
   const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
+
+  // Dynamic surplus/deficit label
+  const surplusLabel = (amount: number) => amount >= 0 ? 'Monthly Surplus' : 'Monthly Deficit';
 
   return (
     <div className="max-w-lg mx-auto pb-28">
@@ -249,7 +243,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           {advancedMode ? (
             <>
               {/* Gross Income Mode */}
-              <InputRow label="Gross Pay (Joe)" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Gross Pay" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
 
               <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
                 <DeductionRow label="Federal Income Tax" mode={payMode}
@@ -264,14 +258,14 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                   rate={pay.medicareRate} onRateChange={up('medicareRate')}
                   dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
                   computedAmt={medicareTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="SC Income Tax" mode={payMode}
-                  rate={pay.scTaxRate} onRateChange={up('scTaxRate')}
-                  dollarAmt={pay.scTaxAmt} onDollarChange={up('scTaxAmt')}
-                  computedAmt={scTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="Roth 401k" mode={payMode}
-                  rate={pay.roth401kRate} onRateChange={up('roth401kRate')}
-                  dollarAmt={pay.roth401kAmt} onDollarChange={up('roth401kAmt')}
-                  computedAmt={roth} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="State Income Tax" mode={payMode}
+                  rate={pay.stateTaxRate} onRateChange={up('stateTaxRate')}
+                  dollarAmt={pay.stateTaxAmt} onDollarChange={up('stateTaxAmt')}
+                  computedAmt={stateTax} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="Retirement Contribution" mode={payMode}
+                  rate={pay.retirementRate} onRateChange={up('retirementRate')}
+                  dollarAmt={pay.retirementAmt} onDollarChange={up('retirementAmt')}
+                  computedAmt={retirement} gross={gross} onBlur={saveAll} />
               </div>
 
               <InputRow label="Net Pay" computed={computedNetPay} bold />
@@ -296,31 +290,24 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               </div>
 
               <InputRow label="Budget Total" computed={budgetTotal} bold />
-              <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
-              <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
+              <InputRow label="Additional Income" value={pay.additionalIncome} onChange={up('additionalIncome')} onBlur={saveAll} prefix="$"
+                sublabel="Spouse, freelance, rental, etc." />
+              <InputRow label="Household Net for Savings" computed={householdNetForSavings} bold />
 
               <div className="my-2 border-t border-border" />
-
-              <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Total Katie Pay" computed={totalKatiePay} />
-
-              <div className="my-2 border-t border-border" />
-              <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
+              <InputRow label={surplusLabel(householdNetForSavings)} computed={householdNetForSavings} bold />
             </>
           ) : (
             <>
               {/* Net Income Mode — simple */}
-              <InputRow label="Take-Home Pay (Joe)" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Take-Home Pay (Katie)" value={pay.katieNetIncome} onChange={up('katieNetIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Monthly Take-Home (Joe)" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Monthly Take-Home (Katie)" value={pay.katieNetIncome} onChange={up('katieNetIncome')} onBlur={saveAll} prefix="$" />
               <InputRow label="Total Household Income" computed={totalHouseholdIncome} bold />
 
               <div className="my-2 border-t border-border" />
 
               <InputRow label="Budget Total" computed={budgetTotal} bold />
-              <InputRow label="Net for Savings" computed={simpleNetForSavings} bold />
+              <InputRow label={surplusLabel(simpleNetForSavings)} computed={simpleNetForSavings} bold />
             </>
           )}
         </div>
