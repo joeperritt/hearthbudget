@@ -35,21 +35,17 @@ export function MortgageCalculator({ planningData, onBack }: MortgageCalculatorP
   const [insuranceRate, setInsuranceRate] = useState('0.5');
   const [otherDebtPayments, setOtherDebtPayments] = useState('');
 
-  // Pull gross monthly income from planning data
+  // Pull gross monthly income from planning data (grossPay is now annual)
   const grossMonthlyIncome = useMemo(() => {
     const mode = planningData.incomeMode || 'net';
     if (mode === 'gross') {
-      const primaryGross = parseFloat(planningData.grossPay || '0');
-      const primaryFreq = (planningData.payFrequency || 'monthly') as string;
-      const primaryMultiplier = FREQ_MULTIPLIERS[primaryFreq] || 1;
-      const primaryMonthly = primaryGross * primaryMultiplier;
+      const primaryAnnual = parseFloat(planningData.grossPay || '0');
+      const primaryMonthly = primaryAnnual / 12;
 
       let partnerMonthly = 0;
       if (planningData.partnerEnabled === 'true') {
-        const partnerGross = parseFloat(planningData.partnerGrossPay || '0');
-        const partnerFreq = (planningData.partnerPayFrequency || 'monthly') as string;
-        const partnerMultiplier = FREQ_MULTIPLIERS[partnerFreq] || 1;
-        partnerMonthly = partnerGross * partnerMultiplier;
+        const partnerAnnual = parseFloat(planningData.partnerGrossPay || '0');
+        partnerMonthly = partnerAnnual / 12;
       }
       return primaryMonthly + partnerMonthly;
     }
