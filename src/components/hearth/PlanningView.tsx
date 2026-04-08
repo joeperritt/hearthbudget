@@ -22,6 +22,8 @@ interface PlanningViewProps {
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
   onBack: () => void;
+  primaryName?: string;
+  partnerName?: string | null;
 }
 
 type PayFrequency = 'monthly' | 'semimonthly' | 'biweekly' | 'weekly';
@@ -283,7 +285,9 @@ function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string
   return perPaycheckNet * FREQ_MULTIPLIERS[freq];
 }
 
-export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
+export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack, primaryName, partnerName }: PlanningViewProps) {
+  const pName = primaryName || 'Primary';
+  const ptName = partnerName || 'Partner';
   const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
   const [pay, setPay] = useState<PayFields>(() => {
     const restored: PayFields = { ...DEFAULT_FIELDS };
@@ -487,7 +491,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+                <span className="text-sm font-semibold text-foreground">{pName}'s Annual Gross Income</span>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(primaryMonthlyGross)}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -523,7 +527,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           {showPartner && (
             <>
               <div className="border-t border-border/50 pt-3" />
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Partner</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{ptName}</p>
 
               {/* Partner Income Type */}
               <div className="flex items-center justify-between">
@@ -542,10 +546,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm text-foreground">State</span>
-                  <p className="text-[10px] text-muted-foreground">Defaults to primary if blank</p>
+                  <p className="text-[10px] text-muted-foreground">Defaults to {pName}'s if blank</p>
                 </div>
                 <Select value={partnerStateCode} onValueChange={v => updateAndSave({ partnerStateCode: v })}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Same as primary" /></SelectTrigger>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder={`Same as ${pName}`} /></SelectTrigger>
                   <SelectContent className="max-h-60">
                     {STATES.map(s => (
                       <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
@@ -557,7 +561,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               {/* Partner Annual Gross */}
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+                  <span className="text-sm font-semibold text-foreground">{ptName}'s Annual Gross Income</span>
                   <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(partnerMonthlyGross)}</p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -610,12 +614,12 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         {/* ───── SIMPLE MODE ───── */}
         {!advancedMode && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
-            <InputRow label="Monthly Take-Home (Primary)" computed={simpleNetPrimary} bold
+            <InputRow label={`Monthly Take-Home (${pName})`} computed={simpleNetPrimary} bold
               sublabel={primaryAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
               {...(primaryAnnualGross <= 0 ? { value: pay.netIncome, onChange: up('netIncome'), onBlur: saveAll, prefix: '$' } : {})}
             />
             {showPartner && (
-              <InputRow label="Monthly Take-Home (Partner)" computed={simpleNetPartner} bold
+              <InputRow label={`Monthly Take-Home (${ptName})`} computed={simpleNetPartner} bold
                 sublabel={partnerAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
                 {...(partnerAnnualGross <= 0 ? { value: pay.katieNetIncome, onChange: up('katieNetIncome'), onBlur: saveAll, prefix: '$' } : {})}
               />
@@ -631,7 +635,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         {advancedMode && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
             <IncomeBreakdown
-              label="Primary Income"
+              label={`${pName}'s Income`}
               annualGross={primaryAnnualGross}
               fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
               ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
@@ -658,7 +662,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                 <div className="my-2 border-t border-border" />
                 <button onClick={togglePartner}
                   className="flex items-center justify-between w-full py-2.5 border-b border-border/50 active:scale-[0.99] transition-transform">
-                  <span className="text-sm font-medium text-foreground">Partner Income</span>
+                  <span className="text-sm font-medium text-foreground">{ptName}'s Income</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground">{partnerOpen ? 'Hide' : 'Show'}</span>
                     {partnerOpen ? <Minus size={14} className="text-muted-foreground" /> : <Plus size={14} className="text-muted-foreground" />}
@@ -667,7 +671,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
 
                 {partnerOpen && (
                   <IncomeBreakdown
-                    label="Partner Income"
+                    label={`${ptName}'s Income`}
                     annualGross={partnerAnnualGross}
                     fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
                     ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
