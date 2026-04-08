@@ -1,14 +1,10 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
 import { format, addMonths } from 'date-fns';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
-}
-
-function fmtWhole(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
 
 interface PlanningViewProps {
@@ -24,6 +20,7 @@ type PayMode = 'estimate' | 'actual';
 
 interface PayFields {
   grossPay: string;
+  netIncome: string;
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
@@ -43,6 +40,7 @@ interface PayFields {
 
 const DEFAULT_FIELDS: PayFields = {
   grossPay: '',
+  netIncome: '',
   fedTaxRate: '15.15',
   ssTaxRate: '6.20',
   medicareRate: '1.45',
@@ -60,13 +58,16 @@ const DEFAULT_FIELDS: PayFields = {
   katiePay2: '',
 };
 
-function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold }: {
+function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold, sublabel }: {
   label: string; value?: string; onChange?: (v: string) => void; onBlur?: () => void;
-  prefix?: string; suffix?: string; computed?: number; bold?: boolean;
+  prefix?: string; suffix?: string; computed?: number; bold?: boolean; sublabel?: string;
 }) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
-      <span className={`text-sm ${bold ? 'font-semibold text-foreground' : 'text-foreground'}`}>{label}</span>
+      <div>
+        <span className={`text-sm ${bold ? 'font-semibold text-foreground' : 'text-foreground'}`}>{label}</span>
+        {sublabel && <p className="text-[10px] text-muted-foreground mt-0.5">{sublabel}</p>}
+      </div>
       <div className="flex items-center gap-1">
         {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
         {computed !== undefined && !onChange ? (
@@ -131,9 +132,7 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
 }
 
 export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
-  const nextMonth = addMonths(currentMonth, 1);
-  const nextMonthLabel = format(nextMonth, 'MMMM yyyy');
-
+  const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
   const [payMode, setPayMode] = useState<PayMode>(() => (planningData.payMode as PayMode) || 'estimate');
   const [pay, setPay] = useState<PayFields>(() => {
     const restored: PayFields = { ...DEFAULT_FIELDS };
@@ -146,17 +145,28 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const up = (field: keyof PayFields) => (v: string) => setPay(p => ({ ...p, [field]: v }));
 
   const saveAll = () => {
-    onUpdatePlanningData({ ...pay, payMode });
+    onUpdatePlanningData({ ...pay, payMode, incomeMode: advancedMode ? 'gross' : 'net' });
   };
 
+  const toggleMode = () => {
+    const next = !advancedMode;
+    setAdvancedMode(next);
+    onUpdatePlanningData({ ...pay, payMode, incomeMode: next ? 'gross' : 'net' });
+  };
+
+  // Calculations
   const gross = parseFloat(pay.grossPay) || 0;
+  const netIncome = parseFloat(pay.netIncome) || 0;
 
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
   const medicareTax = payMode === 'estimate' ? gross * (parseFloat(pay.medicareRate) || 0) / 100 : (parseFloat(pay.medicareAmt) || 0);
   const scTax = payMode === 'estimate' ? gross * (parseFloat(pay.scTaxRate) || 0) / 100 : (parseFloat(pay.scTaxAmt) || 0);
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
-  const netPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
+  const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
+
+  // The effective net pay used for calculations
+  const effectiveNetPay = advancedMode ? computedNetPay : netIncome;
 
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
@@ -168,18 +178,20 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0);
   const rawTithe = titheItems.reduce((s, e) => s + e.amount, 0);
   const titheAmt = rawTithe + givingVarAmt;
-  const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
   const totalCheckingNeed = budgetTotal + creditCard - checking;
-  const netForSavings = netPay - totalCheckingNeed;
+  const netForSavings = effectiveNetPay - totalCheckingNeed;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
   const katiePay2 = parseFloat(pay.katiePay2) || 0;
   const totalKatiePay = katiePay1 + katiePay2;
   const totalMonthlySavings = netForSavings + totalKatiePay;
+
+  // Gross-mode percentages
+  const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
 
   return (
     <div className="max-w-lg mx-auto pb-28">
@@ -191,64 +203,106 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         <p className="text-sm text-muted-foreground mt-0.5">Pay & Savings Calculator</p>
       </div>
 
-      {/* Pay & Savings Planner */}
       <div className="px-6 mt-6">
+        {/* Mode Toggle */}
+        <button
+          onClick={toggleMode}
+          className="flex items-center justify-between w-full mb-4 px-4 py-2.5 rounded-lg bg-card border border-border shadow-sm active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground">
+              {advancedMode ? 'Gross Income Mode' : 'Net Income Mode'}
+            </span>
+            <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+              {advancedMode ? 'Advanced' : 'Simple'}
+            </span>
+          </div>
+          {advancedMode ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+        </button>
+
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pay & Savings Planner</h2>
 
-        <div className="flex bg-card rounded-lg p-1 mb-3 shadow-sm">
-          {(['estimate', 'actual'] as PayMode[]).map(mode => (
-            <button
-              key={mode}
-              onClick={() => { setPayMode(mode); onUpdatePlanningData({ ...pay, payMode: mode }); }}
-              className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
-                payMode === mode
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {mode === 'estimate' ? 'Estimate' : 'Actual'}
-            </button>
-          ))}
-        </div>
+        {advancedMode && (
+          <div className="flex bg-card rounded-lg p-1 mb-3 shadow-sm">
+            {(['estimate', 'actual'] as PayMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => { setPayMode(mode); onUpdatePlanningData({ ...pay, payMode: mode, incomeMode: 'gross' }); }}
+                className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  payMode === mode
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                {mode === 'estimate' ? 'Estimate' : 'Actual'}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="bg-card rounded-lg shadow-sm px-4 py-2">
-          <InputRow label="Gross Pay (Joe)" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
+          {advancedMode ? (
+            <>
+              {/* Gross Income Mode */}
+              <InputRow label="Gross Pay (Joe)" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
 
-          <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
-            <DeductionRow label="Federal Income Tax" mode={payMode}
-              rate={pay.fedTaxRate} onRateChange={up('fedTaxRate')}
-              dollarAmt={pay.fedTaxAmt} onDollarChange={up('fedTaxAmt')}
-              computedAmt={fedTax} gross={gross} onBlur={saveAll} />
-            <DeductionRow label="Social Security" mode={payMode}
-              rate={pay.ssTaxRate} onRateChange={up('ssTaxRate')}
-              dollarAmt={pay.ssTaxAmt} onDollarChange={up('ssTaxAmt')}
-              computedAmt={ssTax} gross={gross} onBlur={saveAll} />
-            <DeductionRow label="Medicare" mode={payMode}
-              rate={pay.medicareRate} onRateChange={up('medicareRate')}
-              dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
-              computedAmt={medicareTax} gross={gross} onBlur={saveAll} />
-            <DeductionRow label="SC Income Tax" mode={payMode}
-              rate={pay.scTaxRate} onRateChange={up('scTaxRate')}
-              dollarAmt={pay.scTaxAmt} onDollarChange={up('scTaxAmt')}
-              computedAmt={scTax} gross={gross} onBlur={saveAll} />
-            <DeductionRow label="Roth 401k" mode={payMode}
-              rate={pay.roth401kRate} onRateChange={up('roth401kRate')}
-              dollarAmt={pay.roth401kAmt} onDollarChange={up('roth401kAmt')}
-              computedAmt={roth} gross={gross} onBlur={saveAll} />
-          </div>
+              <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
+                <DeductionRow label="Federal Income Tax" mode={payMode}
+                  rate={pay.fedTaxRate} onRateChange={up('fedTaxRate')}
+                  dollarAmt={pay.fedTaxAmt} onDollarChange={up('fedTaxAmt')}
+                  computedAmt={fedTax} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="Social Security" mode={payMode}
+                  rate={pay.ssTaxRate} onRateChange={up('ssTaxRate')}
+                  dollarAmt={pay.ssTaxAmt} onDollarChange={up('ssTaxAmt')}
+                  computedAmt={ssTax} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="Medicare" mode={payMode}
+                  rate={pay.medicareRate} onRateChange={up('medicareRate')}
+                  dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
+                  computedAmt={medicareTax} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="SC Income Tax" mode={payMode}
+                  rate={pay.scTaxRate} onRateChange={up('scTaxRate')}
+                  dollarAmt={pay.scTaxAmt} onDollarChange={up('scTaxAmt')}
+                  computedAmt={scTax} gross={gross} onBlur={saveAll} />
+                <DeductionRow label="Roth 401k" mode={payMode}
+                  rate={pay.roth401kRate} onRateChange={up('roth401kRate')}
+                  dollarAmt={pay.roth401kAmt} onDollarChange={up('roth401kAmt')}
+                  computedAmt={roth} gross={gross} onBlur={saveAll} />
+              </div>
 
-          <InputRow label="Net Pay" computed={netPay} bold />
+              <InputRow label="Net Pay" computed={computedNetPay} bold />
 
-          <div className="my-2 border-t border-border" />
+              <div className="my-2 border-t border-border" />
 
-          {/* Tithe */}
-          <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-            <div>
-              <span className="text-sm text-foreground">Tithe/Giving</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{tithePercent}% of gross</p>
-            </div>
-            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
-          </div>
+              {/* Tithe with gross % */}
+              <div className="flex items-center justify-between py-2.5 border-b border-border/50">
+                <div>
+                  <span className="text-sm text-foreground">Tithe/Giving</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{tithePercent}% of gross</p>
+                </div>
+                <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
+              </div>
+
+              {/* AI data notice */}
+              <div className="flex items-start gap-2 py-2.5 border-b border-border/50">
+                <Info size={12} className="text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Gross income data is used by the AI Advisor for financial health insights like giving as a percentage of gross and effective savings rate. This data is never shared externally.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Net Income Mode — simple */}
+              <InputRow label="Monthly Take-Home Pay" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+
+              <div className="my-2 border-t border-border" />
+
+              <div className="flex items-center justify-between py-2.5 border-b border-border/50">
+                <span className="text-sm text-foreground">Giving Total</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
+              </div>
+            </>
+          )}
 
           <InputRow label="Budget Total" computed={budgetTotal} bold />
           <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />

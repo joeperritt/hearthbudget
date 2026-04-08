@@ -58,6 +58,7 @@ async function buildBudgetSummary(
   unassignedCount: number,
   totalBudget: number,
   householdId: string,
+  planningData: Record<string, string>,
 ): Promise<BudgetSummary> {
   const today = new Date();
   const nextMonth = startOfMonth(addMonths(today, 1));
