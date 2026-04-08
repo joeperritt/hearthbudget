@@ -624,23 +624,27 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         </div>
       )}
 
-      {/* ───── MODE TOGGLE ───── */}
+      {/* ───── MODE SELECTOR ───── */}
       <div className="px-6 mt-5">
-        <button onClick={cycleMode}
-          className="flex items-center justify-between w-full mb-4 px-4 py-2.5 rounded-lg bg-card border border-border shadow-sm active:scale-[0.99] transition-transform">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {MODE_LABELS[mode]}
-            </span>
-            <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-              {MODE_DESCRIPTIONS[mode]}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground">Tap to change</span>
-            <ChevronDown size={14} className="text-muted-foreground" />
-          </div>
-        </button>
+        <div className="flex w-full rounded-lg bg-muted p-1 mb-4">
+          {(['basic', 'standard', 'advanced'] as PlanningMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m);
+                onUpdatePlanningData({ ...pay, planningMode: m });
+              }}
+              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-md text-center transition-all ${
+                mode === m
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <span className="text-sm font-medium">{MODE_LABELS[m]}</span>
+              <span className="text-[10px] leading-tight opacity-70">{MODE_DESCRIPTIONS[m]}</span>
+            </button>
+          ))}
+        </div>
 
         {/* ───── BASIC MODE ───── */}
         {mode === 'basic' && (
