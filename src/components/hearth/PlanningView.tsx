@@ -21,6 +21,7 @@ type PayMode = 'estimate' | 'actual';
 interface PayFields {
   grossPay: string;
   netIncome: string;
+  katieNetIncome: string;
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
@@ -41,6 +42,7 @@ interface PayFields {
 const DEFAULT_FIELDS: PayFields = {
   grossPay: '',
   netIncome: '',
+  katieNetIncome: '',
   fedTaxRate: '15.15',
   ssTaxRate: '6.20',
   medicareRate: '1.45',
@@ -157,6 +159,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   // Calculations
   const gross = parseFloat(pay.grossPay) || 0;
   const netIncome = parseFloat(pay.netIncome) || 0;
+  const katieNetIncome = parseFloat(pay.katieNetIncome) || 0;
 
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
@@ -164,9 +167,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const scTax = payMode === 'estimate' ? gross * (parseFloat(pay.scTaxRate) || 0) / 100 : (parseFloat(pay.scTaxAmt) || 0);
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
   const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
-
-  // The effective net pay used for calculations
-  const effectiveNetPay = advancedMode ? computedNetPay : netIncome;
 
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
@@ -180,10 +180,15 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const titheAmt = rawTithe + givingVarAmt;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
+  // Simple mode totals
+  const totalHouseholdIncome = netIncome + katieNetIncome;
+  const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
+
+  // Advanced mode totals
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
   const totalCheckingNeed = budgetTotal + creditCard - checking;
-  const netForSavings = effectiveNetPay - totalCheckingNeed;
+  const netForSavings = computedNetPay - totalCheckingNeed;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
   const katiePay2 = parseFloat(pay.katiePay2) || 0;
@@ -289,35 +294,35 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                   Gross income data is used by the AI Advisor for financial health insights like giving as a percentage of gross and effective savings rate. This data is never shared externally.
                 </p>
               </div>
+
+              <InputRow label="Budget Total" computed={budgetTotal} bold />
+              <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
+              <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
+
+              <div className="my-2 border-t border-border" />
+
+              <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Katie Pay" computed={totalKatiePay} />
+
+              <div className="my-2 border-t border-border" />
+              <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
             </>
           ) : (
             <>
               {/* Net Income Mode — simple */}
-              <InputRow label="Monthly Take-Home Pay" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Take-Home Pay (Joe)" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Take-Home Pay (Katie)" value={pay.katieNetIncome} onChange={up('katieNetIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Household Income" computed={totalHouseholdIncome} bold />
 
               <div className="my-2 border-t border-border" />
 
-              <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-                <span className="text-sm text-foreground">Giving Total</span>
-                <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
-              </div>
+              <InputRow label="Budget Total" computed={budgetTotal} bold />
+              <InputRow label="Net for Savings" computed={simpleNetForSavings} bold />
             </>
           )}
-
-          <InputRow label="Budget Total" computed={budgetTotal} bold />
-          <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
-          <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
-
-          <div className="my-2 border-t border-border" />
-
-          <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Total Katie Pay" computed={totalKatiePay} />
-
-          <div className="my-2 border-t border-border" />
-          <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
         </div>
       </div>
     </div>
