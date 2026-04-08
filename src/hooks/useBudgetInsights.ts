@@ -41,6 +41,9 @@ interface BudgetSummary {
   categoryChanges?: CategoryChange[];
   incomeData?: {
     netIncome?: number;
+    incomeType?: string;
+    filingStatus?: string;
+    stateCode?: string;
     annualGrossIncome?: number;
     grossIncome?: number;
     retirementContribution?: number;

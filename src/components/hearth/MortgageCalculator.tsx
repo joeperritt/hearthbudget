@@ -29,21 +29,23 @@ export function MortgageCalculator({ planningData, onBack }: MortgageCalculatorP
   const [insuranceRate, setInsuranceRate] = useState('0.5');
   const [otherDebtPayments, setOtherDebtPayments] = useState('');
 
-  // Pull gross monthly income from planning data (grossPay is now annual)
+  // Pull gross monthly income from planning data — always use annual / 12
   const grossMonthlyIncome = useMemo(() => {
-    const mode = planningData.incomeMode || 'net';
-    if (mode === 'gross') {
-      const primaryAnnual = parseFloat(planningData.grossPay || '0');
-      const primaryMonthly = primaryAnnual / 12;
+    const primaryAnnual = parseFloat(planningData.grossPay || '0');
+    const primaryMonthly = primaryAnnual / 12;
 
-      let partnerMonthly = 0;
-      if (planningData.partnerEnabled === 'true') {
-        const partnerAnnual = parseFloat(planningData.partnerGrossPay || '0');
-        partnerMonthly = partnerAnnual / 12;
-      }
-      return primaryMonthly + partnerMonthly;
+    let partnerMonthly = 0;
+    const filingStatus = planningData.filingStatus || 'single';
+    const showPartner = filingStatus === 'married_jointly' || filingStatus === 'married_separately';
+    if (showPartner) {
+      const partnerAnnual = parseFloat(planningData.partnerGrossPay || '0');
+      partnerMonthly = partnerAnnual / 12;
     }
-    // Net income mode — use net incomes as approximation
+
+    const grossTotal = primaryMonthly + partnerMonthly;
+    if (grossTotal > 0) return grossTotal;
+
+    // Fallback to net income if no gross entered
     const joe = parseFloat(planningData.netIncome || '0');
     const katie = parseFloat(planningData.katieNetIncome || '0');
     return joe + katie;

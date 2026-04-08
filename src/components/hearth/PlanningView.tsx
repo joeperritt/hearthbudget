@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
-import { format, addMonths } from 'date-fns';
-import { ArrowLeft, ChevronDown, ChevronUp, Info, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Info, Plus, Minus, Calculator } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  estimateFederalTax,
+  estimateFICA,
+  estimateStateTax,
+  STATES,
+  type FilingStatus,
+  type IncomeType,
+} from '@/lib/taxEstimation';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -40,8 +47,22 @@ const FREQ_MULTIPLIERS: Record<PayFrequency, number> = {
   weekly: 52 / 12,
 };
 
+const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
+  w2: 'W-2 Employee',
+  self_employed: 'Self-Employed / 1099',
+  scorp: 'S-Corp Owner',
+  mixed: 'Mixed',
+};
+
+const FILING_STATUS_LABELS: Record<FilingStatus, string> = {
+  single: 'Single',
+  married_jointly: 'Married Filing Jointly',
+  married_separately: 'Married Filing Separately',
+  head_of_household: 'Head of Household',
+};
+
 interface PayFields {
-  grossPay: string; // now stores ANNUAL gross
+  grossPay: string;
   netIncome: string;
   katieNetIncome: string;
   fedTaxAmt: string;
@@ -56,7 +77,7 @@ interface PayFields {
   creditCardTotal: string;
   checkingTotal: string;
   partnerEnabled: string;
-  partnerGrossPay: string; // now stores ANNUAL gross
+  partnerGrossPay: string;
   partnerFedTaxAmt: string;
   partnerSsTaxAmt: string;
   partnerMedicareAmt: string;
@@ -65,7 +86,12 @@ interface PayFields {
   partnerSavingsDeductions: string;
   partnerOtherDeductions: string;
   partnerPayFrequency: string;
-  // Legacy rate fields kept for backward compat
+  incomeType: string;
+  filingStatus: string;
+  stateCode: string;
+  partnerStateCode: string;
+  partnerIncomeType: string;
+  // Legacy
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
@@ -87,6 +113,7 @@ const DEFAULT_FIELDS: PayFields = {
   partnerFedTaxAmt: '', partnerSsTaxAmt: '', partnerMedicareAmt: '',
   partnerStateTaxAmt: '', partnerRetirementAmt: '',
   partnerSavingsDeductions: '', partnerOtherDeductions: '', partnerPayFrequency: 'monthly',
+  incomeType: 'w2', filingStatus: 'single', stateCode: '', partnerStateCode: '', partnerIncomeType: 'w2',
   fedTaxRate: '', ssTaxRate: '', medicareRate: '', stateTaxRate: '', retirementRate: '',
   partnerFedTaxRate: '', partnerSsTaxRate: '', partnerMedicareRate: '', partnerStateTaxRate: '', partnerRetirementRate: '',
 };
@@ -121,14 +148,26 @@ function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bo
   );
 }
 
-function DollarDeductionRow({ label, value, onChange, onBlur, sublabel }: {
+function DollarDeductionRow({ label, value, onChange, onBlur, sublabel, estimateButton }: {
   label: string; value: string; onChange: (v: string) => void; onBlur?: () => void; sublabel?: string;
+  estimateButton?: { onEstimate: () => void };
 }) {
   return (
     <div className="flex items-center justify-between py-1.5">
-      <div>
-        <span className="text-xs text-muted-foreground">{label}</span>
-        {sublabel && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sublabel}</p>}
+      <div className="flex items-center gap-1.5">
+        <div>
+          <span className="text-xs text-muted-foreground">{label}</span>
+          {sublabel && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sublabel}</p>}
+        </div>
+        {estimateButton && (
+          <button
+            onClick={estimateButton.onEstimate}
+            className="flex items-center gap-0.5 text-[9px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded hover:bg-accent/20 active:scale-95 transition-all"
+            title="Estimate for me"
+          >
+            <Calculator size={10} /> Est.
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-1">
         <span className="text-xs text-muted-foreground">$</span>
@@ -142,8 +181,7 @@ function DollarDeductionRow({ label, value, onChange, onBlur, sublabel }: {
 
 interface IncomeBreakdownProps {
   label: string;
-  annualGross: string;
-  onAnnualGrossChange: (v: string) => void;
+  annualGross: number;
   fedTaxAmt: string; onFedTaxAmtChange: (v: string) => void;
   ssTaxAmt: string; onSsTaxAmtChange: (v: string) => void;
   medicareAmt: string; onMedicareAmtChange: (v: string) => void;
@@ -152,21 +190,29 @@ interface IncomeBreakdownProps {
   savingsDeductions: string; onSavingsDeductionsChange: (v: string) => void;
   otherDeductions: string; onOtherDeductionsChange: (v: string) => void;
   payFrequency: PayFrequency;
-  onPayFrequencyChange: (v: PayFrequency) => void;
   onBlur: () => void;
   computedMonthlyNet: number;
   monthlyGross: number;
   perPaycheckGross: number;
+  incomeType: IncomeType;
+  filingStatus: FilingStatus;
+  stateCode: string;
+  onEstimateFed: () => void;
+  onEstimateFICA: () => void;
+  onEstimateState: () => void;
+  ficaNote?: string;
 }
 
 function IncomeBreakdown({
-  label, annualGross, onAnnualGrossChange,
+  label, annualGross,
   fedTaxAmt, onFedTaxAmtChange, ssTaxAmt, onSsTaxAmtChange,
   medicareAmt, onMedicareAmtChange, stateTaxAmt, onStateTaxAmtChange,
   retirementAmt, onRetirementAmtChange, savingsDeductions, onSavingsDeductionsChange,
   otherDeductions, onOtherDeductionsChange,
-  payFrequency, onPayFrequencyChange, onBlur,
+  payFrequency, onBlur,
   computedMonthlyNet, monthlyGross, perPaycheckGross,
+  incomeType, filingStatus, stateCode,
+  onEstimateFed, onEstimateFICA, onEstimateState, ficaNote,
 }: IncomeBreakdownProps) {
   return (
     <>
@@ -174,47 +220,40 @@ function IncomeBreakdown({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
 
-      {/* Annual Gross Income - primary input */}
-      <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-        <div>
-          <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(monthlyGross)}</p>
+      {/* Summary from setup */}
+      <div className="py-2 border-b border-border/50">
+        <div className="flex justify-between text-xs">
+          <span className="text-muted-foreground">Annual Gross</span>
+          <span className="font-medium text-foreground tabular-nums">{fmt(annualGross)}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">$</span>
-          <input
-            type="number" step="0.01" value={annualGross} onChange={e => onAnnualGrossChange(e.target.value)} onBlur={onBlur}
-            placeholder="0"
-            className="w-28 text-right px-2 py-1 rounded bg-card border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-          />
+        <div className="flex justify-between text-xs mt-1">
+          <span className="text-muted-foreground">Monthly Gross</span>
+          <span className="text-foreground tabular-nums">{fmt(monthlyGross)}</span>
         </div>
-      </div>
-
-      {/* Pay Frequency Selector */}
-      <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-        <div>
-          <span className="text-sm text-foreground">Pay Frequency</span>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(perPaycheckGross)}</p>
+        <div className="flex justify-between text-xs mt-1">
+          <span className="text-muted-foreground">Per Paycheck</span>
+          <span className="text-foreground tabular-nums">{fmt(perPaycheckGross)}</span>
         </div>
-        <Select value={payFrequency} onValueChange={(v) => onPayFrequencyChange(v as PayFrequency)}>
-          <SelectTrigger className="w-40 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([key, lbl]) => (
-              <SelectItem key={key} value={key} className="text-xs">{lbl}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Per-paycheck deductions */}
       <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider py-1">Per-Paycheck Deductions</p>
-        <DollarDeductionRow label="Federal Income Tax" value={fedTaxAmt} onChange={onFedTaxAmtChange} onBlur={onBlur} />
-        <DollarDeductionRow label="Social Security" value={ssTaxAmt} onChange={onSsTaxAmtChange} onBlur={onBlur} />
-        <DollarDeductionRow label="Medicare" value={medicareAmt} onChange={onMedicareAmtChange} onBlur={onBlur} />
-        <DollarDeductionRow label="State Income Tax" value={stateTaxAmt} onChange={onStateTaxAmtChange} onBlur={onBlur} />
+        <DollarDeductionRow label="Federal Income Tax" value={fedTaxAmt} onChange={onFedTaxAmtChange} onBlur={onBlur}
+          estimateButton={{ onEstimate: onEstimateFed }} />
+        <DollarDeductionRow label="Social Security" value={ssTaxAmt} onChange={onSsTaxAmtChange} onBlur={onBlur}
+          estimateButton={{ onEstimate: onEstimateFICA }} />
+        <DollarDeductionRow label="Medicare" value={medicareAmt} onChange={onMedicareAmtChange} onBlur={onBlur}
+          estimateButton={{ onEstimate: onEstimateFICA }} />
+        {ficaNote && (
+          <div className="flex items-start gap-1.5 py-1">
+            <Info size={10} className="text-accent mt-0.5 shrink-0" />
+            <p className="text-[9px] text-accent leading-relaxed">{ficaNote}</p>
+          </div>
+        )}
+        <DollarDeductionRow label="State Income Tax" value={stateTaxAmt} onChange={onStateTaxAmtChange} onBlur={onBlur}
+          estimateButton={stateCode ? { onEstimate: onEstimateState } : undefined}
+          sublabel={stateCode ? STATES.find(s => s.abbr === stateCode)?.name : 'Select state in setup'} />
         <DollarDeductionRow label="Retirement Contribution" value={retirementAmt} onChange={onRetirementAmtChange} onBlur={onBlur} />
         <DollarDeductionRow label="Savings Deductions" value={savingsDeductions} onChange={onSavingsDeductionsChange} onBlur={onBlur}
           sublabel="HSA, FSA, dependent care, etc." />
@@ -232,10 +271,6 @@ function IncomeBreakdown({
   );
 }
 
-/**
- * Calculate monthly net pay from annual gross and per-paycheck deductions.
- * annualGross is the annual salary; deductions are per-paycheck amounts.
- */
 function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string, medicareAmt: string, stateTaxAmt: string, retirementAmt: string, savingsDeductions: string, otherDeductions: string, freq: PayFrequency) {
   const annual = parseFloat(annualGross) || 0;
   const periods = FREQ_PERIODS[freq];
@@ -265,6 +300,12 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
     onUpdatePlanningData({ ...pay, incomeMode: advancedMode ? 'gross' : 'net' });
   };
 
+  const updateAndSave = (updates: Partial<PayFields>) => {
+    const updated = { ...pay, ...updates };
+    setPay(updated);
+    onUpdatePlanningData({ ...updated, incomeMode: advancedMode ? 'gross' : 'net' });
+  };
+
   const toggleMode = () => {
     const next = !advancedMode;
     setAdvancedMode(next);
@@ -274,25 +315,20 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const togglePartner = () => {
     const next = !partnerOpen;
     setPartnerOpen(next);
-    const updated = { ...pay, partnerEnabled: next ? 'true' : 'false' };
-    setPay(updated);
-    onUpdatePlanningData({ ...updated, incomeMode: 'gross' });
+    updateAndSave({ partnerEnabled: next ? 'true' : 'false' });
   };
+
+  // Setup fields
+  const incomeType = (pay.incomeType || 'w2') as IncomeType;
+  const filingStatus = (pay.filingStatus || 'single') as FilingStatus;
+  const stateCode = pay.stateCode || '';
+  const partnerIncomeType = (pay.partnerIncomeType || 'w2') as IncomeType;
+  const partnerStateCode = pay.partnerStateCode || '';
+  const showPartner = filingStatus === 'married_jointly' || filingStatus === 'married_separately';
 
   // Frequencies
   const primaryFreq = (pay.payFrequency || 'monthly') as PayFrequency;
   const partnerFreq = (pay.partnerPayFrequency || 'monthly') as PayFrequency;
-
-  const setPrimaryFreq = (f: PayFrequency) => {
-    const updated = { ...pay, payFrequency: f };
-    setPay(updated);
-    onUpdatePlanningData({ ...updated, incomeMode: 'gross' });
-  };
-  const setPartnerFreq = (f: PayFrequency) => {
-    const updated = { ...pay, partnerPayFrequency: f };
-    setPay(updated);
-    onUpdatePlanningData({ ...updated, incomeMode: 'gross' });
-  };
 
   // Primary calculations
   const primaryAnnualGross = parseFloat(pay.grossPay) || 0;
@@ -306,9 +342,9 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const partnerPerPaycheckGross = partnerAnnualGross / FREQ_PERIODS[partnerFreq];
   const partnerMonthlyNet = calcMonthlyNet(pay.partnerGrossPay, pay.partnerFedTaxAmt, pay.partnerSsTaxAmt, pay.partnerMedicareAmt, pay.partnerStateTaxAmt, pay.partnerRetirementAmt, pay.partnerSavingsDeductions, pay.partnerOtherDeductions, partnerFreq);
 
-  // Simple mode
-  const netIncome = parseFloat(pay.netIncome) || 0;
-  const katieNetIncome = parseFloat(pay.katieNetIncome) || 0;
+  // Simple mode net incomes — auto-calculate from annual gross if available
+  const simpleNetPrimary = primaryAnnualGross > 0 ? primaryMonthlyNet : (parseFloat(pay.netIncome) || 0);
+  const simpleNetPartner = showPartner && partnerAnnualGross > 0 ? partnerMonthlyNet : (parseFloat(pay.katieNetIncome) || 0);
 
   // Budget totals
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
@@ -324,17 +360,65 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
   // Simple mode totals
-  const totalHouseholdIncome = netIncome + katieNetIncome;
+  const totalHouseholdIncome = simpleNetPrimary + simpleNetPartner;
   const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
   // Advanced mode totals
-  const combinedNetPay = primaryMonthlyNet + (partnerOpen ? partnerMonthlyNet : 0);
-  const combinedMonthlyGross = primaryMonthlyGross + (partnerOpen ? partnerMonthlyGross : 0);
+  const combinedNetPay = primaryMonthlyNet + (showPartner && partnerOpen ? partnerMonthlyNet : 0);
+  const combinedMonthlyGross = primaryMonthlyGross + (showPartner && partnerOpen ? partnerMonthlyGross : 0);
   const householdNetForSavings = combinedNetPay - budgetTotal;
 
   const tithePercent = combinedMonthlyGross > 0 ? ((titheAmt / combinedMonthlyGross) * 100).toFixed(2) : '0.00';
   const surplusLabel = (amount: number) => amount >= 0 ? 'Monthly Surplus' : 'Monthly Deficit';
   const surplusHighlight = (amount: number): 'positive' | 'negative' | undefined => amount >= 0 ? 'positive' : 'negative';
+
+  // FICA notes
+  const primaryFica = estimateFICA(primaryAnnualGross, incomeType);
+  const partnerFica = estimateFICA(partnerAnnualGross, partnerIncomeType);
+
+  // Estimate handlers — primary
+  const estimatePrimaryFed = () => {
+    const annualTax = estimateFederalTax(primaryAnnualGross, filingStatus);
+    const perPaycheck = (annualTax / FREQ_PERIODS[primaryFreq]).toFixed(2);
+    updateAndSave({ fedTaxAmt: perPaycheck });
+  };
+
+  const estimatePrimaryFICA = () => {
+    const fica = estimateFICA(primaryAnnualGross, incomeType);
+    const ssPerPaycheck = (fica.ss / FREQ_PERIODS[primaryFreq]).toFixed(2);
+    const medPerPaycheck = (fica.medicare / FREQ_PERIODS[primaryFreq]).toFixed(2);
+    updateAndSave({ ssTaxAmt: ssPerPaycheck, medicareAmt: medPerPaycheck });
+  };
+
+  const estimatePrimaryState = () => {
+    if (!stateCode) return;
+    const annualTax = estimateStateTax(primaryAnnualGross, stateCode);
+    const perPaycheck = (annualTax / FREQ_PERIODS[primaryFreq]).toFixed(2);
+    updateAndSave({ stateTaxAmt: perPaycheck });
+  };
+
+  // Estimate handlers — partner
+  const estimatePartnerFed = () => {
+    // For married filing jointly, use partner's income with the same filing status
+    const annualTax = estimateFederalTax(partnerAnnualGross, filingStatus === 'married_jointly' ? 'married_jointly' : filingStatus);
+    const perPaycheck = (annualTax / FREQ_PERIODS[partnerFreq]).toFixed(2);
+    updateAndSave({ partnerFedTaxAmt: perPaycheck });
+  };
+
+  const estimatePartnerFICA = () => {
+    const fica = estimateFICA(partnerAnnualGross, partnerIncomeType);
+    const ssPerPaycheck = (fica.ss / FREQ_PERIODS[partnerFreq]).toFixed(2);
+    const medPerPaycheck = (fica.medicare / FREQ_PERIODS[partnerFreq]).toFixed(2);
+    updateAndSave({ partnerSsTaxAmt: ssPerPaycheck, partnerMedicareAmt: medPerPaycheck });
+  };
+
+  const estimatePartnerState = () => {
+    const code = partnerStateCode || stateCode;
+    if (!code) return;
+    const annualTax = estimateStateTax(partnerAnnualGross, code);
+    const perPaycheck = (annualTax / FREQ_PERIODS[partnerFreq]).toFixed(2);
+    updateAndSave({ partnerStateTaxAmt: perPaycheck });
+  };
 
   return (
     <div className="max-w-lg mx-auto pb-28">
@@ -342,108 +426,296 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Planning</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Pay & Savings Calculator</p>
+        <h1 className="font-display text-xl font-bold text-foreground">Income Planning</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Setup & Pay Calculator</p>
       </div>
 
-      <div className="px-6 mt-6">
+      {/* ───── SETUP SECTION ───── */}
+      <div className="px-6 mt-5">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Income Setup</h2>
+        <div className="bg-card rounded-lg shadow-sm px-4 py-3 space-y-3">
+
+          {/* Income Type */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">Income Type</span>
+            <Select value={incomeType} onValueChange={v => updateAndSave({ incomeType: v })}>
+              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
+                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filing Status */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">Filing Status</span>
+            <Select value={filingStatus} onValueChange={v => {
+              const isMarried = v === 'married_jointly' || v === 'married_separately';
+              updateAndSave({
+                filingStatus: v,
+                partnerEnabled: isMarried ? pay.partnerEnabled : 'false',
+              });
+              if (!isMarried) setPartnerOpen(false);
+            }}>
+              <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.entries(FILING_STATUS_LABELS) as [FilingStatus, string][]).map(([k, l]) => (
+                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* State */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">State</span>
+            <Select value={stateCode} onValueChange={v => updateAndSave({ stateCode: v })}>
+              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Select state" /></SelectTrigger>
+              <SelectContent className="max-h-60">
+                {STATES.map(s => (
+                  <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="border-t border-border/50 pt-3" />
+
+          {/* Primary Annual Gross Income */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(primaryMonthlyGross)}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">$</span>
+                <input
+                  type="number" step="1" value={pay.grossPay}
+                  onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
+                  onBlur={saveAll}
+                  placeholder="0"
+                  className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Pay Frequency */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-foreground">Pay Frequency</span>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(primaryPerPaycheckGross)}</p>
+            </div>
+            <Select value={primaryFreq} onValueChange={v => updateAndSave({ payFrequency: v })}>
+              <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
+                  <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Partner section */}
+          {showPartner && (
+            <>
+              <div className="border-t border-border/50 pt-3" />
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Partner</p>
+
+              {/* Partner Income Type */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">Income Type</span>
+                <Select value={partnerIncomeType} onValueChange={v => updateAndSave({ partnerIncomeType: v })}>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(INCOME_TYPE_LABELS) as [IncomeType, string][]).map(([k, l]) => (
+                      <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Partner State (optional, defaults to primary) */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-foreground">State</span>
+                  <p className="text-[10px] text-muted-foreground">Defaults to primary if blank</p>
+                </div>
+                <Select value={partnerStateCode} onValueChange={v => updateAndSave({ partnerStateCode: v })}>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Same as primary" /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {STATES.map(s => (
+                      <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Partner Annual Gross */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(partnerMonthlyGross)}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">$</span>
+                  <input
+                    type="number" step="1" value={pay.partnerGrossPay}
+                    onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
+                    onBlur={saveAll}
+                    placeholder="0"
+                    className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                </div>
+              </div>
+
+              {/* Partner Pay Frequency */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-foreground">Pay Frequency</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(partnerPerPaycheckGross)}</p>
+                </div>
+                <Select value={partnerFreq} onValueChange={v => updateAndSave({ partnerPayFrequency: v })}>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(FREQ_LABELS) as [PayFrequency, string][]).map(([k, l]) => (
+                      <SelectItem key={k} value={k} className="text-xs">{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ───── MODE TOGGLE ───── */}
+      <div className="px-6 mt-5">
         <button onClick={toggleMode}
           className="flex items-center justify-between w-full mb-4 px-4 py-2.5 rounded-lg bg-card border border-border shadow-sm active:scale-[0.99] transition-transform">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground">
-              {advancedMode ? 'Gross Income Mode' : 'Net Income Mode'}
+              {advancedMode ? 'Advanced View' : 'Simple View'}
             </span>
             <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-              {advancedMode ? 'Advanced' : 'Simple'}
+              {advancedMode ? 'Deduction Breakdown' : 'Summary'}
             </span>
           </div>
           {advancedMode ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
         </button>
 
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pay & Savings Planner</h2>
-
-        <div className="bg-card rounded-lg shadow-sm px-4 py-2">
-          {advancedMode ? (
-            <>
-              <IncomeBreakdown
-                label="Primary Income"
-                annualGross={pay.grossPay} onAnnualGrossChange={up('grossPay')}
-                fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
-                ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
-                medicareAmt={pay.medicareAmt} onMedicareAmtChange={up('medicareAmt')}
-                stateTaxAmt={pay.stateTaxAmt} onStateTaxAmtChange={up('stateTaxAmt')}
-                retirementAmt={pay.retirementAmt} onRetirementAmtChange={up('retirementAmt')}
-                savingsDeductions={pay.savingsDeductions} onSavingsDeductionsChange={up('savingsDeductions')}
-                otherDeductions={pay.otherDeductions} onOtherDeductionsChange={up('otherDeductions')}
-                payFrequency={primaryFreq} onPayFrequencyChange={setPrimaryFreq}
-                onBlur={saveAll} computedMonthlyNet={primaryMonthlyNet}
-                monthlyGross={primaryMonthlyGross} perPaycheckGross={primaryPerPaycheckGross}
+        {/* ───── SIMPLE MODE ───── */}
+        {!advancedMode && (
+          <div className="bg-card rounded-lg shadow-sm px-4 py-2">
+            <InputRow label="Monthly Take-Home (Primary)" computed={simpleNetPrimary} bold
+              sublabel={primaryAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
+              {...(primaryAnnualGross <= 0 ? { value: pay.netIncome, onChange: up('netIncome'), onBlur: saveAll, prefix: '$' } : {})}
+            />
+            {showPartner && (
+              <InputRow label="Monthly Take-Home (Partner)" computed={simpleNetPartner} bold
+                sublabel={partnerAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
+                {...(partnerAnnualGross <= 0 ? { value: pay.katieNetIncome, onChange: up('katieNetIncome'), onBlur: saveAll, prefix: '$' } : {})}
               />
+            )}
+            <InputRow label="Total Household Income" computed={totalHouseholdIncome} bold />
+            <div className="my-2 border-t border-border" />
+            <InputRow label="Budget Total" computed={budgetTotal} bold />
+            <InputRow label={surplusLabel(simpleNetForSavings)} computed={simpleNetForSavings} bold highlight={surplusHighlight(simpleNetForSavings)} />
+          </div>
+        )}
 
-              <div className="my-2 border-t border-border" />
+        {/* ───── ADVANCED MODE ───── */}
+        {advancedMode && (
+          <div className="bg-card rounded-lg shadow-sm px-4 py-2">
+            <IncomeBreakdown
+              label="Primary Income"
+              annualGross={primaryAnnualGross}
+              fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
+              ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
+              medicareAmt={pay.medicareAmt} onMedicareAmtChange={up('medicareAmt')}
+              stateTaxAmt={pay.stateTaxAmt} onStateTaxAmtChange={up('stateTaxAmt')}
+              retirementAmt={pay.retirementAmt} onRetirementAmtChange={up('retirementAmt')}
+              savingsDeductions={pay.savingsDeductions} onSavingsDeductionsChange={up('savingsDeductions')}
+              otherDeductions={pay.otherDeductions} onOtherDeductionsChange={up('otherDeductions')}
+              payFrequency={primaryFreq} onBlur={saveAll}
+              computedMonthlyNet={primaryMonthlyNet}
+              monthlyGross={primaryMonthlyGross}
+              perPaycheckGross={primaryPerPaycheckGross}
+              incomeType={incomeType}
+              filingStatus={filingStatus}
+              stateCode={stateCode}
+              onEstimateFed={estimatePrimaryFed}
+              onEstimateFICA={estimatePrimaryFICA}
+              onEstimateState={estimatePrimaryState}
+              ficaNote={primaryFica.note}
+            />
 
-              <button onClick={togglePartner}
-                className="flex items-center justify-between w-full py-2.5 border-b border-border/50 active:scale-[0.99] transition-transform">
-                <span className="text-sm font-medium text-foreground">Partner Income</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">{partnerOpen ? 'Hide' : 'Show'}</span>
-                  {partnerOpen ? <Minus size={14} className="text-muted-foreground" /> : <Plus size={14} className="text-muted-foreground" />}
-                </div>
-              </button>
+            {showPartner && (
+              <>
+                <div className="my-2 border-t border-border" />
+                <button onClick={togglePartner}
+                  className="flex items-center justify-between w-full py-2.5 border-b border-border/50 active:scale-[0.99] transition-transform">
+                  <span className="text-sm font-medium text-foreground">Partner Income</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">{partnerOpen ? 'Hide' : 'Show'}</span>
+                    {partnerOpen ? <Minus size={14} className="text-muted-foreground" /> : <Plus size={14} className="text-muted-foreground" />}
+                  </div>
+                </button>
 
-              {partnerOpen && (
-                <IncomeBreakdown
-                  label="Partner Income"
-                  annualGross={pay.partnerGrossPay} onAnnualGrossChange={up('partnerGrossPay')}
-                  fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
-                  ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
-                  medicareAmt={pay.partnerMedicareAmt} onMedicareAmtChange={up('partnerMedicareAmt')}
-                  stateTaxAmt={pay.partnerStateTaxAmt} onStateTaxAmtChange={up('partnerStateTaxAmt')}
-                  retirementAmt={pay.partnerRetirementAmt} onRetirementAmtChange={up('partnerRetirementAmt')}
-                  savingsDeductions={pay.partnerSavingsDeductions} onSavingsDeductionsChange={up('partnerSavingsDeductions')}
-                  otherDeductions={pay.partnerOtherDeductions} onOtherDeductionsChange={up('partnerOtherDeductions')}
-                  payFrequency={partnerFreq} onPayFrequencyChange={setPartnerFreq}
-                  onBlur={saveAll} computedMonthlyNet={partnerMonthlyNet}
-                  monthlyGross={partnerMonthlyGross} perPaycheckGross={partnerPerPaycheckGross}
-                />
-              )}
+                {partnerOpen && (
+                  <IncomeBreakdown
+                    label="Partner Income"
+                    annualGross={partnerAnnualGross}
+                    fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
+                    ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
+                    medicareAmt={pay.partnerMedicareAmt} onMedicareAmtChange={up('partnerMedicareAmt')}
+                    stateTaxAmt={pay.partnerStateTaxAmt} onStateTaxAmtChange={up('partnerStateTaxAmt')}
+                    retirementAmt={pay.partnerRetirementAmt} onRetirementAmtChange={up('partnerRetirementAmt')}
+                    savingsDeductions={pay.partnerSavingsDeductions} onSavingsDeductionsChange={up('partnerSavingsDeductions')}
+                    otherDeductions={pay.partnerOtherDeductions} onOtherDeductionsChange={up('partnerOtherDeductions')}
+                    payFrequency={partnerFreq} onBlur={saveAll}
+                    computedMonthlyNet={partnerMonthlyNet}
+                    monthlyGross={partnerMonthlyGross}
+                    perPaycheckGross={partnerPerPaycheckGross}
+                    incomeType={partnerIncomeType}
+                    filingStatus={filingStatus}
+                    stateCode={partnerStateCode || stateCode}
+                    onEstimateFed={estimatePartnerFed}
+                    onEstimateFICA={estimatePartnerFICA}
+                    onEstimateState={estimatePartnerState}
+                    ficaNote={partnerFica.note}
+                  />
+                )}
+              </>
+            )}
 
-              <div className="my-2 border-t border-border" />
+            <div className="my-2 border-t border-border" />
 
-              <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-                <div>
-                  <span className="text-sm text-foreground">Tithe/Giving</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{tithePercent}% of gross</p>
-                </div>
-                <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
+            <div className="flex items-center justify-between py-2.5 border-b border-border/50">
+              <div>
+                <span className="text-sm text-foreground">Tithe/Giving</span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{tithePercent}% of gross</p>
               </div>
+              <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
+            </div>
 
-              <div className="flex items-start gap-2 py-2.5 border-b border-border/50">
-                <Info size={12} className="text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Gross income data is used by the AI Advisor for financial health insights like giving as a percentage of gross and effective savings rate. This data is never shared externally.
-                </p>
-              </div>
+            <div className="flex items-start gap-2 py-2.5 border-b border-border/50">
+              <Info size={12} className="text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Income data powers AI Advisor insights and Financial Tools. Never shared externally.
+              </p>
+            </div>
 
-              <InputRow label="Budget Total" computed={budgetTotal} bold />
-              <InputRow label="Household Net for Savings" computed={householdNetForSavings} bold />
+            <InputRow label="Budget Total" computed={budgetTotal} bold />
+            <InputRow label="Household Net for Savings" computed={householdNetForSavings} bold />
 
-              <div className="my-2 border-t border-border" />
-              <InputRow label={surplusLabel(householdNetForSavings)} computed={householdNetForSavings} bold highlight={surplusHighlight(householdNetForSavings)} />
-            </>
-          ) : (
-            <>
-              <InputRow label="Monthly Take-Home (Joe)" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Monthly Take-Home (Katie)" value={pay.katieNetIncome} onChange={up('katieNetIncome')} onBlur={saveAll} prefix="$" />
-              <InputRow label="Total Household Income" computed={totalHouseholdIncome} bold />
-
-              <div className="my-2 border-t border-border" />
-
-              <InputRow label="Budget Total" computed={budgetTotal} bold />
-              <InputRow label={surplusLabel(simpleNetForSavings)} computed={simpleNetForSavings} bold highlight={surplusHighlight(simpleNetForSavings)} />
-            </>
-          )}
-        </div>
+            <div className="my-2 border-t border-border" />
+            <InputRow label={surplusLabel(householdNetForSavings)} computed={householdNetForSavings} bold highlight={surplusHighlight(householdNetForSavings)} />
+          </div>
+        )}
       </div>
     </div>
   );
