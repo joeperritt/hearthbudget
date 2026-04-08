@@ -26,6 +26,13 @@ const FREQ_LABELS: Record<PayFrequency, string> = {
   weekly: 'Weekly (52x)',
 };
 
+const FREQ_PERIODS: Record<PayFrequency, number> = {
+  monthly: 12,
+  semimonthly: 24,
+  biweekly: 26,
+  weekly: 52,
+};
+
 const FREQ_MULTIPLIERS: Record<PayFrequency, number> = {
   monthly: 1,
   semimonthly: 2,
@@ -34,7 +41,7 @@ const FREQ_MULTIPLIERS: Record<PayFrequency, number> = {
 };
 
 interface PayFields {
-  grossPay: string;
+  grossPay: string; // now stores ANNUAL gross
   netIncome: string;
   katieNetIncome: string;
   fedTaxAmt: string;
@@ -49,7 +56,7 @@ interface PayFields {
   creditCardTotal: string;
   checkingTotal: string;
   partnerEnabled: string;
-  partnerGrossPay: string;
+  partnerGrossPay: string; // now stores ANNUAL gross
   partnerFedTaxAmt: string;
   partnerSsTaxAmt: string;
   partnerMedicareAmt: string;
@@ -135,8 +142,8 @@ function DollarDeductionRow({ label, value, onChange, onBlur, sublabel }: {
 
 interface IncomeBreakdownProps {
   label: string;
-  grossPay: string;
-  onGrossPayChange: (v: string) => void;
+  annualGross: string;
+  onAnnualGrossChange: (v: string) => void;
   fedTaxAmt: string; onFedTaxAmtChange: (v: string) => void;
   ssTaxAmt: string; onSsTaxAmtChange: (v: string) => void;
   medicareAmt: string; onMedicareAmtChange: (v: string) => void;
@@ -147,31 +154,48 @@ interface IncomeBreakdownProps {
   payFrequency: PayFrequency;
   onPayFrequencyChange: (v: PayFrequency) => void;
   onBlur: () => void;
-  computedNetPay: number;
-  perPaycheckGross: number;
+  computedMonthlyNet: number;
   monthlyGross: number;
+  perPaycheckGross: number;
 }
 
 function IncomeBreakdown({
-  label, grossPay, onGrossPayChange,
+  label, annualGross, onAnnualGrossChange,
   fedTaxAmt, onFedTaxAmtChange, ssTaxAmt, onSsTaxAmtChange,
   medicareAmt, onMedicareAmtChange, stateTaxAmt, onStateTaxAmtChange,
   retirementAmt, onRetirementAmtChange, savingsDeductions, onSavingsDeductionsChange,
   otherDeductions, onOtherDeductionsChange,
   payFrequency, onPayFrequencyChange, onBlur,
-  computedNetPay, perPaycheckGross, monthlyGross,
+  computedMonthlyNet, monthlyGross, perPaycheckGross,
 }: IncomeBreakdownProps) {
-  const isNonMonthly = payFrequency !== 'monthly';
-
   return (
     <>
       <div className="flex items-center py-2 border-b border-border/50">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
 
+      {/* Annual Gross Income - primary input */}
+      <div className="flex items-center justify-between py-2.5 border-b border-border/50">
+        <div>
+          <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(monthlyGross)}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">$</span>
+          <input
+            type="number" step="0.01" value={annualGross} onChange={e => onAnnualGrossChange(e.target.value)} onBlur={onBlur}
+            placeholder="0"
+            className="w-28 text-right px-2 py-1 rounded bg-card border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+      </div>
+
       {/* Pay Frequency Selector */}
       <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-        <span className="text-sm text-foreground">Pay Frequency</span>
+        <div>
+          <span className="text-sm text-foreground">Pay Frequency</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Per paycheck: {fmt(perPaycheckGross)}</p>
+        </div>
         <Select value={payFrequency} onValueChange={(v) => onPayFrequencyChange(v as PayFrequency)}>
           <SelectTrigger className="w-40 h-8 text-xs">
             <SelectValue />
@@ -184,13 +208,9 @@ function IncomeBreakdown({
         </Select>
       </div>
 
-      <InputRow
-        label={isNonMonthly ? 'Gross Pay (per paycheck)' : 'Gross Pay'}
-        value={grossPay} onChange={onGrossPayChange} onBlur={onBlur} prefix="$"
-        sublabel={isNonMonthly ? `Monthly: ${fmt(monthlyGross)}` : undefined}
-      />
-
+      {/* Per-paycheck deductions */}
       <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
+        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider py-1">Per-Paycheck Deductions</p>
         <DollarDeductionRow label="Federal Income Tax" value={fedTaxAmt} onChange={onFedTaxAmtChange} onBlur={onBlur} />
         <DollarDeductionRow label="Social Security" value={ssTaxAmt} onChange={onSsTaxAmtChange} onBlur={onBlur} />
         <DollarDeductionRow label="Medicare" value={medicareAmt} onChange={onMedicareAmtChange} onBlur={onBlur} />
@@ -203,22 +223,29 @@ function IncomeBreakdown({
       </div>
 
       <InputRow
-        label={isNonMonthly ? 'Net Pay (per paycheck)' : 'Net Pay'}
-        computed={computedNetPay / (isNonMonthly ? FREQ_MULTIPLIERS[payFrequency] : 1)}
+        label="Net Pay (monthly)"
+        computed={computedMonthlyNet}
         bold
-        sublabel={isNonMonthly ? `Monthly: ${fmt(computedNetPay)}` : undefined}
+        sublabel={`Per paycheck: ${fmt(computedMonthlyNet / FREQ_MULTIPLIERS[payFrequency])}`}
       />
     </>
   );
 }
 
-function calcNetPay(grossPay: string, fedTaxAmt: string, ssTaxAmt: string, medicareAmt: string, stateTaxAmt: string, retirementAmt: string, savingsDeductions: string, otherDeductions: string, freq: PayFrequency) {
-  const perPaycheck = (parseFloat(grossPay) || 0)
+/**
+ * Calculate monthly net pay from annual gross and per-paycheck deductions.
+ * annualGross is the annual salary; deductions are per-paycheck amounts.
+ */
+function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string, medicareAmt: string, stateTaxAmt: string, retirementAmt: string, savingsDeductions: string, otherDeductions: string, freq: PayFrequency) {
+  const annual = parseFloat(annualGross) || 0;
+  const periods = FREQ_PERIODS[freq];
+  const perPaycheckGross = annual / periods;
+  const perPaycheckNet = perPaycheckGross
     - (parseFloat(fedTaxAmt) || 0) - (parseFloat(ssTaxAmt) || 0)
     - (parseFloat(medicareAmt) || 0) - (parseFloat(stateTaxAmt) || 0)
     - (parseFloat(retirementAmt) || 0) - (parseFloat(savingsDeductions) || 0)
     - (parseFloat(otherDeductions) || 0);
-  return perPaycheck * FREQ_MULTIPLIERS[freq];
+  return perPaycheckNet * FREQ_MULTIPLIERS[freq];
 }
 
 export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
@@ -267,15 +294,17 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
     onUpdatePlanningData({ ...updated, incomeMode: 'gross' });
   };
 
-  // Primary calculations (monthly)
-  const primaryPerPaycheckGross = parseFloat(pay.grossPay) || 0;
-  const primaryMonthlyGross = primaryPerPaycheckGross * FREQ_MULTIPLIERS[primaryFreq];
-  const primaryMonthlyNet = calcNetPay(pay.grossPay, pay.fedTaxAmt, pay.ssTaxAmt, pay.medicareAmt, pay.stateTaxAmt, pay.retirementAmt, pay.savingsDeductions, pay.otherDeductions, primaryFreq);
+  // Primary calculations
+  const primaryAnnualGross = parseFloat(pay.grossPay) || 0;
+  const primaryMonthlyGross = primaryAnnualGross / 12;
+  const primaryPerPaycheckGross = primaryAnnualGross / FREQ_PERIODS[primaryFreq];
+  const primaryMonthlyNet = calcMonthlyNet(pay.grossPay, pay.fedTaxAmt, pay.ssTaxAmt, pay.medicareAmt, pay.stateTaxAmt, pay.retirementAmt, pay.savingsDeductions, pay.otherDeductions, primaryFreq);
 
-  // Partner calculations (monthly)
-  const partnerPerPaycheckGross = parseFloat(pay.partnerGrossPay) || 0;
-  const partnerMonthlyGross = partnerPerPaycheckGross * FREQ_MULTIPLIERS[partnerFreq];
-  const partnerMonthlyNet = calcNetPay(pay.partnerGrossPay, pay.partnerFedTaxAmt, pay.partnerSsTaxAmt, pay.partnerMedicareAmt, pay.partnerStateTaxAmt, pay.partnerRetirementAmt, pay.partnerSavingsDeductions, pay.partnerOtherDeductions, partnerFreq);
+  // Partner calculations
+  const partnerAnnualGross = parseFloat(pay.partnerGrossPay) || 0;
+  const partnerMonthlyGross = partnerAnnualGross / 12;
+  const partnerPerPaycheckGross = partnerAnnualGross / FREQ_PERIODS[partnerFreq];
+  const partnerMonthlyNet = calcMonthlyNet(pay.partnerGrossPay, pay.partnerFedTaxAmt, pay.partnerSsTaxAmt, pay.partnerMedicareAmt, pay.partnerStateTaxAmt, pay.partnerRetirementAmt, pay.partnerSavingsDeductions, pay.partnerOtherDeductions, partnerFreq);
 
   // Simple mode
   const netIncome = parseFloat(pay.netIncome) || 0;
@@ -300,10 +329,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
 
   // Advanced mode totals
   const combinedNetPay = primaryMonthlyNet + (partnerOpen ? partnerMonthlyNet : 0);
-  const combinedGross = primaryMonthlyGross + (partnerOpen ? partnerMonthlyGross : 0);
+  const combinedMonthlyGross = primaryMonthlyGross + (partnerOpen ? partnerMonthlyGross : 0);
   const householdNetForSavings = combinedNetPay - budgetTotal;
 
-  const tithePercent = combinedGross > 0 ? ((titheAmt / combinedGross) * 100).toFixed(2) : '0.00';
+  const tithePercent = combinedMonthlyGross > 0 ? ((titheAmt / combinedMonthlyGross) * 100).toFixed(2) : '0.00';
   const surplusLabel = (amount: number) => amount >= 0 ? 'Monthly Surplus' : 'Monthly Deficit';
   const surplusHighlight = (amount: number): 'positive' | 'negative' | undefined => amount >= 0 ? 'positive' : 'negative';
 
@@ -338,7 +367,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
             <>
               <IncomeBreakdown
                 label="Primary Income"
-                grossPay={pay.grossPay} onGrossPayChange={up('grossPay')}
+                annualGross={pay.grossPay} onAnnualGrossChange={up('grossPay')}
                 fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
                 ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
                 medicareAmt={pay.medicareAmt} onMedicareAmtChange={up('medicareAmt')}
@@ -347,8 +376,8 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                 savingsDeductions={pay.savingsDeductions} onSavingsDeductionsChange={up('savingsDeductions')}
                 otherDeductions={pay.otherDeductions} onOtherDeductionsChange={up('otherDeductions')}
                 payFrequency={primaryFreq} onPayFrequencyChange={setPrimaryFreq}
-                onBlur={saveAll} computedNetPay={primaryMonthlyNet}
-                perPaycheckGross={primaryPerPaycheckGross} monthlyGross={primaryMonthlyGross}
+                onBlur={saveAll} computedMonthlyNet={primaryMonthlyNet}
+                monthlyGross={primaryMonthlyGross} perPaycheckGross={primaryPerPaycheckGross}
               />
 
               <div className="my-2 border-t border-border" />
@@ -365,7 +394,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               {partnerOpen && (
                 <IncomeBreakdown
                   label="Partner Income"
-                  grossPay={pay.partnerGrossPay} onGrossPayChange={up('partnerGrossPay')}
+                  annualGross={pay.partnerGrossPay} onAnnualGrossChange={up('partnerGrossPay')}
                   fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
                   ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
                   medicareAmt={pay.partnerMedicareAmt} onMedicareAmtChange={up('partnerMedicareAmt')}
@@ -374,8 +403,8 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                   savingsDeductions={pay.partnerSavingsDeductions} onSavingsDeductionsChange={up('partnerSavingsDeductions')}
                   otherDeductions={pay.partnerOtherDeductions} onOtherDeductionsChange={up('partnerOtherDeductions')}
                   payFrequency={partnerFreq} onPayFrequencyChange={setPartnerFreq}
-                  onBlur={saveAll} computedNetPay={partnerMonthlyNet}
-                  perPaycheckGross={partnerPerPaycheckGross} monthlyGross={partnerMonthlyGross}
+                  onBlur={saveAll} computedMonthlyNet={partnerMonthlyNet}
+                  monthlyGross={partnerMonthlyGross} perPaycheckGross={partnerPerPaycheckGross}
                 />
               )}
 
