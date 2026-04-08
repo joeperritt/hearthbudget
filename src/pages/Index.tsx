@@ -20,6 +20,8 @@ import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { PastMonthsView } from '@/components/hearth/PastMonthsView';
+import { FinancialToolsView } from '@/components/hearth/FinancialToolsView';
+import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
 
 const Index = () => {
   const {

@@ -58,6 +58,19 @@ export function MoreView({ onSelect }: MoreViewProps) {
         </button>
 
         <button
+          onClick={() => onSelect('financial-tools')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Calculator size={20} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Financial Tools</p>
+            <p className="text-xs text-muted-foreground">Calculators powered by your real data</p>
+          </div>
+        </button>
+
+        <button
           onClick={() => onSelect('trends')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
         >
