@@ -168,7 +168,7 @@ const Index = () => {
   } = useBudgetInsights(
     activeMonth, categories, fixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
-    householdId,
+    householdId, planningData,
   );
 
   // Auto-fetch insights on first dashboard load
