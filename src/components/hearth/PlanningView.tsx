@@ -22,6 +22,8 @@ interface PlanningViewProps {
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
   onBack: () => void;
+  primaryName?: string;
+  partnerName?: string | null;
 }
 
 type PayFrequency = 'monthly' | 'semimonthly' | 'biweekly' | 'weekly';
