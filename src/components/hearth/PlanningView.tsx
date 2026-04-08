@@ -298,31 +298,16 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           ) : (
             <>
               {/* Net Income Mode — simple */}
-              <InputRow label="Monthly Take-Home Pay" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Take-Home Pay (Joe)" value={pay.netIncome} onChange={up('netIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Take-Home Pay (Katie)" value={pay.katieNetIncome} onChange={up('katieNetIncome')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Household Income" computed={totalHouseholdIncome} bold />
 
               <div className="my-2 border-t border-border" />
 
-              <div className="flex items-center justify-between py-2.5 border-b border-border/50">
-                <span className="text-sm text-foreground">Giving Total</span>
-                <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheAmt)}</span>
-              </div>
+              <InputRow label="Budget Total" computed={budgetTotal} bold />
+              <InputRow label="Net for Savings" computed={simpleNetForSavings} bold />
             </>
           )}
-
-          <InputRow label="Budget Total" computed={budgetTotal} bold />
-          <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
-          <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
-
-          <div className="my-2 border-t border-border" />
-
-          <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
-          <InputRow label="Total Katie Pay" computed={totalKatiePay} />
-
-          <div className="my-2 border-t border-border" />
-          <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
         </div>
       </div>
     </div>
