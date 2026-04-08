@@ -527,7 +527,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           {showPartner && (
             <>
               <div className="border-t border-border/50 pt-3" />
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Partner</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{ptName}</p>
 
               {/* Partner Income Type */}
               <div className="flex items-center justify-between">
