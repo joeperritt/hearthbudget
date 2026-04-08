@@ -162,9 +162,9 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
   const medicareTax = payMode === 'estimate' ? gross * (parseFloat(pay.medicareRate) || 0) / 100 : (parseFloat(pay.medicareAmt) || 0);
-  const scTax = payMode === 'estimate' ? gross * (parseFloat(pay.scTaxRate) || 0) / 100 : (parseFloat(pay.scTaxAmt) || 0);
-  const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
-  const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
+  const stateTax = payMode === 'estimate' ? gross * (parseFloat(pay.stateTaxRate) || 0) / 100 : (parseFloat(pay.stateTaxAmt) || 0);
+  const retirement = payMode === 'estimate' ? gross * (parseFloat(pay.retirementRate) || 0) / 100 : (parseFloat(pay.retirementAmt) || 0);
+  const computedNetPay = gross - fedTax - ssTax - medicareTax - stateTax - retirement;
 
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
@@ -183,18 +183,14 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
   // Advanced mode totals
-  const creditCard = parseFloat(pay.creditCardTotal) || 0;
-  const checking = parseFloat(pay.checkingTotal) || 0;
-  const totalCheckingNeed = budgetTotal + creditCard - checking;
-  const netForSavings = computedNetPay - totalCheckingNeed;
-
-  const katiePay1 = parseFloat(pay.katiePay1) || 0;
-  const katiePay2 = parseFloat(pay.katiePay2) || 0;
-  const totalKatiePay = katiePay1 + katiePay2;
-  const totalMonthlySavings = netForSavings + totalKatiePay;
+  const additionalIncome = parseFloat(pay.additionalIncome) || 0;
+  const householdNetForSavings = computedNetPay + additionalIncome - budgetTotal;
 
   // Gross-mode percentages
   const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
+
+  // Dynamic surplus/deficit label
+  const surplusLabel = (amount: number) => amount >= 0 ? 'Monthly Surplus' : 'Monthly Deficit';
 
   return (
     <div className="max-w-lg mx-auto pb-28">
