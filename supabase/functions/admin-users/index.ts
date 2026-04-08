@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
         })
       );
 
-      return new Response(JSON.stringify({ users: enriched }), {
+      return new Response(JSON.stringify({ users: enrichedWithEmail }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
