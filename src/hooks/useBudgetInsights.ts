@@ -173,9 +173,33 @@ async function buildBudgetSummary(
   const retirementRate = parseFloat(planningData.retirementRate || '0') || 0;
   const retirementAmt = parseFloat(planningData.retirementAmt || '0') || 0;
   const payMode = planningData.payMode || 'estimate';
+  const calcDed = (gross: number, rate: string, amt: string) =>
+    payMode === 'estimate' ? gross * (parseFloat(rate) || 0) / 100 : (parseFloat(amt) || 0);
   const retirementContribution = incomeMode === 'gross'
-    ? (payMode === 'estimate' ? grossIncome * retirementRate / 100 : retirementAmt)
+    ? calcDed(grossIncome, planningData.retirementRate || '0', planningData.retirementAmt || '0')
     : 0;
+
+  // Partner data
+  const partnerEnabled = planningData.partnerEnabled === 'true';
+  const partnerGross = parseFloat(planningData.partnerGrossPay || '0') || 0;
+  const partnerRetirementRate = parseFloat(planningData.partnerRetirementRate || '0') || 0;
+  const partnerRetirement = partnerEnabled && incomeMode === 'gross'
+    ? calcDed(partnerGross, planningData.partnerRetirementRate || '0', planningData.partnerRetirementAmt || '0')
+    : 0;
+
+  // Calculate partner net pay
+  const partnerFedTax = calcDed(partnerGross, planningData.partnerFedTaxRate || '0', planningData.partnerFedTaxAmt || '0');
+  const partnerSsTax = calcDed(partnerGross, planningData.partnerSsTaxRate || '0', planningData.partnerSsTaxAmt || '0');
+  const partnerMedicare = calcDed(partnerGross, planningData.partnerMedicareRate || '0', planningData.partnerMedicareAmt || '0');
+  const partnerStateTax = calcDed(partnerGross, planningData.partnerStateTaxRate || '0', planningData.partnerStateTaxAmt || '0');
+  const partnerNetPay = partnerGross - partnerFedTax - partnerSsTax - partnerMedicare - partnerStateTax - partnerRetirement;
+
+  // Primary net pay
+  const primaryFedTax = calcDed(grossIncome, planningData.fedTaxRate || '0', planningData.fedTaxAmt || '0');
+  const primarySsTax = calcDed(grossIncome, planningData.ssTaxRate || '0', planningData.ssTaxAmt || '0');
+  const primaryMedicare = calcDed(grossIncome, planningData.medicareRate || '0', planningData.medicareAmt || '0');
+  const primaryStateTax = calcDed(grossIncome, planningData.stateTaxRate || '0', planningData.stateTaxAmt || '0');
+  const primaryNetPay = grossIncome - primaryFedTax - primarySsTax - primaryMedicare - primaryStateTax - retirementContribution;
 
   const incomeData: BudgetSummary['incomeData'] = {};
   if (netIncome > 0) incomeData.netIncome = netIncome;
@@ -183,6 +207,16 @@ async function buildBudgetSummary(
     incomeData.grossIncome = grossIncome;
     incomeData.retirementContribution = retirementContribution;
     incomeData.retirementRate = retirementRate;
+
+    if (partnerEnabled && partnerGross > 0) {
+      incomeData.partnerGrossIncome = partnerGross;
+      incomeData.partnerNetPay = partnerNetPay;
+      incomeData.partnerRetirementContribution = partnerRetirement;
+      incomeData.partnerRetirementRate = partnerRetirementRate;
+      incomeData.combinedGrossIncome = grossIncome + partnerGross;
+      incomeData.combinedNetPay = primaryNetPay + partnerNetPay;
+      incomeData.combinedRetirementContribution = retirementContribution + partnerRetirement;
+    }
   }
 
   return {
