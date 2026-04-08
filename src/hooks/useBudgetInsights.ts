@@ -175,7 +175,7 @@ async function buildBudgetSummary(
   if (incomeMode === 'gross' && grossIncome > 0) {
     incomeData.grossIncome = grossIncome;
     incomeData.retirementContribution = retirementContribution;
-    incomeData.retirementRate = roth401kRate;
+    incomeData.retirementRate = retirementRate;
   }
 
   return {
