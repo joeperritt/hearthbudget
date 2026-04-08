@@ -177,7 +177,7 @@ export function AccountManagement() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{u.display_name}</p>
                   <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>
-                  <p className="text-[10px] text-muted-foreground">Last login: {formatLastLogin(u.last_sign_in_at)}</p>
+                  <p className="text-[10px] text-muted-foreground">Last active: {formatLastLogin(u.last_seen_at)}</p>
                 </div>
                 <button onClick={() => startEdit(u)} className="p-1.5 text-muted-foreground hover:text-accent active:scale-95 transition-all">
                   <Pencil size={14} />
