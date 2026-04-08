@@ -385,6 +385,8 @@ const Index = () => {
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
             onBack={() => setMoreSubView('menu')}
+            primaryName={householdMembers.primaryName}
+            partnerName={householdMembers.partnerName}
           />
         )}
         {activeTab === 'more' && moreSubView === 'settings' && (
