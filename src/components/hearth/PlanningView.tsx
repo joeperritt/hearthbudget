@@ -623,10 +623,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
           </div>
         </div>
       )}
-
-
-
-
+      <div className="px-6 mt-5">
         {/* ───── BASIC MODE ───── */}
         {mode === 'basic' && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
