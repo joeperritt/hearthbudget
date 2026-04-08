@@ -39,6 +39,12 @@ interface BudgetSummary {
   unassignedCount: number;
   priorMonth?: PriorMonthData;
   categoryChanges?: CategoryChange[];
+  incomeData?: {
+    netIncome?: number;
+    grossIncome?: number;
+    retirementContribution?: number;
+    retirementRate?: number;
+  };
 }
 
 async function buildBudgetSummary(
