@@ -25,18 +25,17 @@ interface PayFields {
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
-  scTaxRate: string;
-  roth401kRate: string;
+  stateTaxRate: string;
+  retirementRate: string;
   fedTaxAmt: string;
   ssTaxAmt: string;
   medicareAmt: string;
-  scTaxAmt: string;
-  roth401kAmt: string;
+  stateTaxAmt: string;
+  retirementAmt: string;
   titheAmt: string;
   creditCardTotal: string;
   checkingTotal: string;
-  katiePay1: string;
-  katiePay2: string;
+  additionalIncome: string;
 }
 
 const DEFAULT_FIELDS: PayFields = {
