@@ -168,9 +168,11 @@ async function buildBudgetSummary(
   }
 
   // Build income data from planning fields
-  // grossPay now stores ANNUAL gross income
   const incomeMode = planningData.incomeMode || 'net';
   const netIncome = parseFloat(planningData.netIncome || '0') || 0;
+  const incomeTypeVal = planningData.incomeType || 'w2';
+  const filingStatusVal = planningData.filingStatus || 'single';
+  const stateCodeVal = planningData.stateCode || '';
 
   const freqMultipliers: Record<string, number> = { monthly: 1, semimonthly: 2, biweekly: 26 / 12, weekly: 52 / 12 };
   const freqPeriods: Record<string, number> = { monthly: 12, semimonthly: 24, biweekly: 26, weekly: 52 };
@@ -209,6 +211,9 @@ async function buildBudgetSummary(
 
   const incomeData: BudgetSummary['incomeData'] = {};
   if (netIncome > 0) incomeData.netIncome = netIncome;
+  incomeData.incomeType = incomeTypeVal;
+  incomeData.filingStatus = filingStatusVal;
+  if (stateCodeVal) incomeData.stateCode = stateCodeVal;
   if (incomeMode === 'gross' && primaryAnnualGross > 0) {
     incomeData.annualGrossIncome = primaryAnnualGross;
     incomeData.grossIncome = primaryMonthlyGross;
