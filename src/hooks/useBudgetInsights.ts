@@ -159,6 +159,25 @@ async function buildBudgetSummary(
     }
   }
 
+  // Build income data from planning fields
+  const incomeMode = planningData.incomeMode || 'net';
+  const netIncome = parseFloat(planningData.netIncome || '0') || 0;
+  const grossIncome = parseFloat(planningData.grossPay || '0') || 0;
+  const roth401kRate = parseFloat(planningData.roth401kRate || '0') || 0;
+  const roth401kAmt = parseFloat(planningData.roth401kAmt || '0') || 0;
+  const payMode = planningData.payMode || 'estimate';
+  const retirementContribution = incomeMode === 'gross'
+    ? (payMode === 'estimate' ? grossIncome * roth401kRate / 100 : roth401kAmt)
+    : 0;
+
+  const incomeData: BudgetSummary['incomeData'] = {};
+  if (netIncome > 0) incomeData.netIncome = netIncome;
+  if (incomeMode === 'gross' && grossIncome > 0) {
+    incomeData.grossIncome = grossIncome;
+    incomeData.retirementContribution = retirementContribution;
+    incomeData.retirementRate = roth401kRate;
+  }
+
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
@@ -175,6 +194,7 @@ async function buildBudgetSummary(
     unassignedCount,
     priorMonth,
     categoryChanges,
+    ...(Object.keys(incomeData).length > 0 ? { incomeData } : {}),
   };
 }
 
