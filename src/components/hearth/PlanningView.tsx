@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY } from '@/types/budget';
 import { format, addMonths } from 'date-fns';
-import { ArrowLeft, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Info, Plus, Minus } from 'lucide-react';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -35,7 +35,19 @@ interface PayFields {
   titheAmt: string;
   creditCardTotal: string;
   checkingTotal: string;
-  additionalIncome: string;
+  // Partner fields
+  partnerEnabled: string;
+  partnerGrossPay: string;
+  partnerFedTaxRate: string;
+  partnerSsTaxRate: string;
+  partnerMedicareRate: string;
+  partnerStateTaxRate: string;
+  partnerRetirementRate: string;
+  partnerFedTaxAmt: string;
+  partnerSsTaxAmt: string;
+  partnerMedicareAmt: string;
+  partnerStateTaxAmt: string;
+  partnerRetirementAmt: string;
 }
 
 const DEFAULT_FIELDS: PayFields = {
@@ -55,7 +67,18 @@ const DEFAULT_FIELDS: PayFields = {
   titheAmt: '3000',
   creditCardTotal: '',
   checkingTotal: '',
-  additionalIncome: '',
+  partnerEnabled: 'false',
+  partnerGrossPay: '',
+  partnerFedTaxRate: '15.15',
+  partnerSsTaxRate: '6.20',
+  partnerMedicareRate: '1.45',
+  partnerStateTaxRate: '5.70',
+  partnerRetirementRate: '6.00',
+  partnerFedTaxAmt: '',
+  partnerSsTaxAmt: '',
+  partnerMedicareAmt: '',
+  partnerStateTaxAmt: '',
+  partnerRetirementAmt: '',
 };
 
 function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold, sublabel }: {
@@ -131,6 +154,70 @@ function DeductionRow({ label, mode, rate, onRateChange, dollarAmt, onDollarChan
   );
 }
 
+function calcDeduction(mode: PayMode, gross: number, rate: string, amt: string) {
+  return mode === 'estimate' ? gross * (parseFloat(rate) || 0) / 100 : (parseFloat(amt) || 0);
+}
+
+interface IncomeBreakdownProps {
+  label: string;
+  grossPay: string;
+  onGrossPayChange: (v: string) => void;
+  fedTaxRate: string; onFedTaxRateChange: (v: string) => void;
+  ssTaxRate: string; onSsTaxRateChange: (v: string) => void;
+  medicareRate: string; onMedicareRateChange: (v: string) => void;
+  stateTaxRate: string; onStateTaxRateChange: (v: string) => void;
+  retirementRate: string; onRetirementRateChange: (v: string) => void;
+  fedTaxAmt: string; onFedTaxAmtChange: (v: string) => void;
+  ssTaxAmt: string; onSsTaxAmtChange: (v: string) => void;
+  medicareAmt: string; onMedicareAmtChange: (v: string) => void;
+  stateTaxAmt: string; onStateTaxAmtChange: (v: string) => void;
+  retirementAmt: string; onRetirementAmtChange: (v: string) => void;
+  payMode: PayMode;
+  onBlur: () => void;
+  computedNetPay: number;
+}
+
+function IncomeBreakdown({ label, grossPay, onGrossPayChange, fedTaxRate, onFedTaxRateChange, ssTaxRate, onSsTaxRateChange, medicareRate, onMedicareRateChange, stateTaxRate, onStateTaxRateChange, retirementRate, onRetirementRateChange, fedTaxAmt, onFedTaxAmtChange, ssTaxAmt, onSsTaxAmtChange, medicareAmt, onMedicareAmtChange, stateTaxAmt, onStateTaxAmtChange, retirementAmt, onRetirementAmtChange, payMode, onBlur, computedNetPay }: IncomeBreakdownProps) {
+  const gross = parseFloat(grossPay) || 0;
+  const fedTax = calcDeduction(payMode, gross, fedTaxRate, fedTaxAmt);
+  const ssTax = calcDeduction(payMode, gross, ssTaxRate, ssTaxAmt);
+  const medicareTax = calcDeduction(payMode, gross, medicareRate, medicareAmt);
+  const stateTax = calcDeduction(payMode, gross, stateTaxRate, stateTaxAmt);
+  const retirement = calcDeduction(payMode, gross, retirementRate, retirementAmt);
+
+  return (
+    <>
+      <div className="flex items-center py-2 border-b border-border/50">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <InputRow label="Gross Pay" value={grossPay} onChange={onGrossPayChange} onBlur={onBlur} prefix="$" />
+      <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
+        <DeductionRow label="Federal Income Tax" mode={payMode}
+          rate={fedTaxRate} onRateChange={onFedTaxRateChange}
+          dollarAmt={fedTaxAmt} onDollarChange={onFedTaxAmtChange}
+          computedAmt={fedTax} gross={gross} onBlur={onBlur} />
+        <DeductionRow label="Social Security" mode={payMode}
+          rate={ssTaxRate} onRateChange={onSsTaxRateChange}
+          dollarAmt={ssTaxAmt} onDollarChange={onSsTaxAmtChange}
+          computedAmt={ssTax} gross={gross} onBlur={onBlur} />
+        <DeductionRow label="Medicare" mode={payMode}
+          rate={medicareRate} onRateChange={onMedicareRateChange}
+          dollarAmt={medicareAmt} onDollarChange={onMedicareAmtChange}
+          computedAmt={medicareTax} gross={gross} onBlur={onBlur} />
+        <DeductionRow label="State Income Tax" mode={payMode}
+          rate={stateTaxRate} onRateChange={onStateTaxRateChange}
+          dollarAmt={stateTaxAmt} onDollarChange={onStateTaxAmtChange}
+          computedAmt={stateTax} gross={gross} onBlur={onBlur} />
+        <DeductionRow label="Retirement Contribution" mode={payMode}
+          rate={retirementRate} onRateChange={onRetirementRateChange}
+          dollarAmt={retirementAmt} onDollarChange={onRetirementAmtChange}
+          computedAmt={retirement} gross={gross} onBlur={onBlur} />
+      </div>
+      <InputRow label="Net Pay" computed={computedNetPay} bold />
+    </>
+  );
+}
+
 export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
   const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
   const [payMode, setPayMode] = useState<PayMode>(() => (planningData.payMode as PayMode) || 'estimate');
@@ -141,6 +228,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
     }
     return restored;
   });
+  const [partnerOpen, setPartnerOpen] = useState(() => pay.partnerEnabled === 'true');
 
   const up = (field: keyof PayFields) => (v: string) => setPay(p => ({ ...p, [field]: v }));
 
@@ -154,18 +242,36 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
     onUpdatePlanningData({ ...pay, payMode, incomeMode: next ? 'gross' : 'net' });
   };
 
-  // Calculations
+  const togglePartner = () => {
+    const next = !partnerOpen;
+    setPartnerOpen(next);
+    const updated = { ...pay, partnerEnabled: next ? 'true' : 'false' };
+    setPay(updated);
+    onUpdatePlanningData({ ...updated, payMode, incomeMode: 'gross' });
+  };
+
+  // Primary calculations
   const gross = parseFloat(pay.grossPay) || 0;
   const netIncome = parseFloat(pay.netIncome) || 0;
   const katieNetIncome = parseFloat(pay.katieNetIncome) || 0;
 
-  const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
-  const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
-  const medicareTax = payMode === 'estimate' ? gross * (parseFloat(pay.medicareRate) || 0) / 100 : (parseFloat(pay.medicareAmt) || 0);
-  const stateTax = payMode === 'estimate' ? gross * (parseFloat(pay.stateTaxRate) || 0) / 100 : (parseFloat(pay.stateTaxAmt) || 0);
-  const retirement = payMode === 'estimate' ? gross * (parseFloat(pay.retirementRate) || 0) / 100 : (parseFloat(pay.retirementAmt) || 0);
+  const fedTax = calcDeduction(payMode, gross, pay.fedTaxRate, pay.fedTaxAmt);
+  const ssTax = calcDeduction(payMode, gross, pay.ssTaxRate, pay.ssTaxAmt);
+  const medicareTax = calcDeduction(payMode, gross, pay.medicareRate, pay.medicareAmt);
+  const stateTax = calcDeduction(payMode, gross, pay.stateTaxRate, pay.stateTaxAmt);
+  const retirement = calcDeduction(payMode, gross, pay.retirementRate, pay.retirementAmt);
   const computedNetPay = gross - fedTax - ssTax - medicareTax - stateTax - retirement;
 
+  // Partner calculations
+  const partnerGross = parseFloat(pay.partnerGrossPay) || 0;
+  const partnerFedTax = calcDeduction(payMode, partnerGross, pay.partnerFedTaxRate, pay.partnerFedTaxAmt);
+  const partnerSsTax = calcDeduction(payMode, partnerGross, pay.partnerSsTaxRate, pay.partnerSsTaxAmt);
+  const partnerMedicareTax = calcDeduction(payMode, partnerGross, pay.partnerMedicareRate, pay.partnerMedicareAmt);
+  const partnerStateTax = calcDeduction(payMode, partnerGross, pay.partnerStateTaxRate, pay.partnerStateTaxAmt);
+  const partnerRetirement = calcDeduction(payMode, partnerGross, pay.partnerRetirementRate, pay.partnerRetirementAmt);
+  const partnerNetPay = partnerGross - partnerFedTax - partnerSsTax - partnerMedicareTax - partnerStateTax - partnerRetirement;
+
+  // Budget totals
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
   const variableTotal = categories.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
@@ -183,11 +289,12 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
   // Advanced mode totals
-  const additionalIncome = parseFloat(pay.additionalIncome) || 0;
-  const householdNetForSavings = computedNetPay + additionalIncome - budgetTotal;
+  const combinedNetPay = computedNetPay + (partnerOpen ? partnerNetPay : 0);
+  const combinedGross = gross + (partnerOpen ? partnerGross : 0);
+  const householdNetForSavings = combinedNetPay - budgetTotal;
 
   // Gross-mode percentages
-  const tithePercent = gross > 0 ? ((titheAmt / gross) * 100).toFixed(2) : '0.00';
+  const tithePercent = combinedGross > 0 ? ((titheAmt / combinedGross) * 100).toFixed(2) : '0.00';
 
   // Dynamic surplus/deficit label
   const surplusLabel = (amount: number) => amount >= 0 ? 'Monthly Surplus' : 'Monthly Deficit';
@@ -242,33 +349,56 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         <div className="bg-card rounded-lg shadow-sm px-4 py-2">
           {advancedMode ? (
             <>
-              {/* Gross Income Mode */}
-              <InputRow label="Gross Pay" value={pay.grossPay} onChange={up('grossPay')} onBlur={saveAll} prefix="$" />
+              {/* Primary Income */}
+              <IncomeBreakdown
+                label="Primary Income"
+                grossPay={pay.grossPay} onGrossPayChange={up('grossPay')}
+                fedTaxRate={pay.fedTaxRate} onFedTaxRateChange={up('fedTaxRate')}
+                ssTaxRate={pay.ssTaxRate} onSsTaxRateChange={up('ssTaxRate')}
+                medicareRate={pay.medicareRate} onMedicareRateChange={up('medicareRate')}
+                stateTaxRate={pay.stateTaxRate} onStateTaxRateChange={up('stateTaxRate')}
+                retirementRate={pay.retirementRate} onRetirementRateChange={up('retirementRate')}
+                fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
+                ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
+                medicareAmt={pay.medicareAmt} onMedicareAmtChange={up('medicareAmt')}
+                stateTaxAmt={pay.stateTaxAmt} onStateTaxAmtChange={up('stateTaxAmt')}
+                retirementAmt={pay.retirementAmt} onRetirementAmtChange={up('retirementAmt')}
+                payMode={payMode} onBlur={saveAll} computedNetPay={computedNetPay}
+              />
 
-              <div className="pl-3 border-l-2 border-border/30 ml-1 mt-1 mb-1">
-                <DeductionRow label="Federal Income Tax" mode={payMode}
-                  rate={pay.fedTaxRate} onRateChange={up('fedTaxRate')}
-                  dollarAmt={pay.fedTaxAmt} onDollarChange={up('fedTaxAmt')}
-                  computedAmt={fedTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="Social Security" mode={payMode}
-                  rate={pay.ssTaxRate} onRateChange={up('ssTaxRate')}
-                  dollarAmt={pay.ssTaxAmt} onDollarChange={up('ssTaxAmt')}
-                  computedAmt={ssTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="Medicare" mode={payMode}
-                  rate={pay.medicareRate} onRateChange={up('medicareRate')}
-                  dollarAmt={pay.medicareAmt} onDollarChange={up('medicareAmt')}
-                  computedAmt={medicareTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="State Income Tax" mode={payMode}
-                  rate={pay.stateTaxRate} onRateChange={up('stateTaxRate')}
-                  dollarAmt={pay.stateTaxAmt} onDollarChange={up('stateTaxAmt')}
-                  computedAmt={stateTax} gross={gross} onBlur={saveAll} />
-                <DeductionRow label="Retirement Contribution" mode={payMode}
-                  rate={pay.retirementRate} onRateChange={up('retirementRate')}
-                  dollarAmt={pay.retirementAmt} onDollarChange={up('retirementAmt')}
-                  computedAmt={retirement} gross={gross} onBlur={saveAll} />
-              </div>
+              <div className="my-2 border-t border-border" />
 
-              <InputRow label="Net Pay" computed={computedNetPay} bold />
+              {/* Partner Income Toggle */}
+              <button
+                onClick={togglePartner}
+                className="flex items-center justify-between w-full py-2.5 border-b border-border/50 active:scale-[0.99] transition-transform"
+              >
+                <span className="text-sm font-medium text-foreground">Partner Income</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{partnerOpen ? 'Hide' : 'Show'}</span>
+                  {partnerOpen
+                    ? <Minus size={14} className="text-muted-foreground" />
+                    : <Plus size={14} className="text-muted-foreground" />}
+                </div>
+              </button>
+
+              {partnerOpen && (
+                <IncomeBreakdown
+                  label="Partner Income"
+                  grossPay={pay.partnerGrossPay} onGrossPayChange={up('partnerGrossPay')}
+                  fedTaxRate={pay.partnerFedTaxRate} onFedTaxRateChange={up('partnerFedTaxRate')}
+                  ssTaxRate={pay.partnerSsTaxRate} onSsTaxRateChange={up('partnerSsTaxRate')}
+                  medicareRate={pay.partnerMedicareRate} onMedicareRateChange={up('partnerMedicareRate')}
+                  stateTaxRate={pay.partnerStateTaxRate} onStateTaxRateChange={up('partnerStateTaxRate')}
+                  retirementRate={pay.partnerRetirementRate} onRetirementRateChange={up('partnerRetirementRate')}
+                  fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
+                  ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
+                  medicareAmt={pay.partnerMedicareAmt} onMedicareAmtChange={up('partnerMedicareAmt')}
+                  stateTaxAmt={pay.partnerStateTaxAmt} onStateTaxAmtChange={up('partnerStateTaxAmt')}
+                  retirementAmt={pay.partnerRetirementAmt} onRetirementAmtChange={up('partnerRetirementAmt')}
+                  payMode={payMode} onBlur={saveAll} computedNetPay={partnerNetPay}
+                />
+              )}
 
               <div className="my-2 border-t border-border" />
 
@@ -290,8 +420,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               </div>
 
               <InputRow label="Budget Total" computed={budgetTotal} bold />
-              <InputRow label="Additional Income" value={pay.additionalIncome} onChange={up('additionalIncome')} onBlur={saveAll} prefix="$"
-                sublabel="Spouse, freelance, rental, etc." />
               <InputRow label="Household Net for Savings" computed={householdNetForSavings} bold />
 
               <div className="my-2 border-t border-border" />
