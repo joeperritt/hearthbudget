@@ -546,10 +546,10 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm text-foreground">State</span>
-                  <p className="text-[10px] text-muted-foreground">Defaults to primary if blank</p>
+                  <p className="text-[10px] text-muted-foreground">Defaults to {pName}'s if blank</p>
                 </div>
                 <Select value={partnerStateCode} onValueChange={v => updateAndSave({ partnerStateCode: v })}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Same as primary" /></SelectTrigger>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder={`Same as ${pName}`} /></SelectTrigger>
                   <SelectContent className="max-h-60">
                     {STATES.map(s => (
                       <SelectItem key={s.abbr} value={s.abbr} className="text-xs">{s.name}</SelectItem>
