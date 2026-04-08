@@ -285,7 +285,7 @@ function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string
   return perPaycheckNet * FREQ_MULTIPLIERS[freq];
 }
 
-export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack }: PlanningViewProps) {
+export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack, primaryName, partnerName }: PlanningViewProps) {
   const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
   const [pay, setPay] = useState<PayFields>(() => {
     const restored: PayFields = { ...DEFAULT_FIELDS };
