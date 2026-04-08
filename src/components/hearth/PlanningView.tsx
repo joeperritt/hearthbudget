@@ -294,6 +294,21 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                   Gross income data is used by the AI Advisor for financial health insights like giving as a percentage of gross and effective savings rate. This data is never shared externally.
                 </p>
               </div>
+
+              <InputRow label="Budget Total" computed={budgetTotal} bold />
+              <InputRow label="Credit Card Total" value={pay.creditCardTotal} onChange={up('creditCardTotal')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Checking Total" value={pay.checkingTotal} onChange={up('checkingTotal')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Checking Need" computed={totalCheckingNeed} bold />
+              <InputRow label="Net for Savings (Joe)" computed={netForSavings} bold />
+
+              <div className="my-2 border-t border-border" />
+
+              <InputRow label="Katie Pay 1" value={pay.katiePay1} onChange={up('katiePay1')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Katie Pay 2" value={pay.katiePay2} onChange={up('katiePay2')} onBlur={saveAll} prefix="$" />
+              <InputRow label="Total Katie Pay" computed={totalKatiePay} />
+
+              <div className="my-2 border-t border-border" />
+              <InputRow label="Total Monthly Savings" computed={totalMonthlySavings} bold />
             </>
           ) : (
             <>
