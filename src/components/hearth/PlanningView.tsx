@@ -659,63 +659,52 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               prefix="$"
               bold
             />
-            {/* Partner monthly take-home — show if there's another household member */}
-            {hasPartnerProfile && (
-              <InputRow
-                label={`Monthly Take-Home Pay (${ptName})`}
-                value={pay.katieNetIncome}
-                onChange={up('katieNetIncome')}
-                onBlur={saveAll}
-                prefix="$"
-                bold
-              />
-            )}
+            {/* Primary annual gross — secondary styling */}
+            <div className="flex items-center justify-between py-2 border-b border-border/50">
+              <div>
+                <span className="text-xs text-muted-foreground">{hasPartnerProfile ? `${pName}'s ` : ''}Annual Gross — for AI insights & Financial Tools</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground/70">$</span>
+                <input
+                  type="number" step="1" value={pay.grossPay}
+                  onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
+                  onBlur={saveAll}
+                  placeholder="0"
+                  className="w-24 text-right px-2 py-1 rounded bg-background border border-border/60 text-xs tabular-nums text-muted-foreground focus:text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+                />
+              </div>
+            </div>
 
-            {/* Optional annual gross income — collapsed by default */}
-            <Collapsible open={grossOpen} onOpenChange={setGrossOpen}>
-              <CollapsibleTrigger className="flex items-center gap-1.5 w-full py-2.5 border-b border-border/50">
-                <ChevronDown size={12} className={`text-muted-foreground transition-transform duration-200 ${grossOpen ? 'rotate-180' : ''}`} />
-                <span className="text-xs text-muted-foreground">Annual Gross Income — used for AI insights &amp; Financial Tools</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="py-2 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">{hasPartnerProfile ? `${pName}'s` : ''} Annual Gross</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">$</span>
-                      <input
-                        type="number" step="1" value={pay.grossPay}
-                        onChange={e => setPay(p => ({ ...p, grossPay: e.target.value }))}
-                        onBlur={saveAll}
-                        placeholder="0"
-                        className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                      />
-                    </div>
+            {/* Partner monthly take-home */}
+            {hasPartnerProfile && (
+              <>
+                <InputRow
+                  label={`Monthly Take-Home Pay (${ptName})`}
+                  value={pay.katieNetIncome}
+                  onChange={up('katieNetIncome')}
+                  onBlur={saveAll}
+                  prefix="$"
+                  bold
+                />
+                {/* Partner annual gross — secondary styling */}
+                <div className="flex items-center justify-between py-2 border-b border-border/50">
+                  <div>
+                    <span className="text-xs text-muted-foreground">{ptName}'s Annual Gross — for AI insights & Financial Tools</span>
                   </div>
-                  {hasPartnerProfile && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">{ptName}'s Annual Gross</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">$</span>
-                        <input
-                          type="number" step="1" value={pay.partnerGrossPay}
-                          onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
-                          onBlur={saveAll}
-                          placeholder="0"
-                          className="w-28 text-right px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-start gap-1.5 pt-1">
-                    <Info size={10} className="text-muted-foreground mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Powers mortgage ratios, retirement planner, and AI giving-percentage insights. Not required for basic budgeting.
-                    </p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground/70">$</span>
+                    <input
+                      type="number" step="1" value={pay.partnerGrossPay}
+                      onChange={e => setPay(p => ({ ...p, partnerGrossPay: e.target.value }))}
+                      onBlur={saveAll}
+                      placeholder="0"
+                      className="w-24 text-right px-2 py-1 rounded bg-background border border-border/60 text-xs tabular-nums text-muted-foreground focus:text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    />
                   </div>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              </>
+            )}
 
             <div className="my-2 border-t border-border" />
             <InputRow label="Budget Total" computed={budgetTotal} bold />
