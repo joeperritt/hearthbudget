@@ -4,6 +4,8 @@ import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVIN
 import { useAccounts } from '@/hooks/useAccounts';
 import { useBudgetData } from '@/hooks/useBudgetData';
 import { useBudgetInsights } from '@/hooks/useBudgetInsights';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/hearth/BottomNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
