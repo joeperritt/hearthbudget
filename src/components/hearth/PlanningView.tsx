@@ -671,7 +671,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
 
                 {partnerOpen && (
                   <IncomeBreakdown
-                    label="Partner Income"
+                    label={`${ptName}'s Income`}
                     annualGross={partnerAnnualGross}
                     fedTaxAmt={pay.partnerFedTaxAmt} onFedTaxAmtChange={up('partnerFedTaxAmt')}
                     ssTaxAmt={pay.partnerSsTaxAmt} onSsTaxAmtChange={up('partnerSsTaxAmt')}
