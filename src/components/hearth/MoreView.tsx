@@ -1,7 +1,7 @@
-import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3, Clock } from 'lucide-react';
+import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3, Clock, Calculator } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months';
+type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months' | 'financial-tools';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
