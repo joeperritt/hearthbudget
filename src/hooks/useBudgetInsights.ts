@@ -39,6 +39,12 @@ interface BudgetSummary {
   unassignedCount: number;
   priorMonth?: PriorMonthData;
   categoryChanges?: CategoryChange[];
+  incomeData?: {
+    netIncome?: number;
+    grossIncome?: number;
+    retirementContribution?: number;
+    retirementRate?: number;
+  };
 }
 
 async function buildBudgetSummary(
@@ -52,6 +58,7 @@ async function buildBudgetSummary(
   unassignedCount: number,
   totalBudget: number,
   householdId: string,
+  planningData: Record<string, string>,
 ): Promise<BudgetSummary> {
   const today = new Date();
   const nextMonth = startOfMonth(addMonths(today, 1));
@@ -152,6 +159,25 @@ async function buildBudgetSummary(
     }
   }
 
+  // Build income data from planning fields
+  const incomeMode = planningData.incomeMode || 'net';
+  const netIncome = parseFloat(planningData.netIncome || '0') || 0;
+  const grossIncome = parseFloat(planningData.grossPay || '0') || 0;
+  const roth401kRate = parseFloat(planningData.roth401kRate || '0') || 0;
+  const roth401kAmt = parseFloat(planningData.roth401kAmt || '0') || 0;
+  const payMode = planningData.payMode || 'estimate';
+  const retirementContribution = incomeMode === 'gross'
+    ? (payMode === 'estimate' ? grossIncome * roth401kRate / 100 : roth401kAmt)
+    : 0;
+
+  const incomeData: BudgetSummary['incomeData'] = {};
+  if (netIncome > 0) incomeData.netIncome = netIncome;
+  if (incomeMode === 'gross' && grossIncome > 0) {
+    incomeData.grossIncome = grossIncome;
+    incomeData.retirementContribution = retirementContribution;
+    incomeData.retirementRate = roth401kRate;
+  }
+
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
@@ -168,6 +194,7 @@ async function buildBudgetSummary(
     unassignedCount,
     priorMonth,
     categoryChanges,
+    ...(Object.keys(incomeData).length > 0 ? { incomeData } : {}),
   };
 }
 
@@ -182,6 +209,7 @@ export function useBudgetInsights(
   unassignedCount: number,
   totalBudget: number,
   householdId: string,
+  planningData: Record<string, string>,
 ) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -194,8 +222,8 @@ export function useBudgetInsights(
 
   const getSummary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
-    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId,
-  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId]);
+    spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData,
+  ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData]);
 
   const fetchInsights = useCallback(async (force = false) => {
     const spentTotal = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
