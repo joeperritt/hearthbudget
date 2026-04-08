@@ -168,10 +168,6 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
   const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
 
-  // Simple mode totals
-  const totalHouseholdIncome = netIncome + katieNetIncome;
-  const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
-
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
   const variableTotal = categories.filter(c => c.group !== 'giving' && c.id !== GIVING_VARIABLE_CATEGORY).reduce((s, c) => s + c.budgeted, 0);
@@ -184,10 +180,15 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const titheAmt = rawTithe + givingVarAmt;
   const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheAmt;
 
+  // Simple mode totals
+  const totalHouseholdIncome = netIncome + katieNetIncome;
+  const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
+
+  // Advanced mode totals
   const creditCard = parseFloat(pay.creditCardTotal) || 0;
   const checking = parseFloat(pay.checkingTotal) || 0;
   const totalCheckingNeed = budgetTotal + creditCard - checking;
-  const netForSavings = effectiveNetPay - totalCheckingNeed;
+  const netForSavings = computedNetPay - totalCheckingNeed;
 
   const katiePay1 = parseFloat(pay.katiePay1) || 0;
   const katiePay2 = parseFloat(pay.katiePay2) || 0;
