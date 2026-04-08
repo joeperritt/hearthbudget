@@ -624,27 +624,8 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         </div>
       )}
 
-      {/* ───── MODE SELECTOR ───── */}
-      <div className="px-6 mt-5">
-        <div className="flex w-full rounded-lg bg-muted p-1 mb-4">
-          {(['basic', 'standard', 'advanced'] as PlanningMode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                onUpdatePlanningData({ ...pay, planningMode: m });
-              }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-md text-center transition-all ${
-                mode === m
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <span className="text-sm font-medium">{MODE_LABELS[m]}</span>
-              <span className="text-[10px] leading-tight opacity-70">{MODE_DESCRIPTIONS[m]}</span>
-            </button>
-          ))}
-        </div>
+
+
 
         {/* ───── BASIC MODE ───── */}
         {mode === 'basic' && (
