@@ -286,6 +286,8 @@ function calcMonthlyNet(annualGross: string, fedTaxAmt: string, ssTaxAmt: string
 }
 
 export function PlanningView({ currentMonth, categories, fixedExpenses, planningData, onUpdatePlanningData, onBack, primaryName, partnerName }: PlanningViewProps) {
+  const pName = primaryName || 'Primary';
+  const ptName = partnerName || 'Partner';
   const [advancedMode, setAdvancedMode] = useState(() => planningData.incomeMode === 'gross');
   const [pay, setPay] = useState<PayFields>(() => {
     const restored: PayFields = { ...DEFAULT_FIELDS };
