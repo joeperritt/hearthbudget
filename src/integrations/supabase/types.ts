@@ -361,6 +361,7 @@ export type Database = {
           display_name: string
           household_id: string
           id: string
+          last_seen_at: string | null
           updated_at: string
           user_id: string
         }
@@ -370,6 +371,7 @@ export type Database = {
           display_name: string
           household_id: string
           id?: string
+          last_seen_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -379,6 +381,7 @@ export type Database = {
           display_name?: string
           household_id?: string
           id?: string
+          last_seen_at?: string | null
           updated_at?: string
           user_id?: string
         }
