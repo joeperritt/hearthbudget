@@ -189,16 +189,21 @@ Deno.serve(async (req) => {
         .eq("household_id", callerProfile.household_id);
 
       // Get auth user details for last sign in
-      const enriched = await Promise.all(
-        (profiles || []).map(async (p: Record<string, unknown>) => {
+      const enriched = (profiles || []).map((p: Record<string, unknown>) => ({
+        user_id: p.user_id,
+        display_name: p.display_name,
+        avatar_initial: p.avatar_initial,
+        email: p.email,
+        last_seen_at: p.last_seen_at,
+      }));
+
+      // Enrich with email from auth
+      const enrichedWithEmail = await Promise.all(
+        enriched.map(async (p: Record<string, unknown>) => {
           const { data } = await adminClient.auth.admin.getUserById(
             p.user_id as string
           );
-          return {
-            ...p,
-            email: data?.user?.email,
-            last_sign_in_at: data?.user?.last_sign_in_at,
-          };
+          return { ...p, email: data?.user?.email };
         })
       );
 
