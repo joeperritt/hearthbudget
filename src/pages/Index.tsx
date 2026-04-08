@@ -45,6 +45,26 @@ const Index = () => {
   } = useBudgetData();
 
   const { accounts } = useAccounts();
+  const { user } = useAuth();
+
+  // Fetch household member names for personalized labels
+  const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
+  useEffect(() => {
+    if (!householdId || !user) return;
+    supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .eq('household_id', householdId)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        const me = data.find(p => p.user_id === user.id);
+        const other = data.find(p => p.user_id !== user.id);
+        setHouseholdMembers({
+          primaryName: me?.display_name || '',
+          partnerName: other?.display_name || null,
+        });
+      });
+  }, [householdId, user]);
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
