@@ -561,7 +561,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               {/* Partner Annual Gross */}
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm font-semibold text-foreground">Annual Gross Income</span>
+                  <span className="text-sm font-semibold text-foreground">{ptName}'s Annual Gross Income</span>
                   <p className="text-[10px] text-muted-foreground mt-0.5">Monthly: {fmt(partnerMonthlyGross)}</p>
                 </div>
                 <div className="flex items-center gap-1">
