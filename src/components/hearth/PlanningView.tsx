@@ -21,6 +21,7 @@ type PayMode = 'estimate' | 'actual';
 interface PayFields {
   grossPay: string;
   netIncome: string;
+  katieNetIncome: string;
   fedTaxRate: string;
   ssTaxRate: string;
   medicareRate: string;
@@ -41,6 +42,7 @@ interface PayFields {
 const DEFAULT_FIELDS: PayFields = {
   grossPay: '',
   netIncome: '',
+  katieNetIncome: '',
   fedTaxRate: '15.15',
   ssTaxRate: '6.20',
   medicareRate: '1.45',
