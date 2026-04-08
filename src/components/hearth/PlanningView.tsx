@@ -159,6 +159,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   // Calculations
   const gross = parseFloat(pay.grossPay) || 0;
   const netIncome = parseFloat(pay.netIncome) || 0;
+  const katieNetIncome = parseFloat(pay.katieNetIncome) || 0;
 
   const fedTax = payMode === 'estimate' ? gross * (parseFloat(pay.fedTaxRate) || 0) / 100 : (parseFloat(pay.fedTaxAmt) || 0);
   const ssTax = payMode === 'estimate' ? gross * (parseFloat(pay.ssTaxRate) || 0) / 100 : (parseFloat(pay.ssTaxAmt) || 0);
@@ -167,8 +168,9 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
   const roth = payMode === 'estimate' ? gross * (parseFloat(pay.roth401kRate) || 0) / 100 : (parseFloat(pay.roth401kAmt) || 0);
   const computedNetPay = gross - fedTax - ssTax - medicareTax - scTax - roth;
 
-  // The effective net pay used for calculations
-  const effectiveNetPay = advancedMode ? computedNetPay : netIncome;
+  // Simple mode totals
+  const totalHouseholdIncome = netIncome + katieNetIncome;
+  const simpleNetForSavings = totalHouseholdIncome - budgetTotal;
 
   const givingVarCats = categories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
   const givingVarAmt = givingVarCats.reduce((s, c) => s + c.budgeted, 0);
