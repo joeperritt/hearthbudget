@@ -619,7 +619,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
               {...(primaryAnnualGross <= 0 ? { value: pay.netIncome, onChange: up('netIncome'), onBlur: saveAll, prefix: '$' } : {})}
             />
             {showPartner && (
-              <InputRow label="Monthly Take-Home (Partner)" computed={simpleNetPartner} bold
+              <InputRow label={`Monthly Take-Home (${ptName})`} computed={simpleNetPartner} bold
                 sublabel={partnerAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
                 {...(partnerAnnualGross <= 0 ? { value: pay.katieNetIncome, onChange: up('katieNetIncome'), onBlur: saveAll, prefix: '$' } : {})}
               />
