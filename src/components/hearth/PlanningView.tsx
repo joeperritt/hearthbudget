@@ -614,7 +614,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         {/* ───── SIMPLE MODE ───── */}
         {!advancedMode && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
-            <InputRow label="Monthly Take-Home (Primary)" computed={simpleNetPrimary} bold
+            <InputRow label={`Monthly Take-Home (${pName})`} computed={simpleNetPrimary} bold
               sublabel={primaryAnnualGross > 0 ? 'Calculated from annual gross' : undefined}
               {...(primaryAnnualGross <= 0 ? { value: pay.netIncome, onChange: up('netIncome'), onBlur: saveAll, prefix: '$' } : {})}
             />
