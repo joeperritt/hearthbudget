@@ -169,53 +169,54 @@ async function buildBudgetSummary(
   // Build income data from planning fields
   const incomeMode = planningData.incomeMode || 'net';
   const netIncome = parseFloat(planningData.netIncome || '0') || 0;
-  const grossIncome = parseFloat(planningData.grossPay || '0') || 0;
-  const retirementRate = parseFloat(planningData.retirementRate || '0') || 0;
-  const retirementAmt = parseFloat(planningData.retirementAmt || '0') || 0;
-  const payMode = planningData.payMode || 'estimate';
-  const calcDed = (gross: number, rate: string, amt: string) =>
-    payMode === 'estimate' ? gross * (parseFloat(rate) || 0) / 100 : (parseFloat(amt) || 0);
-  const retirementContribution = incomeMode === 'gross'
-    ? calcDed(grossIncome, planningData.retirementRate || '0', planningData.retirementAmt || '0')
-    : 0;
 
-  // Partner data
+  // Frequency multipliers
+  const freqMultipliers: Record<string, number> = { monthly: 1, semimonthly: 2, biweekly: 26 / 12, weekly: 52 / 12 };
+  const primaryFreq = planningData.payFrequency || 'monthly';
+  const partnerFreq = planningData.partnerPayFrequency || 'monthly';
+  const primaryMult = freqMultipliers[primaryFreq] || 1;
+  const partnerMult = freqMultipliers[partnerFreq] || 1;
+
+  // Primary earner (all values are per-paycheck, multiply for monthly)
+  const primaryPerPaycheckGross = parseFloat(planningData.grossPay || '0') || 0;
+  const grossIncome = primaryPerPaycheckGross * primaryMult;
+  const primaryRetirement = (parseFloat(planningData.retirementAmt || '0') || 0) * primaryMult;
+  const primarySavingsDed = (parseFloat(planningData.savingsDeductions || '0') || 0) * primaryMult;
+  const primaryOtherDed = (parseFloat(planningData.otherDeductions || '0') || 0) * primaryMult;
+  const primaryFedTax = (parseFloat(planningData.fedTaxAmt || '0') || 0) * primaryMult;
+  const primarySsTax = (parseFloat(planningData.ssTaxAmt || '0') || 0) * primaryMult;
+  const primaryMedicare = (parseFloat(planningData.medicareAmt || '0') || 0) * primaryMult;
+  const primaryStateTax = (parseFloat(planningData.stateTaxAmt || '0') || 0) * primaryMult;
+  const primaryNetPay = grossIncome - primaryFedTax - primarySsTax - primaryMedicare - primaryStateTax - primaryRetirement - primarySavingsDed - primaryOtherDed;
+
+  // Partner earner
   const partnerEnabled = planningData.partnerEnabled === 'true';
-  const partnerGross = parseFloat(planningData.partnerGrossPay || '0') || 0;
-  const partnerRetirementRate = parseFloat(planningData.partnerRetirementRate || '0') || 0;
-  const partnerRetirement = partnerEnabled && incomeMode === 'gross'
-    ? calcDed(partnerGross, planningData.partnerRetirementRate || '0', planningData.partnerRetirementAmt || '0')
-    : 0;
-
-  // Calculate partner net pay
-  const partnerFedTax = calcDed(partnerGross, planningData.partnerFedTaxRate || '0', planningData.partnerFedTaxAmt || '0');
-  const partnerSsTax = calcDed(partnerGross, planningData.partnerSsTaxRate || '0', planningData.partnerSsTaxAmt || '0');
-  const partnerMedicare = calcDed(partnerGross, planningData.partnerMedicareRate || '0', planningData.partnerMedicareAmt || '0');
-  const partnerStateTax = calcDed(partnerGross, planningData.partnerStateTaxRate || '0', planningData.partnerStateTaxAmt || '0');
-  const partnerNetPay = partnerGross - partnerFedTax - partnerSsTax - partnerMedicare - partnerStateTax - partnerRetirement;
-
-  // Primary net pay
-  const primaryFedTax = calcDed(grossIncome, planningData.fedTaxRate || '0', planningData.fedTaxAmt || '0');
-  const primarySsTax = calcDed(grossIncome, planningData.ssTaxRate || '0', planningData.ssTaxAmt || '0');
-  const primaryMedicare = calcDed(grossIncome, planningData.medicareRate || '0', planningData.medicareAmt || '0');
-  const primaryStateTax = calcDed(grossIncome, planningData.stateTaxRate || '0', planningData.stateTaxAmt || '0');
-  const primaryNetPay = grossIncome - primaryFedTax - primarySsTax - primaryMedicare - primaryStateTax - retirementContribution;
+  const partnerPerPaycheckGross = parseFloat(planningData.partnerGrossPay || '0') || 0;
+  const partnerGross = partnerPerPaycheckGross * partnerMult;
+  const partnerRetirement = (parseFloat(planningData.partnerRetirementAmt || '0') || 0) * partnerMult;
+  const partnerSavingsDed = (parseFloat(planningData.partnerSavingsDeductions || '0') || 0) * partnerMult;
+  const partnerOtherDed = (parseFloat(planningData.partnerOtherDeductions || '0') || 0) * partnerMult;
+  const partnerFedTax = (parseFloat(planningData.partnerFedTaxAmt || '0') || 0) * partnerMult;
+  const partnerSsTax = (parseFloat(planningData.partnerSsTaxAmt || '0') || 0) * partnerMult;
+  const partnerMedicare = (parseFloat(planningData.partnerMedicareAmt || '0') || 0) * partnerMult;
+  const partnerStateTax = (parseFloat(planningData.partnerStateTaxAmt || '0') || 0) * partnerMult;
+  const partnerNetPay = partnerGross - partnerFedTax - partnerSsTax - partnerMedicare - partnerStateTax - partnerRetirement - partnerSavingsDed - partnerOtherDed;
 
   const incomeData: BudgetSummary['incomeData'] = {};
   if (netIncome > 0) incomeData.netIncome = netIncome;
   if (incomeMode === 'gross' && grossIncome > 0) {
     incomeData.grossIncome = grossIncome;
-    incomeData.retirementContribution = retirementContribution;
-    incomeData.retirementRate = retirementRate;
+    incomeData.retirementContribution = primaryRetirement;
+    incomeData.retirementRate = grossIncome > 0 ? (primaryRetirement / grossIncome) * 100 : 0;
 
     if (partnerEnabled && partnerGross > 0) {
       incomeData.partnerGrossIncome = partnerGross;
       incomeData.partnerNetPay = partnerNetPay;
       incomeData.partnerRetirementContribution = partnerRetirement;
-      incomeData.partnerRetirementRate = partnerRetirementRate;
+      incomeData.partnerRetirementRate = partnerGross > 0 ? (partnerRetirement / partnerGross) * 100 : 0;
       incomeData.combinedGrossIncome = grossIncome + partnerGross;
       incomeData.combinedNetPay = primaryNetPay + partnerNetPay;
-      incomeData.combinedRetirementContribution = retirementContribution + partnerRetirement;
+      incomeData.combinedRetirementContribution = primaryRetirement + partnerRetirement;
     }
   }
 
