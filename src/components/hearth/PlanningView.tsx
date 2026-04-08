@@ -662,7 +662,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
                 <div className="my-2 border-t border-border" />
                 <button onClick={togglePartner}
                   className="flex items-center justify-between w-full py-2.5 border-b border-border/50 active:scale-[0.99] transition-transform">
-                  <span className="text-sm font-medium text-foreground">Partner Income</span>
+                  <span className="text-sm font-medium text-foreground">{ptName}'s Income</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground">{partnerOpen ? 'Hide' : 'Show'}</span>
                     {partnerOpen ? <Minus size={14} className="text-muted-foreground" /> : <Plus size={14} className="text-muted-foreground" />}
