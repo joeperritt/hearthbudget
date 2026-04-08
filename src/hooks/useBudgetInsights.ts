@@ -44,6 +44,13 @@ interface BudgetSummary {
     grossIncome?: number;
     retirementContribution?: number;
     retirementRate?: number;
+    partnerGrossIncome?: number;
+    partnerNetPay?: number;
+    partnerRetirementContribution?: number;
+    partnerRetirementRate?: number;
+    combinedGrossIncome?: number;
+    combinedNetPay?: number;
+    combinedRetirementContribution?: number;
   };
 }
 
