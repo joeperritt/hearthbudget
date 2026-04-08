@@ -406,6 +406,20 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'past-months' && (
           <PastMonthsView onBack={() => setMoreSubView('menu')} />
         )}
+        {activeTab === 'more' && moreSubView === 'financial-tools' && (
+          <FinancialToolsView
+            onBack={() => setMoreSubView('menu')}
+            onSelectTool={(tool) => {
+              if (tool === 'mortgage') setMoreSubView('mortgage-calc');
+            }}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'mortgage-calc' && (
+          <MortgageCalculator
+            planningData={planningData}
+            onBack={() => setMoreSubView('financial-tools')}
+          />
+        )}
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
