@@ -45,18 +45,17 @@ const DEFAULT_FIELDS: PayFields = {
   fedTaxRate: '15.15',
   ssTaxRate: '6.20',
   medicareRate: '1.45',
-  scTaxRate: '5.70',
-  roth401kRate: '6.00',
+  stateTaxRate: '5.70',
+  retirementRate: '6.00',
   fedTaxAmt: '',
   ssTaxAmt: '',
   medicareAmt: '',
-  scTaxAmt: '',
-  roth401kAmt: '',
+  stateTaxAmt: '',
+  retirementAmt: '',
   titheAmt: '3000',
   creditCardTotal: '',
   checkingTotal: '',
-  katiePay1: '',
-  katiePay2: '',
+  additionalIncome: '',
 };
 
 function InputRow({ label, value, onChange, onBlur, prefix, suffix, computed, bold, sublabel }: {
