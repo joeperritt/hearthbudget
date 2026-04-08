@@ -635,7 +635,7 @@ export function PlanningView({ currentMonth, categories, fixedExpenses, planning
         {advancedMode && (
           <div className="bg-card rounded-lg shadow-sm px-4 py-2">
             <IncomeBreakdown
-              label="Primary Income"
+              label={`${pName}'s Income`}
               annualGross={primaryAnnualGross}
               fedTaxAmt={pay.fedTaxAmt} onFedTaxAmtChange={up('fedTaxAmt')}
               ssTaxAmt={pay.ssTaxAmt} onSsTaxAmtChange={up('ssTaxAmt')}
