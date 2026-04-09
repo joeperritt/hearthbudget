@@ -177,6 +177,7 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
         setProfile(p => ({
           ...p,
           member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2' })),
+          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0 })),
         }));
       }
       setLoading(false);
