@@ -35,10 +35,10 @@ interface DebtPayoffCalculatorProps {
   householdId: string | null;
 }
 
-function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean): { results: PayoffResult[]; totalMonths: number; totalInterest: number } {
+function simulatePayoff(debts: Debt[], extraPayment: number, rollForward: boolean): { results: PayoffResult[]; totalMonths: number; totalInterest: number } {
   if (debts.length === 0) return { results: [], totalMonths: 0, totalInterest: 0 };
 
-  // Clone debts with tracking
+  // Always use avalanche (highest rate first)
   const active = debts.map((d, i) => ({
     idx: i,
     type: d.type,
@@ -51,32 +51,29 @@ function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean):
     payoffOrder: 0,
   }));
 
-  // Sort order for targeting: snowball = lowest balance first, avalanche = highest rate first
   const getTarget = () => {
     const remaining = active.filter(d => !d.paidOff && d.balance > 0);
     if (remaining.length === 0) return null;
-    if (snowball) {
-      remaining.sort((a, b) => a.balance - b.balance);
-    } else {
-      remaining.sort((a, b) => b.rate - a.rate);
-    }
+    remaining.sort((a, b) => b.rate - a.rate);
     return remaining[0];
   };
 
   let month = 0;
   let orderCounter = 1;
-  const MAX_MONTHS = 600; // 50 years safety cap
+  const MAX_MONTHS = 600;
 
   while (active.some(d => !d.paidOff && d.balance > 0) && month < MAX_MONTHS) {
     month++;
     let availableExtra = extraPayment;
 
-    // Add freed-up payments from paid-off debts
-    for (const d of active) {
-      if (d.paidOff) availableExtra += d.minPayment;
+    // When rolling forward, freed-up payments from paid-off debts become extra
+    if (rollForward) {
+      for (const d of active) {
+        if (d.paidOff) availableExtra += d.minPayment;
+      }
     }
 
-    // Apply interest to all active debts
+    // Apply interest
     for (const d of active) {
       if (d.paidOff || d.balance <= 0) continue;
       const monthlyRate = d.rate / 100 / 12;
@@ -85,7 +82,7 @@ function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean):
       d.balance += interest;
     }
 
-    // Pay minimums on all active debts
+    // Pay minimums
     for (const d of active) {
       if (d.paidOff || d.balance <= 0) continue;
       const payment = Math.min(d.minPayment, d.balance);
@@ -98,7 +95,7 @@ function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean):
       }
     }
 
-    // Apply extra to target debt
+    // Apply extra to highest-rate target
     const target = getTarget();
     if (target && availableExtra > 0) {
       const payment = Math.min(availableExtra, target.balance);
@@ -112,7 +109,6 @@ function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean):
     }
   }
 
-  // Handle debts that never pay off within cap
   for (const d of active) {
     if (!d.paidOff) {
       d.payoffMonth = MAX_MONTHS;
@@ -130,7 +126,6 @@ function simulatePayoff(debts: Debt[], extraPayment: number, snowball: boolean):
     payoffOrder: d.payoffOrder,
   }));
 
-  // Sort by payoff order when snowball/avalanche is active
   results.sort((a, b) => (a.payoffOrder || 0) - (b.payoffOrder || 0));
 
   return {
@@ -152,7 +147,7 @@ function formatMonths(months: number): string {
 export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculatorProps) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [snowball, setSnowball] = useState(false);
+  const [rollForward, setRollForward] = useState(true);
   const [extraPayment, setExtraPayment] = useState('0');
   const [showInfo, setShowInfo] = useState(false);
 
@@ -170,7 +165,7 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
             .map((d: any) => ({
               type: d.type || 'Debt',
               balance: Number(d.balance) || 0,
-              rate: Number(d.rate) || 0,
+              rate: Number(d.interestRate) || Number(d.rate) || 0,
               monthlyPayment: Number(d.monthlyPayment) || 0,
             }));
           setDebts(parsed);
@@ -181,12 +176,13 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
 
   const extra = parseFloat(extraPayment) || 0;
 
-  const withExtra = useMemo(() => simulatePayoff(debts, extra, snowball), [debts, extra, snowball]);
-  const minimumOnly = useMemo(() => simulatePayoff(debts, 0, false), [debts]);
+  const withSettings = useMemo(() => simulatePayoff(debts, extra, rollForward), [debts, extra, rollForward]);
+  const baselineOnly = useMemo(() => simulatePayoff(debts, 0, false), [debts]);
 
   const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
   const totalMinPayments = debts.reduce((s, d) => s + d.monthlyPayment, 0);
-  const interestSaved = minimumOnly.totalInterest - withExtra.totalInterest;
+  const interestSaved = baselineOnly.totalInterest - withSettings.totalInterest;
+  const monthsSaved = baselineOnly.totalMonths - withSettings.totalMonths;
 
   if (loading) {
     return (
@@ -240,12 +236,12 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
 
           {/* Controls */}
           <div className="px-6 mt-5 space-y-4">
-            {/* Snowball Toggle */}
+            {/* Roll Payments Forward Toggle */}
             <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">⛄</span>
-                  <Label className="text-sm font-semibold text-foreground cursor-pointer">Snowball Method</Label>
+                  <span className="text-base">🔄</span>
+                  <Label className="text-sm font-semibold text-foreground cursor-pointer">Roll Payments Forward</Label>
                   <button
                     onClick={() => setShowInfo(!showInfo)}
                     className="p-0.5 rounded-full hover:bg-muted transition-colors"
@@ -253,7 +249,7 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
                     <Info size={14} className="text-muted-foreground" />
                   </button>
                 </div>
-                <Switch checked={snowball} onCheckedChange={setSnowball} />
+                <Switch checked={rollForward} onCheckedChange={setRollForward} />
               </div>
               {showInfo && (
                 <div className="mt-3 bg-muted/50 rounded-lg p-3 relative">
@@ -261,10 +257,7 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
                     <X size={12} className="text-muted-foreground" />
                   </button>
                   <p className="text-xs text-muted-foreground leading-relaxed pr-5">
-                    The debt snowball method pays minimums on all debts except the smallest balance, which gets any extra payment. As each debt is paid off, that payment rolls into the next — building momentum like a snowball.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                    When off, the <span className="font-semibold">avalanche method</span> is used instead — targeting the highest interest rate first to minimize total interest paid.
+                    When a debt is paid off, its monthly payment automatically applies to your next debt — keeping your total monthly payment the same and accelerating payoff.
                   </p>
                 </div>
               )}
@@ -286,11 +279,11 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
           {/* Debt Cards */}
           <div className="px-6 mt-5 space-y-3">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-              {snowball ? 'Payoff Order (Snowball)' : 'Payoff Order (Avalanche)'}
+              Payoff Order (Highest Rate First)
             </p>
-            {withExtra.results.map((debt, i) => (
+            {withSettings.results.map((debt, i) => (
               <div key={i} className="bg-card rounded-xl p-4 shadow-sm border border-border relative">
-                {(extra > 0 || snowball) && debt.payoffOrder && (
+                {debt.payoffOrder && (
                   <span className="absolute top-3 right-3 text-[10px] font-bold text-accent bg-primary px-2 py-0.5 rounded-full">
                     {ordinal(debt.payoffOrder)}
                   </span>
@@ -317,18 +310,18 @@ export function DebtPayoffCalculator({ onBack, householdId }: DebtPayoffCalculat
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Payoff Summary</p>
               </div>
               <div className="divide-y divide-border">
-                <SummaryRow label="Total Months to Payoff" value={formatMonths(withExtra.totalMonths)} />
-                <SummaryRow label="Total Interest Paid" value={fmtDecimal(withExtra.totalInterest)} />
-                {extra > 0 && (
+                <SummaryRow label="Total Months to Payoff" value={formatMonths(withSettings.totalMonths)} />
+                <SummaryRow label="Total Interest Paid" value={fmtDecimal(withSettings.totalInterest)} />
+                {interestSaved > 0 && (
                   <div className="flex justify-between items-center p-4 bg-green-50 dark:bg-green-950/30">
                     <p className="text-sm font-semibold text-green-700 dark:text-green-300">Interest Saved</p>
                     <p className="text-sm font-bold text-green-700 dark:text-green-300">{fmtDecimal(interestSaved)}</p>
                   </div>
                 )}
-                {extra > 0 && (
+                {monthsSaved > 0 && (
                   <div className="flex justify-between items-center p-4 bg-green-50 dark:bg-green-950/30">
                     <p className="text-sm font-semibold text-green-700 dark:text-green-300">Months Saved</p>
-                    <p className="text-sm font-bold text-green-700 dark:text-green-300">{minimumOnly.totalMonths - withExtra.totalMonths} months</p>
+                    <p className="text-sm font-bold text-green-700 dark:text-green-300">{monthsSaved} months</p>
                   </div>
                 )}
               </div>
