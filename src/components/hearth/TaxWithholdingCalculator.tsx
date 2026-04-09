@@ -229,25 +229,29 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
   const annualPreTaxDeductions = (retirement + health + hsa + other) * payPeriods;
 
-  // MFJ income stacking: only apply to the secondary (lower-income) earner
-  const isSecondaryEarner = useMemo(() => {
-    if (filingStatus !== 'married_jointly' || members.length < 2) return false;
+  // MFJ income stacking: only the lower-income member gets stacked on top of the higher earner
+  const mfjPrimaryIncome = useMemo(() => {
+    if (filingStatus !== 'married_jointly' || members.length < 2 || !state.selectedMember) return undefined;
+
     const currentMember = members.find(m => m.name === state.selectedMember);
-    const spouse = members.find(m => m.name !== state.selectedMember);
-    if (!currentMember || !spouse) return false;
-    return currentMember.gross_income < spouse.gross_income;
+    if (!currentMember) return undefined;
+
+    const higherEarningSpouse = members
+      .filter(m => m.name !== state.selectedMember)
+      .sort((a, b) => b.gross_income - a.gross_income)[0];
+
+    if (!higherEarningSpouse) return undefined;
+
+    return currentMember.gross_income < higherEarningSpouse.gross_income
+      ? higherEarningSpouse.gross_income
+      : undefined;
   }, [filingStatus, members, state.selectedMember]);
 
-  const spouseGross = useMemo(() => {
-    if (!isSecondaryEarner || members.length < 2) return undefined;
-    const spouse = members.find(m => m.name !== state.selectedMember);
-    return spouse?.gross_income;
-  }, [isSecondaryEarner, members, state.selectedMember]);
-
-  const useIncomeStacking = isSecondaryEarner && spouseGross !== undefined && spouseGross > 0;
+  const showIncomeStackingDisclaimer =
+    filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
 
   // Calculations
-  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, useIncomeStacking ? spouseGross : undefined);
+  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, mfjPrimaryIncome);
   const annualFederalWithheld = (federalWithholdingPer + additionalWithholding) * payPeriods;
   const federalDelta = annualFederalWithheld - estimatedFederalTax;
 
@@ -489,7 +493,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
                 <span className={`font-bold ${deltaColor(federalDelta)}`}>{deltaLabel(federalDelta)}</span>
               </div>
             </div>
-            {useIncomeStacking && (
+            {showIncomeStackingDisclaimer && (
               <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
                 Because you file Married Filing Jointly with a higher-earning spouse, your income is taxed at a higher marginal rate than it would be if calculated independently. This calculator accounts for income stacking.
               </p>
