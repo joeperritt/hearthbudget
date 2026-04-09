@@ -14,6 +14,12 @@ interface Debt {
   monthlyPayment: number;
 }
 
+interface MemberCoverage {
+  profile_id: string;
+  name: string;
+  coverage: number;
+}
+
 interface MemberIncome {
   profile_id: string;
   name: string;
