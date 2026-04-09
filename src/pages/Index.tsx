@@ -392,7 +392,10 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'more' && moreSubView === 'menu' && (
-          <MoreView onSelect={tab => setMoreSubView(tab)} />
+          <MoreView onSelect={tab => {
+            if (tab === 'cfp-profile') setMoreSubView('cfp-profile');
+            else setMoreSubView(tab);
+          }} householdId={householdId} />
         )}
         {activeTab === 'more' && moreSubView === 'settings' && (
           <SettingsView
