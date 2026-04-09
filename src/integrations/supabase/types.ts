@@ -143,17 +143,22 @@ export type Database = {
           created_at: string
           debts: Json
           emergency_fund_balance: number | null
+          filing_status: string
           has_life_insurance: boolean | null
           household_id: string
           housing_type: string
           id: string
           income_type: string
           life_insurance_coverage: number | null
+          member_incomes: Json
           monthly_rent: number | null
           mortgage_balance: number | null
           mortgage_payment: number | null
           mortgage_rate: number | null
+          non_retirement_investments: number | null
           retirement_balance: number | null
+          roth_retirement_balance: number | null
+          state: string | null
           total_investment_balance: number | null
           updated_at: string
         }
@@ -162,17 +167,22 @@ export type Database = {
           created_at?: string
           debts?: Json
           emergency_fund_balance?: number | null
+          filing_status?: string
           has_life_insurance?: boolean | null
           household_id: string
           housing_type?: string
           id?: string
           income_type?: string
           life_insurance_coverage?: number | null
+          member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null
           mortgage_payment?: number | null
           mortgage_rate?: number | null
+          non_retirement_investments?: number | null
           retirement_balance?: number | null
+          roth_retirement_balance?: number | null
+          state?: string | null
           total_investment_balance?: number | null
           updated_at?: string
         }
@@ -181,17 +191,22 @@ export type Database = {
           created_at?: string
           debts?: Json
           emergency_fund_balance?: number | null
+          filing_status?: string
           has_life_insurance?: boolean | null
           household_id?: string
           housing_type?: string
           id?: string
           income_type?: string
           life_insurance_coverage?: number | null
+          member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null
           mortgage_payment?: number | null
           mortgage_rate?: number | null
+          non_retirement_investments?: number | null
           retirement_balance?: number | null
+          roth_retirement_balance?: number | null
+          state?: string | null
           total_investment_balance?: number | null
           updated_at?: string
         }

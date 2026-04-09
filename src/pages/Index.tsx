@@ -442,6 +442,7 @@ const Index = () => {
           <MortgageCalculator
             planningData={planningData}
             onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
           />
         )}
         {activeTab === 'more' && moreSubView === 'cfp-profile' && (

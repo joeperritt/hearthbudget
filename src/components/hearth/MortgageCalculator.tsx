@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -16,9 +17,10 @@ function pct(n: number) {
 interface MortgageCalculatorProps {
   planningData: Record<string, string>;
   onBack: () => void;
+  householdId: string | null;
 }
 
-export function MortgageCalculator({ planningData, onBack }: MortgageCalculatorProps) {
+export function MortgageCalculator({ planningData, onBack, householdId }: MortgageCalculatorProps) {
   const [homePrice, setHomePrice] = useState('350000');
   const [downPaymentPct, setDownPaymentPct] = useState('20');
   const [downPaymentMode, setDownPaymentMode] = useState<'percent' | 'dollar'>('percent');
@@ -28,9 +30,37 @@ export function MortgageCalculator({ planningData, onBack }: MortgageCalculatorP
   const [propertyTaxRate, setPropertyTaxRate] = useState('1.2');
   const [insuranceRate, setInsuranceRate] = useState('0.5');
   const [otherDebtPayments, setOtherDebtPayments] = useState('');
+  const [financialProfile, setFinancialProfile] = useState<any>(null);
 
-  // Pull gross monthly income from planning data — always use annual / 12
+  // Fetch financial profile for debt data
+  useEffect(() => {
+    if (!householdId) return;
+    supabase
+      .from('financial_profiles')
+      .select('*')
+      .eq('household_id', householdId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFinancialProfile(data);
+          // Auto-populate other debt payments from profile
+          const debts = Array.isArray(data.debts) ? data.debts as any[] : [];
+          const totalDebtPayments = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+          if (totalDebtPayments > 0) setOtherDebtPayments(String(totalDebtPayments));
+        }
+      });
+  }, [householdId]);
+
+  // Pull gross monthly income from financial profile first, then planning data
   const grossMonthlyIncome = useMemo(() => {
+    // Try financial profile member_incomes first
+    if (financialProfile) {
+      const memberIncomes = Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes as any[] : [];
+      const totalFromProfile = memberIncomes.reduce((s: number, m: any) => s + (Number(m.gross_income) || 0), 0);
+      if (totalFromProfile > 0) return totalFromProfile / 12;
+    }
+
+    // Fallback to planning data
     const primaryAnnual = parseFloat(planningData.grossPay || '0');
     const primaryMonthly = primaryAnnual / 12;
 
@@ -45,11 +75,10 @@ export function MortgageCalculator({ planningData, onBack }: MortgageCalculatorP
     const grossTotal = primaryMonthly + partnerMonthly;
     if (grossTotal > 0) return grossTotal;
 
-    // Fallback to net income if no gross entered
     const joe = parseFloat(planningData.netIncome || '0');
     const katie = parseFloat(planningData.katieNetIncome || '0');
     return joe + katie;
-  }, [planningData]);
+  }, [planningData, financialProfile]);
 
   const calc = useMemo(() => {
     const price = parseFloat(homePrice) || 0;
