@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
-import { ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
 
@@ -20,14 +19,13 @@ interface BudgetTabViewProps {
   monthTransactions: Transaction[];
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
-  onOpenPlanning: () => void;
 }
 
 export function BudgetTabView({
   categories, fixedExpenses, currentMonth,
   onUpdateCategories, onUpdateFixedExpenses,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
-  planningData, onUpdatePlanningData, onOpenPlanning,
+  planningData, onUpdatePlanningData,
 }: BudgetTabViewProps) {
   // Take-home income from planning data
   const primaryNet = parseFloat(planningData.netIncome || '') || 0;
@@ -64,12 +62,7 @@ export function BudgetTabView({
       <div className="px-6 mt-4">
         <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
           <div className="flex justify-between items-center">
-            <button
-              onClick={onOpenPlanning}
-              className="flex items-center gap-1 text-sm text-muted-foreground active:scale-95 transition-transform"
-            >
-              Avg. Monthly Take-Home <ArrowRight size={12} className="text-accent" />
-            </button>
+            <span className="text-sm text-muted-foreground">Avg. Monthly Take-Home</span>
             <div className="flex items-center gap-0.5">
               <span className="text-sm text-muted-foreground">$</span>
               <input
