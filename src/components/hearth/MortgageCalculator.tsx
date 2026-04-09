@@ -1,10 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
+import { STATE_DEFAULTS, STATE_OPTIONS } from '@/data/stateDefaults';
+import { MortgageInsightsSection } from './MortgageInsightsSection';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -23,6 +25,10 @@ interface MortgageCalculatorProps {
 export function MortgageCalculator({ planningData, onBack, householdId }: MortgageCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [taxEstCaption, setTaxEstCaption] = useState('');
+  const [insEstCaption, setInsEstCaption] = useState('');
+  const [taxEstLoading, setTaxEstLoading] = useState(false);
+  const [insEstLoading, setInsEstLoading] = useState(false);
 
   const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'mortgage-calculator', {
     homePrice: '350000',
@@ -32,8 +38,13 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     loanTermYears: '30',
     interestRate: '6.5',
     propertyTaxRate: '1.2',
+    propertyTaxMode: 'percent' as 'percent' | 'dollar',
+    propertyTaxAmt: '',
     insuranceRate: '0.5',
+    insuranceMode: 'percent' as 'percent' | 'dollar',
+    insuranceAmt: '',
     otherDebtPayments: '',
+    selectedState: '',
   });
 
   useEffect(() => {
@@ -44,30 +55,51 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
       .eq('household_id', householdId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
-          setFinancialProfile(data);
-        }
+        if (data) setFinancialProfile(data);
         setProfileLoading(false);
       });
   }, [householdId]);
 
-  // Auto-populate other debt payments from profile (only on initial load)
+  // Auto-populate state from profile and debt payments
   useEffect(() => {
     if (!financialProfile || !toolStateLoaded) return;
-    // Only auto-populate if not already set by saved state
     if (state.otherDebtPayments === '') {
       const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
-      const totalDebtPayments = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (totalDebtPayments > 0) setState({ otherDebtPayments: String(totalDebtPayments) });
+      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+      if (total > 0) setState({ otherDebtPayments: String(total) });
+    }
+    if (state.selectedState === '' && financialProfile.state) {
+      const st = financialProfile.state.toUpperCase();
+      if (STATE_DEFAULTS[st]) {
+        setState({
+          selectedState: st,
+          propertyTaxRate: String(STATE_DEFAULTS[st].tax),
+          insuranceRate: String(STATE_DEFAULTS[st].insurance),
+        });
+      }
     }
   }, [financialProfile, toolStateLoaded]);
 
-  // Pull gross monthly income from Financial Profile member_incomes
+  const handleStateChange = useCallback((st: string) => {
+    const defaults = STATE_DEFAULTS[st];
+    if (defaults) {
+      setState({
+        selectedState: st,
+        propertyTaxRate: String(defaults.tax),
+        insuranceRate: String(defaults.insurance),
+        propertyTaxMode: 'percent',
+        insuranceMode: 'percent',
+      });
+      setTaxEstCaption('');
+      setInsEstCaption('');
+    }
+  }, [setState]);
+
   const grossMonthlyIncome = useMemo(() => {
     if (financialProfile) {
       const memberIncomes = Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes as any[] : [];
-      const totalFromProfile = memberIncomes.reduce((s: number, m: any) => s + (Number(m.gross_income) || 0), 0);
-      if (totalFromProfile > 0) return totalFromProfile / 12;
+      const total = memberIncomes.reduce((s: number, m: any) => s + (Number(m.gross_income) || 0), 0);
+      if (total > 0) return total / 12;
     }
     return 0;
   }, [financialProfile]);
@@ -91,16 +123,59 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
       monthlyPI = loanAmount / numPayments;
     }
 
-    const monthlyTax = price * (parseFloat(state.propertyTaxRate) || 0) / 100 / 12;
-    const monthlyInsurance = price * (parseFloat(state.insuranceRate) || 0) / 100 / 12;
+    const monthlyTax = state.propertyTaxMode === 'percent'
+      ? price * (parseFloat(state.propertyTaxRate) || 0) / 100 / 12
+      : (parseFloat(state.propertyTaxAmt) || 0);
+    const monthlyInsurance = state.insuranceMode === 'percent'
+      ? price * (parseFloat(state.insuranceRate) || 0) / 100 / 12
+      : (parseFloat(state.insuranceAmt) || 0);
     const totalHousing = monthlyPI + monthlyTax + monthlyInsurance;
     const otherDebt = parseFloat(state.otherDebtPayments) || 0;
 
     const housingRatio = grossMonthlyIncome > 0 ? totalHousing / grossMonthlyIncome : 0;
     const dtiRatio = grossMonthlyIncome > 0 ? (totalHousing + otherDebt) / grossMonthlyIncome : 0;
+    const dpPct = price > 0 ? (dp / price) * 100 : 0;
 
-    return { loanAmount, dp, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt };
+    return { loanAmount, dp, dpPct, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt };
   }, [state, grossMonthlyIncome]);
+
+  const fetchAiEstimate = useCallback(async (field: 'tax' | 'insurance') => {
+    const setLoading = field === 'tax' ? setTaxEstLoading : setInsEstLoading;
+    const setCaption = field === 'tax' ? setTaxEstCaption : setInsEstCaption;
+    setLoading(true);
+    setCaption('');
+    try {
+      const prompt = field === 'tax'
+        ? `For a home in ${STATE_DEFAULTS[state.selectedState]?.label || state.selectedState}, valued at $${state.homePrice}, what is a realistic effective property tax rate? Return JSON: {"rate": <number as percent like 0.57>, "explanation": "<one sentence>"}`
+        : `For a home in ${STATE_DEFAULTS[state.selectedState]?.label || state.selectedState}, valued at $${state.homePrice} with a $${calc.loanAmount} loan, what is a realistic annual homeowners insurance rate? Return JSON: {"rate": <number as percent like 0.75>, "explanation": "<one sentence>"}`;
+
+      const { data, error } = await supabase.functions.invoke('budget-insights', {
+        body: {
+          budgetSummary: { context: 'rate_estimate', state: state.selectedState, homePrice: state.homePrice, loanAmount: calc.loanAmount },
+          chatMessages: [{ role: 'system', content: `You are a real estate data assistant. Respond ONLY with the JSON requested. ${prompt}` }],
+        },
+      });
+      if (error) throw error;
+      const content = data?.content || '';
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const rate = Number(parsed.rate);
+        if (rate > 0) {
+          if (field === 'tax') {
+            setState({ propertyTaxRate: String(rate), propertyTaxMode: 'percent' });
+          } else {
+            setState({ insuranceRate: String(rate), insuranceMode: 'percent' });
+          }
+          setCaption(parsed.explanation || '');
+        }
+      }
+    } catch {
+      setCaption('Estimate unavailable');
+    } finally {
+      setLoading(false);
+    }
+  }, [state.selectedState, state.homePrice, calc.loanAmount, setState]);
 
   const housingOk = calc.housingRatio <= 0.28;
   const dtiOk = calc.dtiRatio <= 0.36;
@@ -145,8 +220,21 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         )}
       </div>
 
+      {/* State selector */}
+      <div className="px-6 mt-4">
+        <Label className="text-xs text-muted-foreground">State</Label>
+        <Select value={state.selectedState} onValueChange={handleStateChange}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Select state…" /></SelectTrigger>
+          <SelectContent className="max-h-60">
+            {STATE_OPTIONS.map(s => (
+              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Inputs */}
-      <div className="px-6 mt-5 space-y-4">
+      <div className="px-6 mt-4 space-y-4">
         <div>
           <Label className="text-xs text-muted-foreground">Home Price</Label>
           <Input type="number" value={state.homePrice} onChange={e => setState({ homePrice: e.target.value })} className="mt-1" />
@@ -205,16 +293,43 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Property Tax (%/yr)</Label>
-            <Input type="number" step="0.1" value={state.propertyTaxRate} onChange={e => setState({ propertyTaxRate: e.target.value })} className="mt-1" />
-          </div>
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Insurance (%/yr)</Label>
-            <Input type="number" step="0.1" value={state.insuranceRate} onChange={e => setState({ insuranceRate: e.target.value })} className="mt-1" />
-          </div>
-        </div>
+        {/* Property Tax with %/$ toggle and AI Estimate */}
+        <RateField
+          label="Property Tax"
+          mode={state.propertyTaxMode as 'percent' | 'dollar'}
+          rateValue={state.propertyTaxRate}
+          dollarValue={state.propertyTaxAmt}
+          homePrice={parseFloat(state.homePrice) || 0}
+          onModeChange={m => setState({ propertyTaxMode: m })}
+          onRateChange={v => setState({ propertyTaxRate: v, propertyTaxAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
+          onDollarChange={v => {
+            const price = parseFloat(state.homePrice) || 1;
+            setState({ propertyTaxAmt: v, propertyTaxRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
+          }}
+          estimateLoading={taxEstLoading}
+          onEstimate={() => fetchAiEstimate('tax')}
+          caption={taxEstCaption}
+          hasState={!!state.selectedState}
+        />
+
+        {/* Insurance with %/$ toggle and AI Estimate */}
+        <RateField
+          label="Insurance"
+          mode={state.insuranceMode as 'percent' | 'dollar'}
+          rateValue={state.insuranceRate}
+          dollarValue={state.insuranceAmt}
+          homePrice={parseFloat(state.homePrice) || 0}
+          onModeChange={m => setState({ insuranceMode: m })}
+          onRateChange={v => setState({ insuranceRate: v, insuranceAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
+          onDollarChange={v => {
+            const price = parseFloat(state.homePrice) || 1;
+            setState({ insuranceAmt: v, insuranceRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
+          }}
+          estimateLoading={insEstLoading}
+          onEstimate={() => fetchAiEstimate('insurance')}
+          caption={insEstCaption}
+          hasState={!!state.selectedState}
+        />
       </div>
 
       {/* Results */}
@@ -226,8 +341,8 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
           <div className="divide-y divide-border">
             <Row label="Loan Amount" value={fmt(calc.loanAmount)} />
             <Row label="Principal & Interest" value={fmt(calc.monthlyPI)} />
-            <Row label="Property Tax" value={fmt(calc.monthlyTax)} sub={`${state.propertyTaxRate}% of home value/yr`} />
-            <Row label="Insurance" value={fmt(calc.monthlyInsurance)} sub={`${state.insuranceRate}% of home value/yr`} />
+            <Row label="Property Tax" value={fmt(calc.monthlyTax)} sub={state.propertyTaxMode === 'percent' ? `${state.propertyTaxRate}% of home value/yr` : `${fmt(calc.monthlyTax * 12)}/yr`} />
+            <Row label="Insurance" value={fmt(calc.monthlyInsurance)} sub={state.insuranceMode === 'percent' ? `${state.insuranceRate}% of home value/yr` : `${fmt(calc.monthlyInsurance * 12)}/yr`} />
             <div className="flex justify-between items-center p-4 bg-primary/5">
               <p className="text-sm font-bold text-foreground">Total Monthly Housing</p>
               <p className="text-sm font-bold text-foreground">{fmt(calc.totalHousing)}</p>
@@ -286,9 +401,31 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
           </p>
         </div>
       </div>
+
+      {/* AI Insights */}
+      <MortgageInsightsSection
+        householdId={householdId}
+        homePrice={parseFloat(state.homePrice) || 0}
+        loanAmount={calc.loanAmount}
+        downPayment={calc.dp}
+        downPaymentPct={calc.dpPct}
+        interestRate={parseFloat(state.interestRate) || 0}
+        loanTermYears={parseInt(state.loanTermYears) || 30}
+        monthlyPI={calc.monthlyPI}
+        monthlyTax={calc.monthlyTax}
+        monthlyInsurance={calc.monthlyInsurance}
+        totalHousing={calc.totalHousing}
+        housingRatio={calc.housingRatio}
+        dtiRatio={calc.dtiRatio}
+        otherDebt={calc.otherDebt}
+        selectedState={state.selectedState}
+        financialProfile={financialProfile}
+      />
     </div>
   );
 }
+
+/* ── Sub-components ────────────────────────────── */
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -298,6 +435,60 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </div>
       <p className="text-sm font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function RateField({
+  label, mode, rateValue, dollarValue, homePrice,
+  onModeChange, onRateChange, onDollarChange,
+  estimateLoading, onEstimate, caption, hasState,
+}: {
+  label: string;
+  mode: 'percent' | 'dollar';
+  rateValue: string;
+  dollarValue: string;
+  homePrice: number;
+  onModeChange: (m: 'percent' | 'dollar') => void;
+  onRateChange: (v: string) => void;
+  onDollarChange: (v: string) => void;
+  estimateLoading: boolean;
+  onEstimate: () => void;
+  caption: string;
+  hasState: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground flex-1">{label} ({mode === 'percent' ? '%/yr' : '$/mo'})</Label>
+        {hasState && (
+          <button
+            onClick={onEstimate}
+            disabled={estimateLoading}
+            className="flex items-center gap-1 text-[10px] font-semibold text-accent bg-accent/10 hover:bg-accent/20 rounded px-2 py-0.5 disabled:opacity-50 transition-colors"
+          >
+            {estimateLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+            Estimate
+          </button>
+        )}
+      </div>
+      <div className="flex gap-2 mt-1">
+        <Input
+          type="number"
+          step={mode === 'percent' ? '0.01' : '1'}
+          value={mode === 'percent' ? rateValue : dollarValue}
+          onChange={e => mode === 'percent' ? onRateChange(e.target.value) : onDollarChange(e.target.value)}
+          className="flex-1"
+        />
+        <Select value={mode} onValueChange={(v: 'percent' | 'dollar') => onModeChange(v)}>
+          <SelectTrigger className="w-16"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="percent">%</SelectItem>
+            <SelectItem value="dollar">$</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {caption && <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{caption}</p>}
     </div>
   );
 }
