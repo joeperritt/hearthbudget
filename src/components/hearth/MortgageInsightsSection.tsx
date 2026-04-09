@@ -33,12 +33,13 @@ interface MortgageInsightsSectionProps {
   otherDebt: number;
   selectedState: string;
   financialProfile: any;
+  mortgageMode: 'shopping' | 'existing';
 }
 
 export function MortgageInsightsSection({
   householdId, homePrice, loanAmount, downPayment, downPaymentPct,
   interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance,
-  totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile,
+  totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile, mortgageMode,
 }: MortgageInsightsSectionProps) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,7 @@ export function MortgageInsightsSection({
       const payload = {
         currentMonth: new Date().toISOString().slice(0, 7),
         context: 'mortgage_analysis',
+        mortgageMode,
         homePrice, loanAmount, downPayment, downPaymentPct,
         interestRate, loanTermYears,
         piti: { principalAndInterest: monthlyPI, propertyTax: monthlyTax, insurance: monthlyInsurance, total: totalHousing },
@@ -72,7 +74,11 @@ export function MortgageInsightsSection({
         } : {}),
       };
 
-      const systemOverride = `You are a CFP (Certified Financial Planner) analyzing a household's mortgage and home affordability. Focus specifically on home purchase strategy — surface 2-3 insights covering: whether the monthly payment is sustainable given their income and other debts, whether the down payment size is optimal, PMI considerations if down payment is under 20%, interest rate context, and any state-specific considerations for ${selectedState || 'their state'}. Be specific with dollar amounts and ratios from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+      const shoppingPrompt = `You are a CFP (Certified Financial Planner) helping a household evaluate a potential home purchase. Speak in future tense and advisory tone — they have NOT committed yet. Help them evaluate whether this mortgage is a good fit, what to watch out for before committing, whether the down payment strategy is optimal, and what questions to ask a lender. Do NOT use phrases like "your mortgage" or "you have" — instead say "this mortgage would" or "if you proceed." Cover: whether the monthly payment is sustainable given their income and other debts, down payment optimization, PMI considerations if under 20%, interest rate context, and state-specific considerations for ${selectedState || 'their state'}. Be specific with dollar amounts and ratios from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+
+      const existingPrompt = `You are a CFP (Certified Financial Planner) serving as an ongoing financial planner for a household that already has this mortgage. Speak as if they already own this home. Affirm good decisions they've already made, flag opportunities like refinancing if rates have changed, suggest extra principal payment strategies, and explain how this mortgage debt fits into their overall financial picture given the rest of their Financial Profile. Cover: whether payments are comfortable relative to income, refinance considerations, extra payment impact, and how this debt interacts with their other financial goals. Be specific with dollar amounts and ratios from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+
+      const systemOverride = mortgageMode === 'existing' ? existingPrompt : shoppingPrompt;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: {
@@ -96,7 +102,7 @@ export function MortgageInsightsSection({
     } finally {
       setLoading(false);
     }
-  }, [homePrice, loanAmount, downPayment, downPaymentPct, interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile]);
+  }, [homePrice, loanAmount, downPayment, downPaymentPct, interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile, mortgageMode]);
 
   return (
     <div className="px-6 mt-6">
