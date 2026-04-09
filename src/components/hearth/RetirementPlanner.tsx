@@ -194,94 +194,179 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const projectedNonQual = currentNonQual * fvFactor + nonQualContrib * fvAnnuity;
   const projectedPortfolio = projectedPreTax + projectedRoth + projectedNonQual;
 
+  // Baseline 4% withdrawal (used for simple display)
   const annualWithdrawal = projectedPortfolio * 0.04;
   const monthlyFromPortfolio = annualWithdrawal / 12;
 
-  // Social Security — store FRA benefit, display adjusted
+  // Social Security — store FRA benefit in today's dollars, inflate to retirement year
   const showSS = state.showSocialSecurity;
   const ssDetails = useMemo(() => {
-    if (!showSS) return { total: 0, perMember: [] as { name: string; fra: number; adjusted: number; claimAge: number; claimYear: number }[] };
+    if (!showSS) return { total: 0, perMember: [] as { name: string; fra: number; adjusted: number; inflatedAdjusted: number; claimAge: number; claimYear: number }[] };
     const perMember = members.map(m => {
       const fra = Number(state.ssBenefits?.[m.name]) || 0;
       const claimAge = Number(state.ssClaimingAges?.[m.name]) || 67;
       const adjusted = fra * ssaAdjustment(claimAge);
+      // Inflate SS benefit to retirement-year dollars (SS has COLA ≈ inflation)
       const memberAge = Number(state.memberAges?.[m.name]) || 0;
+      const yearsToFRA = memberAge > 0 ? Math.max(0, claimAge - memberAge) : yearsToRetirement;
+      const inflatedAdjusted = adjusted * Math.pow(1 + inflationRate, yearsToFRA);
       const claimYear = memberAge > 0 ? currentYear + (claimAge - memberAge) : retirementYear;
-      return { name: m.name, fra, adjusted, claimAge, claimYear };
+      return { name: m.name, fra, adjusted, inflatedAdjusted, claimAge, claimYear };
     });
-    return { total: perMember.reduce((s, m) => s + m.adjusted, 0), perMember };
-  }, [showSS, members, state.ssBenefits, state.ssClaimingAges, state.memberAges, currentYear, retirementYear]);
+    return { total: perMember.reduce((s, m) => s + m.inflatedAdjusted, 0), perMember };
+  }, [showSS, members, state.ssBenefits, state.ssClaimingAges, state.memberAges, currentYear, retirementYear, inflationRate, yearsToRetirement]);
 
-  // Phase-based income projection
+  // Longevity benchmark
+  const longevityAge = 90;
+
+  // Phase-based income projection with variable withdrawal rates
+  // Instead of flat 4%, compute how much portfolio can supply each phase
+  // by solving for a sustainable drawdown across all phases to age 90.
   const incomePhases = useMemo(() => {
+    const retireAge = retirementAge;
+    const totalRetirementYears = Math.max(1, longevityAge - retireAge);
+    const realReturn = (1 + expectedReturn) / (1 + inflationRate) - 1; // real return for retirement
+    const monthlyRealReturn = realReturn / 12;
+
     if (!showSS || ssDetails.perMember.length === 0) {
-      // No SS — single phase
+      // No SS — single phase, standard 4% rule
       return [{
         label: `${retirementYear}+ (Portfolio only)`,
         startYear: retirementYear,
         endYear: null as number | null,
+        durationYears: totalRetirementYears,
         portfolioIncome: monthlyFromPortfolio,
         ssIncome: 0,
         totalIncome: monthlyFromPortfolio,
+        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
       }];
     }
 
-    // Find distinct SS start years that are after retirement
+    // Build distinct transition points
     const ssStartYears = [...new Set(
       ssDetails.perMember
-        .filter(m => m.adjusted > 0)
+        .filter(m => m.inflatedAdjusted > 0)
         .map(m => Math.max(m.claimYear, retirementYear))
     )].sort((a, b) => a - b);
 
     // If all SS starts at or before retirement, single phase
     if (ssStartYears.length === 0 || (ssStartYears.length === 1 && ssStartYears[0] <= retirementYear)) {
+      const ssIncome = ssDetails.perMember.reduce((s, m) => s + m.inflatedAdjusted, 0);
       return [{
         label: `${retirementYear}+`,
         startYear: retirementYear,
         endYear: null,
+        durationYears: totalRetirementYears,
         portfolioIncome: monthlyFromPortfolio,
-        ssIncome: ssDetails.total,
-        totalIncome: monthlyFromPortfolio + ssDetails.total,
+        ssIncome,
+        totalIncome: monthlyFromPortfolio + ssIncome,
+        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
       }];
     }
 
-    // Build phases
-    const phases: { label: string; startYear: number; endYear: number | null; portfolioIncome: number; ssIncome: number; totalIncome: number }[] = [];
-
-    // Collect unique transition points
+    // Multi-phase: solve for sustainable portfolio income per phase
+    // Key insight: during pre-SS years, the portfolio must cover more of expenses,
+    // but it only needs to do so for a limited time before SS income kicks in.
+    //
+    // We solve: given projected portfolio, expenses, and SS schedule,
+    // what's the max monthly draw from portfolio in each phase such that
+    // the portfolio lasts to age 90?
     const transitions = [...new Set([retirementYear, ...ssStartYears])].sort((a, b) => a - b);
+    const endYear = retirementYear + totalRetirementYears;
 
+    // Build phase structures
+    const rawPhases: { startYear: number; endYear: number; durationMonths: number; ssIncome: number; label: string }[] = [];
     for (let i = 0; i < transitions.length; i++) {
       const start = transitions[i];
-      const end = i < transitions.length - 1 ? transitions[i + 1] : null;
+      const end = i < transitions.length - 1 ? transitions[i + 1] : endYear;
+      const activeSS = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start);
+      const ssIncome = activeSS.reduce((s, m) => s + m.inflatedAdjusted, 0);
+      const allSSActive = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).every(m => m.claimYear <= start);
 
-      // Which members' SS is active at this phase start?
-      const activeSS = ssDetails.perMember.filter(m => m.adjusted > 0 && m.claimYear <= start);
-      const ssIncome = activeSS.reduce((s, m) => s + m.adjusted, 0);
-
-      const allSSActive = ssDetails.perMember.filter(m => m.adjusted > 0).every(m => m.claimYear <= start);
       let label: string;
       if (activeSS.length === 0) {
-        label = end ? `${start}–${end} (pre-Social Security)` : `${start}+`;
+        label = end < endYear ? `${start}–${end} (pre-Social Security)` : `${start}+`;
       } else if (allSSActive) {
         label = `${start}+ (with Social Security)`;
       } else {
         const activeNames = activeSS.map(m => m.name).join(' + ');
-        label = end ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
+        label = end < endYear ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
       }
 
-      phases.push({
-        label,
-        startYear: start,
-        endYear: end,
-        portfolioIncome: monthlyFromPortfolio,
-        ssIncome,
-        totalIncome: monthlyFromPortfolio + ssIncome,
-      });
+      rawPhases.push({ startYear: start, endYear: end, durationMonths: (end - start) * 12, ssIncome, label });
     }
 
-    return phases;
-  }, [showSS, ssDetails, retirementYear, monthlyFromPortfolio]);
+    // Now solve for sustainable withdrawal:
+    // Portfolio must fund (expenses - ssIncome) in each phase.
+    // Phase 1 draws more, Phase 2+ draws less because SS covers part.
+    // We compute: what portfolio balance is needed at each transition point,
+    // working backwards from age 90 (balance = 0).
+    //
+    // For each phase (working backward): PV of (expenses - SS) annuity
+    // + PV of remaining phases at that point.
+    //
+    // Then the actual portfolio income per phase = expenses - ssIncome
+    // (the portfolio covers the gap), and we report the effective withdrawal rate.
+
+    if (monthlyExpenses <= 0) {
+      // No expenses entered — just show flat 4% with SS
+      return rawPhases.map(p => ({
+        label: p.label,
+        startYear: p.startYear,
+        endYear: p.endYear < endYear ? p.endYear : null,
+        durationYears: p.durationMonths / 12,
+        portfolioIncome: monthlyFromPortfolio,
+        ssIncome: p.ssIncome,
+        totalIncome: monthlyFromPortfolio + p.ssIncome,
+        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
+      }));
+    }
+
+    // Compute required portfolio at retirement to fund all phases
+    // Working backward: at end of last phase, portfolio should be 0
+    let requiredPortfolioAtPhaseStart = 0;
+    const phasePortfolioNeeds: number[] = new Array(rawPhases.length).fill(0);
+
+    for (let i = rawPhases.length - 1; i >= 0; i--) {
+      const phase = rawPhases[i];
+      const monthlyDraw = Math.max(0, monthlyExpenses - phase.ssIncome);
+      const n = phase.durationMonths;
+
+      // PV of annuity (monthly draw for n months) + PV of future needs
+      let pvAnnuity: number;
+      if (monthlyRealReturn > 0.0001) {
+        pvAnnuity = monthlyDraw * (1 - Math.pow(1 + monthlyRealReturn, -n)) / monthlyRealReturn;
+      } else {
+        pvAnnuity = monthlyDraw * n;
+      }
+
+      // Discount future needs back to start of this phase
+      const pvFuture = requiredPortfolioAtPhaseStart / Math.pow(1 + monthlyRealReturn, n);
+      requiredPortfolioAtPhaseStart = pvAnnuity + pvFuture;
+      phasePortfolioNeeds[i] = requiredPortfolioAtPhaseStart;
+    }
+
+    const requiredPortfolio = requiredPortfolioAtPhaseStart;
+    const fundingRatio = requiredPortfolio > 0 ? projectedPortfolio / requiredPortfolio : 1;
+
+    // Build final phases with actual portfolio income (scaled if underfunded)
+    return rawPhases.map((p, i) => {
+      const idealMonthlyDraw = Math.max(0, monthlyExpenses - p.ssIncome);
+      const actualMonthlyDraw = idealMonthlyDraw * Math.min(1, fundingRatio);
+      const effectiveRate = projectedPortfolio > 0 ? (actualMonthlyDraw * 12) / projectedPortfolio : 0;
+
+      return {
+        label: p.label,
+        startYear: p.startYear,
+        endYear: p.endYear < endYear ? p.endYear : null,
+        durationYears: p.durationMonths / 12,
+        portfolioIncome: actualMonthlyDraw,
+        ssIncome: p.ssIncome,
+        totalIncome: actualMonthlyDraw + p.ssIncome,
+        withdrawalRate: effectiveRate,
+      };
+    });
+  }, [showSS, ssDetails, retirementYear, monthlyFromPortfolio, projectedPortfolio, retirementAge, expectedReturn, inflationRate, monthlyExpenses, longevityAge]);
 
   // Use worst-case phase for gap analysis (the phase with lowest income)
   const worstPhase = useMemo(() => {
@@ -291,19 +376,45 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const totalMonthlyIncome = worstPhase.totalIncome;
   const monthlyGap = totalMonthlyIncome - monthlyExpenses;
 
-  const additionalMonthlyNeeded = useMemo(() => {
-    if (monthlyGap >= 0 || monthsToRetirement <= 0) return 0;
-    const lumpSumNeeded = (Math.abs(monthlyGap) * 12) / 0.04;
-    const portfolioGap = lumpSumNeeded - projectedPortfolio;
-    if (portfolioGap <= 0) return 0;
-    if (monthlyReturn <= 0) return portfolioGap / monthsToRetirement;
-    return portfolioGap / ((Math.pow(1 + monthlyReturn, monthsToRetirement) - 1) / monthlyReturn);
-  }, [monthlyGap, monthsToRetirement, monthlyReturn, projectedPortfolio]);
+  // Required additional portfolio = PV of all phase shortfalls
+  const { additionalMonthlyNeeded, lumpSumNeeded } = useMemo(() => {
+    if (monthlyExpenses <= 0 || monthsToRetirement <= 0) return { additionalMonthlyNeeded: 0, lumpSumNeeded: 0 };
 
-  const lumpSumNeeded = useMemo(() => {
-    if (monthlyGap >= 0) return 0;
-    return (Math.abs(monthlyGap) * 12) / 0.04;
-  }, [monthlyGap]);
+    // Calculate total portfolio needed using phased approach
+    const realReturn = (1 + expectedReturn) / (1 + inflationRate) - 1;
+    const monthlyRealReturn = realReturn / 12;
+    const totalRetirementMonths = Math.max(1, (longevityAge - retirementAge)) * 12;
+
+    // Sum the PV of all phase shortfalls
+    let requiredPortfolio = 0;
+    let monthsElapsed = 0;
+    for (const phase of incomePhases) {
+      const phaseDurationMonths = phase.durationYears * 12;
+      const monthlyNeedFromPortfolio = Math.max(0, monthlyExpenses - phase.ssIncome);
+      let pvAnnuity: number;
+      if (monthlyRealReturn > 0.0001) {
+        pvAnnuity = monthlyNeedFromPortfolio * (1 - Math.pow(1 + monthlyRealReturn, -phaseDurationMonths)) / monthlyRealReturn;
+      } else {
+        pvAnnuity = monthlyNeedFromPortfolio * phaseDurationMonths;
+      }
+      // Discount to retirement date
+      requiredPortfolio += pvAnnuity / Math.pow(1 + monthlyRealReturn, monthsElapsed);
+      monthsElapsed += phaseDurationMonths;
+    }
+
+    const portfolioGap = requiredPortfolio - projectedPortfolio;
+    if (portfolioGap <= 0) return { additionalMonthlyNeeded: 0, lumpSumNeeded: 0 };
+
+    // Additional monthly contribution needed to close the gap
+    let addlMonthly = 0;
+    if (monthlyReturn > 0.0001) {
+      addlMonthly = portfolioGap / ((Math.pow(1 + monthlyReturn, monthsToRetirement) - 1) / monthlyReturn);
+    } else {
+      addlMonthly = portfolioGap / monthsToRetirement;
+    }
+
+    return { additionalMonthlyNeeded: Math.max(0, addlMonthly), lumpSumNeeded: Math.max(0, portfolioGap) };
+  }, [monthlyExpenses, monthsToRetirement, monthlyReturn, projectedPortfolio, incomePhases, expectedReturn, inflationRate, retirementAge, longevityAge]);
 
   // CFP Guidelines
   const savingsRate = combinedGrossIncome > 0 ? annualContributions / combinedGrossIncome : 0;
