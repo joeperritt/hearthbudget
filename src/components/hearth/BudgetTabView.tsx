@@ -82,10 +82,6 @@ export function BudgetTabView({
               />
             </div>
           </div>
-
-      {/* Budget Total & Surplus/Deficit */}
-      <div className="px-6 mt-3">
-        <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Budget Total</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{fmt(budgetTotal)}</span>
