@@ -423,8 +423,11 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const salaryMultiple = finalSalary > 0 ? projectedPortfolio / finalSalary : 0;
   const rothPct = (currentRoth + currentNonQual) > 0 && currentTotal > 0 ? currentRoth / currentTotal : 0;
   const rothSkewed = rothPct < 0.2 || rothPct > 0.8;
+  // For withdrawal rate check, use the worst-phase (highest draw) rate
+  const maxPhaseWithdrawalRate = incomePhases.reduce((max, p) => Math.max(max, p.withdrawalRate), 0);
+  // But also check: is the phased plan sustainable? (lumpSumNeeded === 0 means yes)
+  const withdrawalSustainable = lumpSumNeeded <= 0;
   const impliedWithdrawalRate = projectedPortfolio > 0 ? (monthlyExpenses * 12) / projectedPortfolio : 0;
-  const withdrawalRateSafe = impliedWithdrawalRate <= 0.04;
 
   // AI SS Estimate
   const fetchSSEstimate = useCallback(async (memberName: string) => {
