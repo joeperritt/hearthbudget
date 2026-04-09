@@ -58,6 +58,23 @@ interface BudgetSummary {
     combinedNetPay?: number;
     combinedRetirementContribution?: number;
   };
+  financialProfile?: {
+    member_incomes: { name: string; gross_income: number; income_type: string }[];
+    filing_status: string;
+    state: string | null;
+    housing_type: string;
+    mortgage_balance: number;
+    mortgage_payment: number;
+    mortgage_rate: number;
+    monthly_rent: number;
+    debts: any[];
+    non_retirement_investments: number;
+    retirement_balance: number;
+    roth_retirement_balance: number;
+    emergency_fund_balance: number;
+    has_life_insurance: boolean;
+    life_insurance_coverage: number;
+  };
 }
 
 async function buildBudgetSummary(
