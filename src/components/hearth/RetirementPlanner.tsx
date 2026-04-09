@@ -58,11 +58,13 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     expectedReturn: '7',
     inflationRate: '3',
     monthlyExpenses: '',
-    monthlyContributions: '',
+    preTaxContrib: '',
+    rothContrib: '',
+    nonQualContrib: '',
     showAdvanced: false,
     showSocialSecurity: false,
     memberAges: {} as Record<string, string>,
-    ssBenefits: {} as Record<string, string>,       // FRA benefit (age 67 amount)
+    ssBenefits: {} as Record<string, string>,
     ssClaimingAges: {} as Record<string, string>,
   });
 
@@ -77,7 +79,6 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
       if (profileRes.data) setFinancialProfile(profileRes.data);
       if ((taxRes.data as any)?.state_json) setTaxWithholdingState((taxRes.data as any).state_json);
 
-      // Calculate total monthly budget (categories + fixed expenses)
       const activeMonth = (hhRes.data as any)?.active_month;
       if (activeMonth) {
         const [catRes, fixRes] = await Promise.all([
@@ -125,12 +126,13 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
       if (changed) updates.memberAges = ages;
     }
 
-    if (!state.monthlyContributions && taxWithholdingState?.retirementDeduction) {
+    // Pre-populate pre-tax contributions from tax withholding if available
+    if (!state.preTaxContrib && taxWithholdingState?.retirementDeduction) {
       const perPaycheck = Number(taxWithholdingState.retirementDeduction) || 0;
       const freq = taxWithholdingState.payFrequency || 'biweekly';
       const periods: Record<string, number> = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
       const annual = perPaycheck * (periods[freq] || 26);
-      updates.monthlyContributions = String(Math.round(annual / 12));
+      updates.preTaxContrib = String(Math.round(annual / 12));
     }
 
     if (members.length > 0 && Object.keys(state.ssClaimingAges).length === 0) {
@@ -147,12 +149,16 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const retirementYear = Number(state.retirementYear) || (currentYear + 25);
   const expectedReturn = (Number(state.expectedReturn) || 7) / 100;
   const inflationRate = (Number(state.inflationRate) || 3) / 100;
-  const monthlyContributions = Number(state.monthlyContributions) || 0;
+  const preTaxContrib = Number(state.preTaxContrib) || 0;
+  const rothContrib = Number(state.rothContrib) || 0;
+  const nonQualContrib = Number(state.nonQualContrib) || 0;
+  const monthlyContributions = preTaxContrib + rothContrib + nonQualContrib;
   const monthlyExpenses = Number(state.monthlyExpenses) || 0;
 
   const currentPreTax = Number(financialProfile?.retirement_balance) || 0;
   const currentRoth = Number(financialProfile?.roth_retirement_balance) || 0;
-  const currentTotal = currentPreTax + currentRoth;
+  const currentNonQual = Number(financialProfile?.non_retirement_investments) || 0;
+  const currentTotal = currentPreTax + currentRoth + currentNonQual;
 
   // Derive retirement ages per member from retirement year
   const memberRetirementInfo = useMemo(() => {
@@ -176,17 +182,17 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const combinedGrossIncome = members.reduce((s, m) => s + m.gross_income, 0);
   const annualContributions = monthlyContributions * 12;
 
-  // Future value
+  // Future value per bucket
   const monthlyReturn = expectedReturn / 12;
-  const fvBalance = currentTotal * Math.pow(1 + monthlyReturn, monthsToRetirement);
-  const fvContributions = monthlyContributions > 0 && monthlyReturn > 0
-    ? monthlyContributions * ((Math.pow(1 + monthlyReturn, monthsToRetirement) - 1) / monthlyReturn)
-    : monthlyContributions * monthsToRetirement;
-  const projectedPortfolio = fvBalance + fvContributions;
+  const fvFactor = Math.pow(1 + monthlyReturn, monthsToRetirement);
+  const fvAnnuity = monthlyReturn > 0
+    ? (fvFactor - 1) / monthlyReturn
+    : monthsToRetirement;
 
-  const rothRatio = currentTotal > 0 ? currentRoth / currentTotal : 0.5;
-  const projectedRoth = projectedPortfolio * rothRatio;
-  const projectedPreTax = projectedPortfolio * (1 - rothRatio);
+  const projectedPreTax = currentPreTax * fvFactor + preTaxContrib * fvAnnuity;
+  const projectedRoth = currentRoth * fvFactor + rothContrib * fvAnnuity;
+  const projectedNonQual = currentNonQual * fvFactor + nonQualContrib * fvAnnuity;
+  const projectedPortfolio = projectedPreTax + projectedRoth + projectedNonQual;
 
   const annualWithdrawal = projectedPortfolio * 0.04;
   const monthlyFromPortfolio = annualWithdrawal / 12;
@@ -194,17 +200,95 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   // Social Security — store FRA benefit, display adjusted
   const showSS = state.showSocialSecurity;
   const ssDetails = useMemo(() => {
-    if (!showSS) return { total: 0, perMember: [] as { name: string; fra: number; adjusted: number; claimAge: number }[] };
+    if (!showSS) return { total: 0, perMember: [] as { name: string; fra: number; adjusted: number; claimAge: number; claimYear: number }[] };
     const perMember = members.map(m => {
       const fra = Number(state.ssBenefits?.[m.name]) || 0;
       const claimAge = Number(state.ssClaimingAges?.[m.name]) || 67;
       const adjusted = fra * ssaAdjustment(claimAge);
-      return { name: m.name, fra, adjusted, claimAge };
+      const memberAge = Number(state.memberAges?.[m.name]) || 0;
+      const claimYear = memberAge > 0 ? currentYear + (claimAge - memberAge) : retirementYear;
+      return { name: m.name, fra, adjusted, claimAge, claimYear };
     });
     return { total: perMember.reduce((s, m) => s + m.adjusted, 0), perMember };
-  }, [showSS, members, state.ssBenefits, state.ssClaimingAges]);
+  }, [showSS, members, state.ssBenefits, state.ssClaimingAges, state.memberAges, currentYear, retirementYear]);
 
-  const totalMonthlyIncome = monthlyFromPortfolio + ssDetails.total;
+  // Phase-based income projection
+  const incomePhases = useMemo(() => {
+    if (!showSS || ssDetails.perMember.length === 0) {
+      // No SS — single phase
+      return [{
+        label: `${retirementYear}+ (Portfolio only)`,
+        startYear: retirementYear,
+        endYear: null as number | null,
+        portfolioIncome: monthlyFromPortfolio,
+        ssIncome: 0,
+        totalIncome: monthlyFromPortfolio,
+      }];
+    }
+
+    // Find distinct SS start years that are after retirement
+    const ssStartYears = [...new Set(
+      ssDetails.perMember
+        .filter(m => m.adjusted > 0)
+        .map(m => Math.max(m.claimYear, retirementYear))
+    )].sort((a, b) => a - b);
+
+    // If all SS starts at or before retirement, single phase
+    if (ssStartYears.length === 0 || (ssStartYears.length === 1 && ssStartYears[0] <= retirementYear)) {
+      return [{
+        label: `${retirementYear}+`,
+        startYear: retirementYear,
+        endYear: null,
+        portfolioIncome: monthlyFromPortfolio,
+        ssIncome: ssDetails.total,
+        totalIncome: monthlyFromPortfolio + ssDetails.total,
+      }];
+    }
+
+    // Build phases
+    const phases: { label: string; startYear: number; endYear: number | null; portfolioIncome: number; ssIncome: number; totalIncome: number }[] = [];
+
+    // Collect unique transition points
+    const transitions = [...new Set([retirementYear, ...ssStartYears])].sort((a, b) => a - b);
+
+    for (let i = 0; i < transitions.length; i++) {
+      const start = transitions[i];
+      const end = i < transitions.length - 1 ? transitions[i + 1] : null;
+
+      // Which members' SS is active at this phase start?
+      const activeSS = ssDetails.perMember.filter(m => m.adjusted > 0 && m.claimYear <= start);
+      const ssIncome = activeSS.reduce((s, m) => s + m.adjusted, 0);
+
+      const allSSActive = ssDetails.perMember.filter(m => m.adjusted > 0).every(m => m.claimYear <= start);
+      let label: string;
+      if (activeSS.length === 0) {
+        label = end ? `${start}–${end} (pre-Social Security)` : `${start}+`;
+      } else if (allSSActive) {
+        label = `${start}+ (with Social Security)`;
+      } else {
+        const activeNames = activeSS.map(m => m.name).join(' + ');
+        label = end ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
+      }
+
+      phases.push({
+        label,
+        startYear: start,
+        endYear: end,
+        portfolioIncome: monthlyFromPortfolio,
+        ssIncome,
+        totalIncome: monthlyFromPortfolio + ssIncome,
+      });
+    }
+
+    return phases;
+  }, [showSS, ssDetails, retirementYear, monthlyFromPortfolio]);
+
+  // Use worst-case phase for gap analysis (the phase with lowest income)
+  const worstPhase = useMemo(() => {
+    return incomePhases.reduce((worst, phase) => phase.totalIncome < worst.totalIncome ? phase : worst, incomePhases[0]);
+  }, [incomePhases]);
+
+  const totalMonthlyIncome = worstPhase.totalIncome;
   const monthlyGap = totalMonthlyIncome - monthlyExpenses;
 
   const additionalMonthlyNeeded = useMemo(() => {
@@ -226,7 +310,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const savingsRateOk = savingsRate >= 0.15;
   const finalSalary = combinedGrossIncome * Math.pow(1 + inflationRate, yearsToRetirement);
   const salaryMultiple = finalSalary > 0 ? projectedPortfolio / finalSalary : 0;
-  const rothPct = currentTotal > 0 ? currentRoth / currentTotal : 0;
+  const rothPct = (currentRoth + currentNonQual) > 0 && currentTotal > 0 ? currentRoth / currentTotal : 0;
   const rothSkewed = rothPct < 0.2 || rothPct > 0.8;
   const impliedWithdrawalRate = projectedPortfolio > 0 ? (monthlyExpenses * 12) / projectedPortfolio : 0;
   const withdrawalRateSafe = impliedWithdrawalRate <= 0.04;
@@ -295,16 +379,17 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   // AI payload
   const retirementPicture = useMemo(() => ({
     members: memberRetirementInfo.map(m => ({ name: m.name, age: m.currentAge, retireAge: m.retireAge, gross_income: members.find(x => x.name === m.name)?.gross_income || 0 })),
-    retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentTotal,
-    monthlyContributions, annualContributions, expectedReturn, inflationRate,
-    projectedPortfolio, projectedPreTax, projectedRoth, monthlyFromPortfolio,
+    retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentNonQual, currentTotal,
+    preTaxContrib, rothContrib, nonQualContrib, monthlyContributions, annualContributions, expectedReturn, inflationRate,
+    projectedPortfolio, projectedPreTax, projectedRoth, projectedNonQual, monthlyFromPortfolio,
     socialSecurityEnabled: showSS, totalSSBenefit: ssDetails.total,
-    totalMonthlyIncome, monthlyExpenses, monthlyGap, savingsRate, salaryMultiple,
+    incomePhases: incomePhases.map(p => ({ label: p.label, totalIncome: p.totalIncome, ssIncome: p.ssIncome })),
+    totalMonthlyIncome, monthlyExpenses, monthlyGap: totalMonthlyIncome - monthlyExpenses, savingsRate, salaryMultiple,
     rothPct, impliedWithdrawalRate, additionalMonthlyNeeded,
-  }), [memberRetirementInfo, members, retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentTotal,
-    monthlyContributions, annualContributions, expectedReturn, inflationRate, projectedPortfolio,
-    projectedPreTax, projectedRoth, monthlyFromPortfolio, showSS, ssDetails.total,
-    totalMonthlyIncome, monthlyExpenses, monthlyGap, savingsRate, salaryMultiple, rothPct, impliedWithdrawalRate, additionalMonthlyNeeded]);
+  }), [memberRetirementInfo, members, retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentNonQual, currentTotal,
+    preTaxContrib, rothContrib, nonQualContrib, monthlyContributions, annualContributions, expectedReturn, inflationRate, projectedPortfolio,
+    projectedPreTax, projectedRoth, projectedNonQual, monthlyFromPortfolio, showSS, ssDetails.total, incomePhases,
+    totalMonthlyIncome, monthlyExpenses, savingsRate, salaryMultiple, rothPct, impliedWithdrawalRate, additionalMonthlyNeeded]);
 
   if (profileLoading || !toolStateLoaded) {
     return (
@@ -381,6 +466,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
               <span className="text-muted-foreground">Roth</span>
               <span className="font-semibold text-foreground">{fmt(currentRoth)}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Non-Qualified (Brokerage)</span>
+              <span className="font-semibold text-foreground">{fmt(currentNonQual)}</span>
+            </div>
             <div className="flex justify-between text-sm border-t border-border pt-1.5">
               <span className="text-muted-foreground font-semibold">Combined</span>
               <span className="font-bold text-foreground">{fmt(currentTotal)}</span>
@@ -389,20 +478,56 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
           <p className="text-[10px] text-muted-foreground mt-1">From your Financial Profile</p>
         </div>
 
+        {/* Three contribution buckets */}
         <div>
-          <Label className="text-xs text-muted-foreground">Combined Monthly Retirement Contributions</Label>
-          <div className="relative mt-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-            <Input
-              type="number"
-              className="pl-7"
-              value={state.monthlyContributions}
-              onChange={e => setState({ monthlyContributions: e.target.value })}
-              placeholder="0"
-            />
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Monthly Retirement Contributions</p>
+          <div className="space-y-2">
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Pre-Tax (401k/Traditional IRA)</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <Input
+                  type="number"
+                  className="pl-7"
+                  value={state.preTaxContrib}
+                  onChange={e => setState({ preTaxContrib: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Roth (Roth 401k/Roth IRA)</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <Input
+                  type="number"
+                  className="pl-7"
+                  value={state.rothContrib}
+                  onChange={e => setState({ rothContrib: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <Input
+                  type="number"
+                  className="pl-7"
+                  value={state.nonQualContrib}
+                  onChange={e => setState({ nonQualContrib: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg px-3 py-2 flex justify-between text-sm">
+              <span className="text-muted-foreground font-medium">Combined Monthly</span>
+              <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
+            </div>
           </div>
           {taxWithholdingState?.retirementDeduction && (
-            <p className="text-[10px] text-muted-foreground mt-1">Pre-populated from Tax Withholding tool</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Pre-tax pre-populated from Tax Withholding tool</p>
           )}
         </div>
 
@@ -603,6 +728,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                 <span className="text-muted-foreground">Roth</span>
                 <span className="font-semibold text-foreground">{fmt(projectedRoth)}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Non-Qualified (Brokerage)</span>
+                <span className="font-semibold text-foreground">{fmt(projectedNonQual)}</span>
+              </div>
               <div className="flex justify-between text-sm border-t border-border pt-1.5">
                 <span className="text-muted-foreground font-semibold">Total Projected</span>
                 <span className="font-bold text-foreground">{fmt(projectedPortfolio)}</span>
@@ -610,54 +739,53 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             </div>
           </div>
 
-          {/* Monthly Income */}
+          {/* Monthly Income — Phase-based */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Monthly Retirement Income</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Portfolio (4% rule)</span>
-                <span className="font-semibold text-foreground">{fmt(monthlyFromPortfolio)}</span>
-              </div>
-              {showSS && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Social Security</span>
-                  <span className="font-semibold text-foreground">{fmt(ssDetails.total)}</span>
+            {incomePhases.map((phase, i) => {
+              const phaseGap = phase.totalIncome - monthlyExpenses;
+              return (
+                <div key={i} className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
+                  <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">{phase.label}</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Portfolio (4% rule)</span>
+                      <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
+                    </div>
+                    {phase.ssIncome > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Social Security</span>
+                        <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm border-t border-border pt-1">
+                      <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
+                      <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
+                    </div>
+                    {monthlyExpenses > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{phaseGap >= 0 ? 'Surplus' : 'Gap'} vs. expenses</span>
+                        <span className={`font-bold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}/mo
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
-                <span className="font-bold text-foreground">{fmt(totalMonthlyIncome)}</span>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
-          {/* Gap / Surplus */}
-          {monthlyExpenses > 0 && (
+          {/* Gap / Surplus summary (worst phase) */}
+          {monthlyExpenses > 0 && monthlyGap < 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Retirement Income vs. Expenses</p>
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Monthly Income</span>
-                  <span className="font-semibold text-foreground">{fmt(totalMonthlyIncome)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Monthly Expenses</span>
-                  <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                  <span className="font-semibold text-foreground">{monthlyGap >= 0 ? 'Surplus' : 'Gap'}</span>
-                  <span className={`font-bold ${monthlyGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                    {monthlyGap >= 0 ? '+' : '-'}{fmt(Math.abs(monthlyGap))}/mo
-                  </span>
-                </div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Closing the Income Gap</p>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Your tightest phase shows a <span className="font-semibold text-destructive">{fmt(Math.abs(monthlyGap))}/mo</span> gap.
+                  To close it: save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> total by retirement.
+                </p>
               </div>
-              {monthlyGap < 0 && (
-                <div className="mt-3 bg-muted/50 rounded-lg p-3 space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold">To close the gap:</span> save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> total by retirement.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
@@ -780,7 +908,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             {/* No retirement savings toggle */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground">I won't save for retirement in retirement</label>
+                <label className="text-sm text-foreground">I won't save in retirement</label>
                 <Switch checked={estNoRetSavings} onCheckedChange={setEstNoRetSavings} />
               </div>
               {estNoRetSavings && (
@@ -813,13 +941,13 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                 <span className="font-bold text-accent">{fmt(estimatorResult.inflated)}/mo</span>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Using {state.inflationRate}% inflation over {yearsToRetirement} years
+                Using {state.inflationRate}% inflation through {retirementYear}
               </p>
             </div>
 
             <button
               onClick={() => {
-                setState({ monthlyExpenses: String(Math.round(estimatorResult.adjusted)) });
+                setState({ monthlyExpenses: String(Math.round(estimatorResult.inflated)) });
                 setShowExpenseEstimator(false);
               }}
               className="w-full py-2.5 bg-accent text-accent-foreground rounded-xl font-semibold text-sm active:opacity-90"
