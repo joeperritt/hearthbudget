@@ -74,6 +74,7 @@ interface BudgetSummary {
     emergency_fund_balance: number;
     has_life_insurance: boolean;
     life_insurance_coverage: number;
+    life_insurance_coverages: { name: string; coverage: number }[];
   };
 }
 
@@ -280,6 +281,9 @@ async function buildBudgetSummary(
         emergency_fund_balance: Number(fpData.emergency_fund_balance) || 0,
         has_life_insurance: !!fpData.has_life_insurance,
         life_insurance_coverage: Number(fpData.life_insurance_coverage) || 0,
+        life_insurance_coverages: Array.isArray((fpData as any).life_insurance_coverages)
+          ? ((fpData as any).life_insurance_coverages as any[]).map((c: any) => ({ name: c.name, coverage: c.coverage }))
+          : [],
       };
     }
   }
