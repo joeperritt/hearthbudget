@@ -25,6 +25,7 @@ interface MemberIncome {
   name: string;
   gross_income: number;
   income_type: string;
+  age?: number;
 }
 
 interface ProfileData {
@@ -135,7 +136,7 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
         // Build member incomes list — ensure every current member has an entry
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2' };
+          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined };
         });
 
         // Backward compat: if old single annual_gross_income exists and no member_incomes saved
@@ -176,7 +177,7 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
         // No existing profile — initialize member incomes from members list
         setProfile(p => ({
           ...p,
-          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2' })),
+          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined })),
           life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0 })),
         }));
       }
