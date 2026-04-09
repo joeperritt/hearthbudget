@@ -503,7 +503,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   }), [memberRetirementInfo, members, retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentNonQual, currentTotal,
     preTaxContrib, rothContrib, nonQualContrib, monthlyContributions, annualContributions, expectedReturn, inflationRate, projectedPortfolio,
     projectedPreTax, projectedRoth, projectedNonQual, monthlyFromPortfolio, showSS, ssDetails.total, incomePhases,
-    totalMonthlyIncome, monthlyExpenses, savingsRate, salaryMultiple, rothPct, impliedWithdrawalRate, additionalMonthlyNeeded]);
+    totalMonthlyIncome, monthlyExpenses, savingsRate, salaryMultiple, rothPct, impliedWithdrawalRate, maxPhaseWithdrawalRate, withdrawalSustainable, additionalMonthlyNeeded, lumpSumNeeded]);
 
   if (profileLoading || !toolStateLoaded) {
     return (
