@@ -67,7 +67,7 @@ export interface MonthlyBudget {
   transactions: Transaction[];
 }
 
-export type TabId = 'dashboard' | 'variable' | 'transactions' | 'more';
+export type TabId = 'dashboard' | 'variable' | 'transactions' | 'budget' | 'more';
 
 // Legacy constant kept for reference — use categoryRequiresNotes() instead
 export const NOTES_REQUIRED_CATEGORIES = ['random', 'gifts', 'hosting-gifts'];
