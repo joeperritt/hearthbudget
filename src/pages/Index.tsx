@@ -392,18 +392,6 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'menu' && (
           <MoreView onSelect={tab => setMoreSubView(tab)} />
         )}
-        {activeTab === 'more' && moreSubView === 'planning' && (
-          <PlanningView
-            currentMonth={currentMonthDate}
-            categories={categories}
-            fixedExpenses={fixedExpenses}
-            planningData={planningData}
-            onUpdatePlanningData={updatePlanningData}
-            onBack={() => setMoreSubView('menu')}
-            primaryName={householdMembers.primaryName}
-            partnerName={householdMembers.partnerName}
-          />
-        )}
         {activeTab === 'more' && moreSubView === 'settings' && (
           <SettingsView
             categories={categories}
