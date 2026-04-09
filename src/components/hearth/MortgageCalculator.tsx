@@ -31,6 +31,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
   const [insEstLoading, setInsEstLoading] = useState(false);
 
   const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'mortgage-calculator', {
+    mortgageMode: 'shopping' as 'shopping' | 'existing',
     homePrice: '350000',
     downPaymentPct: '20',
     downPaymentMode: 'percent' as 'percent' | 'dollar',
@@ -223,6 +224,36 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
       {/* State selector */}
       <div className="px-6 mt-4">
         <Label className="text-xs text-muted-foreground">State</Label>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="px-6 mt-4">
+        <div className="flex rounded-lg bg-muted p-0.5">
+          <button
+            onClick={() => setState({ mortgageMode: 'shopping' as any })}
+            className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
+              state.mortgageMode === 'shopping'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            I'm Shopping
+          </button>
+          <button
+            onClick={() => setState({ mortgageMode: 'existing' as any })}
+            className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
+              state.mortgageMode === 'existing'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            This is My Mortgage
+          </button>
+        </div>
+      </div>
+
+      {/* State selector (input) */}
+      <div className="px-6 mt-4">
         <Select value={state.selectedState} onValueChange={handleStateChange}>
           <SelectTrigger className="mt-1"><SelectValue placeholder="Select state…" /></SelectTrigger>
           <SelectContent className="max-h-60">
@@ -420,6 +451,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         otherDebt={calc.otherDebt}
         selectedState={state.selectedState}
         financialProfile={financialProfile}
+        mortgageMode={state.mortgageMode as 'shopping' | 'existing'}
       />
     </div>
   );
