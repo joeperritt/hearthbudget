@@ -13,7 +13,7 @@ import { TransactionsView } from '@/components/hearth/TransactionsView';
 import { AddTransactionSheet } from '@/components/hearth/AddTransactionSheet';
 import { EditTransactionSheet } from '@/components/hearth/EditTransactionSheet';
 import { CategoryDetail } from '@/components/hearth/CategoryDetail';
-import { PlanningView } from '@/components/hearth/PlanningView';
+
 import { MoveFundsSheet } from '@/components/hearth/MoveFundsSheet';
 import { MoreView } from '@/components/hearth/MoreView';
 import { SettingsView } from '@/components/hearth/SettingsView';
@@ -69,7 +69,7 @@ const Index = () => {
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'cfp-profile'>('menu');
-  const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings' | 'planning'>('main');
+  const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -375,19 +375,6 @@ const Index = () => {
             monthTransactions={monthTransactions}
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
-            onOpenPlanning={() => setBudgetSubView('planning')}
-          />
-        )}
-        {activeTab === 'budget' && budgetSubView === 'planning' && (
-          <PlanningView
-            currentMonth={currentMonthDate}
-            categories={categories}
-            fixedExpenses={fixedExpenses}
-            planningData={planningData}
-            onUpdatePlanningData={updatePlanningData}
-            onBack={() => setBudgetSubView('main')}
-            primaryName={householdMembers.primaryName}
-            partnerName={householdMembers.partnerName}
           />
         )}
 
