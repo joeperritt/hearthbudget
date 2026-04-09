@@ -43,7 +43,7 @@ interface ProfileData {
   emergency_fund_balance: number;
   has_life_insurance: boolean;
   life_insurance_coverage: number;
-}
+  life_insurance_coverages: MemberCoverage[];
 
 const DEFAULT_PROFILE: ProfileData = {
   member_incomes: [],
