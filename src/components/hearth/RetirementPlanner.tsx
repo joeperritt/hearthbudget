@@ -435,7 +435,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
       const memberAge = Number(state.memberAges?.[memberName]) || 0;
       const memberRetireAge = memberAge > 0 ? retirementYear - (currentYear - memberAge) : 65;
 
-      const prompt = `Based on this person's income profile, estimate their monthly Social Security benefit at full retirement age (67). Return ONLY a JSON object like {"estimatedMonthlyBenefit": 2450}. Person: ${member.name}, current age: ${memberAge}, retirement age: ${memberRetireAge}, annual gross income: $${member.gross_income.toLocaleString()}, income type: ${member.income_type || 'W-2'}. Assume they've been earning at roughly this level (inflation-adjusted) throughout their career. Use SSA benefit formula approximations for someone at this income level.`;
+      const prompt = `Based on this person's income profile, estimate their monthly Social Security benefit at full retirement age (67) in TODAY'S DOLLARS. Return ONLY a JSON object like {"estimatedMonthlyBenefit": 2450}. Person: ${member.name}, current age: ${memberAge}, retirement age: ${memberRetireAge}, annual gross income: $${member.gross_income.toLocaleString()}, income type: ${member.income_type || 'W-2'}. Assume they've been earning at roughly this level (inflation-adjusted) throughout their career. Use SSA benefit formula approximations for someone at this income level. Return the benefit in today's dollars — we will adjust for inflation separately.`;
 
       const { data, error } = await supabase.functions.invoke('budget-insights', {
         body: {
