@@ -65,7 +65,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'cfp-profile'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'cfp-profile'>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings' | 'planning'>('main');
 
   const monthKey = activeMonth;
