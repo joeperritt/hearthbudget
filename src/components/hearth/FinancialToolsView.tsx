@@ -1,4 +1,4 @@
-import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Shield, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock } from 'lucide-react';
 
 type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'cfp-profile';
 
@@ -10,7 +10,7 @@ interface FinancialToolsViewProps {
 const tools: { id: ToolId; name: string; description: string; icon: typeof Home; active: boolean }[] = [
   { id: 'mortgage', name: 'Mortgage Calculator', description: 'How much home can you afford?', icon: Home, active: true },
   { id: 'debt-payoff', name: 'Debt Payoff', description: 'See your path to debt freedom', icon: BarChart3, active: true },
-  { id: 'car-loan', name: 'Car Loan', description: 'Calculate your true cost of ownership', icon: Car, active: false },
+  { id: 'car-loan', name: 'Car Loan', description: 'Calculate your true cost of ownership', icon: Car, active: true },
   { id: 'tax-withholding', name: 'Tax Withholding', description: 'Optimize your W-4 withholding', icon: FileText, active: false },
   { id: 'retirement', name: 'Retirement Planner', description: 'Are you on track to retire?', icon: PiggyBank, active: false },
 ];
@@ -28,25 +28,8 @@ export function FinancialToolsView({ onBack, onSelectTool }: FinancialToolsViewP
         </div>
       </div>
 
-      {/* Financial Profile CTA Banner */}
-      <div className="px-6 mt-6">
-        <button
-          onClick={() => onSelectTool('cfp-profile')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-11 h-11 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Shield size={22} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-accent">Financial Profile</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Required for personalized insights</p>
-          </div>
-          <ChevronRight size={18} className="text-accent flex-shrink-0" />
-        </button>
-      </div>
-
       {/* Tool Cards Grid */}
-      <div className="px-6 mt-4 grid grid-cols-2 gap-3">
+      <div className="px-6 mt-6 grid grid-cols-2 gap-3">
         {tools.map(tool => (
           <button
             key={tool.id}

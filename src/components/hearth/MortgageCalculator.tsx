@@ -382,9 +382,9 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         </div>
       </div>
 
-      {/* CFP Indicators */}
+      {/* Certified Financial Planner (CFP) Indicators */}
       <div className="px-6 mt-5 space-y-3">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP Guideline Indicators</p>
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Certified Financial Planner (CFP) Guideline Indicators</p>
 
         <div className={`rounded-xl p-4 border ${housingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
           <div className="flex justify-between items-center">
@@ -421,7 +421,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
 
         <div className={`rounded-xl p-4 border text-center ${overallOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
           <p className={`text-base font-bold ${overallOk ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-            {!hasProfile ? '— Complete Financial Profile for ratios' : overallOk ? '✓ Within CFP Guidelines' : '⚠ Exceeds Recommended Limits'}
+            {!hasProfile ? '— Complete Financial Profile for ratios' : overallOk ? '✓ Within Guidelines' : '⚠ Exceeds Recommended Limits'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {!hasProfile

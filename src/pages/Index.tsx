@@ -25,6 +25,7 @@ import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { FinancialToolsView } from '@/components/hearth/FinancialToolsView';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/hearth/DebtPayoffCalculator';
+import { CarLoanCalculator } from '@/components/hearth/CarLoanCalculator';
 import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 
 const Index = () => {
@@ -66,7 +67,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'cfp-profile'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'cfp-profile'>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings' | 'planning'>('main');
 
   const monthKey = activeMonth;
@@ -391,7 +392,10 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'more' && moreSubView === 'menu' && (
-          <MoreView onSelect={tab => setMoreSubView(tab)} />
+          <MoreView onSelect={tab => {
+            if (tab === 'cfp-profile') setMoreSubView('cfp-profile');
+            else setMoreSubView(tab);
+          }} householdId={householdId} />
         )}
         {activeTab === 'more' && moreSubView === 'settings' && (
           <SettingsView
@@ -436,6 +440,7 @@ const Index = () => {
             onSelectTool={(tool) => {
               if (tool === 'mortgage') setMoreSubView('mortgage-calc');
               if (tool === 'debt-payoff') setMoreSubView('debt-payoff');
+              if (tool === 'car-loan') setMoreSubView('car-loan');
               if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
             }}
           />
@@ -453,9 +458,15 @@ const Index = () => {
             householdId={householdId}
           />
         )}
+        {activeTab === 'more' && moreSubView === 'car-loan' && (
+          <CarLoanCalculator
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
         {activeTab === 'more' && moreSubView === 'cfp-profile' && (
           <CFPProfileView
-            onBack={() => setMoreSubView('financial-tools')}
+            onBack={() => setMoreSubView('menu')}
             householdId={householdId}
           />
         )}
