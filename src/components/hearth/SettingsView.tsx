@@ -40,6 +40,8 @@ interface SettingsViewProps {
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   monthTransactions?: Transaction[];
+  /** When true, renders inline without header/back button/logout */
+  embedded?: boolean;
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
@@ -51,6 +53,7 @@ export function SettingsView({
   onUpdateCategories, onUpdateFixedExpenses, onBack,
   unassignedCount = 0,
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
+  embedded = false,
 }: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
   const activeMonthKey = format(currentMonth, 'yyyy-MM');
