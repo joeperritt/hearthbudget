@@ -253,6 +253,37 @@ async function buildBudgetSummary(
     }
   }
 
+  // Fetch financial profile for AI context
+  let financialProfile: BudgetSummary['financialProfile'] | undefined;
+  if (householdId) {
+    const { data: fpData } = await supabase
+      .from('financial_profiles')
+      .select('*')
+      .eq('household_id', householdId)
+      .maybeSingle();
+    if (fpData) {
+      financialProfile = {
+        member_incomes: Array.isArray(fpData.member_incomes)
+          ? (fpData.member_incomes as any[]).map((m: any) => ({ name: m.name, gross_income: m.gross_income, income_type: m.income_type }))
+          : [],
+        filing_status: (fpData as any).filing_status || 'single',
+        state: (fpData as any).state || null,
+        housing_type: fpData.housing_type,
+        mortgage_balance: Number(fpData.mortgage_balance) || 0,
+        mortgage_payment: Number(fpData.mortgage_payment) || 0,
+        mortgage_rate: Number(fpData.mortgage_rate) || 0,
+        monthly_rent: Number(fpData.monthly_rent) || 0,
+        debts: Array.isArray(fpData.debts) ? fpData.debts : [],
+        non_retirement_investments: Number((fpData as any).non_retirement_investments) || 0,
+        retirement_balance: Number(fpData.retirement_balance) || 0,
+        roth_retirement_balance: Number((fpData as any).roth_retirement_balance) || 0,
+        emergency_fund_balance: Number(fpData.emergency_fund_balance) || 0,
+        has_life_insurance: !!fpData.has_life_insurance,
+        life_insurance_coverage: Number(fpData.life_insurance_coverage) || 0,
+      };
+    }
+  }
+
   return {
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
@@ -270,6 +301,7 @@ async function buildBudgetSummary(
     priorMonth,
     categoryChanges,
     ...(Object.keys(incomeData).length > 0 ? { incomeData } : {}),
+    ...(financialProfile ? { financialProfile } : {}),
   };
 }
 
