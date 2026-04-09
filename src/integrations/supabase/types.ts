@@ -473,6 +473,30 @@ export type Database = {
           },
         ]
       }
+      tool_states: {
+        Row: {
+          household_id: string
+          id: string
+          state_json: Json
+          tool_name: string
+          updated_at: string
+        }
+        Insert: {
+          household_id: string
+          id?: string
+          state_json?: Json
+          tool_name: string
+          updated_at?: string
+        }
+        Update: {
+          household_id?: string
+          id?: string
+          state_json?: Json
+          tool_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           account: string
