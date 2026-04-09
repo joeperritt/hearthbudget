@@ -60,35 +60,28 @@ export function BudgetTabView({
         <h1 className="font-display text-xl font-bold text-foreground">Budget</h1>
       </div>
 
-      {/* Average Monthly Take-Home */}
+      {/* Take-Home, Budget Total & Surplus/Deficit */}
       <div className="px-6 mt-4">
-        <div className="bg-card rounded-xl shadow-sm p-4">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Average Monthly Take-Home
-          </label>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-sm text-muted-foreground">$</span>
-            <input
-              type="number"
-              value={takeHomeInput}
-              onChange={e => setTakeHomeInput(e.target.value)}
-              onBlur={handleTakeHomeBlur}
-              placeholder="0"
-              className="flex-1 text-2xl font-display font-bold text-foreground bg-transparent border-none outline-none tabular-nums"
-            />
-          </div>
-          <button
-            onClick={onOpenPlanning}
-            className="flex items-center gap-1 text-xs text-accent font-medium mt-2 active:scale-95 transition-transform"
-          >
-            Income Planning <ArrowRight size={12} />
-          </button>
-        </div>
-      </div>
-
-      {/* Budget Total & Surplus/Deficit */}
-      <div className="px-6 mt-3">
         <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={onOpenPlanning}
+              className="flex items-center gap-1 text-sm text-muted-foreground active:scale-95 transition-transform"
+            >
+              Avg. Monthly Take-Home <ArrowRight size={12} className="text-accent" />
+            </button>
+            <div className="flex items-center gap-0.5">
+              <span className="text-sm text-muted-foreground">$</span>
+              <input
+                type="number"
+                value={takeHomeInput}
+                onChange={e => setTakeHomeInput(e.target.value)}
+                onBlur={handleTakeHomeBlur}
+                placeholder="0"
+                className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-none outline-none"
+              />
+            </div>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Budget Total</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{fmt(budgetTotal)}</span>
