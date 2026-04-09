@@ -763,12 +763,16 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                       </div>
                       {aiEstimatingMember === null && fraAmount > 0 && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          AI estimate based on current income — for a precise figure, visit <span className="text-accent">ssa.gov/myaccount</span>
+                          AI estimate in today's dollars — for a precise figure, visit <span className="text-accent">ssa.gov/myaccount</span>
                         </p>
                       )}
-                      {fraAmount > 0 && claimAge !== 67 && (
+                      {fraAmount > 0 && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Adjusted for claiming at {claimAge}: <span className="font-semibold text-foreground">{fmt(adjustedAmount)}/mo</span>
+                          {claimAge !== 67 ? `Adjusted for claiming at ${claimAge}: ${fmt(adjustedAmount)}/mo today → ` : ''}
+                          <span className="font-semibold text-foreground">
+                            {fmt(adjustedAmount * Math.pow(1 + inflationRate, Math.max(0, claimAge - (Number(state.memberAges?.[m.name]) || 0))))}/mo in {retirementYear} dollars
+                          </span>
+                          {' '}(inflation-adjusted via COLA)
                         </p>
                       )}
                     </div>
