@@ -57,18 +57,6 @@ export function MoreView({ onSelect }: MoreViewProps) {
           </div>
         </button>
 
-        <button
-          onClick={() => onSelect('planning')}
-          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Settings size={20} className="text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Income Planning</p>
-            <p className="text-xs text-muted-foreground">Detailed income & deduction breakdown</p>
-          </div>
-        </button>
 
         <button
           onClick={() => onSelect('bank-connections')}
