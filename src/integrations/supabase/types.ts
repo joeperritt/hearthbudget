@@ -137,6 +137,66 @@ export type Database = {
           },
         ]
       }
+      financial_profiles: {
+        Row: {
+          annual_gross_income: number
+          created_at: string
+          debts: Json
+          emergency_fund_balance: number | null
+          has_life_insurance: boolean | null
+          household_id: string
+          housing_type: string
+          id: string
+          income_type: string
+          life_insurance_coverage: number | null
+          monthly_rent: number | null
+          mortgage_balance: number | null
+          mortgage_payment: number | null
+          mortgage_rate: number | null
+          retirement_balance: number | null
+          total_investment_balance: number | null
+          updated_at: string
+        }
+        Insert: {
+          annual_gross_income?: number
+          created_at?: string
+          debts?: Json
+          emergency_fund_balance?: number | null
+          has_life_insurance?: boolean | null
+          household_id: string
+          housing_type?: string
+          id?: string
+          income_type?: string
+          life_insurance_coverage?: number | null
+          monthly_rent?: number | null
+          mortgage_balance?: number | null
+          mortgage_payment?: number | null
+          mortgage_rate?: number | null
+          retirement_balance?: number | null
+          total_investment_balance?: number | null
+          updated_at?: string
+        }
+        Update: {
+          annual_gross_income?: number
+          created_at?: string
+          debts?: Json
+          emergency_fund_balance?: number | null
+          has_life_insurance?: boolean | null
+          household_id?: string
+          housing_type?: string
+          id?: string
+          income_type?: string
+          life_insurance_coverage?: number | null
+          monthly_rent?: number | null
+          mortgage_balance?: number | null
+          mortgage_payment?: number | null
+          mortgage_rate?: number | null
+          retirement_balance?: number | null
+          total_investment_balance?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fixed_expenses: {
         Row: {
           amount: number
