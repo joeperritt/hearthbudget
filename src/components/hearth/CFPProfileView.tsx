@@ -517,11 +517,11 @@ function NumField({ label, value, onChange, prefix, suffix, step, compact }: {
     <div>
       <label className={`text-muted-foreground ${compact ? 'text-[10px]' : 'text-xs'}`}>{label}</label>
       <div className="flex items-center gap-1 mt-0.5">
-        {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
+        {prefix && <span className="text-xs text-muted-foreground shrink-0">{prefix}</span>}
         <input type="number" step={step || '1'} value={value || ''} onChange={e => onChange(parseFloat(e.target.value) || 0)}
           placeholder="0"
-          className={`flex-1 px-2 py-1 rounded bg-background border border-border tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30 ${compact ? 'text-xs' : 'text-sm'}`} />
-        {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+          className={`min-w-0 flex-1 px-2 py-1 rounded bg-background border border-border tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30 ${compact ? 'text-xs' : 'text-sm'}`} />
+        {suffix && <span className="text-xs text-muted-foreground shrink-0">{suffix}</span>}
       </div>
     </div>
   );
