@@ -1,7 +1,7 @@
-import { CalendarDays, Settings, LogOut, Building2, Sparkles, BarChart3, Clock, Calculator } from 'lucide-react';
+import { Settings, LogOut, Building2, Sparkles, BarChart3, Calculator } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months' | 'financial-tools';
+type MoreTab = 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -14,36 +14,10 @@ export function MoreView({ onSelect }: MoreViewProps) {
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-xl font-bold text-foreground">More</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Planning & settings</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Tools & settings</p>
       </div>
 
       <div className="px-6 mt-6 space-y-3">
-        <button
-          onClick={() => onSelect('settings')}
-          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-            <Settings size={20} className="text-accent" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Budget Planning</p>
-            <p className="text-xs text-muted-foreground">Manage categories & budget amounts</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => onSelect('planning')}
-          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <CalendarDays size={20} className="text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Income Planning</p>
-            <p className="text-xs text-muted-foreground">Pay calculator & next month budget</p>
-          </div>
-        </button>
-
         <button
           onClick={() => onSelect('ai-advisor')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
@@ -84,15 +58,15 @@ export function MoreView({ onSelect }: MoreViewProps) {
         </button>
 
         <button
-          onClick={() => onSelect('past-months')}
+          onClick={() => onSelect('planning')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
         >
-          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-            <Clock size={20} className="text-accent" />
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Settings size={20} className="text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Past Months</p>
-            <p className="text-xs text-muted-foreground">Previous budget & spending history</p>
+            <p className="text-sm font-semibold text-foreground">Income Planning</p>
+            <p className="text-xs text-muted-foreground">Detailed income & deduction breakdown</p>
           </div>
         </button>
 
@@ -109,6 +83,7 @@ export function MoreView({ onSelect }: MoreViewProps) {
           </div>
         </button>
       </div>
+
       {/* Log Out */}
       <div className="px-6 mt-10">
         <button
