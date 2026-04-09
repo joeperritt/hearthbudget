@@ -21,27 +21,18 @@ import { InsightsSection } from '@/components/hearth/InsightsSection';
 import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
-import { PastMonthsView } from '@/components/hearth/PastMonthsView';
+import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { FinancialToolsView } from '@/components/hearth/FinancialToolsView';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
+import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 
 const Index = () => {
   const {
-    categories,
-    fixedExpenses,
-    transactions,
-    transfers,
-    activeMonth,
-    loading,
-    householdId,
-    addTransactions,
-    deleteTransaction,
-    addTransfer,
-    updateCategories,
-    updateFixedExpenses,
-    startNewMonth,
-    planningData,
-    updatePlanningData,
+    categories, fixedExpenses, transactions, transfers,
+    activeMonth, loading, householdId,
+    addTransactions, deleteTransaction, addTransfer,
+    updateCategories, updateFixedExpenses, startNewMonth,
+    planningData, updatePlanningData,
   } = useBudgetData();
 
   const { accounts } = useAccounts();
@@ -74,7 +65,8 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'past-months' | 'financial-tools' | 'mortgage-calc'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'planning' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'cfp-profile'>('menu');
+  const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings' | 'planning'>('main');
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -87,7 +79,6 @@ const Index = () => {
     }
   }, [activeMonth]);
 
-  // Derive a Date object for components that need it
   const currentMonthDate = useMemo(() => {
     if (!activeMonth) return new Date();
     try {
@@ -195,7 +186,6 @@ const Index = () => {
     householdId, planningData,
   );
 
-  // Auto-fetch insights on first dashboard load
   useEffect(() => {
     if (activeMonth && categories.length > 0) {
       fetchInsights();
@@ -205,17 +195,13 @@ const Index = () => {
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     await addTransactions(txns);
     setShowAddTransaction(false);
-    // Refresh insights when transaction added
     setTimeout(() => fetchInsights(true), 1000);
-  };
-
-  const handleStartMonth = async (_nextMonthDate: Date, _nextCats: BudgetCategory[], _nextFixed: FixedExpense[]) => {
-    // Month transitions now happen automatically — this is kept for compatibility
   };
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     if (tab === 'more') setMoreSubView('menu');
+    if (tab === 'budget') setBudgetSubView('main');
   };
 
   const handleGoToTransaction = useCallback((transactionId: string) => {
@@ -223,10 +209,8 @@ const Index = () => {
     setSelectedFixedExpenseId(null);
     setActiveTab('transactions');
     setTimeout(() => {
-      // Find the transaction and open edit sheet
       const tx = transactions.find(t => t.id === transactionId);
       if (tx) {
-        // Check if it's part of a split group
         const siblings = transactions.filter(
           t => t.id !== tx.id && t.description === tx.description && t.date === tx.date && t.account === tx.account && t.transactionType === 'expense'
         );
@@ -238,7 +222,6 @@ const Index = () => {
           setEditingSplitSiblings([]);
         }
       }
-      // Also scroll to it
       const el = document.getElementById(`tx-${transactionId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -374,6 +357,53 @@ const Index = () => {
             accounts={accounts}
           />
         )}
+
+        {/* Budget Tab */}
+        {activeTab === 'budget' && budgetSubView === 'main' && (
+          <BudgetTabView
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            currentMonth={currentMonthDate}
+            onUpdateCategories={updateCategories}
+            onUpdateFixedExpenses={updateFixedExpenses}
+            unassignedCount={unassignedTransactions.length}
+            spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
+            monthTransactions={monthTransactions}
+            planningData={planningData}
+            onUpdatePlanningData={updatePlanningData}
+            onOpenSettings={() => setBudgetSubView('settings')}
+            onOpenPlanning={() => setBudgetSubView('planning')}
+          />
+        )}
+        {activeTab === 'budget' && budgetSubView === 'settings' && (
+          <SettingsView
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            currentMonth={currentMonthDate}
+            onUpdateCategories={updateCategories}
+            onUpdateFixedExpenses={updateFixedExpenses}
+            onBack={() => setBudgetSubView('main')}
+            unassignedCount={unassignedTransactions.length}
+            spentByCategory={spentByCategory}
+            transferAdjustments={transferAdjustments}
+            monthTransactions={monthTransactions}
+          />
+        )}
+        {activeTab === 'budget' && budgetSubView === 'planning' && (
+          <PlanningView
+            currentMonth={currentMonthDate}
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            planningData={planningData}
+            onUpdatePlanningData={updatePlanningData}
+            onBack={() => setBudgetSubView('main')}
+            primaryName={householdMembers.primaryName}
+            partnerName={householdMembers.partnerName}
+          />
+        )}
+
+        {/* More Tab */}
         {activeTab === 'more' && moreSubView === 'menu' && (
           <MoreView onSelect={tab => setMoreSubView(tab)} />
         )}
@@ -396,7 +426,6 @@ const Index = () => {
             currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
-            
             onBack={() => setMoreSubView('menu')}
             unassignedCount={unassignedTransactions.length}
             spentByCategory={spentByCategory}
@@ -427,14 +456,12 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'past-months' && (
-          <PastMonthsView onBack={() => setMoreSubView('menu')} />
-        )}
         {activeTab === 'more' && moreSubView === 'financial-tools' && (
           <FinancialToolsView
             onBack={() => setMoreSubView('menu')}
             onSelectTool={(tool) => {
               if (tool === 'mortgage') setMoreSubView('mortgage-calc');
+              if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
             }}
           />
         )}
@@ -442,6 +469,12 @@ const Index = () => {
           <MortgageCalculator
             planningData={planningData}
             onBack={() => setMoreSubView('financial-tools')}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'cfp-profile' && (
+          <CFPProfileView
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
           />
         )}
       </div>
