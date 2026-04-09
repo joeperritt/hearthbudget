@@ -12,7 +12,7 @@ const tools: { id: ToolId; name: string; description: string; icon: typeof Home;
   { id: 'debt-payoff', name: 'Debt Payoff', description: 'See your path to debt freedom', icon: BarChart3, active: true },
   { id: 'car-loan', name: 'Car Loan', description: 'Calculate your true cost of ownership', icon: Car, active: true },
   { id: 'tax-withholding', name: 'Tax Withholding', description: 'Optimize your W-4 withholding', icon: FileText, active: true },
-  { id: 'retirement', name: 'Retirement Planner', description: 'Are you on track to retire?', icon: PiggyBank, active: false },
+  { id: 'retirement', name: 'Retirement Planner', description: 'Are you on track to retire?', icon: PiggyBank, active: true },
 ];
 
 export function FinancialToolsView({ onBack, onSelectTool }: FinancialToolsViewProps) {
