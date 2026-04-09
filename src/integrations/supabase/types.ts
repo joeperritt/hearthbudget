@@ -150,6 +150,7 @@ export type Database = {
           id: string
           income_type: string
           life_insurance_coverage: number | null
+          life_insurance_coverages: Json
           member_incomes: Json
           monthly_rent: number | null
           mortgage_balance: number | null
@@ -174,6 +175,7 @@ export type Database = {
           id?: string
           income_type?: string
           life_insurance_coverage?: number | null
+          life_insurance_coverages?: Json
           member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null
@@ -198,6 +200,7 @@ export type Database = {
           id?: string
           income_type?: string
           life_insurance_coverage?: number | null
+          life_insurance_coverages?: Json
           member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null

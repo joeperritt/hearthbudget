@@ -14,6 +14,12 @@ interface Debt {
   monthlyPayment: number;
 }
 
+interface MemberCoverage {
+  profile_id: string;
+  name: string;
+  coverage: number;
+}
+
 interface MemberIncome {
   profile_id: string;
   name: string;
@@ -37,6 +43,7 @@ interface ProfileData {
   emergency_fund_balance: number;
   has_life_insurance: boolean;
   life_insurance_coverage: number;
+  life_insurance_coverages: MemberCoverage[];
 }
 
 const DEFAULT_PROFILE: ProfileData = {
@@ -55,6 +62,7 @@ const DEFAULT_PROFILE: ProfileData = {
   emergency_fund_balance: 0,
   has_life_insurance: false,
   life_insurance_coverage: 0,
+  life_insurance_coverages: [],
 };
 
 const INCOME_TYPES = [
@@ -136,6 +144,16 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
           incomes[0].income_type = data.income_type || 'w2';
         }
 
+        const savedCoverages = Array.isArray((data as any).life_insurance_coverages) ? ((data as any).life_insurance_coverages as unknown as MemberCoverage[]) : [];
+        const coverages: MemberCoverage[] = membersList.map(m => {
+          const existing = savedCoverages.find(c => c.profile_id === m.id);
+          return existing || { profile_id: m.id, name: m.display_name, coverage: 0 };
+        });
+        // Backward compat: migrate old single coverage to first member
+        if (savedCoverages.length === 0 && Number(data.life_insurance_coverage) > 0 && coverages.length > 0) {
+          coverages[0].coverage = Number(data.life_insurance_coverage);
+        }
+
         setProfile({
           member_incomes: incomes,
           filing_status: (data as any).filing_status || 'single',
@@ -152,12 +170,14 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
           emergency_fund_balance: Number(data.emergency_fund_balance) || 0,
           has_life_insurance: !!data.has_life_insurance,
           life_insurance_coverage: Number(data.life_insurance_coverage) || 0,
+          life_insurance_coverages: coverages,
         });
       } else {
         // No existing profile — initialize member incomes from members list
         setProfile(p => ({
           ...p,
           member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2' })),
+          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0 })),
         }));
       }
       setLoading(false);
@@ -192,7 +212,8 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
       roth_retirement_balance: profile.roth_retirement_balance,
       emergency_fund_balance: profile.emergency_fund_balance,
       has_life_insurance: profile.has_life_insurance,
-      life_insurance_coverage: profile.life_insurance_coverage,
+      life_insurance_coverage: profile.life_insurance_coverages.reduce((s, c) => s + c.coverage, 0),
+      life_insurance_coverages: profile.life_insurance_coverages as any,
     };
 
     if (existingId) {
@@ -390,7 +411,7 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
           <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Non-Retirement Investments</label>
-              <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Brokerage accounts, savings, non-qualified accounts</p>
+              <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Brokerage accounts, non-qualified investment accounts</p>
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-xs text-muted-foreground">$</span>
                 <input type="number" value={profile.non_retirement_investments || ''} onChange={e => update('non_retirement_investments', parseFloat(e.target.value) || 0)}
@@ -418,11 +439,18 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
           </div>
         </section>
 
-        {/* Emergency Fund */}
         <section>
-          <h2 className="font-display text-sm font-semibold text-foreground mb-3">Emergency Fund</h2>
+          <h2 className="font-display text-sm font-semibold text-foreground mb-3">Savings & Emergency Fund</h2>
           <div className="bg-card rounded-xl shadow-sm p-4">
-            <NumField label="Current Balance" value={profile.emergency_fund_balance} onChange={v => update('emergency_fund_balance', v)} prefix="$" />
+            <div>
+              <label className="text-xs text-muted-foreground">Current Balance</label>
+              <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Savings accounts, checking, cash on hand, emergency fund</p>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs text-muted-foreground">$</span>
+                <input type="number" value={profile.emergency_fund_balance || ''} onChange={e => update('emergency_fund_balance', parseFloat(e.target.value) || 0)}
+                  placeholder="0" className="flex-1 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -444,7 +472,26 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
               </div>
             </div>
             {profile.has_life_insurance && (
-              <NumField label="Coverage Amount" value={profile.life_insurance_coverage} onChange={v => update('life_insurance_coverage', v)} prefix="$" />
+              <div className="space-y-2">
+                {profile.life_insurance_coverages.map((mc, i) => (
+                  <div key={mc.profile_id}>
+                    <label className="text-xs text-muted-foreground">
+                      {profile.life_insurance_coverages.length > 1 ? `${mc.name}'s Coverage Amount` : 'Coverage Amount'}
+                    </label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-xs text-muted-foreground">$</span>
+                      <input type="number" value={mc.coverage || ''} onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setProfile(p => ({
+                          ...p,
+                          life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => ci === i ? { ...c, coverage: val } : c),
+                        }));
+                      }}
+                        placeholder="0" className="flex-1 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </section>
