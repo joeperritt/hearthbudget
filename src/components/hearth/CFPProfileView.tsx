@@ -471,7 +471,26 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
               </div>
             </div>
             {profile.has_life_insurance && (
-              <NumField label="Coverage Amount" value={profile.life_insurance_coverage} onChange={v => update('life_insurance_coverage', v)} prefix="$" />
+              <div className="space-y-2">
+                {profile.life_insurance_coverages.map((mc, i) => (
+                  <div key={mc.profile_id}>
+                    <label className="text-xs text-muted-foreground">
+                      {profile.life_insurance_coverages.length > 1 ? `${mc.name}'s Coverage Amount` : 'Coverage Amount'}
+                    </label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-xs text-muted-foreground">$</span>
+                      <input type="number" value={mc.coverage || ''} onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setProfile(p => ({
+                          ...p,
+                          life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => ci === i ? { ...c, coverage: val } : c),
+                        }));
+                      }}
+                        placeholder="0" className="flex-1 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </section>
