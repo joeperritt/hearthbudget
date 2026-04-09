@@ -24,6 +24,7 @@ import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { FinancialToolsView } from '@/components/hearth/FinancialToolsView';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
+import { DebtPayoffCalculator } from '@/components/hearth/DebtPayoffCalculator';
 import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 
 const Index = () => {
@@ -434,6 +435,7 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
             onSelectTool={(tool) => {
               if (tool === 'mortgage') setMoreSubView('mortgage-calc');
+              if (tool === 'debt-payoff') setMoreSubView('debt-payoff');
               if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
             }}
           />
@@ -441,6 +443,12 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'mortgage-calc' && (
           <MortgageCalculator
             planningData={planningData}
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'debt-payoff' && (
+          <DebtPayoffCalculator
             onBack={() => setMoreSubView('financial-tools')}
             householdId={householdId}
           />
