@@ -975,15 +975,21 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
 
               {monthlyExpenses > 0 && (
                 <div className="flex items-start gap-2">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${withdrawalRateSafe ? 'bg-green-500' : 'bg-destructive'}`} />
+                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${withdrawalSustainable ? 'bg-green-500' : 'bg-destructive'}`} />
                   <div>
-                    <p className={`text-sm font-semibold ${withdrawalRateSafe ? 'text-green-600' : 'text-destructive'}`}>
-                      Withdrawal Rate: {pct(impliedWithdrawalRate)}
+                    <p className={`text-sm font-semibold ${withdrawalSustainable ? 'text-green-600' : 'text-destructive'}`}>
+                      {showSS && incomePhases.length > 1
+                        ? `Phased Withdrawal: ${pct(maxPhaseWithdrawalRate)} peak`
+                        : `Withdrawal Rate: ${pct(impliedWithdrawalRate)}`}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {withdrawalRateSafe
-                        ? 'Your projected expenses are sustainable under the 4% safe withdrawal rate.'
-                        : `A ${pct(impliedWithdrawalRate)} withdrawal rate exceeds the 4% guideline — your portfolio may not last through retirement.`}
+                      {withdrawalSustainable
+                        ? showSS && incomePhases.length > 1
+                          ? `Your phased plan is sustainable — higher draws pre-SS (${pct(maxPhaseWithdrawalRate)}) drop once Social Security kicks in.`
+                          : 'Your projected expenses are sustainable under the 4% safe withdrawal rate.'
+                        : showSS && incomePhases.length > 1
+                          ? `Even with phased withdrawals accounting for SS, your portfolio may not last through age 90. Consider increasing contributions.`
+                          : `A ${pct(impliedWithdrawalRate)} withdrawal rate exceeds the 4% guideline — your portfolio may not last through retirement.`}
                     </p>
                   </div>
                 </div>
