@@ -229,17 +229,25 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
   const annualPreTaxDeductions = (retirement + health + hsa + other) * payPeriods;
 
-  // MFJ income stacking: get spouse's gross income
-  const spouseGross = useMemo(() => {
-    if (filingStatus !== 'married_jointly' || members.length < 2) return undefined;
+  // MFJ income stacking: only apply to the secondary (lower-income) earner
+  const isSecondaryEarner = useMemo(() => {
+    if (filingStatus !== 'married_jointly' || members.length < 2) return false;
+    const currentMember = members.find(m => m.name === state.selectedMember);
     const spouse = members.find(m => m.name !== state.selectedMember);
-    return spouse?.gross_income;
+    if (!currentMember || !spouse) return false;
+    return currentMember.gross_income < spouse.gross_income;
   }, [filingStatus, members, state.selectedMember]);
 
-  const useIncomeStacking = filingStatus === 'married_jointly' && spouseGross !== undefined && spouseGross > 0;
+  const spouseGross = useMemo(() => {
+    if (!isSecondaryEarner || members.length < 2) return undefined;
+    const spouse = members.find(m => m.name !== state.selectedMember);
+    return spouse?.gross_income;
+  }, [isSecondaryEarner, members, state.selectedMember]);
+
+  const useIncomeStacking = isSecondaryEarner && spouseGross !== undefined && spouseGross > 0;
 
   // Calculations
-  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, spouseGross);
+  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, useIncomeStacking ? spouseGross : undefined);
   const annualFederalWithheld = (federalWithholdingPer + additionalWithholding) * payPeriods;
   const federalDelta = annualFederalWithheld - estimatedFederalTax;
 
