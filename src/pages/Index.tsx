@@ -466,7 +466,7 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'cfp-profile' && (
           <CFPProfileView
-            onBack={() => setMoreSubView('financial-tools')}
+            onBack={() => setMoreSubView('menu')}
             householdId={householdId}
           />
         )}
