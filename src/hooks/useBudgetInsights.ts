@@ -235,22 +235,28 @@ async function buildBudgetSummary(
   incomeData.incomeType = incomeTypeVal;
   incomeData.filingStatus = filingStatusVal;
   if (stateCodeVal) incomeData.stateCode = stateCodeVal;
-  if (incomeMode === 'gross' && primaryAnnualGross > 0) {
+  if (primaryAnnualGross > 0) {
     incomeData.annualGrossIncome = primaryAnnualGross;
     incomeData.grossIncome = primaryMonthlyGross;
-    incomeData.retirementContribution = primaryRetirement;
-    incomeData.retirementRate = primaryMonthlyGross > 0 ? (primaryRetirement / primaryMonthlyGross) * 100 : 0;
 
     if (partnerEnabled && partnerAnnualGross > 0) {
       incomeData.partnerAnnualGrossIncome = partnerAnnualGross;
       incomeData.partnerGrossIncome = partnerMonthlyGross;
-      incomeData.partnerNetPay = partnerNetPay;
-      incomeData.partnerRetirementContribution = partnerRetirement;
-      incomeData.partnerRetirementRate = partnerMonthlyGross > 0 ? (partnerRetirement / partnerMonthlyGross) * 100 : 0;
       incomeData.combinedAnnualGrossIncome = primaryAnnualGross + partnerAnnualGross;
       incomeData.combinedGrossIncome = primaryMonthlyGross + partnerMonthlyGross;
-      incomeData.combinedNetPay = primaryNetPay + partnerNetPay;
-      incomeData.combinedRetirementContribution = primaryRetirement + partnerRetirement;
+    }
+
+    if (incomeMode === 'gross') {
+      incomeData.retirementContribution = primaryRetirement;
+      incomeData.retirementRate = primaryMonthlyGross > 0 ? (primaryRetirement / primaryMonthlyGross) * 100 : 0;
+
+      if (partnerEnabled && partnerAnnualGross > 0) {
+        incomeData.partnerNetPay = partnerNetPay;
+        incomeData.partnerRetirementContribution = partnerRetirement;
+        incomeData.partnerRetirementRate = partnerMonthlyGross > 0 ? (partnerRetirement / partnerMonthlyGross) * 100 : 0;
+        incomeData.combinedNetPay = primaryNetPay + partnerNetPay;
+        incomeData.combinedRetirementContribution = primaryRetirement + partnerRetirement;
+      }
     }
   }
 
