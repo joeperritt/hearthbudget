@@ -89,9 +89,7 @@ function pct(n: number) {
   return (n * 100).toFixed(1) + '%';
 }
 
-function calcFederalTax(annualGross: number, filingStatus: FilingStatus, annualPreTaxDeductions: number): number {
-  const agi = Math.max(0, annualGross - annualPreTaxDeductions);
-  const taxableIncome = Math.max(0, agi - STANDARD_DEDUCTION_2026[filingStatus]);
+function calcFederalTaxOnTaxable(taxableIncome: number, filingStatus: FilingStatus): number {
   const brackets = FEDERAL_BRACKETS_2026[filingStatus];
   let tax = 0;
   for (const b of brackets) {
@@ -99,6 +97,26 @@ function calcFederalTax(annualGross: number, filingStatus: FilingStatus, annualP
     tax += (Math.min(taxableIncome, b.max) - b.min) * b.rate;
   }
   return tax;
+}
+
+function calcFederalTax(annualGross: number, filingStatus: FilingStatus, annualPreTaxDeductions: number, spouseGross?: number): number {
+  const agi = Math.max(0, annualGross - annualPreTaxDeductions);
+
+  // MFJ income stacking: when a spouse's income is provided, compute this member's
+  // share of total MFJ tax by subtracting the tax on the spouse's income alone.
+  if (filingStatus === 'married_jointly' && spouseGross !== undefined && spouseGross > 0) {
+    const combinedAGI = agi + spouseGross; // simplified: spouse pre-tax deductions not modeled here
+    const combinedTaxable = Math.max(0, combinedAGI - STANDARD_DEDUCTION_2026[filingStatus]);
+    const totalTax = calcFederalTaxOnTaxable(combinedTaxable, filingStatus);
+
+    const spouseTaxable = Math.max(0, spouseGross - STANDARD_DEDUCTION_2026[filingStatus]);
+    const spouseTax = calcFederalTaxOnTaxable(spouseTaxable, filingStatus);
+
+    return Math.max(0, totalTax - spouseTax);
+  }
+
+  const taxableIncome = Math.max(0, agi - STANDARD_DEDUCTION_2026[filingStatus]);
+  return calcFederalTaxOnTaxable(taxableIncome, filingStatus);
 }
 
 function getMarginalRate(annualGross: number, filingStatus: FilingStatus, annualPreTaxDeductions: number): number {
@@ -211,8 +229,17 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
   const annualPreTaxDeductions = (retirement + health + hsa + other) * payPeriods;
 
+  // MFJ income stacking: get spouse's gross income
+  const spouseGross = useMemo(() => {
+    if (filingStatus !== 'married_jointly' || members.length < 2) return undefined;
+    const spouse = members.find(m => m.name !== state.selectedMember);
+    return spouse?.gross_income;
+  }, [filingStatus, members, state.selectedMember]);
+
+  const useIncomeStacking = filingStatus === 'married_jointly' && spouseGross !== undefined && spouseGross > 0;
+
   // Calculations
-  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions);
+  const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, spouseGross);
   const annualFederalWithheld = (federalWithholdingPer + additionalWithholding) * payPeriods;
   const federalDelta = annualFederalWithheld - estimatedFederalTax;
 
@@ -454,6 +481,11 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
                 <span className={`font-bold ${deltaColor(federalDelta)}`}>{deltaLabel(federalDelta)}</span>
               </div>
             </div>
+            {useIncomeStacking && (
+              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                Because you file Married Filing Jointly with a higher-earning spouse, your income is taxed at a higher marginal rate than it would be if calculated independently. This calculator accounts for income stacking.
+              </p>
+            )}
           </div>
 
           {/* State */}
