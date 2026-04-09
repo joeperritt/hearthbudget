@@ -857,14 +857,27 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
           {/* Monthly Income — Phase-based */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Monthly Retirement Income</p>
+            <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
               return (
                 <div key={i} className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
-                  <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">{phase.label}</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[11px] font-semibold text-muted-foreground">{phase.label}</p>
+                    {phase.durationYears > 0 && phase.durationYears < 50 && (
+                      <span className="text-[10px] text-muted-foreground">{Math.round(phase.durationYears)} yrs</span>
+                    )}
+                  </div>
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Portfolio (4% rule)</span>
+                      <span className="text-muted-foreground">
+                        Portfolio draw
+                        {phase.withdrawalRate > 0 && (
+                          <span className={`ml-1 text-[10px] ${phase.withdrawalRate > 0.04 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+                            ({pct(phase.withdrawalRate)}/yr)
+                          </span>
+                        )}
+                      </span>
                       <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
                     </div>
                     {phase.ssIncome > 0 && (
@@ -889,16 +902,20 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                 </div>
               );
             })}
+            {showSS && incomePhases.length > 1 && (
+              <p className="text-[10px] text-muted-foreground mt-3 italic">
+                Higher portfolio draw in pre-SS phases is sustainable because it drops once Social Security begins.
+              </p>
+            )}
           </div>
 
-          {/* Gap / Surplus summary (worst phase) */}
-          {monthlyExpenses > 0 && monthlyGap < 0 && (
+          {/* Gap / Surplus summary */}
+          {monthlyExpenses > 0 && lumpSumNeeded > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Closing the Income Gap</p>
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                 <p className="text-xs text-muted-foreground">
-                  Your tightest phase shows a <span className="font-semibold text-destructive">{fmt(Math.abs(monthlyGap))}/mo</span> gap.
-                  To close it: save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> total by retirement.
+                  To fully fund all phases through age {longevityAge}: save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> more by retirement.
                 </p>
               </div>
             </div>
