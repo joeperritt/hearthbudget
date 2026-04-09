@@ -372,22 +372,7 @@ const Index = () => {
             monthTransactions={monthTransactions}
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
-            onOpenSettings={() => setBudgetSubView('settings')}
             onOpenPlanning={() => setBudgetSubView('planning')}
-          />
-        )}
-        {activeTab === 'budget' && budgetSubView === 'settings' && (
-          <SettingsView
-            categories={categories}
-            fixedExpenses={fixedExpenses}
-            currentMonth={currentMonthDate}
-            onUpdateCategories={updateCategories}
-            onUpdateFixedExpenses={updateFixedExpenses}
-            onBack={() => setBudgetSubView('main')}
-            unassignedCount={unassignedTransactions.length}
-            spentByCategory={spentByCategory}
-            transferAdjustments={transferAdjustments}
-            monthTransactions={monthTransactions}
           />
         )}
         {activeTab === 'budget' && budgetSubView === 'planning' && (
