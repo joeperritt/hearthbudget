@@ -308,6 +308,13 @@ export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    {profile.member_incomes.length > 1 ? `${member.name}'s Age` : 'Age'}
+                  </label>
+                  <input type="number" value={member.age || ''} onChange={e => updateMemberIncome(i, 'age', parseInt(e.target.value) || undefined)}
+                    placeholder="e.g. 35" className="w-full mt-1 px-2 py-1.5 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                </div>
                 {i < profile.member_incomes.length - 1 && <div className="border-b border-border pt-1" />}
               </div>
             ))}
