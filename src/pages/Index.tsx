@@ -29,6 +29,7 @@ import { CarLoanCalculator } from '@/components/hearth/CarLoanCalculator';
 import { TaxWithholdingCalculator } from '@/components/hearth/TaxWithholdingCalculator';
 import { RetirementPlanner } from '@/components/hearth/RetirementPlanner';
 import { CFPProfileView } from '@/components/hearth/CFPProfileView';
+import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
 
 const Index = () => {
   const {
@@ -69,7 +70,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement-planner' | 'cfp-profile'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement-planner' | 'goals-planner' | 'cfp-profile'>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
 
   const monthKey = activeMonth;
@@ -432,6 +433,7 @@ const Index = () => {
               if (tool === 'car-loan') setMoreSubView('car-loan');
               if (tool === 'tax-withholding') setMoreSubView('tax-withholding');
               if (tool === 'retirement') setMoreSubView('retirement-planner');
+              if (tool === 'goals-planner') setMoreSubView('goals-planner');
               if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
             }}
           />
