@@ -1078,13 +1078,6 @@ export function SettingsView({
                   </div>
                 ))}
               </div>
-              {renderAddFixedForm('tithe')}
-              {showAddFixed !== 'tithe' && (
-                <button onClick={() => setShowAddFixed('tithe')}
-                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                  <Plus size={14} /> Add Tithe/Giving Item
-                </button>
-              )}
             </div>
           </div>
         )}
