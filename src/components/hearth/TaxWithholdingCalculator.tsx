@@ -248,7 +248,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
   }, [filingStatus, members, state.selectedMember]);
 
   const showIncomeStackingDisclaimer =
-    filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
+    filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined && members.length >= 2;
 
   // Calculations
   const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, mfjPrimaryIncome);
@@ -267,19 +267,25 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
   const totalTaxes = estimatedFederalTax + estimatedStateTax + totalFICA;
 
   // For MFJ, compute household-level rates (same return = same rates for both spouses)
-  const householdGross = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
-    ? annualGross + mfjPrimaryIncome
-    : annualGross;
+  // For MFJ with multiple members, always compute household-level rates for both spouses
+  const isMFJWithSpouse = filingStatus === 'married_jointly' && members.length >= 2;
+  const spouseIncome = useMemo(() => {
+    if (!isMFJWithSpouse || !state.selectedMember) return 0;
+    return members
+      .filter(m => m.name !== state.selectedMember)
+      .reduce((sum, m) => sum + m.gross_income, 0);
+  }, [isMFJWithSpouse, members, state.selectedMember]);
+
+  const householdGross = isMFJWithSpouse ? annualGross + spouseIncome : annualGross;
   const householdPreTax = annualPreTaxDeductions; // simplified: only this member's deductions modeled
-  const householdFederalTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+  const householdFederalTax = isMFJWithSpouse
     ? calcFederalTaxOnTaxable(Math.max(0, householdGross - householdPreTax - STANDARD_DEDUCTION_2026[filingStatus]), filingStatus)
     : estimatedFederalTax;
-  const householdStateTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+  const householdStateTax = isMFJWithSpouse
     ? calcStateTax2026(householdGross, state.selectedState, householdPreTax)
     : estimatedStateTax;
-  const householdFICA = totalFICA; // FICA is always per-person
+  const householdFICA = totalFICA;
   const householdTotalTaxes = householdFederalTax + householdStateTax + householdFICA;
-  const isMFJWithSpouse = filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
 
   // Effective rate: household total tax / household gross (same for both spouses on MFJ)
   const effectiveRate = isMFJWithSpouse
