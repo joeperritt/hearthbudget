@@ -287,7 +287,7 @@ export function FinancialHealthScore({ onBack, householdId }: FinancialHealthSco
         max: 17,
         metric: `${pct(rs.rate)} savings rate`,
         color: catColor(rs.score, 17),
-        note: rs.score >= 17 ? 'Outstanding — you're saving 20%+ toward retirement.' : rs.score >= 14 ? 'Strong — increasing to 20% would maximize your future security.' : rs.score >= 10 ? 'Good start — try to increase by 1% each year.' : 'Critical to start — even 5% with employer match makes a big difference.',
+        note: rs.score >= 17 ? 'Outstanding \u2014 saving 20%+ toward retirement.' : rs.score >= 14 ? 'Strong \u2014 increasing to 20% would maximize your future security.' : rs.score >= 10 ? 'Good start \u2014 try to increase by 1% each year.' : 'Critical to start \u2014 even 5% with employer match makes a big difference.',
       },
       {
         name: 'Insurance Coverage',
@@ -314,7 +314,7 @@ export function FinancialHealthScore({ onBack, householdId }: FinancialHealthSco
         max: 17,
         metric: `${pct(gr.rate)} giving rate`,
         color: catColor(gr.score, 17),
-        note: gr.score >= 17 ? 'Generous spirit — your giving exceeds 5% of income.' : gr.score >= 14 ? 'Meaningful giving — you're making a real impact.' : gr.score >= 10 ? 'Good start — even small increases honor your values.' : 'Consider starting with a giving goal that aligns with your values.',
+        note: gr.score >= 17 ? 'Generous spirit \u2014 your giving exceeds 5% of income.' : gr.score >= 14 ? 'Meaningful giving \u2014 making a real impact.' : gr.score >= 10 ? 'Good start \u2014 even small increases honor your values.' : 'Consider starting with a giving goal that aligns with your values.',
       },
     ];
 
