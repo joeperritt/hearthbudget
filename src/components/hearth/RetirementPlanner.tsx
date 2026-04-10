@@ -809,6 +809,40 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
         <div className="px-6 mt-6">
           <h2 className="font-display text-base font-bold text-foreground mb-3">Your Retirement Picture</h2>
 
+          {/* Summary Card */}
+          {monthlyExpenses > 0 && (() => {
+            const finalPhase = incomePhases[incomePhases.length - 1];
+            const summaryIncome = finalPhase.totalIncome;
+            const surplus = summaryIncome - monthlyExpenses;
+            const onTrack = surplus >= 0 && lumpSumNeeded <= 0;
+            return (
+              <div className={`rounded-xl shadow-sm p-4 mb-3 border-2 ${onTrack ? 'border-green-500/30 bg-green-50/50 dark:bg-green-950/20' : 'border-destructive/30 bg-red-50/50 dark:bg-red-950/20'}`}>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Projected Monthly Income</span>
+                    <span className="font-semibold text-foreground">{fmt(summaryIncome)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated Monthly Expenses</span>
+                    <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                    <span className="text-muted-foreground font-semibold">Monthly {surplus >= 0 ? 'Surplus' : 'Gap'}</span>
+                    <span className={`font-bold ${surplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                      {surplus >= 0 ? '+' : '-'}{fmt(Math.abs(surplus))}/mo
+                    </span>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 mt-3 pt-2 border-t border-border`}>
+                  <span className={`text-lg ${onTrack ? '' : ''}`}>{onTrack ? '✅' : '🚩'}</span>
+                  <p className={`text-sm font-semibold ${onTrack ? 'text-green-600' : 'text-destructive'}`}>
+                    {onTrack ? 'On Track for Retirement' : 'Retirement Gap Detected'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Timeline bar */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
@@ -951,7 +985,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                     {salaryMultiple >= 10 ? 'On Track' : salaryMultiple >= 8 ? 'Nearly There' : 'Behind Pace'} — {salaryMultiple.toFixed(1)}x final salary
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Rule of thumb: 10x your final salary by retirement. Projected {fmt(projectedPortfolio)} vs {fmt(finalSalary)} salary.
+                    Rule of thumb: 10x your projected final salary ({fmt(finalSalary)}) = {fmt(finalSalary * 10)} benchmark. Your projected portfolio: {fmt(projectedPortfolio)}.
                   </p>
                 </div>
               </div>
