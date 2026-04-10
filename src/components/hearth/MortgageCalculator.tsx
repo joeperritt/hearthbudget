@@ -4,6 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { STATE_DEFAULTS, STATE_OPTIONS } from '@/data/stateDefaults';
@@ -33,6 +34,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
 
   const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'mortgage-calculator', {
     mortgageMode: 'shopping' as 'shopping' | 'existing',
+    // Shopping mode fields
     homePrice: '350000',
     downPaymentPct: '20',
     downPaymentMode: 'percent' as 'percent' | 'dollar',
@@ -48,6 +50,19 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     otherDebtPayments: '',
     selectedState: '',
     extraPayment: '0',
+    // Existing mortgage mode fields
+    exCurrentBalance: '',
+    exStatementMonth: '',
+    exStatementYear: '',
+    exOriginalTerm: '30',
+    exInterestRate: '',
+    exMonthlyPI: '',
+    exEscrowTax: '',
+    exEscrowInsurance: '',
+    exEscrowPMI: '',
+    exOriginalLoanAmount: '',
+    exExtraPayment: '0',
+    exOtherDebtPayments: '',
   });
 
   useEffect(() => {
@@ -63,24 +78,45 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
       });
   }, [householdId]);
 
-  // Auto-populate state from profile and debt payments
+  // Auto-populate from financial profile
   useEffect(() => {
     if (!financialProfile || !toolStateLoaded) return;
+    const updates: Record<string, string> = {};
+
+    // Shopping mode: debt payments + state
     if (state.otherDebtPayments === '') {
       const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
       const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (total > 0) setState({ otherDebtPayments: String(total) });
+      if (total > 0) updates.otherDebtPayments = String(total);
     }
     if (state.selectedState === '' && financialProfile.state) {
       const st = financialProfile.state.toUpperCase();
       if (STATE_DEFAULTS[st]) {
-        setState({
-          selectedState: st,
-          propertyTaxRate: String(STATE_DEFAULTS[st].tax),
-          insuranceRate: String(STATE_DEFAULTS[st].insurance),
-        });
+        updates.selectedState = st;
+        updates.propertyTaxRate = String(STATE_DEFAULTS[st].tax);
+        updates.insuranceRate = String(STATE_DEFAULTS[st].insurance);
       }
     }
+
+    // Existing mode: pull from financial profile if fields are empty
+    if (state.exCurrentBalance === '' && financialProfile.mortgage_balance) {
+      updates.exCurrentBalance = String(financialProfile.mortgage_balance);
+    }
+    if (state.exInterestRate === '' && financialProfile.mortgage_rate) {
+      updates.exInterestRate = String(financialProfile.mortgage_rate);
+    }
+    if (state.exMonthlyPI === '' && financialProfile.mortgage_payment) {
+      updates.exMonthlyPI = String(financialProfile.mortgage_payment);
+    }
+    if (state.exOtherDebtPayments === '' && state.otherDebtPayments !== '') {
+      updates.exOtherDebtPayments = state.otherDebtPayments;
+    } else if (state.exOtherDebtPayments === '') {
+      const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
+      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+      if (total > 0) updates.exOtherDebtPayments = String(total);
+    }
+
+    if (Object.keys(updates).length > 0) setState(updates);
   }, [financialProfile, toolStateLoaded]);
 
   const handleStateChange = useCallback((st: string) => {
@@ -108,8 +144,10 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
   }, [financialProfile]);
 
   const hasProfile = financialProfile && grossMonthlyIncome > 0;
+  const isShopping = state.mortgageMode === 'shopping';
 
-  const calc = useMemo(() => {
+  // ── Shopping mode calculations ──
+  const shoppingCalc = useMemo(() => {
     const price = parseFloat(state.homePrice) || 0;
     const dp = state.downPaymentMode === 'percent'
       ? price * (parseFloat(state.downPaymentPct) || 0) / 100
@@ -164,8 +202,121 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     const interestSaved = totalInterestStandard - totalInterestExtra;
     const monthsSaved = numPayments - monthsWithExtra;
 
-    return { loanAmount, dp, dpPct, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, totalInterestStandard, totalInterestExtra, interestSaved, monthsSaved, monthsWithExtra, numPayments: numPayments };
-  }, [state, grossMonthlyIncome]);
+    return { loanAmount, dp, dpPct, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, totalInterestStandard, totalInterestExtra, interestSaved, monthsSaved, monthsWithExtra, numPayments };
+  }, [state.homePrice, state.downPaymentMode, state.downPaymentPct, state.downPaymentAmt, state.loanTermYears, state.interestRate, state.propertyTaxMode, state.propertyTaxRate, state.propertyTaxAmt, state.insuranceMode, state.insuranceRate, state.insuranceAmt, state.otherDebtPayments, state.extraPayment, grossMonthlyIncome]);
+
+  // ── Existing mortgage calculations ──
+  const existingCalc = useMemo(() => {
+    const currentBalance = parseFloat(state.exCurrentBalance) || 0;
+    const rate = (parseFloat(state.exInterestRate) || 0) / 100 / 12;
+    const monthlyPI = parseFloat(state.exMonthlyPI) || 0;
+    const escrowTax = parseFloat(state.exEscrowTax) || 0;
+    const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
+    const escrowPMI = parseFloat(state.exEscrowPMI) || 0;
+    const totalMonthly = monthlyPI + escrowTax + escrowIns + escrowPMI;
+    const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
+    const otherDebt = parseFloat(state.exOtherDebtPayments) || 0;
+
+    // Statement date offset
+    const stmtMonth = parseInt(state.exStatementMonth) || 0;
+    const stmtYear = parseInt(state.exStatementYear) || 0;
+    let monthsSinceStatement = 0;
+    if (stmtMonth > 0 && stmtYear > 0) {
+      const now = new Date();
+      const stmtDate = new Date(stmtYear, stmtMonth - 1);
+      monthsSinceStatement = Math.max(0, (now.getFullYear() - stmtDate.getFullYear()) * 12 + (now.getMonth() - stmtDate.getMonth()));
+    }
+
+    // Adjust balance forward from statement date
+    let adjustedBalance = currentBalance;
+    if (monthsSinceStatement > 0 && rate > 0 && monthlyPI > 0) {
+      let bal = currentBalance;
+      for (let i = 0; i < monthsSinceStatement; i++) {
+        const intCharge = bal * rate;
+        bal -= (monthlyPI - intCharge);
+        if (bal <= 0) { bal = 0; break; }
+      }
+      adjustedBalance = Math.max(0, bal);
+    }
+
+    // Remaining months to payoff
+    let remainingMonths = 0;
+    let totalInterestRemaining = 0;
+    if (rate > 0 && monthlyPI > 0 && adjustedBalance > 0) {
+      let bal = adjustedBalance;
+      while (bal > 0 && remainingMonths < 600) {
+        const intCharge = bal * rate;
+        totalInterestRemaining += intCharge;
+        bal -= (monthlyPI - intCharge);
+        remainingMonths++;
+        if (bal <= 0) break;
+      }
+    } else if (monthlyPI > 0 && adjustedBalance > 0) {
+      remainingMonths = Math.ceil(adjustedBalance / monthlyPI);
+    }
+
+    // Interest already paid estimate (if original loan amount known)
+    let interestAlreadyPaid = 0;
+    if (originalLoan > 0 && rate > 0 && monthlyPI > 0) {
+      const originalTermMonths = parseInt(state.exOriginalTerm) * 12;
+      const totalPaidOverLife = monthlyPI * originalTermMonths;
+      const totalInterestOverLife = totalPaidOverLife - originalLoan;
+      const principalPaid = originalLoan - adjustedBalance;
+      // Estimate: total interest - remaining interest
+      interestAlreadyPaid = Math.max(0, totalInterestOverLife - totalInterestRemaining);
+    }
+
+    // Payoff date
+    const payoffDate = new Date();
+    payoffDate.setMonth(payoffDate.getMonth() + remainingMonths);
+
+    // Equity
+    const equityPct = originalLoan > 0 ? ((originalLoan - adjustedBalance) / originalLoan) * 100 : 0;
+
+    // Housing & DTI ratios
+    const housingRatio = grossMonthlyIncome > 0 ? totalMonthly / grossMonthlyIncome : 0;
+    const dtiRatio = grossMonthlyIncome > 0 ? (totalMonthly + otherDebt) / grossMonthlyIncome : 0;
+
+    // Extra payment analysis
+    const extra = parseFloat(state.exExtraPayment) || 0;
+    let monthsWithExtra = remainingMonths;
+    let totalInterestExtra = totalInterestRemaining;
+    if (extra > 0 && rate > 0 && adjustedBalance > 0 && monthlyPI > 0) {
+      let bal = adjustedBalance;
+      let months = 0;
+      let interest = 0;
+      const totalPayment = monthlyPI + extra;
+      while (bal > 0 && months < 600) {
+        const intCharge = bal * rate;
+        interest += intCharge;
+        bal -= Math.min(bal, totalPayment - intCharge);
+        months++;
+        if (bal <= 0) break;
+      }
+      monthsWithExtra = months;
+      totalInterestExtra = interest;
+    }
+    const interestSaved = totalInterestRemaining - totalInterestExtra;
+    const monthsSaved = remainingMonths - monthsWithExtra;
+
+    return {
+      currentBalance, adjustedBalance, monthlyPI, escrowTax, escrowIns, escrowPMI, totalMonthly,
+      remainingMonths, totalInterestRemaining, interestAlreadyPaid, payoffDate,
+      originalLoan, equityPct, housingRatio, dtiRatio, otherDebt,
+      monthsWithExtra, totalInterestExtra, interestSaved, monthsSaved, extra,
+    };
+  }, [state.exCurrentBalance, state.exStatementMonth, state.exStatementYear, state.exOriginalTerm, state.exInterestRate, state.exMonthlyPI, state.exEscrowTax, state.exEscrowInsurance, state.exEscrowPMI, state.exOriginalLoanAmount, state.exExtraPayment, state.exOtherDebtPayments, grossMonthlyIncome]);
+
+  // Use the right calc for shared sections
+  const activeCalc = isShopping ? shoppingCalc : existingCalc;
+  const activeHousingRatio = isShopping ? shoppingCalc.housingRatio : existingCalc.housingRatio;
+  const activeDtiRatio = isShopping ? shoppingCalc.dtiRatio : existingCalc.dtiRatio;
+  const activeTotalHousing = isShopping ? shoppingCalc.totalHousing : existingCalc.totalMonthly;
+  const activeOtherDebt = isShopping ? shoppingCalc.otherDebt : existingCalc.otherDebt;
+
+  const housingOk = activeHousingRatio <= 0.28;
+  const dtiOk = activeDtiRatio <= 0.36;
+  const overallOk = housingOk && dtiOk;
 
   const fetchAiEstimate = useCallback(async (field: 'tax' | 'insurance') => {
     const setLoading = field === 'tax' ? setTaxEstLoading : setInsEstLoading;
@@ -175,11 +326,11 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     try {
       const prompt = field === 'tax'
         ? `For a home in ${STATE_DEFAULTS[state.selectedState]?.label || state.selectedState}, valued at $${state.homePrice}, what is a realistic effective property tax rate? Return JSON: {"rate": <number as percent like 0.57>, "explanation": "<one sentence>"}`
-        : `For a home in ${STATE_DEFAULTS[state.selectedState]?.label || state.selectedState}, valued at $${state.homePrice} with a $${calc.loanAmount} loan, what is a realistic annual homeowners insurance rate? Return JSON: {"rate": <number as percent like 0.75>, "explanation": "<one sentence>"}`;
+        : `For a home in ${STATE_DEFAULTS[state.selectedState]?.label || state.selectedState}, valued at $${state.homePrice} with a $${shoppingCalc.loanAmount} loan, what is a realistic annual homeowners insurance rate? Return JSON: {"rate": <number as percent like 0.75>, "explanation": "<one sentence>"}`;
 
       const { data, error } = await supabase.functions.invoke('budget-insights', {
         body: {
-          budgetSummary: { context: 'rate_estimate', state: state.selectedState, homePrice: state.homePrice, loanAmount: calc.loanAmount },
+          budgetSummary: { context: 'rate_estimate', state: state.selectedState, homePrice: state.homePrice, loanAmount: shoppingCalc.loanAmount },
           chatMessages: [{ role: 'system', content: `You are a real estate data assistant. Respond ONLY with the JSON requested. ${prompt}` }],
         },
       });
@@ -203,11 +354,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     } finally {
       setLoading(false);
     }
-  }, [state.selectedState, state.homePrice, calc.loanAmount, setState]);
-
-  const housingOk = calc.housingRatio <= 0.28;
-  const dtiOk = calc.dtiRatio <= 0.36;
-  const overallOk = housingOk && dtiOk;
+  }, [state.selectedState, state.homePrice, shoppingCalc.loanAmount, setState]);
 
   if (profileLoading || !toolStateLoaded) {
     return (
@@ -221,6 +368,16 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     );
   }
 
+  // Generate month options for statement date
+  const monthOptions = [
+    { value: '1', label: 'Jan' }, { value: '2', label: 'Feb' }, { value: '3', label: 'Mar' },
+    { value: '4', label: 'Apr' }, { value: '5', label: 'May' }, { value: '6', label: 'Jun' },
+    { value: '7', label: 'Jul' }, { value: '8', label: 'Aug' }, { value: '9', label: 'Sep' },
+    { value: '10', label: 'Oct' }, { value: '11', label: 'Nov' }, { value: '12', label: 'Dec' },
+  ];
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
   return (
     <div className="max-w-lg mx-auto pb-32">
       <div className="px-6 pt-12 safe-top flex items-center gap-3">
@@ -229,7 +386,9 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         </button>
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Mortgage Calculator</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">How much home can you afford?</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isShopping ? 'How much home can you afford?' : 'Analyze your current mortgage'}
+          </p>
         </div>
       </div>
 
@@ -248,18 +407,13 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         )}
       </div>
 
-      {/* State selector */}
-      <div className="px-6 mt-4">
-        <Label className="text-xs text-muted-foreground">State</Label>
-      </div>
-
       {/* Mode toggle */}
       <div className="px-6 mt-4">
         <div className="flex rounded-lg bg-muted p-0.5">
           <button
             onClick={() => setState({ mortgageMode: 'shopping' as any })}
             className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
-              state.mortgageMode === 'shopping'
+              isShopping
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -269,7 +423,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
           <button
             onClick={() => setState({ mortgageMode: 'existing' as any })}
             className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
-              state.mortgageMode === 'existing'
+              !isShopping
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -279,210 +433,316 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
         </div>
       </div>
 
-      {/* State selector (input) */}
-      <div className="px-6 mt-4">
-        <Select value={state.selectedState} onValueChange={handleStateChange}>
-          <SelectTrigger className="mt-1"><SelectValue placeholder="Select state…" /></SelectTrigger>
-          <SelectContent className="max-h-60">
-            {STATE_OPTIONS.map(s => (
-              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Inputs */}
-      <div className="px-6 mt-4 space-y-4">
-        <div>
-          <Label className="text-xs text-muted-foreground">Home Price</Label>
-          <Input type="number" value={state.homePrice} onChange={e => setState({ homePrice: e.target.value })} className="mt-1" />
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Down Payment</Label>
-            <Input
-              type="number"
-              value={state.downPaymentMode === 'percent' ? state.downPaymentPct : state.downPaymentAmt}
-              onChange={e => {
-                if (state.downPaymentMode === 'percent') {
-                  setState({
-                    downPaymentPct: e.target.value,
-                    downPaymentAmt: String(Math.round((parseFloat(state.homePrice) || 0) * (parseFloat(e.target.value) || 0) / 100)),
-                  });
-                } else {
-                  const price = parseFloat(state.homePrice) || 1;
-                  setState({
-                    downPaymentAmt: e.target.value,
-                    downPaymentPct: String(((parseFloat(e.target.value) || 0) / price * 100).toFixed(1)),
-                  });
-                }
-              }}
-              className="mt-1"
-            />
-          </div>
-          <div className="w-24">
-            <Label className="text-xs text-muted-foreground">&nbsp;</Label>
-            <Select value={state.downPaymentMode} onValueChange={(v: 'percent' | 'dollar') => setState({ downPaymentMode: v })}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percent">%</SelectItem>
-                <SelectItem value="dollar">$</SelectItem>
+      {/* ═══════════════════════════════════════════ */}
+      {/* SHOPPING MODE */}
+      {/* ═══════════════════════════════════════════ */}
+      {isShopping && (
+        <>
+          {/* State selector */}
+          <div className="px-6 mt-4">
+            <Label className="text-xs text-muted-foreground">State</Label>
+            <Select value={state.selectedState} onValueChange={handleStateChange}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select state…" /></SelectTrigger>
+              <SelectContent className="max-h-60">
+                {STATE_OPTIONS.map(s => (
+                  <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Loan Term (years)</Label>
-            <Select value={state.loanTermYears} onValueChange={v => setState({ loanTermYears: v })}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15 years</SelectItem>
-                <SelectItem value="20">20 years</SelectItem>
-                <SelectItem value="30">30 years</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Interest Rate (%)</Label>
-            <Input type="number" step="0.1" value={state.interestRate} onChange={e => setState({ interestRate: e.target.value })} className="mt-1" />
-          </div>
-        </div>
-
-        {/* Property Tax with %/$ toggle and AI Estimate */}
-        <RateField
-          label="Property Tax"
-          mode={state.propertyTaxMode as 'percent' | 'dollar'}
-          rateValue={state.propertyTaxRate}
-          dollarValue={state.propertyTaxAmt}
-          homePrice={parseFloat(state.homePrice) || 0}
-          onModeChange={m => setState({ propertyTaxMode: m })}
-          onRateChange={v => setState({ propertyTaxRate: v, propertyTaxAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
-          onDollarChange={v => {
-            const price = parseFloat(state.homePrice) || 1;
-            setState({ propertyTaxAmt: v, propertyTaxRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
-          }}
-          estimateLoading={taxEstLoading}
-          onEstimate={() => fetchAiEstimate('tax')}
-          caption={taxEstCaption}
-          hasState={!!state.selectedState}
-        />
-
-        {/* Insurance with %/$ toggle and AI Estimate */}
-        <RateField
-          label="Insurance"
-          mode={state.insuranceMode as 'percent' | 'dollar'}
-          rateValue={state.insuranceRate}
-          dollarValue={state.insuranceAmt}
-          homePrice={parseFloat(state.homePrice) || 0}
-          onModeChange={m => setState({ insuranceMode: m })}
-          onRateChange={v => setState({ insuranceRate: v, insuranceAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
-          onDollarChange={v => {
-            const price = parseFloat(state.homePrice) || 1;
-            setState({ insuranceAmt: v, insuranceRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
-          }}
-          estimateLoading={insEstLoading}
-          onEstimate={() => fetchAiEstimate('insurance')}
-          caption={insEstCaption}
-          hasState={!!state.selectedState}
-        />
-      </div>
-
-      {/* Results */}
-      <div className="px-6 mt-6">
-        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Monthly Payment Breakdown</p>
-          </div>
-          <div className="divide-y divide-border">
-            <Row label="Loan Amount" value={fmt(calc.loanAmount)} />
-            <Row label="Principal & Interest" value={fmt(calc.monthlyPI)} />
-            <Row label="Property Tax" value={fmt(calc.monthlyTax)} sub={state.propertyTaxMode === 'percent' ? `${state.propertyTaxRate}% of home value/yr` : `${fmt(calc.monthlyTax * 12)}/yr`} />
-            <Row label="Insurance" value={fmt(calc.monthlyInsurance)} sub={state.insuranceMode === 'percent' ? `${state.insuranceRate}% of home value/yr` : `${fmt(calc.monthlyInsurance * 12)}/yr`} />
-            <div className="flex justify-between items-center p-4 bg-primary/5">
-              <p className="text-sm font-bold text-foreground">Total Monthly Housing</p>
-              <p className="text-sm font-bold text-foreground">{fmt(calc.totalHousing)}</p>
+          {/* Shopping Inputs */}
+          <div className="px-6 mt-4 space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Home Price</Label>
+              <Input type="number" value={state.homePrice} onChange={e => setState({ homePrice: e.target.value })} className="mt-1" />
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Extra Payment Analysis */}
-      <div className="px-6 mt-5">
-        <Collapsible>
-          <CollapsibleTrigger className="flex items-center gap-1.5 text-accent text-sm font-semibold mb-3">
-            <ChevronDown size={14} className="transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-            See Extra Payment Impact
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-xs text-muted-foreground">Extra Monthly Payment ($)</Label>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Down Payment</Label>
                 <Input
-                  type="number" placeholder="0"
-                  value={state.extraPayment}
-                  onChange={e => setState({ extraPayment: e.target.value })}
-                  className="mt-1 max-w-[200px]"
+                  type="number"
+                  value={state.downPaymentMode === 'percent' ? state.downPaymentPct : state.downPaymentAmt}
+                  onChange={e => {
+                    if (state.downPaymentMode === 'percent') {
+                      setState({
+                        downPaymentPct: e.target.value,
+                        downPaymentAmt: String(Math.round((parseFloat(state.homePrice) || 0) * (parseFloat(e.target.value) || 0) / 100)),
+                      });
+                    } else {
+                      const price = parseFloat(state.homePrice) || 1;
+                      setState({
+                        downPaymentAmt: e.target.value,
+                        downPaymentPct: String(((parseFloat(e.target.value) || 0) / price * 100).toFixed(1)),
+                      });
+                    }
+                  }}
+                  className="mt-1"
                 />
               </div>
+              <div className="w-24">
+                <Label className="text-xs text-muted-foreground">&nbsp;</Label>
+                <Select value={state.downPaymentMode} onValueChange={(v: 'percent' | 'dollar') => setState({ downPaymentMode: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">%</SelectItem>
+                    <SelectItem value="dollar">$</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-card rounded-lg shadow-sm p-3 border border-border">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Standard</p>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Term</span>
-                      <span className="font-medium text-foreground">{Math.floor(calc.numPayments / 12)}y {calc.numPayments % 12}m</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Total Interest</span>
-                      <span className="font-medium text-foreground">{fmt(calc.totalInterestStandard)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Payoff</span>
-                      <span className="font-medium text-foreground">
-                        {new Date(Date.now() + calc.numPayments * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Loan Term (years)</Label>
+                <Select value={state.loanTermYears} onValueChange={v => setState({ loanTermYears: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 years</SelectItem>
+                    <SelectItem value="20">20 years</SelectItem>
+                    <SelectItem value="30">30 years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Interest Rate (%)</Label>
+                <Input type="number" step="0.1" value={state.interestRate} onChange={e => setState({ interestRate: e.target.value })} className="mt-1" />
+              </div>
+            </div>
 
-                <div className={`bg-card rounded-lg shadow-sm p-3 border ${(parseFloat(state.extraPayment) || 0) > 0 ? 'border-green-300 dark:border-green-700' : 'border-border'}`}>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">With Extra</p>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Term</span>
-                      <span className="font-medium text-foreground">{Math.floor(calc.monthsWithExtra / 12)}y {calc.monthsWithExtra % 12}m</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Total Interest</span>
-                      <span className="font-medium text-foreground">{fmt(calc.totalInterestExtra)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Payoff</span>
-                      <span className="font-medium text-foreground">
-                        {new Date(Date.now() + calc.monthsWithExtra * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
+            <RateField
+              label="Property Tax"
+              mode={state.propertyTaxMode as 'percent' | 'dollar'}
+              rateValue={state.propertyTaxRate}
+              dollarValue={state.propertyTaxAmt}
+              homePrice={parseFloat(state.homePrice) || 0}
+              onModeChange={m => setState({ propertyTaxMode: m })}
+              onRateChange={v => setState({ propertyTaxRate: v, propertyTaxAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
+              onDollarChange={v => {
+                const price = parseFloat(state.homePrice) || 1;
+                setState({ propertyTaxAmt: v, propertyTaxRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
+              }}
+              estimateLoading={taxEstLoading}
+              onEstimate={() => fetchAiEstimate('tax')}
+              caption={taxEstCaption}
+              hasState={!!state.selectedState}
+            />
+
+            <RateField
+              label="Insurance"
+              mode={state.insuranceMode as 'percent' | 'dollar'}
+              rateValue={state.insuranceRate}
+              dollarValue={state.insuranceAmt}
+              homePrice={parseFloat(state.homePrice) || 0}
+              onModeChange={m => setState({ insuranceMode: m })}
+              onRateChange={v => setState({ insuranceRate: v, insuranceAmt: String(((parseFloat(v) || 0) / 100 * (parseFloat(state.homePrice) || 0) / 12).toFixed(0)) })}
+              onDollarChange={v => {
+                const price = parseFloat(state.homePrice) || 1;
+                setState({ insuranceAmt: v, insuranceRate: String(((parseFloat(v) || 0) * 12 / price * 100).toFixed(2)) });
+              }}
+              estimateLoading={insEstLoading}
+              onEstimate={() => fetchAiEstimate('insurance')}
+              caption={insEstCaption}
+              hasState={!!state.selectedState}
+            />
+          </div>
+
+          {/* Shopping Results */}
+          <div className="px-6 mt-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Monthly Payment Breakdown</p>
+              </div>
+              <div className="divide-y divide-border">
+                <Row label="Loan Amount" value={fmt(shoppingCalc.loanAmount)} />
+                <Row label="Principal & Interest" value={fmt(shoppingCalc.monthlyPI)} />
+                <Row label="Property Tax" value={fmt(shoppingCalc.monthlyTax)} sub={state.propertyTaxMode === 'percent' ? `${state.propertyTaxRate}% of home value/yr` : `${fmt(shoppingCalc.monthlyTax * 12)}/yr`} />
+                <Row label="Insurance" value={fmt(shoppingCalc.monthlyInsurance)} sub={state.insuranceMode === 'percent' ? `${state.insuranceRate}% of home value/yr` : `${fmt(shoppingCalc.monthlyInsurance * 12)}/yr`} />
+                <div className="flex justify-between items-center p-4 bg-primary/5">
+                  <p className="text-sm font-bold text-foreground">Total Monthly Housing</p>
+                  <p className="text-sm font-bold text-foreground">{fmt(shoppingCalc.totalHousing)}</p>
                 </div>
               </div>
-
-              {(parseFloat(state.extraPayment) || 0) > 0 && calc.interestSaved > 0 && (
-                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                  <p className="text-sm font-semibold text-green-700 dark:text-green-300">
-                    Paying an extra {fmt(parseFloat(state.extraPayment) || 0)}/mo saves {fmt(calc.interestSaved)} in interest and pays off your mortgage {Math.floor(calc.monthsSaved / 12) > 0 ? `${Math.floor(calc.monthsSaved / 12)} year${Math.floor(calc.monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{calc.monthsSaved % 12 > 0 ? `${calc.monthsSaved % 12} month${calc.monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}early.
-                  </p>
-                </div>
-              )}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+          </div>
 
-      {/* Certified Financial Planner (CFP) Indicators */}
+          {/* Shopping Extra Payment */}
+          <ExtraPaymentSection
+            extraPayment={state.extraPayment}
+            onExtraPaymentChange={v => setState({ extraPayment: v })}
+            standardMonths={shoppingCalc.numPayments}
+            totalInterestStandard={shoppingCalc.totalInterestStandard}
+            monthsWithExtra={shoppingCalc.monthsWithExtra}
+            totalInterestExtra={shoppingCalc.totalInterestExtra}
+            interestSaved={shoppingCalc.interestSaved}
+            monthsSaved={shoppingCalc.monthsSaved}
+          />
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* EXISTING MORTGAGE MODE */}
+      {/* ═══════════════════════════════════════════ */}
+      {!isShopping && (
+        <>
+          <div className="px-6 mt-4 space-y-4">
+            {/* Balance & Statement Date */}
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Current Loan Balance
+                {financialProfile?.mortgage_balance ? <span className="text-accent ml-1">(from profile)</span> : ''}
+              </Label>
+              <Input type="number" value={state.exCurrentBalance} onChange={e => setState({ exCurrentBalance: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Statement Date (when balance was accurate)</Label>
+              <div className="flex gap-2 mt-1">
+                <Select value={state.exStatementMonth} onValueChange={v => setState({ exStatementMonth: v })}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={state.exStatementYear} onValueChange={v => setState({ exStatementYear: v })}>
+                  <SelectTrigger className="w-24"><SelectValue placeholder="Year" /></SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Original Loan Term</Label>
+                <Select value={state.exOriginalTerm} onValueChange={v => setState({ exOriginalTerm: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 years</SelectItem>
+                    <SelectItem value="15">15 years</SelectItem>
+                    <SelectItem value="20">20 years</SelectItem>
+                    <SelectItem value="25">25 years</SelectItem>
+                    <SelectItem value="30">30 years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">
+                  Interest Rate (%)
+                  {financialProfile?.mortgage_rate ? <span className="text-accent ml-1">(profile)</span> : ''}
+                </Label>
+                <Input type="number" step="0.1" value={state.exInterestRate} onChange={e => setState({ exInterestRate: e.target.value })} placeholder="0" className="mt-1" />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Monthly Principal & Interest
+                {financialProfile?.mortgage_payment ? <span className="text-accent ml-1">(from profile)</span> : ''}
+              </Label>
+              <Input type="number" value={state.exMonthlyPI} onChange={e => setState({ exMonthlyPI: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+
+            {/* Escrow fields */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Monthly Escrow Amounts</p>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Property Tax ($/mo)</Label>
+                  <Input type="number" value={state.exEscrowTax} onChange={e => setState({ exEscrowTax: e.target.value })} placeholder="0" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Insurance ($/mo)</Label>
+                  <Input type="number" value={state.exEscrowInsurance} onChange={e => setState({ exEscrowInsurance: e.target.value })} placeholder="0" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">PMI ($/mo — optional)</Label>
+                  <Input type="number" value={state.exEscrowPMI} onChange={e => setState({ exEscrowPMI: e.target.value })} placeholder="0" className="mt-1" />
+                  <p className="text-[10px] text-muted-foreground mt-1">Private Mortgage Insurance — typically required if down payment was under 20%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Optional original loan amount */}
+            <div className="border-t border-border pt-4">
+              <Label className="text-xs text-muted-foreground">Original Loan Amount (optional — enables equity tracking)</Label>
+              <Input type="number" value={state.exOriginalLoanAmount} onChange={e => setState({ exOriginalLoanAmount: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+          </div>
+
+          {/* Existing Mortgage Results */}
+          <div className="px-6 mt-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Monthly Payment Breakdown</p>
+              </div>
+              <div className="divide-y divide-border">
+                <Row label="Principal & Interest" value={fmt(existingCalc.monthlyPI)} />
+                <Row label="Escrow — Tax" value={fmt(existingCalc.escrowTax)} />
+                <Row label="Escrow — Insurance" value={fmt(existingCalc.escrowIns)} />
+                {existingCalc.escrowPMI > 0 && <Row label="Escrow — PMI" value={fmt(existingCalc.escrowPMI)} />}
+                <div className="flex justify-between items-center p-4 bg-primary/5">
+                  <p className="text-sm font-bold text-foreground">Total Monthly Payment</p>
+                  <p className="text-sm font-bold text-foreground">{fmt(existingCalc.totalMonthly)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mortgage Analysis */}
+          <div className="px-6 mt-5">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+              </div>
+              <div className="divide-y divide-border">
+                <Row label="Current Balance" value={fmt(existingCalc.adjustedBalance)} sub={existingCalc.adjustedBalance !== existingCalc.currentBalance ? 'Adjusted to today from statement date' : undefined} />
+                <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
+                <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
+                <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
+                {existingCalc.interestAlreadyPaid > 0 && (
+                  <Row label="Interest Already Paid" value={fmt(existingCalc.interestAlreadyPaid)} sub="Estimated based on original loan" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Equity Progress */}
+          {existingCalc.originalLoan > 0 && (
+            <div className="px-6 mt-5">
+              <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                <div className="flex justify-between items-baseline mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Equity Progress</p>
+                  <span className="text-sm font-bold text-foreground">{existingCalc.equityPct.toFixed(1)}%</span>
+                </div>
+                <ProgressBar value={existingCalc.originalLoan - existingCalc.adjustedBalance} max={existingCalc.originalLoan} className="mb-2" />
+                <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                  <span>{fmt(existingCalc.originalLoan - existingCalc.adjustedBalance)} equity</span>
+                  <span>{fmt(existingCalc.adjustedBalance)} remaining</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Existing Extra Payment */}
+          <ExtraPaymentSection
+            extraPayment={state.exExtraPayment}
+            onExtraPaymentChange={v => setState({ exExtraPayment: v })}
+            standardMonths={existingCalc.remainingMonths}
+            totalInterestStandard={existingCalc.totalInterestRemaining}
+            monthsWithExtra={existingCalc.monthsWithExtra}
+            totalInterestExtra={existingCalc.totalInterestExtra}
+            interestSaved={existingCalc.interestSaved}
+            monthsSaved={existingCalc.monthsSaved}
+          />
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* SHARED: CFP Indicators */}
+      {/* ═══════════════════════════════════════════ */}
       <div className="px-6 mt-5 space-y-3">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Certified Financial Planner (CFP) Guideline Indicators</p>
 
@@ -493,7 +753,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
               <p className="text-xs text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
             </div>
             <span className={`text-lg font-bold ${housingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {hasProfile ? pct(calc.housingRatio) : '—'}
+              {hasProfile ? pct(activeHousingRatio) : '—'}
             </span>
           </div>
         </div>
@@ -507,14 +767,14 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
                 <Label className="text-xs text-muted-foreground">Other Monthly Debt Payments</Label>
                 <Input
                   type="number" placeholder="0"
-                  value={state.otherDebtPayments}
-                  onChange={e => setState({ otherDebtPayments: e.target.value })}
+                  value={isShopping ? state.otherDebtPayments : state.exOtherDebtPayments}
+                  onChange={e => setState(isShopping ? { otherDebtPayments: e.target.value } : { exOtherDebtPayments: e.target.value })}
                   className="mt-1 max-w-[180px] h-8 text-sm"
                 />
               </div>
             </div>
             <span className={`text-lg font-bold ${dtiOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {hasProfile ? pct(calc.dtiRatio) : '—'}
+              {hasProfile ? pct(activeDtiRatio) : '—'}
             </span>
           </div>
         </div>
@@ -527,8 +787,8 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
             {!hasProfile
               ? 'Add income data in your Financial Profile to see affordability analysis.'
               : overallOk
-                ? 'This home fits comfortably within standard financial planning guidelines.'
-                : 'Consider a lower price, larger down payment, or paying down existing debt.'}
+                ? (isShopping ? 'This home fits comfortably within standard financial planning guidelines.' : 'Your mortgage fits comfortably within standard financial planning guidelines.')
+                : (isShopping ? 'Consider a lower price, larger down payment, or paying down existing debt.' : 'Your housing costs exceed recommended limits. Consider refinancing or accelerating debt payoff.')}
           </p>
         </div>
       </div>
@@ -536,19 +796,19 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
       {/* AI Insights */}
       <MortgageInsightsSection
         householdId={householdId}
-        homePrice={parseFloat(state.homePrice) || 0}
-        loanAmount={calc.loanAmount}
-        downPayment={calc.dp}
-        downPaymentPct={calc.dpPct}
-        interestRate={parseFloat(state.interestRate) || 0}
-        loanTermYears={parseInt(state.loanTermYears) || 30}
-        monthlyPI={calc.monthlyPI}
-        monthlyTax={calc.monthlyTax}
-        monthlyInsurance={calc.monthlyInsurance}
-        totalHousing={calc.totalHousing}
-        housingRatio={calc.housingRatio}
-        dtiRatio={calc.dtiRatio}
-        otherDebt={calc.otherDebt}
+        homePrice={isShopping ? (parseFloat(state.homePrice) || 0) : 0}
+        loanAmount={isShopping ? shoppingCalc.loanAmount : existingCalc.adjustedBalance}
+        downPayment={isShopping ? shoppingCalc.dp : 0}
+        downPaymentPct={isShopping ? shoppingCalc.dpPct : 0}
+        interestRate={isShopping ? (parseFloat(state.interestRate) || 0) : (parseFloat(state.exInterestRate) || 0)}
+        loanTermYears={isShopping ? (parseInt(state.loanTermYears) || 30) : (parseInt(state.exOriginalTerm) || 30)}
+        monthlyPI={isShopping ? shoppingCalc.monthlyPI : existingCalc.monthlyPI}
+        monthlyTax={isShopping ? shoppingCalc.monthlyTax : existingCalc.escrowTax}
+        monthlyInsurance={isShopping ? shoppingCalc.monthlyInsurance : existingCalc.escrowIns}
+        totalHousing={activeTotalHousing}
+        housingRatio={activeHousingRatio}
+        dtiRatio={activeDtiRatio}
+        otherDebt={activeOtherDebt}
         selectedState={state.selectedState}
         financialProfile={financialProfile}
         mortgageMode={state.mortgageMode as 'shopping' | 'existing'}
@@ -567,6 +827,93 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </div>
       <p className="text-sm font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function ExtraPaymentSection({
+  extraPayment, onExtraPaymentChange,
+  standardMonths, totalInterestStandard,
+  monthsWithExtra, totalInterestExtra,
+  interestSaved, monthsSaved,
+}: {
+  extraPayment: string; onExtraPaymentChange: (v: string) => void;
+  standardMonths: number; totalInterestStandard: number;
+  monthsWithExtra: number; totalInterestExtra: number;
+  interestSaved: number; monthsSaved: number;
+}) {
+  const extra = parseFloat(extraPayment) || 0;
+  return (
+    <div className="px-6 mt-5">
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-1.5 text-accent text-sm font-semibold mb-3">
+          <ChevronDown size={14} className="transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+          See Extra Payment Impact
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Extra Monthly Payment ($)</Label>
+              <Input
+                type="number" placeholder="0"
+                value={extraPayment}
+                onChange={e => onExtraPaymentChange(e.target.value)}
+                className="mt-1 max-w-[200px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-card rounded-lg shadow-sm p-3 border border-border">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Standard</p>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Term</span>
+                    <span className="font-medium text-foreground">{Math.floor(standardMonths / 12)}y {standardMonths % 12}m</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Total Interest</span>
+                    <span className="font-medium text-foreground">{fmt(totalInterestStandard)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Payoff</span>
+                    <span className="font-medium text-foreground">
+                      {new Date(Date.now() + standardMonths * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`bg-card rounded-lg shadow-sm p-3 border ${extra > 0 ? 'border-green-300 dark:border-green-700' : 'border-border'}`}>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">With Extra</p>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Term</span>
+                    <span className="font-medium text-foreground">{Math.floor(monthsWithExtra / 12)}y {monthsWithExtra % 12}m</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Total Interest</span>
+                    <span className="font-medium text-foreground">{fmt(totalInterestExtra)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Payoff</span>
+                    <span className="font-medium text-foreground">
+                      {new Date(Date.now() + monthsWithExtra * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {extra > 0 && interestSaved > 0 && (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                  Paying an extra {fmt(extra)}/mo saves {fmt(interestSaved)} in interest and pays off your mortgage {Math.floor(monthsSaved / 12) > 0 ? `${Math.floor(monthsSaved / 12)} year${Math.floor(monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{monthsSaved % 12 > 0 ? `${monthsSaved % 12} month${monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}early.
+                </p>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
