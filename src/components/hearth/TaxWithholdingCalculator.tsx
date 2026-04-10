@@ -248,7 +248,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
   }, [filingStatus, members, state.selectedMember]);
 
   const showIncomeStackingDisclaimer =
-    filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
+    filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined && members.length >= 2;
 
   // Calculations
   const estimatedFederalTax = calcFederalTax(annualGross, filingStatus, annualPreTaxDeductions, mfjPrimaryIncome);
