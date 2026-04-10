@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -50,6 +50,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const [budgetTotal, setBudgetTotal] = useState(0);
   const [showExpenseEstimator, setShowExpenseEstimator] = useState(false);
   const [aiEstimatingMember, setAiEstimatingMember] = useState<string | null>(null);
+  const [showLongevityInfo, setShowLongevityInfo] = useState(false);
+  const [showWhyFourPercent, setShowWhyFourPercent] = useState(false);
 
   const currentYear = new Date().getFullYear();
 
@@ -63,6 +65,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     nonQualContrib: '',
     showAdvanced: false,
     showSocialSecurity: false,
+    longevityAge: '90',
     memberAges: {} as Record<string, string>,
     ssBenefits: {} as Record<string, string>,
     ssClaimingAges: {} as Record<string, string>,
@@ -217,8 +220,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     return { total: perMember.reduce((s, m) => s + m.inflatedAdjusted, 0), perMember };
   }, [showSS, members, state.ssBenefits, state.ssClaimingAges, state.memberAges, currentYear, retirementYear, inflationRate, yearsToRetirement]);
 
-  // Longevity benchmark
-  const longevityAge = 90;
+  // Longevity benchmark (user-configurable)
+  const longevityAge = Math.max(80, Math.min(100, Number(state.longevityAge) || 90));
 
   // Phase-based income projection using fixed 4% safe withdrawal rate
   // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
@@ -776,11 +779,25 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
               <span>Today ({currentAge})</span>
               <span>Retire ({retirementYear})</span>
-              <span>Age 90</span>
+              <span className="flex items-center gap-0.5">
+                Age {longevityAge}
+                <button
+                  onClick={() => setShowLongevityInfo(v => !v)}
+                  className="text-accent active:opacity-70"
+                >
+                  <Info size={10} />
+                </button>
+              </span>
             </div>
+            {showLongevityInfo && (
+              <div className="bg-muted/60 rounded-lg p-3 mb-2 text-[11px] text-muted-foreground leading-relaxed">
+                <p>We use age {longevityAge} as a planning benchmark because average life expectancy continues to rise, and a Certified Financial Planner (CFP) best practice is to plan for a longer-than-average retirement to avoid outliving your savings. If you retire at {retirementAge}, your plan needs to sustain roughly {longevityAge - retirementAge} years of withdrawals. Planning to age {longevityAge} gives you a meaningful buffer. If longevity runs in your family, consider extending this benchmark to 95 or even 100 — your Retirement Planner will show you how the math changes.</p>
+                <button onClick={() => setShowLongevityInfo(false)} className="text-accent font-semibold mt-1.5">Got it</button>
+              </div>
+            )}
             <div className="relative h-3 bg-muted rounded-full overflow-hidden">
               {(() => {
-                const totalSpan = 90 - currentAge;
+                const totalSpan = longevityAge - currentAge;
                 const retirePct = totalSpan > 0 ? (yearsToRetirement / totalSpan) * 100 : 50;
                 return (
                   <>
@@ -794,6 +811,18 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             <p className="text-xs text-muted-foreground text-center mt-1.5">
               <span className="font-semibold text-foreground">{yearsToRetirement}</span> years to retirement
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Longevity Benchmark</Label>
+              <Slider
+                value={[longevityAge]}
+                onValueChange={([v]) => setState({ longevityAge: String(v) })}
+                min={80}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+              <span className="text-xs font-semibold text-foreground w-6 text-right">{longevityAge}</span>
+            </div>
           </div>
 
           {/* Projections */}
@@ -851,6 +880,21 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                       </span>
                       <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
                     </div>
+                    {i === 0 && (
+                      <div>
+                        <button
+                          onClick={() => setShowWhyFourPercent(v => !v)}
+                          className="text-[10px] font-semibold text-accent active:opacity-70"
+                        >
+                          {showWhyFourPercent ? 'Hide' : 'Why 4%?'}
+                        </button>
+                        {showWhyFourPercent && (
+                          <div className="bg-muted/60 rounded-lg p-2.5 mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                            The 4% rule comes from the Trinity Study, a landmark 1994 research study that analyzed historical market returns. It found that retirees who withdrew 4% of their portfolio in year one — then adjusted for inflation annually — had a very high probability of their money lasting 30 years across various market conditions, including downturns. It has become the standard Certified Financial Planner (CFP) benchmark for sustainable retirement income. Some planners use 3.5% for longer retirements or uncertain markets, and up to 5% for shorter ones.
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {phase.ssIncome > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Social Security</span>
