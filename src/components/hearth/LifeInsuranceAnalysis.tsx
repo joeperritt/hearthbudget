@@ -74,8 +74,8 @@ export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnal
           updates.members = members;
         }
 
-        const debts = Array.isArray(fp.debts) ? fp.debts : [];
-        const debtTotal = debts.reduce((s: number, d: any) => s + (Number((d as any).balance) || 0), 0);
+        const debts: any[] = Array.isArray(fp.debts) ? (fp.debts as any[]) : [];
+        const debtTotal: number = debts.reduce((s: number, d: any) => s + (Number(d.balance) || 0), 0);
         if (debtTotal > 0) updates.totalDebt = String(debtTotal);
         if (Number(fp.mortgage_balance || 0) > 0) updates.mortgageBalance = String(fp.mortgage_balance);
 
