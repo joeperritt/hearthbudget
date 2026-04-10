@@ -568,20 +568,27 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* Summary */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Summary</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              {isMFJWithSpouse ? 'Household Summary' : 'Summary'}
+            </p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Effective Tax Rate</span>
+                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Effective Tax Rate' : 'Effective Tax Rate'}</span>
                 <span className="font-semibold text-foreground">{pct(effectiveRate)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Marginal Tax Rate</span>
+                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Marginal Tax Rate' : 'Marginal Tax Rate'}</span>
                 <span className="font-semibold text-foreground">{pct(marginalRate)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-border pt-1.5">
                 <span className="text-muted-foreground">Est. Annual Take-Home</span>
                 <span className="font-bold text-green-600">{fmtRound(takeHomePay)}</span>
               </div>
+              {isMFJWithSpouse && (
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Married Filing Jointly is one tax return — effective and marginal rates are the same for both spouses.
+                </p>
+              )}
             </div>
           </div>
 
