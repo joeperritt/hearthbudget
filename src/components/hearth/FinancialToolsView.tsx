@@ -1,6 +1,6 @@
-import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Info, Target } from 'lucide-react';
+import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Info, Target, Activity } from 'lucide-react';
 
-type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'goals-planner' | 'cfp-profile';
+type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'goals-planner' | 'cfp-profile' | 'health-score';
 
 interface FinancialToolsViewProps {
   onBack: () => void;
@@ -8,6 +8,7 @@ interface FinancialToolsViewProps {
 }
 
 const tools: { id: ToolId; name: string; description: string; icon: typeof Home; active: boolean }[] = [
+  { id: 'health-score', name: 'Health Score', description: 'Your overall financial health at a glance', icon: Activity, active: true },
   { id: 'mortgage', name: 'Mortgage Calculator', description: 'How much home can you afford?', icon: Home, active: true },
   { id: 'debt-payoff', name: 'Debt Payoff', description: 'See your path to debt freedom', icon: BarChart3, active: true },
   { id: 'car-loan', name: 'Car Loan', description: 'Calculate your true cost of ownership', icon: Car, active: true },
