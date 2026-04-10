@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -63,6 +63,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     nonQualContrib: '',
     showAdvanced: false,
     showSocialSecurity: false,
+    longevityAge: '90',
     memberAges: {} as Record<string, string>,
     ssBenefits: {} as Record<string, string>,
     ssClaimingAges: {} as Record<string, string>,
@@ -217,8 +218,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     return { total: perMember.reduce((s, m) => s + m.inflatedAdjusted, 0), perMember };
   }, [showSS, members, state.ssBenefits, state.ssClaimingAges, state.memberAges, currentYear, retirementYear, inflationRate, yearsToRetirement]);
 
-  // Longevity benchmark
-  const longevityAge = 90;
+  // Longevity benchmark (user-configurable)
+  const longevityAge = Math.max(80, Math.min(100, Number(state.longevityAge) || 90));
 
   // Phase-based income projection using fixed 4% safe withdrawal rate
   // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
