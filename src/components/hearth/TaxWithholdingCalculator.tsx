@@ -265,8 +265,34 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
   const totalFICA = ficaSS + ficaMedicare;
 
   const totalTaxes = estimatedFederalTax + estimatedStateTax + totalFICA;
-  const effectiveRate = annualGross > 0 ? totalTaxes / annualGross : 0;
-  const marginalRate = getMarginalRate(annualGross, filingStatus, annualPreTaxDeductions);
+
+  // For MFJ, compute household-level rates (same return = same rates for both spouses)
+  const householdGross = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? annualGross + mfjPrimaryIncome
+    : annualGross;
+  const householdPreTax = annualPreTaxDeductions; // simplified: only this member's deductions modeled
+  const householdFederalTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? calcFederalTaxOnTaxable(Math.max(0, householdGross - householdPreTax - STANDARD_DEDUCTION_2026[filingStatus]), filingStatus)
+    : estimatedFederalTax;
+  const householdStateTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? calcStateTax2026(householdGross, state.selectedState, householdPreTax)
+    : estimatedStateTax;
+  const householdFICA = totalFICA; // FICA is always per-person
+  const householdTotalTaxes = householdFederalTax + householdStateTax + householdFICA;
+  const isMFJWithSpouse = filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
+
+  // Effective rate: household total tax / household gross (same for both spouses on MFJ)
+  const effectiveRate = isMFJWithSpouse
+    ? (householdGross > 0 ? (householdFederalTax + householdStateTax) / householdGross : 0)
+    : (annualGross > 0 ? (estimatedFederalTax + estimatedStateTax) / annualGross : 0);
+
+  // Add FICA for the "all-in" effective rate display
+  const effectiveRateAllIn = annualGross > 0 ? totalTaxes / annualGross : 0;
+
+  // Marginal rate: household-level for MFJ
+  const marginalRate = isMFJWithSpouse
+    ? getMarginalRate(householdGross, filingStatus, householdPreTax)
+    : getMarginalRate(annualGross, filingStatus, annualPreTaxDeductions);
 
   const takeHomePay = annualGross - totalTaxes - annualPreTaxDeductions;
 
@@ -542,20 +568,27 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* Summary */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Summary</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              {isMFJWithSpouse ? 'Household Summary' : 'Summary'}
+            </p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Effective Tax Rate</span>
+                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Effective Tax Rate' : 'Effective Tax Rate'}</span>
                 <span className="font-semibold text-foreground">{pct(effectiveRate)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Marginal Tax Rate</span>
+                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Marginal Tax Rate' : 'Marginal Tax Rate'}</span>
                 <span className="font-semibold text-foreground">{pct(marginalRate)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-border pt-1.5">
                 <span className="text-muted-foreground">Est. Annual Take-Home</span>
                 <span className="font-bold text-green-600">{fmtRound(takeHomePay)}</span>
               </div>
+              {isMFJWithSpouse && (
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Married Filing Jointly is one tax return — effective and marginal rates are the same for both spouses.
+                </p>
+              )}
             </div>
           </div>
 
