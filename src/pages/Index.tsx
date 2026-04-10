@@ -30,6 +30,7 @@ import { TaxWithholdingCalculator } from '@/components/hearth/TaxWithholdingCalc
 import { RetirementPlanner } from '@/components/hearth/RetirementPlanner';
 import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
+import { FinancialHealthScore } from '@/components/hearth/FinancialHealthScore';
 
 const Index = () => {
   const {
@@ -70,7 +71,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement-planner' | 'goals-planner' | 'cfp-profile'>('menu');
+  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement-planner' | 'goals-planner' | 'health-score' | 'cfp-profile'>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
 
   const monthKey = activeMonth;
@@ -434,6 +435,7 @@ const Index = () => {
               if (tool === 'tax-withholding') setMoreSubView('tax-withholding');
               if (tool === 'retirement') setMoreSubView('retirement-planner');
               if (tool === 'goals-planner') setMoreSubView('goals-planner');
+              if (tool === 'health-score') setMoreSubView('health-score');
               if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
             }}
           />
@@ -471,6 +473,12 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'goals-planner' && (
           <GoalsPlanner
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'health-score' && (
+          <FinancialHealthScore
             onBack={() => setMoreSubView('financial-tools')}
             householdId={householdId}
           />
