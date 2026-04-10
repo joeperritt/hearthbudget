@@ -1,6 +1,6 @@
-import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Info } from 'lucide-react';
+import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Info, Target } from 'lucide-react';
 
-type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'cfp-profile';
+type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'goals-planner' | 'cfp-profile';
 
 interface FinancialToolsViewProps {
   onBack: () => void;
@@ -13,6 +13,7 @@ const tools: { id: ToolId; name: string; description: string; icon: typeof Home;
   { id: 'car-loan', name: 'Car Loan', description: 'Calculate your true cost of ownership', icon: Car, active: true },
   { id: 'tax-withholding', name: 'Tax Withholding', description: 'Optimize your W-4 withholding', icon: FileText, active: true },
   { id: 'retirement', name: 'Retirement Planner', description: 'Are you on track to retire?', icon: PiggyBank, active: true },
+  { id: 'goals-planner', name: 'Savings Goals', description: 'Plan and track non-retirement goals', icon: Target, active: true },
 ];
 
 export function FinancialToolsView({ onBack, onSelectTool }: FinancialToolsViewProps) {
