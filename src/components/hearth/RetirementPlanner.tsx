@@ -985,6 +985,44 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                 </div>
               </div>
 
+              {/* Investment Approach based on time horizon */}
+              {(() => {
+                let horizonLabel: string;
+                let horizonBody: string;
+                let dotColor: string;
+                if (yearsToRetirement >= 30) {
+                  horizonLabel = 'Long Time Horizon';
+                  horizonBody = 'Generally, longer runways allow for more growth-oriented investing. Short-term volatility matters less when retirement is decades away.';
+                  dotColor = 'bg-green-500';
+                } else if (yearsToRetirement >= 10) {
+                  horizonLabel = 'Mid-Range Horizon';
+                  horizonBody = 'A balanced approach that tilts toward growth while beginning to think about protecting what you\'ve built may be appropriate as retirement draws closer.';
+                  dotColor = 'bg-yellow-500';
+                } else if (yearsToRetirement >= 5) {
+                  horizonLabel = 'Approaching Retirement';
+                  horizonBody = 'Many planners suggest gradually shifting toward a more conservative mix as retirement nears to reduce sequence-of-returns risk.';
+                  dotColor = 'bg-yellow-500';
+                } else {
+                  horizonLabel = 'Near Retirement';
+                  horizonBody = 'Protecting accumulated wealth typically becomes a priority. This is a critical time to review your allocation with a professional.';
+                  dotColor = 'bg-destructive';
+                }
+                return (
+                  <div className="flex items-start gap-2">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Investment Approach: {horizonLabel}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{horizonBody}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1 italic">
+                        Asset allocation is highly personal. A Certified Financial Planner (CFP®) can help you determine the right approach for your specific situation.
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {monthlyExpenses > 0 && (
                 <div className="flex items-start gap-2">
                   <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${withdrawalSustainable ? 'bg-green-500' : 'bg-destructive'}`} />

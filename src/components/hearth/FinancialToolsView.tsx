@@ -1,4 +1,4 @@
-import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock } from 'lucide-react';
+import { ArrowLeft, Home, BarChart3, Car, FileText, PiggyBank, Lock, Info } from 'lucide-react';
 
 type ToolId = 'mortgage' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement' | 'cfp-profile';
 
@@ -54,6 +54,13 @@ export function FinancialToolsView({ onBack, onSelectTool }: FinancialToolsViewP
             </div>
           </button>
         ))}
+      </div>
+      {/* Disclaimer */}
+      <div className="px-6 mt-6 mb-24 flex gap-2">
+        <Info size={14} className="text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          These tools provide general financial estimates powered by AI and standard planning guidelines. Results are for educational purposes only and may not reflect your complete financial picture. For personalized advice, consult a Certified Financial Planner (CFP®) professional or CPA.
+        </p>
       </div>
     </div>
   );
