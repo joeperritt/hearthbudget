@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,6 +47,7 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     insuranceAmt: '',
     otherDebtPayments: '',
     selectedState: '',
+    extraPayment: '0',
   });
 
   useEffect(() => {
@@ -137,7 +139,32 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
     const dtiRatio = grossMonthlyIncome > 0 ? (totalHousing + otherDebt) / grossMonthlyIncome : 0;
     const dpPct = price > 0 ? (dp / price) * 100 : 0;
 
-    return { loanAmount, dp, dpPct, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt };
+    // Extra payment analysis
+    const extra = parseFloat(state.extraPayment) || 0;
+    const totalInterestStandard = monthlyRate > 0 && numPayments > 0 ? (monthlyPI * numPayments) - loanAmount : 0;
+
+    let monthsWithExtra = numPayments;
+    let totalInterestExtra = totalInterestStandard;
+    if (extra > 0 && monthlyRate > 0 && loanAmount > 0) {
+      let balance = loanAmount;
+      let months = 0;
+      let interest = 0;
+      const totalPayment = monthlyPI + extra;
+      while (balance > 0 && months < numPayments * 2) {
+        const intCharge = balance * monthlyRate;
+        interest += intCharge;
+        const principalPaid = Math.min(balance, totalPayment - intCharge);
+        balance -= principalPaid;
+        months++;
+        if (balance <= 0) break;
+      }
+      monthsWithExtra = months;
+      totalInterestExtra = interest;
+    }
+    const interestSaved = totalInterestStandard - totalInterestExtra;
+    const monthsSaved = numPayments - monthsWithExtra;
+
+    return { loanAmount, dp, dpPct, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, totalInterestStandard, totalInterestExtra, interestSaved, monthsSaved, monthsWithExtra, numPayments: numPayments };
   }, [state, grossMonthlyIncome]);
 
   const fetchAiEstimate = useCallback(async (field: 'tax' | 'insurance') => {
@@ -380,6 +407,79 @@ export function MortgageCalculator({ planningData, onBack, householdId }: Mortga
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Extra Payment Analysis */}
+      <div className="px-6 mt-5">
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-1.5 text-accent text-sm font-semibold mb-3">
+            <ChevronDown size={14} className="transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            See Extra Payment Impact
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground">Extra Monthly Payment ($)</Label>
+                <Input
+                  type="number" placeholder="0"
+                  value={state.extraPayment}
+                  onChange={e => setState({ extraPayment: e.target.value })}
+                  className="mt-1 max-w-[200px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-card rounded-lg shadow-sm p-3 border border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Standard</p>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Term</span>
+                      <span className="font-medium text-foreground">{Math.floor(calc.numPayments / 12)}y {calc.numPayments % 12}m</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Total Interest</span>
+                      <span className="font-medium text-foreground">{fmt(calc.totalInterestStandard)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Payoff</span>
+                      <span className="font-medium text-foreground">
+                        {new Date(Date.now() + calc.numPayments * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`bg-card rounded-lg shadow-sm p-3 border ${(parseFloat(state.extraPayment) || 0) > 0 ? 'border-green-300 dark:border-green-700' : 'border-border'}`}>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">With Extra</p>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Term</span>
+                      <span className="font-medium text-foreground">{Math.floor(calc.monthsWithExtra / 12)}y {calc.monthsWithExtra % 12}m</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Total Interest</span>
+                      <span className="font-medium text-foreground">{fmt(calc.totalInterestExtra)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Payoff</span>
+                      <span className="font-medium text-foreground">
+                        {new Date(Date.now() + calc.monthsWithExtra * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {(parseFloat(state.extraPayment) || 0) > 0 && calc.interestSaved > 0 && (
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                    Paying an extra {fmt(parseFloat(state.extraPayment) || 0)}/mo saves {fmt(calc.interestSaved)} in interest and pays off your mortgage {Math.floor(calc.monthsSaved / 12) > 0 ? `${Math.floor(calc.monthsSaved / 12)} year${Math.floor(calc.monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{calc.monthsSaved % 12 > 0 ? `${calc.monthsSaved % 12} month${calc.monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}early.
+                  </p>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Certified Financial Planner (CFP) Indicators */}
