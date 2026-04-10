@@ -122,8 +122,8 @@ export function RetirementInsightsSection({ householdId, retirementPicture, fina
                 <div className="flex items-start gap-2.5">
                   <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground font-display">{insight.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body}</p>
+                    <p className="text-sm font-semibold text-foreground font-display">{insight.title.replace(/\*+/g, '')}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body.replace(/\*+/g, '')}</p>
                   </div>
                 </div>
               </div>
