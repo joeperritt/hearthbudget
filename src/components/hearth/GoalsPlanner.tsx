@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Target, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Target, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -135,18 +135,20 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
     return { totalNeeded, totalContributing, combinedSurplus, onTrackCount, offTrackCount };
   }, [computed]);
 
+  const savingsFootnote = 'Savings vehicle recommendations are general and educational. Consult a Certified Financial Planner (CFP®) before making investment decisions.';
+
   function savingsVehicleRec(years: number) {
     if (years < 2) return {
       label: 'Short-Term Goal',
-      body: 'A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon.',
+      body: `A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon. ${savingsFootnote}`,
     };
     if (years < 5) return {
       label: 'Medium-Term Goal',
-      body: 'A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation.',
+      body: `A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation. ${savingsFootnote}`,
     };
     return {
       label: 'Long-Term Goal',
-      body: 'With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy.',
+      body: `With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy. ${savingsFootnote}`,
     };
   }
 
@@ -214,6 +216,22 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
               </span>
             )}
           </div>
+          {/* Summary Verdict */}
+          <div className="mt-3 pt-3 border-t border-border text-center">
+            {summary.offTrackCount === 0 ? (
+              <p className="text-sm font-semibold text-green-600 flex items-center justify-center gap-1.5">
+                <CheckCircle2 size={14} /> All Goals On Track
+              </p>
+            ) : summary.onTrackCount === 0 ? (
+              <p className="text-sm font-semibold text-destructive flex items-center justify-center gap-1.5">
+                <AlertTriangle size={14} /> All Goals Off Track
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-[#C9A84C] flex items-center justify-center gap-1.5">
+                <AlertTriangle size={14} /> {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} Goals Need Attention
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -226,8 +244,8 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
             <Collapsible key={goal.id} open={goal.expanded} onOpenChange={(open) => updateGoal(goal.id, { expanded: open })}>
               <div className="bg-card rounded-xl shadow-sm overflow-hidden">
                 <CollapsibleTrigger className="w-full px-4 py-3 flex items-center gap-3 text-left">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${c.onTrack ? 'bg-green-100' : 'bg-red-50'}`}>
-                    <Target size={16} className={c.onTrack ? 'text-green-600' : 'text-destructive'} />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-[#1B2B4B]/10">
+                    <Flag size={16} className="text-[#1B2B4B]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground truncate">{goal.name || `Goal ${idx + 1}`}</p>
@@ -338,8 +356,8 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
 
                     {/* Savings Vehicle Recommendation */}
                     {c.target > 0 && c.targetMonths > 0 && (
-                      <div className="bg-accent/5 rounded-lg p-3 border border-accent/20">
-                        <p className="text-xs font-semibold text-accent">{rec.label}</p>
+                      <div className="bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] border-l-[#C9A84C]">
+                        <p className="text-xs font-semibold text-foreground font-display">{rec.label}</p>
                         <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{rec.body}</p>
                       </div>
                     )}
