@@ -488,9 +488,21 @@ const Index = () => {
             householdId={householdId}
           />
         )}
+        {activeTab === 'more' && moreSubView === 'emergency-fund' && (
+          <EmergencyFundAnalysis
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
+        {activeTab === 'more' && moreSubView === 'life-insurance' && (
+          <LifeInsuranceAnalysis
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
         {activeTab === 'more' && moreSubView === 'cfp-profile' && (
           <CFPProfileView
-            onBack={() => setMoreSubView('menu')}
+            onBack={() => setMoreSubView('financial-tools')}
             householdId={householdId}
           />
         )}
