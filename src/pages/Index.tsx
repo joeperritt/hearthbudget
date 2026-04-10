@@ -469,6 +469,12 @@ const Index = () => {
             householdId={householdId}
           />
         )}
+        {activeTab === 'more' && moreSubView === 'goals-planner' && (
+          <GoalsPlanner
+            onBack={() => setMoreSubView('financial-tools')}
+            householdId={householdId}
+          />
+        )}
         {activeTab === 'more' && moreSubView === 'cfp-profile' && (
           <CFPProfileView
             onBack={() => setMoreSubView('menu')}
