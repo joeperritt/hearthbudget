@@ -194,7 +194,9 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const projectedNonQual = currentNonQual * fvFactor + nonQualContrib * fvAnnuity;
   const projectedPortfolio = projectedPreTax + projectedRoth + projectedNonQual;
 
-   // monthlyFromPortfolio kept as alias for AI payload compatibility
+  // 4% safe withdrawal rate
+  const safeWithdrawalRate = 0.04;
+  const monthlyPortfolioDraw = (projectedPortfolio * safeWithdrawalRate) / 12;
   const monthlyFromPortfolio = monthlyPortfolioDraw;
 
   // Social Security — store FRA benefit in today's dollars, inflate to retirement year
@@ -221,8 +223,6 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   // Phase-based income projection using fixed 4% safe withdrawal rate
   // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
   // SS is added on top per phase based on claiming ages
-  const safeWithdrawalRate = 0.04;
-  const monthlyPortfolioDraw = (projectedPortfolio * safeWithdrawalRate) / 12;
 
   const incomePhases = useMemo(() => {
     const retireAge = retirementAge;
