@@ -50,6 +50,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const [budgetTotal, setBudgetTotal] = useState(0);
   const [showExpenseEstimator, setShowExpenseEstimator] = useState(false);
   const [aiEstimatingMember, setAiEstimatingMember] = useState<string | null>(null);
+  const [showLongevityInfo, setShowLongevityInfo] = useState(false);
+  const [showWhyFourPercent, setShowWhyFourPercent] = useState(false);
 
   const currentYear = new Date().getFullYear();
 
