@@ -265,8 +265,34 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
   const totalFICA = ficaSS + ficaMedicare;
 
   const totalTaxes = estimatedFederalTax + estimatedStateTax + totalFICA;
-  const effectiveRate = annualGross > 0 ? totalTaxes / annualGross : 0;
-  const marginalRate = getMarginalRate(annualGross, filingStatus, annualPreTaxDeductions);
+
+  // For MFJ, compute household-level rates (same return = same rates for both spouses)
+  const householdGross = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? annualGross + mfjPrimaryIncome
+    : annualGross;
+  const householdPreTax = annualPreTaxDeductions; // simplified: only this member's deductions modeled
+  const householdFederalTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? calcFederalTaxOnTaxable(Math.max(0, householdGross - householdPreTax - STANDARD_DEDUCTION_2026[filingStatus]), filingStatus)
+    : estimatedFederalTax;
+  const householdStateTax = (filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined)
+    ? calcStateTax2026(householdGross, state.selectedState, householdPreTax)
+    : estimatedStateTax;
+  const householdFICA = totalFICA; // FICA is always per-person
+  const householdTotalTaxes = householdFederalTax + householdStateTax + householdFICA;
+  const isMFJWithSpouse = filingStatus === 'married_jointly' && mfjPrimaryIncome !== undefined;
+
+  // Effective rate: household total tax / household gross (same for both spouses on MFJ)
+  const effectiveRate = isMFJWithSpouse
+    ? (householdGross > 0 ? (householdFederalTax + householdStateTax) / householdGross : 0)
+    : (annualGross > 0 ? (estimatedFederalTax + estimatedStateTax) / annualGross : 0);
+
+  // Add FICA for the "all-in" effective rate display
+  const effectiveRateAllIn = annualGross > 0 ? totalTaxes / annualGross : 0;
+
+  // Marginal rate: household-level for MFJ
+  const marginalRate = isMFJWithSpouse
+    ? getMarginalRate(householdGross, filingStatus, householdPreTax)
+    : getMarginalRate(annualGross, filingStatus, annualPreTaxDeductions);
 
   const takeHomePay = annualGross - totalTaxes - annualPreTaxDeductions;
 
