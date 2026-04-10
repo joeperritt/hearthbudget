@@ -194,9 +194,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const projectedNonQual = currentNonQual * fvFactor + nonQualContrib * fvAnnuity;
   const projectedPortfolio = projectedPreTax + projectedRoth + projectedNonQual;
 
-  // Baseline 4% withdrawal (used for simple display)
-  const annualWithdrawal = projectedPortfolio * 0.04;
-  const monthlyFromPortfolio = annualWithdrawal / 12;
+   // monthlyFromPortfolio kept as alias for AI payload compatibility
+  const monthlyFromPortfolio = monthlyPortfolioDraw;
 
   // Social Security — store FRA benefit in today's dollars, inflate to retirement year
   const showSS = state.showSocialSecurity;
@@ -838,11 +837,17 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
                         Portfolio draw
-                        {phase.withdrawalRate > 0 && (
-                          <span className={`ml-1 text-[10px] ${phase.withdrawalRate > 0.04 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
-                            ({pct(phase.withdrawalRate)}/yr)
-                          </span>
-                        )}
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          ({pct(safeWithdrawalRate)}/yr)
+                        </span>
+                        {monthlyExpenses > 0 && phaseGap < 0 && (() => {
+                          const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                          return (
+                            <span className="ml-1 text-[10px] text-yellow-600">
+                              — would need {pct(impliedRate)}/yr
+                            </span>
+                          );
+                        })()}
                       </span>
                       <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
                     </div>
