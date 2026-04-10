@@ -135,18 +135,20 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
     return { totalNeeded, totalContributing, combinedSurplus, onTrackCount, offTrackCount };
   }, [computed]);
 
+  const savingsFootnote = 'Savings vehicle recommendations are general and educational. Consult a Certified Financial Planner (CFP®) before making investment decisions.';
+
   function savingsVehicleRec(years: number) {
     if (years < 2) return {
       label: 'Short-Term Goal',
-      body: 'A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon.',
+      body: `A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon. ${savingsFootnote}`,
     };
     if (years < 5) return {
       label: 'Medium-Term Goal',
-      body: 'A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation.',
+      body: `A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation. ${savingsFootnote}`,
     };
     return {
       label: 'Long-Term Goal',
-      body: 'With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy.',
+      body: `With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy. ${savingsFootnote}`,
     };
   }
 
