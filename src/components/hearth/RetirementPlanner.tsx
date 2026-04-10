@@ -475,8 +475,8 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
 
   const estimatorResult = useMemo(() => {
     let base = budgetTotal;
-    const debtSub = estDebtFree ? (Number(estDebtOverride) || totalMonthlyDebt) : 0;
-    const contribSub = estNoRetSavings ? (Number(estContribOverride) || monthlyContributions) : 0;
+    const debtSub = estDebtFree ? (estDebtOverride !== '' ? Number(estDebtOverride) : totalMonthlyDebt) : 0;
+    const contribSub = estNoRetSavings ? (estContribOverride !== '' ? Number(estContribOverride) : monthlyContributions) : 0;
     const adjusted = Math.max(0, base - debtSub - contribSub);
     const inflated = adjusted * Math.pow(1 + inflationRate, yearsToRetirement);
     return { base, debtSub, contribSub, adjusted, inflated };
@@ -789,10 +789,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                         step={1}
                         className="mt-2"
                       />
-                      <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                        <span>62</span>
-                        <span>67</span>
-                        <span>70</span>
+                      <div className="relative text-[10px] text-muted-foreground mt-0.5 h-3">
+                        <span className="absolute left-0">62</span>
+                        <span className="absolute" style={{ left: `${((67 - 62) / (70 - 62)) * 100}%`, transform: 'translateX(-50%)' }}>67</span>
+                        <span className="absolute right-0">70</span>
                       </div>
                       <p className={`text-[10px] mt-0.5 ${note.color}`}>{note.text}</p>
                     </div>
@@ -1074,7 +1074,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Subtotal after debt</span>
-                    <span className="font-semibold text-foreground">{fmt(budgetTotal - (Number(estDebtOverride) || totalMonthlyDebt))}</span>
+                    <span className="font-semibold text-foreground">{fmt(budgetTotal - (estDebtOverride !== '' ? Number(estDebtOverride) : totalMonthlyDebt))}</span>
                   </div>
                 </div>
               )}
