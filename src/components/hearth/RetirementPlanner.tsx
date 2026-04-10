@@ -194,9 +194,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   const projectedNonQual = currentNonQual * fvFactor + nonQualContrib * fvAnnuity;
   const projectedPortfolio = projectedPreTax + projectedRoth + projectedNonQual;
 
-  // Baseline 4% withdrawal (used for simple display)
-  const annualWithdrawal = projectedPortfolio * 0.04;
-  const monthlyFromPortfolio = annualWithdrawal / 12;
+  // 4% safe withdrawal rate
+  const safeWithdrawalRate = 0.04;
+  const monthlyPortfolioDraw = (projectedPortfolio * safeWithdrawalRate) / 12;
+  const monthlyFromPortfolio = monthlyPortfolioDraw;
 
   // Social Security — store FRA benefit in today's dollars, inflate to retirement year
   const showSS = state.showSocialSecurity;
@@ -219,26 +220,24 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
   // Longevity benchmark
   const longevityAge = 90;
 
-  // Phase-based income projection with variable withdrawal rates
-  // Instead of flat 4%, compute how much portfolio can supply each phase
-  // by solving for a sustainable drawdown across all phases to age 90.
+  // Phase-based income projection using fixed 4% safe withdrawal rate
+  // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
+  // SS is added on top per phase based on claiming ages
+
   const incomePhases = useMemo(() => {
     const retireAge = retirementAge;
     const totalRetirementYears = Math.max(1, longevityAge - retireAge);
-    const realReturn = (1 + expectedReturn) / (1 + inflationRate) - 1; // real return for retirement
-    const monthlyRealReturn = realReturn / 12;
 
     if (!showSS || ssDetails.perMember.length === 0) {
-      // No SS — single phase, standard 4% rule
       return [{
         label: `${retirementYear}+ (Portfolio only)`,
         startYear: retirementYear,
         endYear: null as number | null,
         durationYears: totalRetirementYears,
-        portfolioIncome: monthlyFromPortfolio,
+        portfolioIncome: monthlyPortfolioDraw,
         ssIncome: 0,
-        totalIncome: monthlyFromPortfolio,
-        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
+        totalIncome: monthlyPortfolioDraw,
+        withdrawalRate: safeWithdrawalRate,
       }];
     }
 
@@ -257,27 +256,18 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
         startYear: retirementYear,
         endYear: null,
         durationYears: totalRetirementYears,
-        portfolioIncome: monthlyFromPortfolio,
+        portfolioIncome: monthlyPortfolioDraw,
         ssIncome,
-        totalIncome: monthlyFromPortfolio + ssIncome,
-        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
+        totalIncome: monthlyPortfolioDraw + ssIncome,
+        withdrawalRate: safeWithdrawalRate,
       }];
     }
 
-    // Multi-phase: solve for sustainable portfolio income per phase
-    // Key insight: during pre-SS years, the portfolio must cover more of expenses,
-    // but it only needs to do so for a limited time before SS income kicks in.
-    //
-    // We solve: given projected portfolio, expenses, and SS schedule,
-    // what's the max monthly draw from portfolio in each phase such that
-    // the portfolio lasts to age 90?
+    // Multi-phase: same portfolio draw in all phases, SS added per phase
     const transitions = [...new Set([retirementYear, ...ssStartYears])].sort((a, b) => a - b);
     const endYear = retirementYear + totalRetirementYears;
 
-    // Build phase structures
-    const rawPhases: { startYear: number; endYear: number; durationMonths: number; ssIncome: number; label: string }[] = [];
-    for (let i = 0; i < transitions.length; i++) {
-      const start = transitions[i];
+    return transitions.map((start, i) => {
       const end = i < transitions.length - 1 ? transitions[i + 1] : endYear;
       const activeSS = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start);
       const ssIncome = activeSS.reduce((s, m) => s + m.inflatedAdjusted, 0);
@@ -293,80 +283,18 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
         label = end < endYear ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
       }
 
-      rawPhases.push({ startYear: start, endYear: end, durationMonths: (end - start) * 12, ssIncome, label });
-    }
-
-    // Now solve for sustainable withdrawal:
-    // Portfolio must fund (expenses - ssIncome) in each phase.
-    // Phase 1 draws more, Phase 2+ draws less because SS covers part.
-    // We compute: what portfolio balance is needed at each transition point,
-    // working backwards from age 90 (balance = 0).
-    //
-    // For each phase (working backward): PV of (expenses - SS) annuity
-    // + PV of remaining phases at that point.
-    //
-    // Then the actual portfolio income per phase = expenses - ssIncome
-    // (the portfolio covers the gap), and we report the effective withdrawal rate.
-
-    if (monthlyExpenses <= 0) {
-      // No expenses entered — just show flat 4% with SS
-      return rawPhases.map(p => ({
-        label: p.label,
-        startYear: p.startYear,
-        endYear: p.endYear < endYear ? p.endYear : null,
-        durationYears: p.durationMonths / 12,
-        portfolioIncome: monthlyFromPortfolio,
-        ssIncome: p.ssIncome,
-        totalIncome: monthlyFromPortfolio + p.ssIncome,
-        withdrawalRate: projectedPortfolio > 0 ? (monthlyFromPortfolio * 12) / projectedPortfolio : 0,
-      }));
-    }
-
-    // Compute required portfolio at retirement to fund all phases
-    // Working backward: at end of last phase, portfolio should be 0
-    let requiredPortfolioAtPhaseStart = 0;
-    const phasePortfolioNeeds: number[] = new Array(rawPhases.length).fill(0);
-
-    for (let i = rawPhases.length - 1; i >= 0; i--) {
-      const phase = rawPhases[i];
-      const monthlyDraw = Math.max(0, monthlyExpenses - phase.ssIncome);
-      const n = phase.durationMonths;
-
-      // PV of annuity (monthly draw for n months) + PV of future needs
-      let pvAnnuity: number;
-      if (monthlyRealReturn > 0.0001) {
-        pvAnnuity = monthlyDraw * (1 - Math.pow(1 + monthlyRealReturn, -n)) / monthlyRealReturn;
-      } else {
-        pvAnnuity = monthlyDraw * n;
-      }
-
-      // Discount future needs back to start of this phase
-      const pvFuture = requiredPortfolioAtPhaseStart / Math.pow(1 + monthlyRealReturn, n);
-      requiredPortfolioAtPhaseStart = pvAnnuity + pvFuture;
-      phasePortfolioNeeds[i] = requiredPortfolioAtPhaseStart;
-    }
-
-    const requiredPortfolio = requiredPortfolioAtPhaseStart;
-    const fundingRatio = requiredPortfolio > 0 ? projectedPortfolio / requiredPortfolio : 1;
-
-    // Build final phases with actual portfolio income (scaled if underfunded)
-    return rawPhases.map((p, i) => {
-      const idealMonthlyDraw = Math.max(0, monthlyExpenses - p.ssIncome);
-      const actualMonthlyDraw = idealMonthlyDraw * Math.min(1, fundingRatio);
-      const effectiveRate = projectedPortfolio > 0 ? (actualMonthlyDraw * 12) / projectedPortfolio : 0;
-
       return {
-        label: p.label,
-        startYear: p.startYear,
-        endYear: p.endYear < endYear ? p.endYear : null,
-        durationYears: p.durationMonths / 12,
-        portfolioIncome: actualMonthlyDraw,
-        ssIncome: p.ssIncome,
-        totalIncome: actualMonthlyDraw + p.ssIncome,
-        withdrawalRate: effectiveRate,
+        label,
+        startYear: start,
+        endYear: end < endYear ? end : null,
+        durationYears: (end - start) / 1, // years
+        portfolioIncome: monthlyPortfolioDraw,
+        ssIncome,
+        totalIncome: monthlyPortfolioDraw + ssIncome,
+        withdrawalRate: safeWithdrawalRate,
       };
     });
-  }, [showSS, ssDetails, retirementYear, monthlyFromPortfolio, projectedPortfolio, retirementAge, expectedReturn, inflationRate, monthlyExpenses, longevityAge]);
+  }, [showSS, ssDetails, retirementYear, monthlyPortfolioDraw, projectedPortfolio, retirementAge, longevityAge]);
 
   // Use worst-case phase for gap analysis (the phase with lowest income)
   const worstPhase = useMemo(() => {
@@ -909,11 +837,17 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
                         Portfolio draw
-                        {phase.withdrawalRate > 0 && (
-                          <span className={`ml-1 text-[10px] ${phase.withdrawalRate > 0.04 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
-                            ({pct(phase.withdrawalRate)}/yr)
-                          </span>
-                        )}
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          ({pct(safeWithdrawalRate)}/yr)
+                        </span>
+                        {monthlyExpenses > 0 && phaseGap < 0 && (() => {
+                          const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                          return (
+                            <span className="ml-1 text-[10px] text-yellow-600">
+                              — would need {pct(impliedRate)}/yr
+                            </span>
+                          );
+                        })()}
                       </span>
                       <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
                     </div>
@@ -941,7 +875,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             })}
             {showSS && incomePhases.length > 1 && (
               <p className="text-[10px] text-muted-foreground mt-3 italic">
-                Higher portfolio draw in pre-SS phases is sustainable because it drops once Social Security begins.
+                Portfolio draw uses a fixed 4% safe withdrawal rate. Income increases when Social Security begins.
               </p>
             )}
           </div>
