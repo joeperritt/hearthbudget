@@ -777,11 +777,25 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
               <span>Today ({currentAge})</span>
               <span>Retire ({retirementYear})</span>
-              <span>Age 90</span>
+              <span className="flex items-center gap-0.5">
+                Age {longevityAge}
+                <button
+                  onClick={() => setShowLongevityInfo(v => !v)}
+                  className="text-accent active:opacity-70"
+                >
+                  <Info size={10} />
+                </button>
+              </span>
             </div>
+            {showLongevityInfo && (
+              <div className="bg-muted/60 rounded-lg p-3 mb-2 text-[11px] text-muted-foreground leading-relaxed">
+                <p>We use age {longevityAge} as a planning benchmark because average life expectancy continues to rise, and a Certified Financial Planner (CFP) best practice is to plan for a longer-than-average retirement to avoid outliving your savings. If you retire at {retirementAge}, your plan needs to sustain roughly {longevityAge - retirementAge} years of withdrawals. Planning to age {longevityAge} gives you a meaningful buffer. If longevity runs in your family, consider extending this benchmark to 95 or even 100 — your Retirement Planner will show you how the math changes.</p>
+                <button onClick={() => setShowLongevityInfo(false)} className="text-accent font-semibold mt-1.5">Got it</button>
+              </div>
+            )}
             <div className="relative h-3 bg-muted rounded-full overflow-hidden">
               {(() => {
-                const totalSpan = 90 - currentAge;
+                const totalSpan = longevityAge - currentAge;
                 const retirePct = totalSpan > 0 ? (yearsToRetirement / totalSpan) * 100 : 50;
                 return (
                   <>
@@ -795,6 +809,18 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             <p className="text-xs text-muted-foreground text-center mt-1.5">
               <span className="font-semibold text-foreground">{yearsToRetirement}</span> years to retirement
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Longevity Benchmark</Label>
+              <Slider
+                value={[longevityAge]}
+                onValueChange={([v]) => setState({ longevityAge: String(v) })}
+                min={80}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+              <span className="text-xs font-semibold text-foreground w-6 text-right">{longevityAge}</span>
+            </div>
           </div>
 
           {/* Projections */}
