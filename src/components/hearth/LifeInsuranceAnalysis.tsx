@@ -62,12 +62,13 @@ export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnal
 
         if (memberIncomes.length > 0) {
           const members: MemberInsurance[] = memberIncomes.map((m: any, i: number) => {
-            const cov = coverages.find((c: any) => c.name === m.name) || coverages[i];
+            const cov: any = coverages.find((c: any) => c.name === m.name) || coverages[i];
+            const covAmount = cov ? Number((cov as any).coverage || 0) : 0;
             return {
               name: m.name || `Member ${i + 1}`,
               annualIncome: String(m.gross_income || ''),
-              currentCoverage: cov ? String(cov.coverage || '') : '',
-              coverageType: cov && Number(cov.coverage) > 0 ? 'term' : 'none',
+              currentCoverage: covAmount > 0 ? String(covAmount) : '',
+              coverageType: covAmount > 0 ? 'term' as const : 'none' as const,
             };
           });
           updates.members = members;
