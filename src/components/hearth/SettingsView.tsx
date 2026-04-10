@@ -843,6 +843,13 @@ export function SettingsView({
         {viewTab === 'savings' && (
           <div className="px-6 pb-4">
             <div className="mb-4">
+              {renderAddFixedForm('savings')}
+              {showAddFixed !== 'savings' && (
+                <button onClick={() => setShowAddFixed('savings')}
+                  className="flex items-center gap-1.5 text-accent text-xs font-medium mb-3 active:scale-95 transition-transform">
+                  <Plus size={14} /> Add Savings Item
+                </button>
+              )}
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Savings</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                 {savingsBuckets.map((e) => (
@@ -950,13 +957,6 @@ export function SettingsView({
                   </div>
                 ))}
               </div>
-              {renderAddFixedForm('savings')}
-              {showAddFixed !== 'savings' && (
-                <button onClick={() => setShowAddFixed('savings')}
-                  className="flex items-center gap-1.5 text-accent text-xs font-medium mt-2 active:scale-95 transition-transform">
-                  <Plus size={14} /> Add Savings Item
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -964,6 +964,13 @@ export function SettingsView({
         {viewTab === 'giving' && (
           <div className="px-6 pb-4">
             <div className="mb-4">
+              {renderAddFixedForm('tithe')}
+              {showAddFixed !== 'tithe' && (
+                <button onClick={() => setShowAddFixed('tithe')}
+                  className="flex items-center gap-1.5 text-accent text-xs font-medium mb-3 active:scale-95 transition-transform">
+                  <Plus size={14} /> Add Tithe/Giving Item
+                </button>
+              )}
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tithe/Giving</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                 {titheItems.map((e) => (
