@@ -875,7 +875,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             })}
             {showSS && incomePhases.length > 1 && (
               <p className="text-[10px] text-muted-foreground mt-3 italic">
-                Higher portfolio draw in pre-SS phases is sustainable because it drops once Social Security begins.
+                Portfolio draw uses a fixed 4% safe withdrawal rate. Income increases when Social Security begins.
               </p>
             )}
           </div>
