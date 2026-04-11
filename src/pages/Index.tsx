@@ -22,7 +22,9 @@ import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { BudgetTabView } from '@/components/hearth/BudgetTabView';
-import { FinancialToolsView } from '@/components/hearth/FinancialToolsView';
+import { PlanView } from '@/components/hearth/PlanView';
+import { FinancialInsightsList } from '@/components/hearth/FinancialInsightsList';
+import { CalculatorsList } from '@/components/hearth/CalculatorsList';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/hearth/DebtPayoffCalculator';
 import { CarLoanCalculator } from '@/components/hearth/CarLoanCalculator';
@@ -30,9 +32,19 @@ import { TaxWithholdingCalculator } from '@/components/hearth/TaxWithholdingCalc
 import { RetirementPlanner } from '@/components/hearth/RetirementPlanner';
 import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
-import { FinancialHealthScore } from '@/components/hearth/FinancialHealthScore';
 import { EmergencyFundAnalysis } from '@/components/hearth/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/hearth/LifeInsuranceAnalysis';
+
+type PlanSubView = 'menu' | 'financial-profile' | 'financial-insights' | 'calculators'
+  | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
+  | 'emergency-fund' | 'savings-goals' | 'retirement'
+  | 'mortgage-shopping' | 'car-loan';
+
+type MoreSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
+  | 'financial-profile' | 'financial-insights' | 'calculators'
+  | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
+  | 'emergency-fund' | 'savings-goals' | 'retirement'
+  | 'mortgage-shopping' | 'car-loan';
 
 const Index = () => {
   const {
@@ -46,7 +58,6 @@ const Index = () => {
   const { accounts } = useAccounts();
   const { user } = useAuth();
 
-  // Fetch household member names for personalized labels
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
   useEffect(() => {
     if (!householdId || !user) return;
@@ -73,7 +84,8 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
-  const [moreSubView, setMoreSubView] = useState<'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'mortgage-calc' | 'debt-payoff' | 'car-loan' | 'tax-withholding' | 'retirement-planner' | 'goals-planner' | 'health-score' | 'cfp-profile' | 'emergency-fund' | 'life-insurance'>('menu');
+  const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
+  const [moreSubView, setMoreSubView] = useState<MoreSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
 
   const monthKey = activeMonth;
@@ -184,7 +196,6 @@ const Index = () => {
     [monthTransactions]
   );
 
-  // AI Insights
   const {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
     fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
@@ -209,6 +220,7 @@ const Index = () => {
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     if (tab === 'more') setMoreSubView('menu');
+    if (tab === 'plan') setPlanSubView('menu');
     if (tab === 'budget') setBudgetSubView('main');
   };
 
@@ -238,6 +250,21 @@ const Index = () => {
       }
     }, 200);
   }, [transactions]);
+
+  // Helper to navigate to insight/calculator tool from Plan or More
+  const navigateToTool = (tool: string, fromTab: 'plan' | 'more') => {
+    if (fromTab === 'plan') {
+      setPlanSubView(tool as PlanSubView);
+    } else {
+      setMoreSubView(tool as MoreSubView);
+    }
+  };
+
+  // Helper to get back target for tools
+  const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
+    if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
+    return () => setMoreSubView(parent as MoreSubView);
+  };
 
   if (loading || !activeMonth) {
     return (
@@ -295,6 +322,34 @@ const Index = () => {
       );
     }
   }
+
+  // Render a tool component based on tool id, with back navigation
+  const renderTool = (toolId: string, onBack: () => void) => {
+    switch (toolId) {
+      case 'mortgage-analyzer':
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} />;
+      case 'debt-payoff':
+        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} />;
+      case 'tax-estimator':
+        return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} />;
+      case 'life-insurance':
+        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} />;
+      case 'emergency-fund':
+        return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} />;
+      case 'savings-goals':
+        return <GoalsPlanner onBack={onBack} householdId={householdId} />;
+      case 'retirement':
+        return <RetirementPlanner onBack={onBack} householdId={householdId} />;
+      case 'mortgage-shopping':
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} />;
+      case 'car-loan':
+        return <CarLoanCalculator onBack={onBack} householdId={householdId} />;
+      case 'financial-profile':
+        return <CFPProfileView onBack={onBack} householdId={householdId} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -383,26 +438,39 @@ const Index = () => {
           />
         )}
 
+        {/* Plan Tab */}
+        {activeTab === 'plan' && planSubView === 'menu' && (
+          <PlanView
+            householdId={householdId}
+            onNavigate={(target) => setPlanSubView(target as PlanSubView)}
+          />
+        )}
+        {activeTab === 'plan' && planSubView === 'financial-insights' && (
+          <FinancialInsightsList
+            onBack={() => setPlanSubView('menu')}
+            householdId={householdId}
+            onSelectTool={(tool) => setPlanSubView(tool as PlanSubView)}
+          />
+        )}
+        {activeTab === 'plan' && planSubView === 'calculators' && (
+          <CalculatorsList
+            onBack={() => setPlanSubView('menu')}
+            onSelectCalculator={(calc) => setPlanSubView(calc as PlanSubView)}
+          />
+        )}
+        {activeTab === 'plan' && planSubView === 'financial-profile' && (
+          <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} />
+        )}
+        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
+          renderTool(planSubView, () => setPlanSubView('financial-insights'))
+        )}
+        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan'].includes(planSubView) && (
+          renderTool(planSubView, () => setPlanSubView('calculators'))
+        )}
+
         {/* More Tab */}
         {activeTab === 'more' && moreSubView === 'menu' && (
-          <MoreView onSelect={tab => {
-            if (tab === 'cfp-profile') setMoreSubView('cfp-profile');
-            else setMoreSubView(tab);
-          }} householdId={householdId} />
-        )}
-        {activeTab === 'more' && moreSubView === 'settings' && (
-          <SettingsView
-            categories={categories}
-            fixedExpenses={fixedExpenses}
-            currentMonth={currentMonthDate}
-            onUpdateCategories={updateCategories}
-            onUpdateFixedExpenses={updateFixedExpenses}
-            onBack={() => setMoreSubView('menu')}
-            unassignedCount={unassignedTransactions.length}
-            spentByCategory={spentByCategory}
-            transferAdjustments={transferAdjustments}
-            monthTransactions={monthTransactions}
-          />
+          <MoreView onSelect={tab => setMoreSubView(tab as MoreSubView)} householdId={householdId} />
         )}
         {activeTab === 'more' && moreSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setMoreSubView('menu')} />
@@ -427,84 +495,27 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'financial-tools' && (
-          <FinancialToolsView
+        {activeTab === 'more' && moreSubView === 'financial-insights' && (
+          <FinancialInsightsList
             onBack={() => setMoreSubView('menu')}
             householdId={householdId}
-            onSelectTool={(tool) => {
-              if (tool === 'mortgage') setMoreSubView('mortgage-calc');
-              else if (tool === 'debt-payoff') setMoreSubView('debt-payoff');
-              else if (tool === 'car-loan') setMoreSubView('car-loan');
-              else if (tool === 'tax-withholding') setMoreSubView('tax-withholding');
-              else if (tool === 'retirement') setMoreSubView('retirement-planner');
-              else if (tool === 'goals-planner') setMoreSubView('goals-planner');
-              else if (tool === 'health-score') setMoreSubView('health-score');
-              else if (tool === 'cfp-profile') setMoreSubView('cfp-profile');
-              else if (tool === 'emergency-fund') setMoreSubView('emergency-fund');
-              else if (tool === 'life-insurance') setMoreSubView('life-insurance');
-            }}
+            onSelectTool={(tool) => setMoreSubView(tool as MoreSubView)}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'mortgage-calc' && (
-          <MortgageCalculator
-            planningData={planningData}
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
+        {activeTab === 'more' && moreSubView === 'calculators' && (
+          <CalculatorsList
+            onBack={() => setMoreSubView('menu')}
+            onSelectCalculator={(calc) => setMoreSubView(calc as MoreSubView)}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'debt-payoff' && (
-          <DebtPayoffCalculator
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
+        {activeTab === 'more' && moreSubView === 'financial-profile' && (
+          <CFPProfileView onBack={() => setMoreSubView('menu')} householdId={householdId} />
         )}
-        {activeTab === 'more' && moreSubView === 'car-loan' && (
-          <CarLoanCalculator
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
+        {activeTab === 'more' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(moreSubView) && (
+          renderTool(moreSubView, () => setMoreSubView('financial-insights'))
         )}
-        {activeTab === 'more' && moreSubView === 'tax-withholding' && (
-          <TaxWithholdingCalculator
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'retirement-planner' && (
-          <RetirementPlanner
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'goals-planner' && (
-          <GoalsPlanner
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'health-score' && (
-          <FinancialHealthScore
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'emergency-fund' && (
-          <EmergencyFundAnalysis
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'life-insurance' && (
-          <LifeInsuranceAnalysis
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
-        )}
-        {activeTab === 'more' && moreSubView === 'cfp-profile' && (
-          <CFPProfileView
-            onBack={() => setMoreSubView('financial-tools')}
-            householdId={householdId}
-          />
+        {activeTab === 'more' && ['mortgage-shopping', 'car-loan'].includes(moreSubView) && (
+          renderTool(moreSubView, () => setMoreSubView('calculators'))
         )}
       </div>
 
