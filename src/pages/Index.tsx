@@ -485,26 +485,13 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'financial-insights' && (
-          <FinancialInsightsList
-            onBack={() => setMoreSubView('menu')}
-            householdId={householdId}
-            onSelectTool={(tool) => setMoreSubView(tool as MoreSubView)}
-          />
-        )}
         {activeTab === 'more' && moreSubView === 'calculators' && (
           <CalculatorsList
             onBack={() => setMoreSubView('menu')}
             onSelectCalculator={(calc) => setMoreSubView(calc as MoreSubView)}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setMoreSubView('menu')} householdId={householdId} />
-        )}
-        {activeTab === 'more' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(moreSubView) && (
-          renderTool(moreSubView, () => setMoreSubView('financial-insights'))
-        )}
-        {activeTab === 'more' && ['mortgage-shopping', 'car-loan'].includes(moreSubView) && (
+        {activeTab === 'more' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(moreSubView) && (
           renderTool(moreSubView, () => setMoreSubView('calculators'))
         )}
       </div>
