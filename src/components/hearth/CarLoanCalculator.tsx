@@ -319,7 +319,6 @@ export function CarLoanCalculator({ onBack, householdId, shoppingOnly }: CarLoan
           <p className="text-sm text-muted-foreground mt-0.5">
             {shoppingOnly ? 'Calculate your true cost of ownership' : (isShopping ? 'Calculate your true cost of ownership' : 'Analyze your current auto loan')}
           </p>
-          </p>
         </div>
       </div>
 
