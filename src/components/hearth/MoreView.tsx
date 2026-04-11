@@ -1,7 +1,7 @@
-import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Shield, Calculator } from 'lucide-react';
+import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Calculator } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-profile' | 'financial-insights' | 'calculators';
+type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'calculators';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -18,52 +18,7 @@ export function MoreView({ onSelect, householdId }: MoreViewProps) {
         <p className="text-sm text-muted-foreground mt-0.5">Tools & settings</p>
       </div>
 
-      {/* Three navy shortcut buttons */}
-      <div className="px-6 mt-6 space-y-2">
-        <button
-          onClick={() => onSelect('financial-profile')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Shield size={20} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Financial Profile</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Your financial foundation</p>
-          </div>
-          <ChevronRight size={16} className="text-accent flex-shrink-0" />
-        </button>
-
-        <button
-          onClick={() => onSelect('financial-insights')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <BarChart3 size={20} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Financial Insights</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Analysis based on your current situation</p>
-          </div>
-          <ChevronRight size={16} className="text-accent flex-shrink-0" />
-        </button>
-
-        <button
-          onClick={() => onSelect('calculators')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Calculator size={20} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Calculators</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Generic financial calculators</p>
-          </div>
-          <ChevronRight size={16} className="text-accent flex-shrink-0" />
-        </button>
-      </div>
-
-      <div className="px-6 mt-4 space-y-3">
+      <div className="px-6 mt-6 space-y-3">
         <button
           onClick={() => onSelect('ai-advisor')}
           className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
@@ -74,6 +29,19 @@ export function MoreView({ onSelect, householdId }: MoreViewProps) {
           <div>
             <p className="text-sm font-semibold text-foreground">AI Advisor</p>
             <p className="text-xs text-muted-foreground">Personalized budget insights & chat</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('calculators')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Calculator size={20} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Calculators</p>
+            <p className="text-xs text-muted-foreground">Generic financial calculators</p>
           </div>
         </button>
 

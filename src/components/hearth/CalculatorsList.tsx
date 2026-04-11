@@ -1,6 +1,6 @@
-import { ArrowLeft, Home, Car, Calculator } from 'lucide-react';
+import { ArrowLeft, Home, Car, FileText, Calculator } from 'lucide-react';
 
-type CalculatorId = 'mortgage-shopping' | 'car-loan';
+type CalculatorId = 'mortgage-shopping' | 'car-loan' | 'tax-estimator';
 
 interface CalculatorsListProps {
   onBack: () => void;
@@ -10,6 +10,7 @@ interface CalculatorsListProps {
 const calculators: { id: CalculatorId; name: string; subtitle: string; icon: typeof Home }[] = [
   { id: 'mortgage-shopping', name: 'Mortgage Calculator', subtitle: 'How much home can you afford?', icon: Home },
   { id: 'car-loan', name: 'Car Loan Calculator', subtitle: 'Calculate your true cost of ownership', icon: Car },
+  { id: 'tax-estimator', name: 'Federal Tax Estimator', subtitle: 'Estimate your federal tax liability', icon: FileText },
 ];
 
 export function CalculatorsList({ onBack, onSelectCalculator }: CalculatorsListProps) {

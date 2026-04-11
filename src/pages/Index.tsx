@@ -23,7 +23,7 @@ import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { PlanView } from '@/components/hearth/PlanView';
-import { FinancialInsightsList } from '@/components/hearth/FinancialInsightsList';
+
 import { CalculatorsList } from '@/components/hearth/CalculatorsList';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/hearth/DebtPayoffCalculator';
@@ -35,16 +35,13 @@ import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/hearth/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/hearth/LifeInsuranceAnalysis';
 
-type PlanSubView = 'menu' | 'financial-profile' | 'financial-insights' | 'calculators'
+type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
 type MoreSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
-  | 'financial-profile' | 'financial-insights' | 'calculators'
-  | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
-  | 'emergency-fund' | 'savings-goals' | 'retirement'
-  | 'mortgage-shopping' | 'car-loan';
+  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator';
 
 const Index = () => {
   const {
@@ -445,13 +442,6 @@ const Index = () => {
             onNavigate={(target) => setPlanSubView(target as PlanSubView)}
           />
         )}
-        {activeTab === 'plan' && planSubView === 'financial-insights' && (
-          <FinancialInsightsList
-            onBack={() => setPlanSubView('menu')}
-            householdId={householdId}
-            onSelectTool={(tool) => setPlanSubView(tool as PlanSubView)}
-          />
-        )}
         {activeTab === 'plan' && planSubView === 'calculators' && (
           <CalculatorsList
             onBack={() => setPlanSubView('menu')}
@@ -461,10 +451,10 @@ const Index = () => {
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} />
         )}
-        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
-          renderTool(planSubView, () => setPlanSubView('financial-insights'))
+        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
+          renderTool(planSubView, () => setPlanSubView('menu'))
         )}
-        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan'].includes(planSubView) && (
+        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(planSubView) && (
           renderTool(planSubView, () => setPlanSubView('calculators'))
         )}
 
@@ -495,26 +485,13 @@ const Index = () => {
             onBack={() => setMoreSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'financial-insights' && (
-          <FinancialInsightsList
-            onBack={() => setMoreSubView('menu')}
-            householdId={householdId}
-            onSelectTool={(tool) => setMoreSubView(tool as MoreSubView)}
-          />
-        )}
         {activeTab === 'more' && moreSubView === 'calculators' && (
           <CalculatorsList
             onBack={() => setMoreSubView('menu')}
             onSelectCalculator={(calc) => setMoreSubView(calc as MoreSubView)}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setMoreSubView('menu')} householdId={householdId} />
-        )}
-        {activeTab === 'more' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(moreSubView) && (
-          renderTool(moreSubView, () => setMoreSubView('financial-insights'))
-        )}
-        {activeTab === 'more' && ['mortgage-shopping', 'car-loan'].includes(moreSubView) && (
+        {activeTab === 'more' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(moreSubView) && (
           renderTool(moreSubView, () => setMoreSubView('calculators'))
         )}
       </div>
