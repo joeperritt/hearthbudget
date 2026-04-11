@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Briefcase } from 'lucide-react';
+import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Shield, Calculator } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-tools' | 'cfp-profile';
+type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'financial-profile' | 'financial-insights' | 'calculators';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -19,20 +18,48 @@ export function MoreView({ onSelect, householdId }: MoreViewProps) {
         <p className="text-sm text-muted-foreground mt-0.5">Tools & settings</p>
       </div>
 
-      {/* Financial Insights Banner Button */}
-      <div className="px-6 mt-6">
+      {/* Three navy shortcut buttons */}
+      <div className="px-6 mt-6 space-y-2">
         <button
-          onClick={() => onSelect('financial-tools')}
+          onClick={() => onSelect('financial-profile')}
           className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
         >
-          <div className="w-11 h-11 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={22} className="text-accent" />
+          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <Shield size={20} className="text-accent" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Financial Insights & Calculators</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Your complete financial picture</p>
+            <p className="text-sm font-bold text-primary-foreground">Financial Profile</p>
+            <p className="text-xs text-primary-foreground/70 mt-0.5">Your financial foundation</p>
           </div>
-          <ChevronRight size={18} className="text-accent flex-shrink-0" />
+          <ChevronRight size={16} className="text-accent flex-shrink-0" />
+        </button>
+
+        <button
+          onClick={() => onSelect('financial-insights')}
+          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <BarChart3 size={20} className="text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-primary-foreground">Financial Insights</p>
+            <p className="text-xs text-primary-foreground/70 mt-0.5">Analysis based on your current situation</p>
+          </div>
+          <ChevronRight size={16} className="text-accent flex-shrink-0" />
+        </button>
+
+        <button
+          onClick={() => onSelect('calculators')}
+          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <Calculator size={20} className="text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-primary-foreground">Calculators</p>
+            <p className="text-xs text-primary-foreground/70 mt-0.5">Generic financial calculators</p>
+          </div>
+          <ChevronRight size={16} className="text-accent flex-shrink-0" />
         </button>
       </div>
 
