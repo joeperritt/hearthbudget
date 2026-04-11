@@ -45,6 +45,7 @@ function pct(n: number) {
 interface CarLoanCalculatorProps {
   onBack: () => void;
   householdId: string | null;
+  shoppingOnly?: boolean;
 }
 
 export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProps) {
