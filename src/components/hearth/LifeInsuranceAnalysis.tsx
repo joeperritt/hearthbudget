@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Shield, Sparkles, Loader2, Info, CheckCircle2, AlertTriangle, RefreshCw, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,37 +13,33 @@ function fmt(n: number) {
 interface LifeInsuranceAnalysisProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
 interface MemberInsurance {
   name: string;
-  annualIncome: string;
-  currentCoverage: string;
-  coverageType: 'term' | 'whole' | 'none';
+  annualIncome: number;
+  currentCoverage: number;
+  coverageType: string;
 }
 
 interface LIState {
-  members: MemberInsurance[];
-  totalDebt: string;
-  mortgageBalance: string;
-  dependents: string;
   yearsUntilIndependent: string;
   educationPerChild: string;
 }
 
 const defaultState: LIState = {
-  members: [{ name: 'Member 1', annualIncome: '', currentCoverage: '', coverageType: 'none' }],
-  totalDebt: '',
-  mortgageBalance: '',
-  dependents: '0',
-  yearsUntilIndependent: '18',
+  yearsUntilIndependent: '',
   educationPerChild: '100000',
 };
 
-export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnalysisProps) {
+export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile }: LifeInsuranceAnalysisProps) {
   const { state, setState, loaded } = useToolState<LIState>(householdId, 'life-insurance', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [members, setMembers] = useState<MemberInsurance[]>([]);
+  const [totalDebt, setTotalDebt] = useState(0);
+  const [mortgageBalance, setMortgageBalance] = useState(0);
+  const [dependents, setDependents] = useState<{ name: string; age: number | null }[]>([]);
 
   // AI
   const [aiInsights, setAiInsights] = useState<string[]>([]);
@@ -52,56 +47,59 @@ export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnal
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (!householdId || profileLoaded) return;
+    if (!householdId) { setProfileLoading(false); return; }
     supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle()
       .then(({ data: fp }) => {
-        if (!fp) { setProfileLoading(false); setProfileLoaded(true); return; }
-        const updates: Partial<LIState> = {};
+        if (!fp) { setProfileLoading(false); return; }
         const memberIncomes = Array.isArray(fp.member_incomes) ? fp.member_incomes : [];
         const coverages = Array.isArray(fp.life_insurance_coverages) ? fp.life_insurance_coverages : [];
 
-        if (memberIncomes.length > 0) {
-          const members: MemberInsurance[] = memberIncomes.map((m: any, i: number) => {
-            const cov: any = coverages.find((c: any) => c.name === m.name) || coverages[i];
-            const covAmount = cov ? Number((cov as any).coverage || 0) : 0;
-            return {
-              name: m.name || `Member ${i + 1}`,
-              annualIncome: String(m.gross_income || ''),
-              currentCoverage: covAmount > 0 ? String(covAmount) : '',
-              coverageType: covAmount > 0 ? 'term' as const : 'none' as const,
-            };
-          });
-          updates.members = members;
-        }
+        const parsedMembers: MemberInsurance[] = memberIncomes.map((m: any, i: number) => {
+          const cov: any = coverages.find((c: any) => c.name === m.name) || coverages[i];
+          return {
+            name: m.name || `Member ${i + 1}`,
+            annualIncome: Number(m.gross_income) || 0,
+            currentCoverage: cov ? Number((cov as any).coverage || 0) : 0,
+            coverageType: cov ? ((cov as any).coverageType || 'none') : 'none',
+          };
+        });
+        setMembers(parsedMembers);
 
         const debts: any[] = Array.isArray(fp.debts) ? (fp.debts as any[]) : [];
-        const debtTotal: number = debts.reduce((s: number, d: any) => s + (Number(d.balance) || 0), 0);
-        if (debtTotal > 0) updates.totalDebt = String(debtTotal);
-        if (Number(fp.mortgage_balance || 0) > 0) updates.mortgageBalance = String(fp.mortgage_balance);
+        setTotalDebt(debts.reduce((s: number, d: any) => s + (Number(d.balance) || 0), 0));
+        setMortgageBalance(Number(fp.mortgage_balance) || 0);
 
-        if (Object.keys(updates).length > 0) setState(updates);
+        // Parse dependents from profile
+        // dependents may be stored in the profile data
+        const profileDeps = Array.isArray((fp as any).dependents) ? (fp as any).dependents : [];
+        setDependents(profileDeps);
+
+        // Auto-calculate years until independent from youngest dependent
+        if (!state.yearsUntilIndependent && profileDeps.length > 0) {
+          const ages = profileDeps.map((d: any) => Number(d.age) || 0).filter((a: number) => a > 0);
+          if (ages.length > 0) {
+            const youngest = Math.min(...ages);
+            const yearsLeft = Math.max(0, 22 - youngest);
+            setState({ yearsUntilIndependent: String(yearsLeft) });
+          }
+        }
+
         setProfileLoading(false);
-        setProfileLoaded(true);
       });
-  }, [householdId, profileLoaded]);
+  }, [householdId]);
 
-  const deps = parseInt(state.dependents) || 0;
+  const deps = dependents.length;
   const yearsIndep = parseInt(state.yearsUntilIndependent) || 18;
   const eduPerChild = Number(state.educationPerChild) || 100000;
-  const debt = Number(state.totalDebt) || 0;
-  const mortgage = Number(state.mortgageBalance) || 0;
 
   const memberAnalysis = useMemo(() => {
-    return state.members.map(m => {
-      const income = Number(m.annualIncome) || 0;
-      const coverage = Number(m.currentCoverage) || 0;
+    return members.map(m => {
+      const income = m.annualIncome;
+      const coverage = m.currentCoverage;
 
-      // Income Replacement: 10-12x
       const irLow = income * 10;
       const irHigh = income * 12;
-
-      // DIME: Debt + Income(years × income) + Mortgage + Education
-      const dime = debt + (yearsIndep * income) + mortgage + (deps * eduPerChild);
+      const dime = totalDebt + (yearsIndep * income) + mortgageBalance + (deps * eduPerChild);
 
       const recLow = Math.min(irLow, dime);
       const recHigh = Math.max(irHigh, dime);
@@ -115,21 +113,7 @@ export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnal
 
       return { ...m, income, coverage, irLow, irHigh, dime, recLow, recHigh, gap, surplus, verdict };
     });
-  }, [state.members, debt, mortgage, deps, yearsIndep, eduPerChild]);
-
-  const overallVerdict = useMemo(() => {
-    const earning = memberAnalysis.filter(m => m.income > 0);
-    if (earning.length === 0) return 'none';
-    const allAdequate = earning.every(m => m.verdict === 'adequate' || m.verdict === 'overinsured');
-    if (allAdequate) return 'adequate';
-    return 'gap';
-  }, [memberAnalysis]);
-
-  const updateMember = (i: number, updates: Partial<MemberInsurance>) => {
-    const newMembers = [...state.members];
-    newMembers[i] = { ...newMembers[i], ...updates };
-    setState({ members: newMembers });
-  };
+  }, [members, totalDebt, mortgageBalance, deps, yearsIndep, eduPerChild]);
 
   const fetchInsights = useCallback(async () => {
     if (!householdId) return;
@@ -141,8 +125,8 @@ export function LifeInsuranceAnalysis({ onBack, householdId }: LifeInsuranceAnal
 
       const prompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA®). Analyze this household's life insurance:
 ${memberSummary}
-- Total debt: ${fmt(debt)}
-- Mortgage: ${fmt(mortgage)}
+- Total debt: ${fmt(totalDebt)}
+- Mortgage: ${fmt(mortgageBalance)}
 - Dependents: ${deps}
 - Years until independent: ${yearsIndep}
 
@@ -160,7 +144,7 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
       console.error('AI insights error:', e);
     }
     setAiLoading(false);
-  }, [householdId, memberAnalysis, debt, mortgage, deps, yearsIndep]);
+  }, [householdId, memberAnalysis, totalDebt, mortgageBalance, deps, yearsIndep]);
 
   if (!loaded || profileLoading) {
     return (
@@ -198,48 +182,40 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
         </div>
       </div>
 
-      {/* Household Inputs */}
+      {/* Household Details — Read-only from profile */}
       <div className="px-6 mt-4">
-        <div className="bg-card rounded-xl p-4 shadow-sm space-y-4">
-          <p className="text-sm font-semibold text-foreground">Household Details</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Total Non-Mortgage Debt</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                <Input type="number" className="pl-7" value={state.totalDebt} onChange={e => setState({ totalDebt: e.target.value })} placeholder="0" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Mortgage Balance</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                <Input type="number" className="pl-7" value={state.mortgageBalance} onChange={e => setState({ mortgageBalance: e.target.value })} placeholder="0" />
-              </div>
-            </div>
+        <div className="bg-card rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">Household Details</p>
+            {onNavigateToProfile && (
+              <button onClick={() => onNavigateToProfile('debts')} className="text-xs font-semibold text-accent">
+                From Financial Profile →
+              </button>
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Dependents</Label>
-              <Input type="number" className="mt-1" value={state.dependents} onChange={e => setState({ dependents: e.target.value })} min="0" />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <ReadOnlyField label="Total Non-Mortgage Debt" value={fmt(totalDebt)} />
+            <ReadOnlyField label="Mortgage Balance" value={fmt(mortgageBalance)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <ReadOnlyField label="Dependents" value={String(deps)} />
             <div>
               <Label className="text-xs text-muted-foreground">Years to Independent</Label>
-              <Input type="number" className="mt-1" value={state.yearsUntilIndependent} onChange={e => setState({ yearsUntilIndependent: e.target.value })} min="0" />
+              <Input type="number" className="mt-1" value={state.yearsUntilIndependent} onChange={e => setState({ yearsUntilIndependent: e.target.value })} min="0" placeholder="18" />
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Education $/Child</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                <Input type="number" className="pl-7" value={state.educationPerChild} onChange={e => setState({ educationPerChild: e.target.value })} />
-              </div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Education $/Child</Label>
+            <div className="relative mt-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+              <Input type="number" className="pl-7" value={state.educationPerChild} onChange={e => setState({ educationPerChild: e.target.value })} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Per Member */}
-      {state.members.map((member, i) => {
+      {/* Per Member — Read-only from profile */}
+      {members.map((member, i) => {
         const analysis = memberAnalysis[i];
         return (
           <div key={i} className="px-6 mt-4">
@@ -249,50 +225,33 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
                   <Users size={16} className="text-primary" />
                   <p className="text-sm font-semibold text-foreground">{member.name}</p>
                 </div>
-                {analysis.income > 0 && (
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    analysis.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
-                    analysis.verdict === 'overinsured' ? 'bg-accent/10 text-accent' :
-                    analysis.verdict === 'underinsured' ? 'bg-red-100 text-destructive' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    {analysis.verdict === 'adequate' ? 'Adequate' :
-                     analysis.verdict === 'overinsured' ? 'Overinsured' :
-                     analysis.verdict === 'underinsured' ? 'Underinsured' : 'N/A'}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {analysis.income > 0 && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      analysis.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
+                      analysis.verdict === 'overinsured' ? 'bg-accent/10 text-accent' :
+                      analysis.verdict === 'underinsured' ? 'bg-red-100 text-destructive' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {analysis.verdict === 'adequate' ? 'Adequate' :
+                       analysis.verdict === 'overinsured' ? 'Overinsured' :
+                       analysis.verdict === 'underinsured' ? 'Underinsured' : 'N/A'}
+                    </span>
+                  )}
+                  {onNavigateToProfile && (
+                    <button onClick={() => onNavigateToProfile('insurance')} className="text-[10px] font-semibold text-accent">
+                      Profile →
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Read-only fields */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Annual Income</Label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                    <Input type="number" className="pl-7" value={member.annualIncome}
-                      onChange={e => updateMember(i, { annualIncome: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Current Coverage</Label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                    <Input type="number" className="pl-7" value={member.currentCoverage}
-                      onChange={e => updateMember(i, { currentCoverage: e.target.value })} />
-                  </div>
-                </div>
+                <ReadOnlyField label="Annual Income" value={fmt(member.annualIncome)} />
+                <ReadOnlyField label="Current Coverage" value={fmt(member.currentCoverage)} />
               </div>
-
-              <div>
-                <Label className="text-xs text-muted-foreground">Coverage Type</Label>
-                <Select value={member.coverageType} onValueChange={(v: 'term' | 'whole' | 'none') => updateMember(i, { coverageType: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Coverage</SelectItem>
-                    <SelectItem value="term">Term Life</SelectItem>
-                    <SelectItem value="whole">Whole Life</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <ReadOnlyField label="Coverage Type" value={member.coverageType === 'none' ? 'No Coverage' : member.coverageType.charAt(0).toUpperCase() + member.coverageType.slice(1)} />
 
               {/* Analysis for this member */}
               {analysis.income > 0 && (
@@ -333,6 +292,19 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
         );
       })}
 
+      {members.length === 0 && (
+        <div className="px-6 mt-4">
+          <div className="bg-card rounded-xl p-8 shadow-sm border border-border text-center">
+            <p className="text-sm text-muted-foreground">No member data found. Set up your Financial Profile to use this tool.</p>
+            {onNavigateToProfile && (
+              <button onClick={() => onNavigateToProfile('insurance')} className="text-sm font-semibold text-accent mt-3">
+                Go to Financial Profile →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* AI Insights */}
       <div className="px-6 mt-4">
         <div className="bg-card rounded-xl p-4 shadow-sm">
@@ -368,6 +340,15 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
           These tools provide general financial estimates powered by AI and standard planning guidelines. Results are for educational purposes only and may not reflect your complete financial picture. For personalized advice, consult a Certified Financial Planner (CFP®) professional or CPA.
         </p>
       </div>
+    </div>
+  );
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold text-foreground mt-0.5">{value}</p>
     </div>
   );
 }

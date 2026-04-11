@@ -1,12 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Shield, ChevronDown, ChevronUp, Sparkles, Loader2, Info, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Shield, Sparkles, Loader2, Info, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ProgressBar } from './ProgressBar';
 import { formatDistanceToNow } from 'date-fns';
 
 function fmt(n: number) {
@@ -22,7 +20,7 @@ type IncomeStability = 'very-stable' | 'stable' | 'variable' | 'self-employed';
 
 interface EFState {
   householdType: 'single' | 'dual';
-  monthlyExpenses: string;
+  nonEssentialBackout: string;
   currentBalance: string;
   primaryStability: IncomeStability;
   secondaryStability: IncomeStability;
@@ -31,7 +29,7 @@ interface EFState {
 
 const defaultState: EFState = {
   householdType: 'single',
-  monthlyExpenses: '',
+  nonEssentialBackout: '0',
   currentBalance: '',
   primaryStability: 'stable',
   secondaryStability: 'stable',
@@ -48,7 +46,6 @@ function getRecommendedMonths(s: EFState): [number, number] {
     return [6 + extra, 6 + extra];
   }
 
-  // dual income
   const p = s.primaryStability;
   const sec = s.secondaryStability;
   const bothStable = (p === 'very-stable' || p === 'stable') && (sec === 'very-stable' || sec === 'stable');
@@ -64,6 +61,7 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
   const { state, setState, loaded } = useToolState<EFState>(householdId, 'emergency-fund', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [totalBudget, setTotalBudget] = useState(0);
 
   // AI Insights
   const [aiInsights, setAiInsights] = useState<string[]>([]);
@@ -93,9 +91,8 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
 
       const catTotal = (catRes.data || []).reduce((s: number, c: any) => s + (Number(c.budgeted) || 0), 0);
       const feTotal = (feRes.data || []).reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
-      if ((catTotal + feTotal) > 0 && !state.monthlyExpenses) {
-        updates.monthlyExpenses = String(Math.round(catTotal + feTotal));
-      }
+      const budget = Math.round(catTotal + feTotal);
+      setTotalBudget(budget);
 
       if (Object.keys(updates).length > 0) setState(updates);
       setProfileLoading(false);
@@ -103,12 +100,13 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
     });
   }, [householdId, profileLoaded]);
 
-  const monthlyExp = Number(state.monthlyExpenses) || 0;
+  const nonEssential = Number(state.nonEssentialBackout) || 0;
+  const adjustedExpenses = Math.max(0, totalBudget - nonEssential);
   const balance = Number(state.currentBalance) || 0;
   const [recLow, recHigh] = useMemo(() => getRecommendedMonths(state), [state]);
-  const targetLow = monthlyExp * recLow;
-  const targetHigh = monthlyExp * recHigh;
-  const coverageMonths = monthlyExp > 0 ? balance / monthlyExp : 0;
+  const targetLow = adjustedExpenses * recLow;
+  const targetHigh = adjustedExpenses * recHigh;
+  const coverageMonths = adjustedExpenses > 0 ? balance / adjustedExpenses : 0;
   const shortfall = Math.max(0, targetLow - balance);
   const surplus = balance > targetHigh ? balance - targetHigh : 0;
   const onTrack = balance >= targetLow;
@@ -122,7 +120,7 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
     try {
       const prompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA®). Analyze this household's emergency fund:
 - Current balance: ${fmt(balance)}
-- Monthly expenses: ${fmt(monthlyExp)}
+- Monthly essential expenses: ${fmt(adjustedExpenses)}
 - Coverage: ${coverageMonths.toFixed(1)} months
 - Recommended: ${recLow}–${recHigh} months
 - ${onTrack ? 'ON TRACK' : `SHORTFALL of ${fmt(shortfall)}`}
@@ -145,7 +143,7 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
       console.error('AI insights error:', e);
     }
     setAiLoading(false);
-  }, [householdId, balance, monthlyExp, coverageMonths, recLow, recHigh, onTrack, shortfall, state]);
+  }, [householdId, balance, adjustedExpenses, coverageMonths, recLow, recHigh, onTrack, shortfall, state]);
 
   if (!loaded || profileLoading) {
     return (
@@ -181,11 +179,10 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
                 {onTrack ? (surplus > 0 ? 'Excellent — Well Funded' : 'On Track') : 'Needs Attention'}
               </p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {coverageMonths.toFixed(1)} months of expenses covered
+                {coverageMonths.toFixed(1)} months of essential expenses covered
               </p>
             </div>
           </div>
-          {/* Progress bar */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>{fmt(balance)} saved</span>
@@ -201,8 +198,49 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
         </div>
       </div>
 
+      {/* Essential Expenses Calculator */}
+      <div className="px-6 mt-6">
+        <div className="bg-card rounded-xl p-4 shadow-sm space-y-4">
+          <p className="text-sm font-semibold text-foreground">Essential Expenses Calculator</p>
+
+          {/* Read-only budget total */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Current Monthly Budget (from budget)</Label>
+            <div className="mt-1 bg-muted/50 rounded-lg px-3 py-2.5">
+              <p className="text-sm font-semibold text-foreground">{fmt(totalBudget)}</p>
+            </div>
+          </div>
+
+          {/* Non-essential subtraction */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Non-Essential Expenses to Back Out ($)</Label>
+            <p className="text-[10px] text-muted-foreground mt-0.5 mb-1">
+              Enter the total of any non-essential spending you expect to eliminate in retirement or during an emergency.
+            </p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+              <Input
+                type="number"
+                className="pl-7"
+                value={state.nonEssentialBackout}
+                onChange={e => setState({ nonEssentialBackout: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          {/* Adjusted essential expenses */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Adjusted Essential Monthly Expenses</Label>
+            <div className="mt-1 bg-primary/5 rounded-lg px-3 py-2.5 border border-primary/10">
+              <p className="text-sm font-bold text-foreground">{fmt(adjustedExpenses)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Inputs */}
-      <div className="px-6 mt-6 space-y-4">
+      <div className="px-6 mt-4 space-y-4">
         <div className="bg-card rounded-xl p-4 shadow-sm space-y-4">
           <p className="text-sm font-semibold text-foreground">Your Situation</p>
 
@@ -221,21 +259,6 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
                   {t === 'single' ? 'Single Income' : 'Dual Income'}
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Monthly Expenses */}
-          <div>
-            <Label className="text-xs text-muted-foreground">Monthly Essential Expenses</Label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={state.monthlyExpenses}
-                onChange={e => setState({ monthlyExpenses: e.target.value })}
-                placeholder="From your budget"
-              />
             </div>
           </div>
 
@@ -314,12 +337,12 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="font-semibold text-foreground">Low Target</p>
                 <p className="text-lg font-bold text-primary mt-1">{fmt(targetLow)}</p>
-                <p className="text-[11px]">{recLow} months × {fmt(monthlyExp)}</p>
+                <p className="text-[11px]">{recLow} months × {fmt(adjustedExpenses)}</p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="font-semibold text-foreground">High Target</p>
                 <p className="text-lg font-bold text-primary mt-1">{fmt(targetHigh)}</p>
-                <p className="text-[11px]">{recHigh} months × {fmt(monthlyExp)}</p>
+                <p className="text-[11px]">{recHigh} months × {fmt(adjustedExpenses)}</p>
               </div>
             </div>
           </div>
@@ -327,7 +350,7 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
       </div>
 
       {/* Calculated Output */}
-      {monthlyExp > 0 && (
+      {adjustedExpenses > 0 && (
         <div className="px-6 mt-4">
           <div className="bg-card rounded-xl p-4 shadow-sm space-y-3">
             <p className="text-sm font-semibold text-foreground">Analysis</p>

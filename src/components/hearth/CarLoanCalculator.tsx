@@ -45,9 +45,10 @@ function pct(n: number) {
 interface CarLoanCalculatorProps {
   onBack: () => void;
   householdId: string | null;
+  shoppingOnly?: boolean;
 }
 
-export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProps) {
+export function CarLoanCalculator({ onBack, householdId, shoppingOnly }: CarLoanCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -133,7 +134,7 @@ export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProp
 
   const annualGrossIncome = grossMonthlyIncome * 12;
   const hasProfile = financialProfile && grossMonthlyIncome > 0;
-  const isShopping = state.loanMode === 'shopping';
+  const isShopping = shoppingOnly || state.loanMode === 'shopping';
 
   // ── Shopping mode calculations ──
   const shoppingCalc = useMemo(() => {
@@ -316,7 +317,7 @@ export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProp
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Car Loan Calculator</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isShopping ? 'Calculate your true cost of ownership' : 'Analyze your current auto loan'}
+            {shoppingOnly ? 'Calculate your true cost of ownership' : (isShopping ? 'Calculate your true cost of ownership' : 'Analyze your current auto loan')}
           </p>
         </div>
       </div>
@@ -336,31 +337,33 @@ export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProp
         )}
       </div>
 
-      {/* Mode toggle */}
-      <div className="px-6 mt-4">
-        <div className="flex rounded-lg bg-muted p-0.5">
-          <button
-            onClick={() => setState({ loanMode: 'shopping' as any })}
-            className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
-              isShopping
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            I'm Shopping
-          </button>
-          <button
-            onClick={() => setState({ loanMode: 'existing' as any })}
-            className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
-              !isShopping
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            This is My Loan
-          </button>
+      {/* Mode toggle — only show when not shoppingOnly */}
+      {!shoppingOnly && (
+        <div className="px-6 mt-4">
+          <div className="flex rounded-lg bg-muted p-0.5">
+            <button
+              onClick={() => setState({ loanMode: 'shopping' as any })}
+              className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
+                isShopping
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              I'm Shopping
+            </button>
+            <button
+              onClick={() => setState({ loanMode: 'existing' as any })}
+              className={`flex-1 text-sm font-semibold py-2 rounded-md transition-colors ${
+                !isShopping
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              This is My Loan
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ═══════════════════════════════════════════ */}
       {/* SHOPPING MODE */}

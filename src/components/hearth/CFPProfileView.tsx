@@ -155,14 +155,15 @@ interface HouseholdMember {
 interface CFPProfileViewProps {
   onBack: () => void;
   householdId: string | null;
+  initialTab?: ProfileTab;
 }
 
-export function CFPProfileView({ onBack, householdId }: CFPProfileViewProps) {
+export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileViewProps) {
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
-  const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>('profile');
+  const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>(initialTab || 'profile');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [householdName, setHouseholdName] = useState('');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
