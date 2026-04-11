@@ -35,16 +35,13 @@ import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/hearth/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/hearth/LifeInsuranceAnalysis';
 
-type PlanSubView = 'menu' | 'financial-profile' | 'financial-insights' | 'calculators'
+type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
 type MoreSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
-  | 'financial-profile' | 'financial-insights' | 'calculators'
-  | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
-  | 'emergency-fund' | 'savings-goals' | 'retirement'
-  | 'mortgage-shopping' | 'car-loan';
+  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator';
 
 const Index = () => {
   const {
