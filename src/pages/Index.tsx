@@ -84,6 +84,7 @@ const Index = () => {
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
+  const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [moreSubView, setMoreSubView] = useState<MoreSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
 
