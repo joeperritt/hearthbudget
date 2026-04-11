@@ -35,6 +35,8 @@ import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/hearth/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/hearth/LifeInsuranceAnalysis';
 
+type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
+
 type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
