@@ -442,13 +442,6 @@ const Index = () => {
             onNavigate={(target) => setPlanSubView(target as PlanSubView)}
           />
         )}
-        {activeTab === 'plan' && planSubView === 'financial-insights' && (
-          <FinancialInsightsList
-            onBack={() => setPlanSubView('menu')}
-            householdId={householdId}
-            onSelectTool={(tool) => setPlanSubView(tool as PlanSubView)}
-          />
-        )}
         {activeTab === 'plan' && planSubView === 'calculators' && (
           <CalculatorsList
             onBack={() => setPlanSubView('menu')}
@@ -458,10 +451,10 @@ const Index = () => {
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} />
         )}
-        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'tax-estimator', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
-          renderTool(planSubView, () => setPlanSubView('financial-insights'))
+        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
+          renderTool(planSubView, () => setPlanSubView('menu'))
         )}
-        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan'].includes(planSubView) && (
+        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(planSubView) && (
           renderTool(planSubView, () => setPlanSubView('calculators'))
         )}
 
