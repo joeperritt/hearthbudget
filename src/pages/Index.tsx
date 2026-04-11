@@ -260,6 +260,13 @@ const Index = () => {
     }
   };
 
+  // Navigate to Financial Profile with a specific tab open
+  const navigateToProfile = useCallback((tab?: ProfileTab) => {
+    setProfileInitialTab(tab);
+    setPlanSubView('financial-profile');
+    setActiveTab('plan');
+  }, []);
+
   // Helper to get back target for tools
   const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
