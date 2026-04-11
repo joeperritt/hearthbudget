@@ -342,8 +342,8 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Tax Withholding</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Optimize your W-4 withholding</p>
+          <h1 className="font-display text-xl font-bold text-foreground">Federal Tax Estimator</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Estimate your federal tax liability</p>
         </div>
       </div>
 
