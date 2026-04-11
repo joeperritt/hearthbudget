@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Shield, Activity, PiggyBank, Target, TrendingDown, Home, Car, FileText, Heart, ChevronRight, CheckCircle2, Info, Compass, Calculator, BarChart3 } from 'lucide-react';
+import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-type PlanSubView = 'menu' | 'financial-profile' | 'financial-insights' | 'calculators';
-type InsightToolId = 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance' | 'emergency-fund' | 'savings-goals' | 'retirement';
-type CalculatorId = 'mortgage-shopping' | 'car-loan';
+type InsightToolId = 'mortgage-analyzer' | 'debt-payoff' | 'life-insurance' | 'emergency-fund' | 'savings-goals' | 'retirement';
 
 interface PlanViewProps {
   householdId: string | null;
@@ -29,6 +27,7 @@ function getProfileCompleteness(profile: any): { complete: boolean; filled: numb
 interface ToolStatus {
   label: string;
   color: 'green' | 'gold' | 'red' | 'grey';
+  disabled?: boolean;
 }
 
 function statusBadge(s: ToolStatus) {
@@ -69,28 +68,57 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
 
   const getInsightStatus = (toolId: InsightToolId): ToolStatus => {
     const ts = toolStates;
+    const fp = financialProfile;
+
     switch (toolId) {
       case 'mortgage-analyzer': {
+        if (!fp) return { label: 'Not Set Up', color: 'grey' };
+        const ht = fp.housing_type;
+        if (ht === 'rent' || ht === 'own-no-mortgage') return { label: 'N/A', color: 'grey', disabled: true };
         const s = ts['mortgage-calculator'];
         if (!s || !s.exCurrentBalance) return { label: 'Not Set Up', color: 'grey' };
+        if (s.goalPayoffDate) {
+          // Check if on track
+          const rate = Number(s.exInterestRate || fp.mortgage_rate) || 0;
+          const balance = Number(fp.mortgage_balance || s.exCurrentBalance) || 0;
+          const pi = Number(fp.mortgage_payment || s.exMonthlyPayment) || 0;
+          const extra = Number(s.extraPayment) || 0;
+          const totalPmt = pi + extra;
+          if (rate > 0 && totalPmt > 0) {
+            const monthlyRate = rate / 100 / 12;
+            const monthsRemaining = Math.ceil(-Math.log(1 - (monthlyRate * balance) / totalPmt) / Math.log(1 + monthlyRate));
+            const projectedDate = new Date();
+            projectedDate.setMonth(projectedDate.getMonth() + monthsRemaining);
+            const goalDate = new Date(s.goalPayoffDate);
+            return projectedDate <= goalDate
+              ? { label: 'On Track', color: 'green' }
+              : { label: 'Off Track', color: 'red' };
+          }
+        }
         return { label: 'Reviewed ✓', color: 'gold' };
       }
       case 'debt-payoff': {
-        if (!financialProfile) return { label: 'Not Set Up', color: 'grey' };
-        const debts: any[] = Array.isArray(financialProfile.debts) ? financialProfile.debts : [];
-        if (debts.length === 0) return { label: 'Debt Free', color: 'green' };
-        const members: any[] = Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [];
-        const grossMonthly = members.reduce((s: number, m: any) => s + (Number(m.gross_income) || 0), 0) / 12;
-        const debtPayments = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || Number(d.minimum_payment) || 0), 0)
-          + (Number(financialProfile.mortgage_payment) || 0);
-        if (grossMonthly <= 0) return { label: 'Not Set Up', color: 'grey' };
-        const dti = debtPayments / grossMonthly;
-        if (dti > 0.43) return { label: 'High DTI', color: 'red' };
-        return { label: 'On Track', color: 'green' };
-      }
-      case 'tax-estimator': {
-        const s = ts['tax-withholding'];
+        if (!fp) return { label: 'Not Set Up', color: 'grey' };
+        const debts: any[] = Array.isArray(fp.debts) ? fp.debts : [];
+        if (debts.length === 0) return { label: 'N/A', color: 'grey', disabled: true };
+        const s = ts['debt-payoff'];
         if (!s) return { label: 'Not Set Up', color: 'grey' };
+        if (s.goalDebtFreeDate) {
+          // Simple check: calculate total months to pay off
+          const totalMinPayment = debts.reduce((sum: number, d: any) => sum + (Number(d.monthlyPayment) || Number(d.minimum_payment) || 0), 0);
+          const totalExtra = debts.reduce((sum: number, d: any) => sum + (Number(d.extra_payment) || 0), 0) + (Number(s.additionalExtra) || 0);
+          const totalBalance = debts.reduce((sum: number, d: any) => sum + (Number(d.balance) || 0), 0);
+          const monthlyTotal = totalMinPayment + totalExtra;
+          if (monthlyTotal > 0 && totalBalance > 0) {
+            const roughMonths = totalBalance / monthlyTotal;
+            const projectedDate = new Date();
+            projectedDate.setMonth(projectedDate.getMonth() + Math.ceil(roughMonths));
+            const goalDate = new Date(s.goalDebtFreeDate);
+            return projectedDate <= goalDate
+              ? { label: 'On Track', color: 'green' }
+              : { label: 'Off Track', color: 'red' };
+          }
+        }
         return { label: 'Reviewed ✓', color: 'gold' };
       }
       case 'life-insurance': {
@@ -140,9 +168,14 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
       }
       case 'retirement': {
         const s = ts['retirement-planner'];
-        if (!s) return { label: 'Not Set Up', color: 'grey' };
-        if (s.retirementAge) return { label: 'Reviewed ✓', color: 'gold' };
-        return { label: 'Not Set Up', color: 'grey' };
+        if (!s || !s.retirementAge) return { label: 'Not Set Up', color: 'grey' };
+        // Check for gap
+        if (s.monthlyGap !== undefined) {
+          return Number(s.monthlyGap) >= 0
+            ? { label: 'On Track', color: 'green' }
+            : { label: 'Gap Detected', color: 'red' };
+        }
+        return { label: 'Reviewed ✓', color: 'gold' };
       }
       default:
         return { label: 'Not Set Up', color: 'grey' };
@@ -152,16 +185,10 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
   const insightTools: { id: InsightToolId; name: string; subtitle: string; icon: typeof Shield }[] = [
     { id: 'mortgage-analyzer', name: 'Mortgage Analyzer', subtitle: 'Analyze your current mortgage', icon: Home },
     { id: 'debt-payoff', name: 'Debt Payoff Analyzer', subtitle: 'See your path to debt freedom', icon: TrendingDown },
-    { id: 'tax-estimator', name: 'Federal Tax Estimator', subtitle: 'Estimate your federal tax liability', icon: FileText },
+    { id: 'retirement', name: 'Retirement Planner', subtitle: 'Are you on track to retire?', icon: PiggyBank },
     { id: 'life-insurance', name: 'Life Insurance Analysis', subtitle: 'Is your family protected?', icon: Heart },
     { id: 'emergency-fund', name: 'Emergency Fund Analysis', subtitle: 'Are you prepared for the unexpected?', icon: Shield },
     { id: 'savings-goals', name: 'Savings Goals', subtitle: 'Track and plan your savings goals', icon: Target },
-    { id: 'retirement', name: 'Retirement Planner', subtitle: 'Are you on track to retire?', icon: PiggyBank },
-  ];
-
-  const calculatorTools: { id: CalculatorId; name: string; subtitle: string; icon: typeof Home }[] = [
-    { id: 'mortgage-shopping', name: 'Mortgage Calculator', subtitle: 'How much home can you afford?', icon: Home },
-    { id: 'car-loan', name: 'Car Loan Calculator', subtitle: 'Calculate your true cost of ownership', icon: Car },
   ];
 
   if (loading) {
@@ -216,38 +243,34 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
         </button>
       </div>
 
-      {/* Financial Insights Section */}
+      {/* Financial Insights — inline list */}
       <div className="px-6 mt-6">
-        <button
-          onClick={() => onNavigate('financial-insights')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-11 h-11 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <BarChart3 size={22} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Financial Insights</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Analysis based on your current situation</p>
-          </div>
-          <ChevronRight size={18} className="text-accent flex-shrink-0" />
-        </button>
-      </div>
-
-      {/* Calculators Section */}
-      <div className="px-6 mt-3">
-        <button
-          onClick={() => onNavigate('calculators')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="w-11 h-11 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Calculator size={22} className="text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-primary-foreground">Calculators</p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">Generic financial calculators</p>
-          </div>
-          <ChevronRight size={18} className="text-accent flex-shrink-0" />
-        </button>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Financial Insights</h2>
+        <div className="space-y-2">
+          {insightTools.map(tool => {
+            const status = getInsightStatus(tool.id);
+            const isDisabled = status.disabled;
+            return (
+              <button
+                key={tool.id}
+                onClick={() => !isDisabled && onNavigate(tool.id)}
+                disabled={isDisabled}
+                className={`w-full flex items-center gap-3 bg-card rounded-xl p-3.5 shadow-sm text-left transition-transform ${
+                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <tool.icon size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-tight">{tool.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">{tool.subtitle}</p>
+                </div>
+                {statusBadge(status)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Disclaimer */}
