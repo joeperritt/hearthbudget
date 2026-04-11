@@ -23,7 +23,7 @@ import { BankConnectionView } from '@/components/hearth/BankConnectionView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { PlanView } from '@/components/hearth/PlanView';
-import { FinancialInsightsList } from '@/components/hearth/FinancialInsightsList';
+
 import { CalculatorsList } from '@/components/hearth/CalculatorsList';
 import { MortgageCalculator } from '@/components/hearth/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/hearth/DebtPayoffCalculator';
