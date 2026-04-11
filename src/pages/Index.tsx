@@ -334,13 +334,13 @@ const Index = () => {
   const renderTool = (toolId: string, onBack: () => void) => {
     switch (toolId) {
       case 'mortgage-analyzer':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'debt-payoff':
-        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} />;
+        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'tax-estimator':
         return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} />;
       case 'life-insurance':
-        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} />;
+        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'emergency-fund':
         return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} />;
       case 'savings-goals':
@@ -348,11 +348,11 @@ const Index = () => {
       case 'retirement':
         return <RetirementPlanner onBack={onBack} householdId={householdId} />;
       case 'mortgage-shopping':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly />;
       case 'car-loan':
-        return <CarLoanCalculator onBack={onBack} householdId={householdId} />;
+        return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly />;
       case 'financial-profile':
-        return <CFPProfileView onBack={onBack} householdId={householdId} />;
+        return <CFPProfileView onBack={onBack} householdId={householdId} initialTab={profileInitialTab} />;
       default:
         return null;
     }
