@@ -48,7 +48,7 @@ interface CarLoanCalculatorProps {
   shoppingOnly?: boolean;
 }
 
-export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProps) {
+export function CarLoanCalculator({ onBack, householdId, shoppingOnly }: CarLoanCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -134,7 +134,7 @@ export function CarLoanCalculator({ onBack, householdId }: CarLoanCalculatorProp
 
   const annualGrossIncome = grossMonthlyIncome * 12;
   const hasProfile = financialProfile && grossMonthlyIncome > 0;
-  const isShopping = state.loanMode === 'shopping';
+  const isShopping = shoppingOnly || state.loanMode === 'shopping';
 
   // ── Shopping mode calculations ──
   const shoppingCalc = useMemo(() => {
