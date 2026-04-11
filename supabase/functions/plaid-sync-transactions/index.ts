@@ -256,10 +256,8 @@ Deno.serve(async (req) => {
           if (isCheckingAccount && INCOME_PATTERNS.some(p => upperDesc.includes(p))) {
             // Only checking account credits matching payroll/deposit patterns are income
             transactionType = "income";
-          } else {
-            // Credit card refunds, merchant credits, and other checking credits → deposit for manual review
-            transactionType = "deposit";
           }
+          // All other credits (refunds, deposits, etc.) stay as expense/unassigned for manual categorization
           categorySlug = "unassigned";
         }
 
