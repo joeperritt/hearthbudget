@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -431,9 +432,9 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
                 </div>
                 <div className="divide-y divide-border">
-                  <Row label="Current Balance" value={fmt(existingCalc.adjustedBalance)} sub={existingCalc.adjustedBalance !== existingCalc.currentBalance ? 'Adjusted to today from statement date' : undefined} />
                   <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
                   <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
                   <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
@@ -458,44 +459,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               </div>
             )}
 
-            {/* Editable: Extra Payment */}
-            <div className="px-6 mt-5">
-              <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-4">
-                <p className="text-sm font-semibold text-foreground">Extra Payment Analysis</p>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Extra Monthly Payment ($)</Label>
-                  <Input
-                    type="number" placeholder="0"
-                    value={state.exExtraPayment}
-                    onChange={e => setState({ exExtraPayment: e.target.value })}
-                    className="mt-1 max-w-[200px]"
-                  />
-                </div>
-
-                {existingCalc.extra > 0 && existingCalc.interestSaved > 0 && (
-                  <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-green-700 dark:text-green-300">
-                      Paying an extra {fmt(existingCalc.extra)}/mo saves {fmt(existingCalc.interestSaved)} in interest and pays off {existingCalc.monthsSaved > 0 ? `${Math.floor(existingCalc.monthsSaved / 12) > 0 ? `${Math.floor(existingCalc.monthsSaved / 12)} year${Math.floor(existingCalc.monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}${existingCalc.monthsSaved % 12 > 0 ? `${existingCalc.monthsSaved % 12} month${existingCalc.monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}early` : ''}.
-                    </p>
-                  </div>
-                )}
-
-                {existingCalc.extra > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase">Standard</p>
-                      <p className="text-xs text-foreground mt-1">Payoff: {existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                      <p className="text-xs text-foreground">Interest: {fmt(existingCalc.totalInterestRemaining)}</p>
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                      <p className="text-[10px] font-semibold text-green-700 dark:text-green-300 uppercase">With Extra</p>
-                      <p className="text-xs text-foreground mt-1">Payoff: {new Date(Date.now() + existingCalc.monthsWithExtra * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                      <p className="text-xs text-foreground">Interest: {fmt(existingCalc.totalInterestExtra)}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Payoff Year Slider */}
+            <PayoffYearSlider
+              adjustedBalance={existingCalc.adjustedBalance}
+              monthlyPI={existingCalc.monthlyPI}
+              monthlyRate={(parseFloat(state.exInterestRate) || (financialProfile?.mortgage_rate ?? 0)) / 100 / 12}
+              remainingMonths={existingCalc.remainingMonths}
+              totalInterestRemaining={existingCalc.totalInterestRemaining}
+              payoffDate={existingCalc.payoffDate}
+              state={state}
+              setState={setState}
+            />
 
             {/* CFP Indicators */}
             <div className="px-6 mt-5 space-y-3">
