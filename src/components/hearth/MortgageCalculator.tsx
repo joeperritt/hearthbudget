@@ -11,6 +11,106 @@ import { useToolState } from '@/hooks/useToolState';
 import { STATE_DEFAULTS, STATE_OPTIONS } from '@/data/stateDefaults';
 import { MortgageInsightsSection } from './MortgageInsightsSection';
 
+function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMonths, totalInterestRemaining, payoffDate, state, setState }: {
+  adjustedBalance: number;
+  monthlyPI: number;
+  monthlyRate: number;
+  remainingMonths: number;
+  totalInterestRemaining: number;
+  payoffDate: Date;
+  state: any;
+  setState: (u: any) => void;
+}) {
+  const now = new Date();
+  const projectedYear = payoffDate.getFullYear();
+  const minYear = now.getFullYear() + 5;
+  const maxYear = Math.max(projectedYear, minYear + 1);
+  const targetYear = state.targetPayoffYear ? Number(state.targetPayoffYear) : maxYear;
+  const clampedTarget = Math.max(minYear, Math.min(maxYear, targetYear));
+
+  // Calculate extra payment needed to hit target year
+  const targetMonths = Math.max(1, (clampedTarget - now.getFullYear()) * 12 - now.getMonth());
+  let extraNeeded = 0;
+  let interestSaved = 0;
+  let monthsSaved = 0;
+
+  if (monthlyRate > 0 && adjustedBalance > 0 && targetMonths < remainingMonths) {
+    // Calculate required payment to pay off in targetMonths
+    const requiredPayment = adjustedBalance * (monthlyRate * Math.pow(1 + monthlyRate, targetMonths)) / (Math.pow(1 + monthlyRate, targetMonths) - 1);
+    extraNeeded = Math.max(0, requiredPayment - monthlyPI);
+
+    // Calculate interest with extra
+    let bal = adjustedBalance;
+    let interest = 0;
+    let months = 0;
+    const totalPmt = monthlyPI + extraNeeded;
+    while (bal > 0 && months < 600) {
+      const intCharge = bal * monthlyRate;
+      interest += intCharge;
+      bal -= Math.min(bal, totalPmt - intCharge);
+      months++;
+      if (bal <= 0) break;
+    }
+    interestSaved = totalInterestRemaining - interest;
+    monthsSaved = remainingMonths - months;
+  }
+
+  const isDefault = clampedTarget >= maxYear;
+
+  return (
+    <div className="px-6 mt-5">
+      <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-4">
+        <p className="text-sm font-semibold text-foreground">Payoff Goal</p>
+
+        <div>
+          <div className="flex justify-between items-baseline mb-2">
+            <span className="text-xs text-muted-foreground">Target Payoff Year</span>
+            <span className="text-sm font-bold text-foreground">{clampedTarget}</span>
+          </div>
+          <Slider
+            min={minYear}
+            max={maxYear}
+            step={1}
+            value={[clampedTarget]}
+            onValueChange={([v]) => setState({ targetPayoffYear: String(v) })}
+            className="[&_[role=slider]]:bg-accent [&_[role=slider]]:border-accent [&_[data-orientation=horizontal]>[data-orientation=horizontal]]:bg-primary"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <span>{minYear}</span>
+            <span>{maxYear} (current pace)</span>
+          </div>
+        </div>
+
+        {isDefault ? (
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-sm text-muted-foreground">No extra payment needed at current pace</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
+                <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+              </div>
+            </div>
+            {monthsSaved > 0 && (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                  Pay off {Math.floor(monthsSaved / 12) > 0 ? `${Math.floor(monthsSaved / 12)} year${Math.floor(monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{monthsSaved % 12 > 0 ? `${monthsSaved % 12} month${monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}earlier
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 }
