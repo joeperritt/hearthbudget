@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 type InsightToolId = 'mortgage-analyzer' | 'debt-payoff' | 'life-insurance' | 'emergency-fund' | 'savings-goals' | 'retirement';
 
@@ -24,24 +25,25 @@ function getProfileCompleteness(profile: any): { complete: boolean; filled: numb
   return { complete: filled >= total, filled, total };
 }
 
-interface ToolStatus {
-  label: string;
-  color: 'green' | 'gold' | 'red' | 'grey';
-  disabled?: boolean;
-}
+// Map tool IDs to tool_states tool_name keys
+const TOOL_STATE_KEY: Record<InsightToolId, string> = {
+  'mortgage-analyzer': 'mortgage-calculator',
+  'debt-payoff': 'debt-payoff',
+  'retirement': 'retirement-planner',
+  'life-insurance': 'life-insurance',
+  'emergency-fund': 'emergency-fund',
+  'savings-goals': 'goals-planner',
+};
 
-function statusBadge(s: ToolStatus) {
-  const colors = {
-    green: 'bg-green-100 text-green-700',
-    gold: 'bg-accent/10 text-accent',
-    red: 'bg-red-100 text-destructive',
-    grey: 'bg-muted text-muted-foreground',
-  };
-  return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${colors[s.color]}`}>
-      {s.label}
-    </span>
-  );
+function formatLastVisited(dateStr: string | undefined): string {
+  if (!dateStr) return 'Not yet visited';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Not yet visited';
+    return format(d, 'MMM d');
+  } catch {
+    return 'Not yet visited';
+  }
 }
 
 export function PlanView({ householdId, onNavigate }: PlanViewProps) {
@@ -53,133 +55,49 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     if (!householdId) { setLoading(false); return; }
     Promise.all([
       supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle(),
-      supabase.from('tool_states' as any).select('tool_name, state_json').eq('household_id', householdId),
-    ]).then(([fpRes, tsRes]: any[]) => {
+      supabase.from('tool_states').select('tool_name, state_json, updated_at').eq('household_id', householdId),
+    ]).then(([fpRes, tsRes]) => {
       if (fpRes.data) setFinancialProfile(fpRes.data);
       const states: Record<string, any> = {};
-      (tsRes.data || []).forEach((r: any) => { states[r.tool_name] = r.state_json; });
+      ((tsRes.data as any[]) || []).forEach((r: any) => {
+        states[r.tool_name] = { ...r.state_json, _updated_at: r.updated_at };
+      });
       setToolStates(states);
       setLoading(false);
     });
   }, [householdId]);
 
   const { complete: profileComplete, filled, total } = useMemo(() => getProfileCompleteness(financialProfile), [financialProfile]);
-  const profileStatus: ToolStatus = profileComplete ? { label: 'Complete ✓', color: 'green' } : { label: 'Incomplete', color: 'red' };
+  const profilePct = Math.round((filled / total) * 100);
+  const profileUpdated = financialProfile?.updated_at;
 
-  const getInsightStatus = (toolId: InsightToolId): ToolStatus => {
-    const ts = toolStates;
+  const getLastVisited = (toolId: InsightToolId): string => {
+    const key = TOOL_STATE_KEY[toolId];
+    const ts = toolStates[key];
+    if (!ts) return 'Not yet visited';
+    const lv = ts.last_visited_at || ts._updated_at;
+    return formatLastVisited(lv);
+  };
+
+  const isToolDisabled = (toolId: InsightToolId): boolean => {
     const fp = financialProfile;
-
-    switch (toolId) {
-      case 'mortgage-analyzer': {
-        if (!fp) return { label: 'Not Set Up', color: 'grey' };
-        const ht = fp.housing_type;
-        if (ht === 'rent' || ht === 'own-no-mortgage') return { label: 'N/A', color: 'grey', disabled: true };
-        const s = ts['mortgage-calculator'];
-        if (!s || !s.exCurrentBalance) return { label: 'Not Set Up', color: 'grey' };
-        if (s.goalPayoffDate) {
-          // Check if on track
-          const rate = Number(s.exInterestRate || fp.mortgage_rate) || 0;
-          const balance = Number(fp.mortgage_balance || s.exCurrentBalance) || 0;
-          const pi = Number(fp.mortgage_payment || s.exMonthlyPayment) || 0;
-          const extra = Number(s.extraPayment) || 0;
-          const totalPmt = pi + extra;
-          if (rate > 0 && totalPmt > 0) {
-            const monthlyRate = rate / 100 / 12;
-            const monthsRemaining = Math.ceil(-Math.log(1 - (monthlyRate * balance) / totalPmt) / Math.log(1 + monthlyRate));
-            const projectedDate = new Date();
-            projectedDate.setMonth(projectedDate.getMonth() + monthsRemaining);
-            const goalDate = new Date(s.goalPayoffDate);
-            return projectedDate <= goalDate
-              ? { label: 'On Track', color: 'green' }
-              : { label: 'Off Track', color: 'red' };
-          }
-        }
-        return { label: 'Reviewed ✓', color: 'gold' };
-      }
-      case 'debt-payoff': {
-        if (!fp) return { label: 'Not Set Up', color: 'grey' };
-        const debts: any[] = Array.isArray(fp.debts) ? fp.debts : [];
-        if (debts.length === 0) return { label: 'N/A', color: 'grey', disabled: true };
-        const s = ts['debt-payoff'];
-        if (!s) return { label: 'Not Set Up', color: 'grey' };
-        if (s.goalDebtFreeDate) {
-          // Simple check: calculate total months to pay off
-          const totalMinPayment = debts.reduce((sum: number, d: any) => sum + (Number(d.monthlyPayment) || Number(d.minimum_payment) || 0), 0);
-          const totalExtra = debts.reduce((sum: number, d: any) => sum + (Number(d.extra_payment) || 0), 0) + (Number(s.additionalExtra) || 0);
-          const totalBalance = debts.reduce((sum: number, d: any) => sum + (Number(d.balance) || 0), 0);
-          const monthlyTotal = totalMinPayment + totalExtra;
-          if (monthlyTotal > 0 && totalBalance > 0) {
-            const roughMonths = totalBalance / monthlyTotal;
-            const projectedDate = new Date();
-            projectedDate.setMonth(projectedDate.getMonth() + Math.ceil(roughMonths));
-            const goalDate = new Date(s.goalDebtFreeDate);
-            return projectedDate <= goalDate
-              ? { label: 'On Track', color: 'green' }
-              : { label: 'Off Track', color: 'red' };
-          }
-        }
-        return { label: 'Reviewed ✓', color: 'gold' };
-      }
-      case 'life-insurance': {
-        const s = ts['life-insurance'];
-        if (!s || !s.members) return { label: 'Not Set Up', color: 'grey' };
-        const members = Array.isArray(s.members) ? s.members : [];
-        const earning = members.filter((m: any) => Number(m.annualIncome) > 0);
-        if (earning.length === 0) return { label: 'Not Set Up', color: 'grey' };
-        const allCovered = earning.every((m: any) => Number(m.currentCoverage) > 0);
-        if (!allCovered) return { label: 'Gap Detected', color: 'red' };
-        return { label: 'Adequate', color: 'green' };
-      }
-      case 'emergency-fund': {
-        const s = ts['emergency-fund'];
-        if (!s || !s.currentBalance) return { label: 'Not Set Up', color: 'grey' };
-        const bal = Number(s.currentBalance) || 0;
-        const exp = Number(s.monthlyExpenses) || 0;
-        if (exp <= 0) return { label: 'Reviewed ✓', color: 'gold' };
-        const months = bal / exp;
-        return months >= 3 ? { label: 'On Track', color: 'green' } : { label: 'Needs Attention', color: 'red' };
-      }
-      case 'savings-goals': {
-        const s = ts['goals-planner'];
-        if (!s || !s.goals || !Array.isArray(s.goals) || s.goals.length === 0) return { label: 'Not Set Up', color: 'grey' };
-        const goals = s.goals.filter((g: any) => g.name && g.targetAmount);
-        if (goals.length === 0) return { label: 'Not Set Up', color: 'grey' };
-        const now = new Date();
-        let onTrack = 0;
-        goals.forEach((g: any) => {
-          const target = Number(g.targetAmount) || 0;
-          const current = Number(g.currentSavings) || 0;
-          const monthly = Number(g.monthlyContribution) || 0;
-          if (target <= 0) return;
-          let months = 0;
-          if (g.useDate && g.targetDate) {
-            const [y, m] = g.targetDate.split('-').map(Number);
-            months = Math.max(0, (y - now.getFullYear()) * 12 + (m - 1 - now.getMonth()));
-          } else {
-            months = Number(g.targetMonths) || 0;
-          }
-          const projected = current + monthly * months;
-          if (projected >= target) onTrack++;
-        });
-        if (onTrack === goals.length) return { label: `${onTrack} of ${goals.length} On Track`, color: 'green' };
-        if (onTrack > 0) return { label: `${onTrack} of ${goals.length} On Track`, color: 'gold' };
-        return { label: `0 of ${goals.length} On Track`, color: 'red' };
-      }
-      case 'retirement': {
-        const s = ts['retirement-planner'];
-        if (!s || !s.retirementAge) return { label: 'Not Set Up', color: 'grey' };
-        // Check for gap
-        if (s.monthlyGap !== undefined) {
-          return Number(s.monthlyGap) >= 0
-            ? { label: 'On Track', color: 'green' }
-            : { label: 'Gap Detected', color: 'red' };
-        }
-        return { label: 'Reviewed ✓', color: 'gold' };
-      }
-      default:
-        return { label: 'Not Set Up', color: 'grey' };
+    if (toolId === 'mortgage-analyzer') {
+      if (!fp) return false;
+      const ht = fp.housing_type;
+      return ht === 'rent' || ht === 'own-no-mortgage';
     }
+    if (toolId === 'debt-payoff') {
+      if (!fp) return false;
+      const debts = Array.isArray(fp.debts) ? fp.debts : [];
+      return debts.length === 0;
+    }
+    return false;
+  };
+
+  const getDisabledReason = (toolId: InsightToolId): string | null => {
+    if (toolId === 'mortgage-analyzer' && isToolDisabled(toolId)) return 'N/A';
+    if (toolId === 'debt-payoff' && isToolDisabled(toolId)) return 'N/A';
+    return null;
   };
 
   const insightTools: { id: InsightToolId; name: string; subtitle: string; icon: typeof Shield }[] = [
@@ -190,6 +108,26 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     { id: 'emergency-fund', name: 'Emergency Fund Analysis', subtitle: 'Are you prepared for the unexpected?', icon: Shield },
     { id: 'savings-goals', name: 'Savings Goals', subtitle: 'Track and plan your savings goals', icon: Target },
   ];
+
+  // Record last_visited_at when navigating to a tool
+  const handleToolNavigate = (toolId: InsightToolId) => {
+    if (isToolDisabled(toolId)) return;
+    // Fire and forget: update last_visited_at in tool_states
+    if (householdId) {
+      const toolName = TOOL_STATE_KEY[toolId];
+      const existingState = toolStates[toolName] || {};
+      const { _updated_at, ...cleanState } = existingState;
+      const newState = { ...cleanState, last_visited_at: new Date().toISOString() };
+      supabase
+        .from('tool_states')
+        .upsert(
+          { household_id: householdId, tool_name: toolName, state_json: newState, updated_at: new Date().toISOString() },
+          { onConflict: 'household_id,tool_name' }
+        )
+        .then(() => {});
+    }
+    onNavigate(toolId);
+  };
 
   if (loading) {
     return (
@@ -230,14 +168,16 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
             {!profileComplete && (
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex-1 h-1.5 bg-primary-foreground/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${(filled / total) * 100}%` }} />
+                  <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${profilePct}%` }} />
                 </div>
                 <span className="text-[10px] text-primary-foreground/60 font-medium">{filled} of {total}</span>
               </div>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {statusBadge(profileStatus)}
+            <span className="text-[10px] text-primary-foreground/60 font-medium whitespace-nowrap">
+              {profilePct}% complete{profileUpdated ? ` · ${formatLastVisited(profileUpdated)}` : ''}
+            </span>
             <ChevronRight size={16} className="text-accent" />
           </div>
         </button>
@@ -248,15 +188,16 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Financial Insights</h2>
         <div className="space-y-2">
           {insightTools.map(tool => {
-            const status = getInsightStatus(tool.id);
-            const isDisabled = status.disabled;
+            const disabled = isToolDisabled(tool.id);
+            const disabledReason = getDisabledReason(tool.id);
+            const lastVisited = getLastVisited(tool.id);
             return (
               <button
                 key={tool.id}
-                onClick={() => !isDisabled && onNavigate(tool.id)}
-                disabled={isDisabled}
+                onClick={() => handleToolNavigate(tool.id)}
+                disabled={disabled}
                 className={`w-full flex items-center gap-3 bg-card rounded-xl p-3.5 shadow-sm text-left transition-transform ${
-                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
+                  disabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
                 }`}
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -266,7 +207,13 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
                   <p className="text-sm font-semibold text-foreground leading-tight">{tool.name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">{tool.subtitle}</p>
                 </div>
-                {statusBadge(status)}
+                {disabled && disabledReason ? (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-muted text-muted-foreground">
+                    {disabledReason}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{lastVisited}</span>
+                )}
               </button>
             );
           })}

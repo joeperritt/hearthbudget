@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +10,106 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { STATE_DEFAULTS, STATE_OPTIONS } from '@/data/stateDefaults';
 import { MortgageInsightsSection } from './MortgageInsightsSection';
+
+function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMonths, totalInterestRemaining, payoffDate, state, setState }: {
+  adjustedBalance: number;
+  monthlyPI: number;
+  monthlyRate: number;
+  remainingMonths: number;
+  totalInterestRemaining: number;
+  payoffDate: Date;
+  state: any;
+  setState: (u: any) => void;
+}) {
+  const now = new Date();
+  const projectedYear = payoffDate.getFullYear();
+  const minYear = now.getFullYear() + 5;
+  const maxYear = Math.max(projectedYear, minYear + 1);
+  const targetYear = state.targetPayoffYear ? Number(state.targetPayoffYear) : maxYear;
+  const clampedTarget = Math.max(minYear, Math.min(maxYear, targetYear));
+
+  // Calculate extra payment needed to hit target year
+  const targetMonths = Math.max(1, (clampedTarget - now.getFullYear()) * 12 - now.getMonth());
+  let extraNeeded = 0;
+  let interestSaved = 0;
+  let monthsSaved = 0;
+
+  if (monthlyRate > 0 && adjustedBalance > 0 && targetMonths < remainingMonths) {
+    // Calculate required payment to pay off in targetMonths
+    const requiredPayment = adjustedBalance * (monthlyRate * Math.pow(1 + monthlyRate, targetMonths)) / (Math.pow(1 + monthlyRate, targetMonths) - 1);
+    extraNeeded = Math.max(0, requiredPayment - monthlyPI);
+
+    // Calculate interest with extra
+    let bal = adjustedBalance;
+    let interest = 0;
+    let months = 0;
+    const totalPmt = monthlyPI + extraNeeded;
+    while (bal > 0 && months < 600) {
+      const intCharge = bal * monthlyRate;
+      interest += intCharge;
+      bal -= Math.min(bal, totalPmt - intCharge);
+      months++;
+      if (bal <= 0) break;
+    }
+    interestSaved = totalInterestRemaining - interest;
+    monthsSaved = remainingMonths - months;
+  }
+
+  const isDefault = clampedTarget >= maxYear;
+
+  return (
+    <div className="px-6 mt-5">
+      <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-4">
+        <p className="text-sm font-semibold text-foreground">Payoff Goal</p>
+
+        <div>
+          <div className="flex justify-between items-baseline mb-2">
+            <span className="text-xs text-muted-foreground">Target Payoff Year</span>
+            <span className="text-sm font-bold text-foreground">{clampedTarget}</span>
+          </div>
+          <Slider
+            min={minYear}
+            max={maxYear}
+            step={1}
+            value={[clampedTarget]}
+            onValueChange={([v]) => setState({ targetPayoffYear: String(v) })}
+            className="[&_[role=slider]]:bg-accent [&_[role=slider]]:border-accent [&_[data-orientation=horizontal]>[data-orientation=horizontal]]:bg-primary"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <span>{minYear}</span>
+            <span>{maxYear} (current pace)</span>
+          </div>
+        </div>
+
+        {isDefault ? (
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-sm text-muted-foreground">No extra payment needed at current pace</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
+                <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+              </div>
+            </div>
+            {monthsSaved > 0 && (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                  Pay off {Math.floor(monthsSaved / 12) > 0 ? `${Math.floor(monthsSaved / 12)} year${Math.floor(monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{monthsSaved % 12 > 0 ? `${monthsSaved % 12} month${monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}earlier
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -431,9 +532,9 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
                 </div>
                 <div className="divide-y divide-border">
-                  <Row label="Current Balance" value={fmt(existingCalc.adjustedBalance)} sub={existingCalc.adjustedBalance !== existingCalc.currentBalance ? 'Adjusted to today from statement date' : undefined} />
                   <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
                   <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
                   <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
@@ -458,44 +559,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               </div>
             )}
 
-            {/* Editable: Extra Payment */}
-            <div className="px-6 mt-5">
-              <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-4">
-                <p className="text-sm font-semibold text-foreground">Extra Payment Analysis</p>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Extra Monthly Payment ($)</Label>
-                  <Input
-                    type="number" placeholder="0"
-                    value={state.exExtraPayment}
-                    onChange={e => setState({ exExtraPayment: e.target.value })}
-                    className="mt-1 max-w-[200px]"
-                  />
-                </div>
-
-                {existingCalc.extra > 0 && existingCalc.interestSaved > 0 && (
-                  <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-green-700 dark:text-green-300">
-                      Paying an extra {fmt(existingCalc.extra)}/mo saves {fmt(existingCalc.interestSaved)} in interest and pays off {existingCalc.monthsSaved > 0 ? `${Math.floor(existingCalc.monthsSaved / 12) > 0 ? `${Math.floor(existingCalc.monthsSaved / 12)} year${Math.floor(existingCalc.monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}${existingCalc.monthsSaved % 12 > 0 ? `${existingCalc.monthsSaved % 12} month${existingCalc.monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}early` : ''}.
-                    </p>
-                  </div>
-                )}
-
-                {existingCalc.extra > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase">Standard</p>
-                      <p className="text-xs text-foreground mt-1">Payoff: {existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                      <p className="text-xs text-foreground">Interest: {fmt(existingCalc.totalInterestRemaining)}</p>
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                      <p className="text-[10px] font-semibold text-green-700 dark:text-green-300 uppercase">With Extra</p>
-                      <p className="text-xs text-foreground mt-1">Payoff: {new Date(Date.now() + existingCalc.monthsWithExtra * 30.44 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                      <p className="text-xs text-foreground">Interest: {fmt(existingCalc.totalInterestExtra)}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Payoff Year Slider */}
+            <PayoffYearSlider
+              adjustedBalance={existingCalc.adjustedBalance}
+              monthlyPI={existingCalc.monthlyPI}
+              monthlyRate={(parseFloat(state.exInterestRate) || (financialProfile?.mortgage_rate ?? 0)) / 100 / 12}
+              remainingMonths={existingCalc.remainingMonths}
+              totalInterestRemaining={existingCalc.totalInterestRemaining}
+              payoffDate={existingCalc.payoffDate}
+              state={state}
+              setState={setState}
+            />
 
             {/* CFP Indicators */}
             <div className="px-6 mt-5 space-y-3">
