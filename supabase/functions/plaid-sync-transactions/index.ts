@@ -217,13 +217,6 @@ Deno.serve(async (req) => {
         return fallback;
       };
 
-      // Patterns that indicate payroll / direct deposit on checking accounts
-      const INCOME_PATTERNS = [
-        "PAYROLL", "DIRECT DEP", "DIRECT DEPOSIT", "DIR DEP",
-        "SALARY", "WAGES", "PAYCHECK", "ACH CREDIT",
-        "EMPLOYER", "GUSTO", "ADP", "INTUIT",
-      ];
-
       const mapImportedTransaction = (tx: Record<string, unknown>): ImportedTransactionRow | null => {
         const baseAccount = accountMap[tx.account_id as string];
         if (!baseAccount) return null;
@@ -253,22 +246,13 @@ Deno.serve(async (req) => {
           upperDesc.includes("PAYMENT THANK YOU")
         );
 
-        // Determine transaction type for credits
+        // All transactions sync as "expense" (unassigned) — user assigns type manually.
+        // Only cc-payments are auto-tagged since they are structural, not user-categorized.
         let transactionType = "expense";
         let categorySlug = "unassigned";
         if (isCcPayment) {
           transactionType = "cc-payment";
           categorySlug = "cc-payment";
-        } else if (isCredit) {
-          if (isCheckingAccount && INCOME_PATTERNS.some(p => upperDesc.includes(p))) {
-            // Checking account credits matching payroll/deposit patterns are income
-            transactionType = "income";
-          } else if (isCheckingAccount) {
-            // Other checking account credits (Venmo cashout, transfers in, etc.) are deposits
-            transactionType = "deposit";
-          }
-          // All credits default to unassigned for manual categorization
-          categorySlug = "unassigned";
         }
 
         return {
