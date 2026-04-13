@@ -35,6 +35,7 @@ interface EditTransactionSheetProps {
   monthTransactions?: Transaction[];
   splitSiblings?: Transaction[];
   accounts?: AppAccount[];
+  allTransactions?: Transaction[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
