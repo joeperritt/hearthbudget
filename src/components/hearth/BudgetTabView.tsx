@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { Info } from 'lucide-react';
+import { Info, Pencil } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 function fmt(n: number) {
@@ -40,23 +40,22 @@ export function BudgetTabView({
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
   planningData, onUpdatePlanningData,
 }: BudgetTabViewProps) {
-  // Take-home income from planning data
-  const primaryNet = parseFloat(planningData.netIncome || '') || 0;
-  const partnerNet = parseFloat(planningData.katieNetIncome || '') || 0;
-  const totalTakeHome = primaryNet + partnerNet;
+  const [takeHomeInput, setTakeHomeInput] = useState(() => {
+    const total = (parseFloat(planningData.netIncome || '') || 0) + (parseFloat(planningData.katieNetIncome || '') || 0);
+    return total > 0 ? formatWithCommas(String(total)) : '';
+  });
+
+  // Use the live input value for real-time surplus calculation
+  const totalTakeHome = parseNumeric(takeHomeInput);
 
   // Budget totals — sum ALL categories and fixed expenses
   const allCategoriesTotal = categories.reduce((s, c) => s + c.budgeted, 0);
   const fixedTotal = fixedExpenses.reduce((s, e) => s + e.amount, 0);
   const budgetTotal = allCategoriesTotal + fixedTotal;
 
+  // Surplus = take-home minus budget total, nothing else
   const surplus = totalTakeHome - budgetTotal;
   const isSurplus = surplus >= 0;
-
-  const [takeHomeInput, setTakeHomeInput] = useState(() => {
-    const total = (parseFloat(planningData.netIncome || '') || 0) + (parseFloat(planningData.katieNetIncome || '') || 0);
-    return total > 0 ? formatWithCommas(String(total)) : '';
-  });
 
   const handleTakeHomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9.,]/g, '');
@@ -65,7 +64,8 @@ export function BudgetTabView({
 
   const handleTakeHomeBlur = () => {
     const val = parseNumeric(takeHomeInput);
-    onUpdatePlanningData({ ...planningData, netIncome: String(val) });
+    // Store entire take-home in netIncome, clear katieNetIncome to prevent double-counting
+    onUpdatePlanningData({ ...planningData, netIncome: String(val), katieNetIncome: '0' });
   };
 
   return (
@@ -91,7 +91,7 @@ export function BudgetTabView({
                 </PopoverContent>
               </Popover>
             </span>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <span className="text-sm text-muted-foreground">$</span>
               <input
                 type="text"
@@ -100,8 +100,9 @@ export function BudgetTabView({
                 onChange={handleTakeHomeChange}
                 onBlur={handleTakeHomeBlur}
                 placeholder="0"
-                className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-none outline-none"
+                className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-b border-amber-400/60 outline-none focus:border-amber-500 transition-colors py-0.5"
               />
+              <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />
             </div>
           </div>
           <div className="flex justify-between items-center">
