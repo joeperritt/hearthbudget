@@ -118,6 +118,23 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
   if (!transaction) return null;
 
+  const isUnassigned = transaction.categoryId === 'unassigned' && transaction.transactionType === 'expense';
+  const showAISuggestion = isUnassigned && !suggestionDismissed;
+
+  const handleUseSuggestion = (suggestion: { type: string; subtype: string | null; categoryId: string | null }) => {
+    const typeMap: Record<string, TxMode> = { variable: 'variable', fixed: 'fixed', deposit: 'deposit', 'cc-payment': 'cc-payment', ignore: 'ignore' };
+    const newMode = typeMap[suggestion.type] || 'variable';
+    setMode(newMode);
+    if (newMode === 'variable' && suggestion.categoryId) {
+      setVariableCategoryId(suggestion.categoryId);
+    } else if (newMode === 'fixed' && suggestion.categoryId) {
+      setFixedCategoryId(suggestion.categoryId);
+    } else if (newMode === 'ignore' && suggestion.subtype) {
+      setIgnoreType(suggestion.subtype as IgnoreType);
+    }
+    setSuggestionDismissed(true);
+  };
+
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
   const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories, fixedExpenses);
 
