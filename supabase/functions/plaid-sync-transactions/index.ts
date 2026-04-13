@@ -237,13 +237,11 @@ Deno.serve(async (req) => {
           : baseAccount;
         const plaidAmount = Number(tx.amount);
         // Plaid sign convention: positive = money leaving account, negative = money entering.
-        // However for checking accounts, Plaid sometimes returns inbound transfers (e.g. VENMO CASHOUT)
-        // with a positive amount but transaction_type "credit" or "special". Use Plaid's transaction_type
-        // field as an additional signal for checking accounts.
-        const plaidTxType = (tx.transaction_type as string || "").toLowerCase();
+        // Targeted fix: if Plaid returns transaction_type "credit" on a checking account with a
+        // positive amount (mislabeled inbound credit, e.g. VENMO CASHOUT), flip the sign.
+        const plaidTxType = ((tx.transaction_type as string) || "").toLowerCase();
         let isCredit = plaidAmount < 0;
-        if (isCheckingAccount && !isCredit && (plaidTxType === "credit" || plaidTxType === "special")) {
-          // Plaid says this is a credit on a checking account despite positive amount — treat as inbound
+        if (isCheckingAccount && !isCredit && plaidTxType === "credit") {
           isCredit = true;
         }
         const description = buildTransactionDescription(tx);
