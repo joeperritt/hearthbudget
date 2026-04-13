@@ -328,7 +328,18 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           </div>
 
-          {/* Mode toggle pills */}
+          {/* AI Suggestion Card — only for unassigned transactions */}
+          {showAISuggestion && (
+            <AISuggestionCard
+              transaction={transaction}
+              categories={categories}
+              fixedExpenses={fixedExpenses}
+              allTransactions={allTransactions}
+              onUseSuggestion={handleUseSuggestion}
+              onDismiss={() => setSuggestionDismissed(true)}
+            />
+          )}
+
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</label>
             <div className="flex gap-1.5 mt-1.5">
