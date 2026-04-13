@@ -236,7 +236,16 @@ Deno.serve(async (req) => {
           ? resolveAccount(tx, baseAccount)
           : baseAccount;
         const plaidAmount = Number(tx.amount);
-        const isCredit = plaidAmount < 0;
+        // Plaid sign convention: positive = money leaving account, negative = money entering.
+        // However for checking accounts, Plaid sometimes returns inbound transfers (e.g. VENMO CASHOUT)
+        // with a positive amount but transaction_type "credit" or "special". Use Plaid's transaction_type
+        // field as an additional signal for checking accounts.
+        const plaidTxType = (tx.transaction_type as string || "").toLowerCase();
+        let isCredit = plaidAmount < 0;
+        if (isCheckingAccount && !isCredit && (plaidTxType === "credit" || plaidTxType === "special")) {
+          // Plaid says this is a credit on a checking account despite positive amount — treat as inbound
+          isCredit = true;
+        }
         const description = buildTransactionDescription(tx);
         const upperDesc = description.toUpperCase();
         const isCcPayment = isCredit && (
@@ -254,10 +263,13 @@ Deno.serve(async (req) => {
           categorySlug = "cc-payment";
         } else if (isCredit) {
           if (isCheckingAccount && INCOME_PATTERNS.some(p => upperDesc.includes(p))) {
-            // Only checking account credits matching payroll/deposit patterns are income
+            // Checking account credits matching payroll/deposit patterns are income
             transactionType = "income";
+          } else if (isCheckingAccount) {
+            // Other checking account credits (Venmo cashout, transfers in, etc.) are deposits
+            transactionType = "deposit";
           }
-          // All other credits (refunds, deposits, etc.) stay as expense/unassigned for manual categorization
+          // All credits default to unassigned for manual categorization
           categorySlug = "unassigned";
         }
 
