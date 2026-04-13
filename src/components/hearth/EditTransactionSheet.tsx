@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY, categoryRequiresNotes } from '@/types/budget';
+import { AISuggestionCard } from './AISuggestionCard';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format, subMonths, addMonths } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ interface EditTransactionSheetProps {
   monthTransactions?: Transaction[];
   splitSiblings?: Transaction[];
   accounts?: AppAccount[];
+  allTransactions?: Transaction[];
 }
 
 function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
@@ -56,7 +58,7 @@ function deriveIgnoreType(categoryId: string): IgnoreType {
   return 'income';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [] }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [] }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -69,10 +71,11 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [isSplit, setIsSplit] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
   const [budgetMonth, setBudgetMonth] = useState('');
-
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   // Sync local state when transaction changes
   useEffect(() => {
     if (!transaction?.id) return;
+    setSuggestionDismissed(false);
     setNotes(transaction.notes);
     setBudgetMonth(transaction.budgetMonth || activeMonth);
 
@@ -114,6 +117,23 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   }, [transaction?.id]);
 
   if (!transaction) return null;
+
+  const isUnassigned = transaction.categoryId === 'unassigned' && transaction.transactionType === 'expense';
+  const showAISuggestion = isUnassigned && !suggestionDismissed;
+
+  const handleUseSuggestion = (suggestion: { type: string; subtype: string | null; categoryId: string | null }) => {
+    const typeMap: Record<string, TxMode> = { variable: 'variable', fixed: 'fixed', deposit: 'deposit', 'cc-payment': 'cc-payment', ignore: 'ignore' };
+    const newMode = typeMap[suggestion.type] || 'variable';
+    setMode(newMode);
+    if (newMode === 'variable' && suggestion.categoryId) {
+      setVariableCategoryId(suggestion.categoryId);
+    } else if (newMode === 'fixed' && suggestion.categoryId) {
+      setFixedCategoryId(suggestion.categoryId);
+    } else if (newMode === 'ignore' && suggestion.subtype) {
+      setIgnoreType(suggestion.subtype as IgnoreType);
+    }
+    setSuggestionDismissed(true);
+  };
 
   const effectiveCategoryId = mode === 'variable' ? variableCategoryId : mode === 'fixed' ? fixedCategoryId : '';
   const notesRequired = !isSplit && categoryRequiresNotes(effectiveCategoryId, categories, fixedExpenses);
@@ -308,7 +328,18 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           </div>
 
-          {/* Mode toggle pills */}
+          {/* AI Suggestion Card — only for unassigned transactions */}
+          {showAISuggestion && (
+            <AISuggestionCard
+              transaction={transaction}
+              categories={categories}
+              fixedExpenses={fixedExpenses}
+              allTransactions={allTransactions}
+              onUseSuggestion={handleUseSuggestion}
+              onDismiss={() => setSuggestionDismissed(true)}
+            />
+          )}
+
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</label>
             <div className="flex gap-1.5 mt-1.5">
