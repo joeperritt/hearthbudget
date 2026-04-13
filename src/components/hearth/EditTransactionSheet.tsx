@@ -71,8 +71,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const [isSplit, setIsSplit] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
   const [budgetMonth, setBudgetMonth] = useState('');
-
-  // Sync local state when transaction changes
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   useEffect(() => {
     if (!transaction?.id) return;
     setNotes(transaction.notes);
