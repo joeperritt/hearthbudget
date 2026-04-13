@@ -2,9 +2,22 @@ import { useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
+import { Info } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+}
+
+function formatWithCommas(value: string): string {
+  const num = value.replace(/[^0-9.]/g, '');
+  const parts = num.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+function parseNumeric(value: string): number {
+  return parseFloat(value.replace(/,/g, '')) || 0;
 }
 
 interface BudgetTabViewProps {
@@ -32,23 +45,26 @@ export function BudgetTabView({
   const partnerNet = parseFloat(planningData.katieNetIncome || '') || 0;
   const totalTakeHome = primaryNet + partnerNet;
 
-  // Budget totals
-  const variableTotal = categories.filter(c => c.group !== 'giving' && c.group !== 'savings').reduce((s, c) => s + c.budgeted, 0);
-  const givingVarTotal = categories.filter(c => c.group === 'giving').reduce((s, c) => s + c.budgeted, 0);
-  const savingsVarTotal = categories.filter(c => c.group === 'savings').reduce((s, c) => s + c.budgeted, 0);
+  // Budget totals — sum ALL categories and fixed expenses
+  const allCategoriesTotal = categories.reduce((s, c) => s + c.budgeted, 0);
   const fixedTotal = fixedExpenses.reduce((s, e) => s + e.amount, 0);
-  const budgetTotal = variableTotal + givingVarTotal + savingsVarTotal + fixedTotal;
+  const budgetTotal = allCategoriesTotal + fixedTotal;
 
   const surplus = totalTakeHome - budgetTotal;
   const isSurplus = surplus >= 0;
 
   const [takeHomeInput, setTakeHomeInput] = useState(() => {
     const total = (parseFloat(planningData.netIncome || '') || 0) + (parseFloat(planningData.katieNetIncome || '') || 0);
-    return total > 0 ? String(total) : '';
+    return total > 0 ? formatWithCommas(String(total)) : '';
   });
 
+  const handleTakeHomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9.,]/g, '');
+    setTakeHomeInput(formatWithCommas(raw));
+  };
+
   const handleTakeHomeBlur = () => {
-    const val = parseFloat(takeHomeInput) || 0;
+    const val = parseNumeric(takeHomeInput);
     onUpdatePlanningData({ ...planningData, netIncome: String(val) });
   };
 
@@ -62,13 +78,26 @@ export function BudgetTabView({
       <div className="px-6 mt-4">
         <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Avg. Monthly Take-Home</span>
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              Avg. Monthly Take-Home
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="inline-flex items-center justify-center rounded-full w-4 h-4 hover:opacity-80 transition-opacity" aria-label="Income info">
+                    <Info className="w-3.5 h-3.5 text-amber-500" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="start" className="w-72 text-xs text-muted-foreground">
+                  Enter your household's average monthly net (take-home) pay — the amount deposited into your accounts after taxes and deductions. This is used to calculate your monthly surplus or deficit against your total budget. If your income varies month to month, use a conservative average.
+                </PopoverContent>
+              </Popover>
+            </span>
             <div className="flex items-center gap-0.5">
               <span className="text-sm text-muted-foreground">$</span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={takeHomeInput}
-                onChange={e => setTakeHomeInput(e.target.value)}
+                onChange={handleTakeHomeChange}
                 onBlur={handleTakeHomeBlur}
                 placeholder="0"
                 className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-none outline-none"
