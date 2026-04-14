@@ -28,31 +28,24 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
   const targetYear = state.targetPayoffYear ? Number(state.targetPayoffYear) : maxYear;
   const clampedTarget = Math.max(minYear, Math.min(maxYear, targetYear));
 
-  // Calculate extra payment needed to hit target year
   const targetMonths = Math.max(1, (clampedTarget - now.getFullYear()) * 12 - now.getMonth());
   let extraNeeded = 0;
   let interestSaved = 0;
   let monthsSaved = 0;
 
   if (monthlyRate > 0 && adjustedBalance > 0 && targetMonths < remainingMonths) {
-    // Calculate required payment to pay off in targetMonths
     const requiredPayment = adjustedBalance * (monthlyRate * Math.pow(1 + monthlyRate, targetMonths)) / (Math.pow(1 + monthlyRate, targetMonths) - 1);
     extraNeeded = Math.max(0, requiredPayment - monthlyPI);
 
-    // Calculate interest with extra
-    let bal = adjustedBalance;
-    let interest = 0;
-    let months = 0;
-    const totalPmt = monthlyPI + extraNeeded;
-    while (bal > 0 && months < 600) {
-      const intCharge = bal * monthlyRate;
-      interest += intCharge;
-      bal -= Math.min(bal, totalPmt - intCharge);
-      months++;
-      if (bal <= 0) break;
-    }
-    interestSaved = totalInterestRemaining - interest;
-    monthsSaved = remainingMonths - months;
+    const accelerated = simulateAmortization({
+      startingBalance: adjustedBalance,
+      monthlyRate,
+      monthlyPI,
+      extraPayment: extraNeeded,
+    });
+
+    interestSaved = totalInterestRemaining - accelerated.totalInterest;
+    monthsSaved = remainingMonths - accelerated.months;
   }
 
   const isDefault = clampedTarget >= maxYear;
@@ -596,85 +589,46 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
     const homeValue = Number(financialProfile?.estimated_home_value) || 0;
     const loanType = financialProfile?.mortgage_loan_type || '30-year-fixed';
-    const loanTypeLabels: Record<string, string> = {
-      '30-year-fixed': '30-Year Fixed', '20-year-fixed': '20-Year Fixed',
-      '15-year-fixed': '15-Year Fixed', '10-year-fixed': '10-Year Fixed',
-      '5-1-arm': '5/1 ARM', '7-1-arm': '7/1 ARM', 'other': 'Other',
-    };
     const extra = Number(financialProfile?.mortgage_extra) || 0;
 
-    // ── Analyzer amortization: compute directly from financial profile ──
     const monthlyRate = rate / 100 / 12;
-    // Roll balance forward from statement month to today
-    let adjustedBalance = balance;
-    if (statementMonth) {
-      const [sy, sm] = statementMonth.split('-').map(Number);
-      if (sy > 0 && sm > 0) {
-        const now = new Date();
-        const monthsSince = Math.max(0, (now.getFullYear() - sy) * 12 + (now.getMonth() - (sm - 1)));
-        if (monthsSince > 0 && monthlyRate > 0 && pi > 0) {
-          let bal = balance;
-          for (let i = 0; i < monthsSince; i++) {
-            const intCharge = bal * monthlyRate;
-            bal -= (pi - intCharge);
-            if (bal <= 0) { bal = 0; break; }
-          }
-          adjustedBalance = Math.max(0, bal);
-        }
-      }
-    }
+    const { adjustedBalance } = adjustBalanceFromStatement(balance, statementMonth, monthlyRate, pi);
 
-    // Loop 1: Standard schedule (P&I only, no extra)
-    let stdMonths = 0;
-    let stdInterest = 0;
-    if (monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
-      let bal = adjustedBalance;
-      while (bal > 0.01 && stdMonths < 600) {
-        const intCharge = bal * monthlyRate;
-        stdInterest += intCharge;
-        const principalPaid = pi - intCharge;
-        bal -= principalPaid;
-        stdMonths++;
-        if (bal <= 0) break;
-      }
-    } else if (pi > 0 && adjustedBalance > 0) {
-      stdMonths = Math.ceil(adjustedBalance / pi);
-    }
-
-    // Loop 2: Accelerated schedule (P&I + extra toward principal)
-    let accMonths = stdMonths;
-    let accInterest = stdInterest;
-    if (extra > 0 && monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
-      let bal = adjustedBalance;
-      accMonths = 0;
-      accInterest = 0;
-      const totalPmt = pi + extra;
-      while (bal > 0.01 && accMonths < 600) {
-        const intCharge = bal * monthlyRate;
-        accInterest += intCharge;
-        bal -= Math.min(bal, totalPmt - intCharge);
-        accMonths++;
-        if (bal <= 0) break;
-      }
-    }
-
-    const interestSaved = stdInterest - accInterest;
-    const monthsSaved = stdMonths - accMonths;
-
-    const stdPayoffDate = new Date();
-    stdPayoffDate.setMonth(stdPayoffDate.getMonth() + stdMonths);
-    const accPayoffDate = new Date();
-    accPayoffDate.setMonth(accPayoffDate.getMonth() + accMonths);
-
-    // Debug logging for verification
-    console.log('[Mortgage Analyzer] Amortization debug:', {
-      adjustedBalance: Math.round(adjustedBalance * 100) / 100,
+    const standardSchedule = simulateAmortization({
+      startingBalance: adjustedBalance,
       monthlyRate,
-      pi,
-      extra,
-      'Loop 1 (standard)': { months: stdMonths, totalInterest: Math.round(stdInterest * 100) / 100 },
-      'Loop 2 (accelerated)': { months: accMonths, totalInterest: Math.round(accInterest * 100) / 100 },
-      interestSaved: Math.round(interestSaved * 100) / 100,
+      monthlyPI: pi,
+      extraPayment: 0,
+    });
+
+    const acceleratedSchedule = simulateAmortization({
+      startingBalance: adjustedBalance,
+      monthlyRate,
+      monthlyPI: pi,
+      extraPayment: extra,
+    });
+
+    const interestSaved = standardSchedule.totalInterest - acceleratedSchedule.totalInterest;
+    const monthsSaved = standardSchedule.months - acceleratedSchedule.months;
+
+    console.log('[Mortgage Analyzer] Amortization debug:', {
+      adjustedBalance: roundMoney(adjustedBalance),
+      monthlyRate: roundMoney(monthlyRate),
+      pi: roundMoney(pi),
+      extra: roundMoney(extra),
+      standardFirst3Months: standardSchedule.preview,
+      acceleratedFirst3Months: acceleratedSchedule.preview,
+      standardTotals: {
+        months: standardSchedule.months,
+        totalInterest: roundMoney(standardSchedule.totalInterest),
+        payoffDate: standardSchedule.payoffDate.toISOString(),
+      },
+      acceleratedTotals: {
+        months: acceleratedSchedule.months,
+        totalInterest: roundMoney(acceleratedSchedule.totalInterest),
+        payoffDate: acceleratedSchedule.payoffDate.toISOString(),
+      },
+      interestSaved: roundMoney(interestSaved),
       monthsSaved,
     });
 
@@ -764,7 +718,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
             <div className="grid grid-cols-2 gap-3">
               <DetailCell label="Current Balance" value={fmt(balance)} />
               <DetailCell label="Interest Rate" value={rate > 0 ? `${rate}%` : '—'} />
-              <DetailCell label="Loan Type" value={loanTypeLabels[loanType] || loanType} />
+              <DetailCell label="Loan Type" value={LOAN_TYPE_LABELS[loanType] || loanType} />
               <DetailCell label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : '—'} />
               <DetailCell label="P&I" value={pi > 0 ? fmt(pi) : '—'} />
               <DetailCell label="Escrow — Tax" value={escrowTax > 0 ? fmt(escrowTax) : '—'} />
@@ -807,9 +761,9 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                       <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(adjustedBalance)}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <DetailCell label="Projected Payoff" value={extra > 0 ? accPayoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : stdPayoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
-                      <DetailCell label="Remaining Term" value={(() => { const m = extra > 0 ? accMonths : stdMonths; return `${Math.floor(m / 12)}y ${m % 12}m`; })()} />
-                      <DetailCell label="Total Interest Remaining" value={fmt(extra > 0 ? accInterest : stdInterest)} />
+                      <DetailCell label="Projected Payoff" value={(extra > 0 ? acceleratedSchedule.payoffDate : standardSchedule.payoffDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
+                      <DetailCell label="Remaining Term" value={(() => { const m = extra > 0 ? acceleratedSchedule.months : standardSchedule.months; return `${Math.floor(m / 12)}y ${m % 12}m`; })()} />
+                      <DetailCell label="Total Interest Remaining" value={fmt(extra > 0 ? acceleratedSchedule.totalInterest : standardSchedule.totalInterest)} />
                       {extra > 0 && interestSaved > 0 && (
                         <DetailCell label="Interest Saved" value={fmt(interestSaved)} />
                       )}
@@ -866,9 +820,9 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   adjustedBalance={adjustedBalance}
                   monthlyPI={pi}
                   monthlyRate={monthlyRate}
-                  remainingMonths={stdMonths}
-                  totalInterestRemaining={stdInterest}
-                  payoffDate={stdPayoffDate}
+                  remainingMonths={standardSchedule.months}
+                  totalInterestRemaining={standardSchedule.totalInterest}
+                  payoffDate={standardSchedule.payoffDate}
                   state={state}
                   setState={setState}
                 />
