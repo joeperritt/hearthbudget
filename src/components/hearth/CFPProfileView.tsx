@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Trash2, Shield, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { ageFromDob, ageToDobApprox, formatDob } from '@/lib/ageUtils';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -19,6 +20,7 @@ interface Debt {
 interface Dependent {
   name: string;
   age: number | null;
+  dob?: string | null;
 }
 
 interface MemberCoverage {
@@ -34,6 +36,7 @@ interface MemberIncome {
   name: string;
   gross_income: number;
   income_type: string;
+  dob?: string | null;
   age?: number;
   pay_frequency: string;
   mixed_breakdown?: { w2: number; k1: number; '1099': number; scorp: number };
@@ -165,22 +168,19 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>(initialTab || 'profile');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [householdName, setHouseholdName] = useState('');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!householdId) return;
     async function load() {
-      const [membersRes, profileRes, householdRes] = await Promise.all([
+      const [membersRes, profileRes] = await Promise.all([
         supabase.from('profiles').select('id, display_name').eq('household_id', householdId),
         supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle(),
-        supabase.from('households').select('name').eq('id', householdId).maybeSingle(),
       ]);
 
       const membersList = membersRes.data || [];
       setMembers(membersList);
-      if (householdRes.data) setHouseholdName(householdRes.data.name || 'Household');
 
       const data = profileRes.data;
       if (data) {
@@ -188,7 +188,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const savedIncomes = Array.isArray(data.member_incomes) ? (data.member_incomes as unknown as MemberIncome[]) : [];
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined, pay_frequency: 'biweekly' };
+          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
         });
         if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0) {
           incomes[0].gross_income = Number(data.annual_gross_income);
@@ -241,7 +241,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       } else {
         setProfile(p => ({
           ...p,
-          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined, pay_frequency: 'biweekly' })),
+          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' })),
           life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 })),
         }));
       }
@@ -294,16 +294,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
   }, [save]);
 
-  const householdNameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const updateHouseholdName = useCallback((name: string) => {
-    setHouseholdName(name);
-    if (householdNameTimeoutRef.current) clearTimeout(householdNameTimeoutRef.current);
-    householdNameTimeoutRef.current = setTimeout(async () => {
-      if (!householdId) return;
-      await supabase.from('households').update({ name } as any).eq('id', householdId);
-      setLastSaved(new Date());
-    }, 1500);
-  }, [householdId]);
 
   const update = (field: keyof ProfileData, value: any) => {
     setProfile(p => {
@@ -410,7 +400,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="font-display text-xl font-bold text-foreground">{householdName}</h1>
+          <h1 className="font-display text-xl font-bold text-foreground">Financial Profile</h1>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[120px]">
               <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${completeness.pct}%` }} />
@@ -448,17 +438,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         {/* Profile Tab */}
         {activeProfileTab === 'profile' && (
           <div className="space-y-4">
-            <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Name</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4">
-                <input
-                  value={householdName}
-                  onChange={e => updateHouseholdName(e.target.value)}
-                  placeholder="e.g. Smith Family"
-                  className="w-full px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-              </div>
-            </section>
 
             <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Members</h2>
@@ -471,9 +450,12 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                         className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Age</label>
-                      <input type="number" value={member.age || ''} onChange={e => updateMemberIncome(i, 'age', parseInt(e.target.value) || undefined)}
-                        placeholder="e.g. 35" className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      <label className="text-xs text-muted-foreground">Date of Birth</label>
+                      <input type="date" value={member.dob || ''} onChange={e => updateMemberIncome(i, 'dob', e.target.value || null)}
+                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      {member.dob && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(member.dob) ?? '—'}</p>
+                      )}
                     </div>
                     {i < profile.member_incomes.length - 1 && <div className="border-b border-border pt-1" />}
                   </div>
@@ -503,9 +485,12 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                             placeholder="Name" className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground">Age</label>
-                          <input type="number" value={dep.age ?? ''} onChange={e => updateDependent(i, 'age', parseInt(e.target.value) || null)}
-                            placeholder="Age" className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          <label className="text-[10px] text-muted-foreground">Date of Birth</label>
+                          <input type="date" value={dep.dob || ''} onChange={e => updateDependent(i, 'dob', e.target.value || null)}
+                            className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          {dep.dob && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(dep.dob) ?? '—'}</p>
+                          )}
                         </div>
                       </div>
                       <button onClick={() => removeDependent(i)} className="text-destructive/60 hover:text-destructive"><Trash2 size={14} /></button>
