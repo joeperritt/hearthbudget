@@ -294,6 +294,17 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
   }, [save]);
 
+  const householdNameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateHouseholdName = useCallback((name: string) => {
+    setHouseholdName(name);
+    if (householdNameTimeoutRef.current) clearTimeout(householdNameTimeoutRef.current);
+    householdNameTimeoutRef.current = setTimeout(async () => {
+      if (!householdId) return;
+      await supabase.from('households').update({ name } as any).eq('id', householdId);
+      setLastSaved(new Date());
+    }, 1500);
+  }, [householdId]);
+
   const update = (field: keyof ProfileData, value: any) => {
     setProfile(p => {
       const updated = { ...p, [field]: value };
