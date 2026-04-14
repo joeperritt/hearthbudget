@@ -580,6 +580,11 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <DetailCell label="Escrow — Tax" value={escrowTax > 0 ? fmt(escrowTax) : '—'} />
               <DetailCell label="Escrow — Insurance" value={escrowIns > 0 ? fmt(escrowIns) : '—'} />
             </div>
+            {(loanType === '5-1-arm' || loanType === '7-1-arm') && (
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Adjustable rate mortgage — projections assume your current rate remains fixed, which may not reflect actual future payments.
+              </p>
+            )}
             {originalLoan > 0 && (
               <div className="pt-1 border-t border-border">
                 <DetailCell label="Original Loan Amount" value={fmt(originalLoan)} />
