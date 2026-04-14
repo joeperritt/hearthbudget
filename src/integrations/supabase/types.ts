@@ -165,6 +165,7 @@ export type Database = {
           mortgage_breakdown_enabled: boolean | null
           mortgage_escrow: number | null
           mortgage_extra: number | null
+          mortgage_loan_type: string | null
           mortgage_payment: number | null
           mortgage_pi: number | null
           mortgage_rate: number | null
@@ -197,6 +198,7 @@ export type Database = {
           mortgage_breakdown_enabled?: boolean | null
           mortgage_escrow?: number | null
           mortgage_extra?: number | null
+          mortgage_loan_type?: string | null
           mortgage_payment?: number | null
           mortgage_pi?: number | null
           mortgage_rate?: number | null
@@ -229,6 +231,7 @@ export type Database = {
           mortgage_breakdown_enabled?: boolean | null
           mortgage_escrow?: number | null
           mortgage_extra?: number | null
+          mortgage_loan_type?: string | null
           mortgage_payment?: number | null
           mortgage_pi?: number | null
           mortgage_rate?: number | null

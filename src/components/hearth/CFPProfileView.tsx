@@ -62,6 +62,7 @@ interface ProfileData {
   mortgage_extra: number;
   mortgage_statement_month: string;
   mortgage_breakdown_enabled: boolean;
+  mortgage_loan_type: string;
   estimated_home_value: number;
   monthly_rent: number;
   debts: Debt[];
@@ -93,6 +94,7 @@ const DEFAULT_PROFILE: ProfileData = {
   mortgage_extra: 0,
   mortgage_statement_month: '',
   mortgage_breakdown_enabled: false,
+  mortgage_loan_type: '30-year-fixed',
   estimated_home_value: 0,
   monthly_rent: 0,
   debts: [],
@@ -259,6 +261,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           mortgage_extra: Number(savedProfile.mortgage_extra) || 0,
           mortgage_statement_month: savedProfile.mortgage_statement_month || '',
           mortgage_breakdown_enabled: !!savedProfile.mortgage_breakdown_enabled,
+          mortgage_loan_type: savedProfile.mortgage_loan_type || '30-year-fixed',
           estimated_home_value: Number(savedProfile.estimated_home_value) || 0,
           monthly_rent: Number(savedProfile.monthly_rent) || 0,
           debts: Array.isArray(savedProfile.debts) ? (savedProfile.debts as unknown as Debt[]).map(d => ({
@@ -318,6 +321,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       mortgage_escrow: profileData.mortgage_escrow,
       mortgage_extra: profileData.mortgage_extra,
       mortgage_breakdown_enabled: profileData.mortgage_breakdown_enabled,
+      mortgage_loan_type: profileData.mortgage_loan_type,
       estimated_home_value: profileData.estimated_home_value,
       monthly_rent: profileData.monthly_rent,
       debts: profileData.debts,
@@ -625,6 +629,24 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                   </div>
                   <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
                   <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
+                  <div>
+                    <label className="text-xs text-muted-foreground">Loan Type</label>
+                    <select value={profile.mortgage_loan_type} onChange={e => update('mortgage_loan_type', e.target.value)}
+                      className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                      <option value="30-year-fixed">30-Year Fixed</option>
+                      <option value="20-year-fixed">20-Year Fixed</option>
+                      <option value="15-year-fixed">15-Year Fixed</option>
+                      <option value="10-year-fixed">10-Year Fixed</option>
+                      <option value="5-1-arm">5/1 ARM</option>
+                      <option value="7-1-arm">7/1 ARM</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {(profile.mortgage_loan_type === '5-1-arm' || profile.mortgage_loan_type === '7-1-arm') && (
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                        Adjustable rate mortgages have variable interest rates — projections assume your current rate remains fixed, which may not reflect actual future payments.
+                      </p>
+                    )}
+                  </div>
                   <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 
                   <div className="space-y-2 bg-muted/50 rounded-lg p-3">

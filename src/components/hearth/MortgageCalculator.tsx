@@ -209,7 +209,9 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     if (state.exInterestRate === '' && financialProfile.mortgage_rate) {
       updates.exInterestRate = String(financialProfile.mortgage_rate);
     }
-    if (state.exMonthlyPI === '' && financialProfile.mortgage_payment) {
+    if (state.exMonthlyPI === '' && financialProfile.mortgage_pi) {
+      updates.exMonthlyPI = String(financialProfile.mortgage_pi);
+    } else if (state.exMonthlyPI === '' && financialProfile.mortgage_payment) {
       updates.exMonthlyPI = String(financialProfile.mortgage_payment);
     }
     if (state.exOtherDebtPayments === '' && state.otherDebtPayments !== '') {
@@ -478,6 +480,12 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
     const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
     const homeValue = Number(financialProfile?.estimated_home_value) || 0;
+    const loanType = financialProfile?.mortgage_loan_type || '30-year-fixed';
+    const loanTypeLabels: Record<string, string> = {
+      '30-year-fixed': '30-Year Fixed', '20-year-fixed': '20-Year Fixed',
+      '15-year-fixed': '15-Year Fixed', '10-year-fixed': '10-Year Fixed',
+      '5-1-arm': '5/1 ARM', '7-1-arm': '7/1 ARM', 'other': 'Other',
+    };
 
     // Empty state: non-mortgage user
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
@@ -566,11 +574,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
             <div className="grid grid-cols-2 gap-3">
               <DetailCell label="Current Balance" value={fmt(balance)} />
               <DetailCell label="Interest Rate" value={rate > 0 ? `${rate}%` : '—'} />
+              <DetailCell label="Loan Type" value={loanTypeLabels[loanType] || loanType} />
               <DetailCell label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : '—'} />
               <DetailCell label="P&I" value={pi > 0 ? fmt(pi) : '—'} />
               <DetailCell label="Escrow — Tax" value={escrowTax > 0 ? fmt(escrowTax) : '—'} />
               <DetailCell label="Escrow — Insurance" value={escrowIns > 0 ? fmt(escrowIns) : '—'} />
             </div>
+            {(loanType === '5-1-arm' || loanType === '7-1-arm') && (
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Adjustable rate mortgage — projections assume your current rate remains fixed, which may not reflect actual future payments.
+              </p>
+            )}
             {originalLoan > 0 && (
               <div className="pt-1 border-t border-border">
                 <DetailCell label="Original Loan Amount" value={fmt(originalLoan)} />
