@@ -450,9 +450,12 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                         className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Age</label>
-                      <input type="number" value={member.age || ''} onChange={e => updateMemberIncome(i, 'age', parseInt(e.target.value) || undefined)}
-                        placeholder="e.g. 35" className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      <label className="text-xs text-muted-foreground">Date of Birth</label>
+                      <input type="date" value={member.dob || ''} onChange={e => updateMemberIncome(i, 'dob', e.target.value || null)}
+                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      {member.dob && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(member.dob) ?? '—'}</p>
+                      )}
                     </div>
                     {i < profile.member_incomes.length - 1 && <div className="border-b border-border pt-1" />}
                   </div>
@@ -482,9 +485,12 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                             placeholder="Name" className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground">Age</label>
-                          <input type="number" value={dep.age ?? ''} onChange={e => updateDependent(i, 'age', parseInt(e.target.value) || null)}
-                            placeholder="Age" className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          <label className="text-[10px] text-muted-foreground">Date of Birth</label>
+                          <input type="date" value={dep.dob || ''} onChange={e => updateDependent(i, 'dob', e.target.value || null)}
+                            className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          {dep.dob && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(dep.dob) ?? '—'}</p>
+                          )}
                         </div>
                       </div>
                       <button onClick={() => removeDependent(i)} className="text-destructive/60 hover:text-destructive"><Trash2 size={14} /></button>
