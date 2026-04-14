@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_profiles ADD COLUMN dependents jsonb NOT NULL DEFAULT '[]'::jsonb;
