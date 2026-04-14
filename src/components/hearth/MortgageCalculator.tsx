@@ -486,8 +486,83 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       '15-year-fixed': '15-Year Fixed', '10-year-fixed': '10-Year Fixed',
       '5-1-arm': '5/1 ARM', '7-1-arm': '7/1 ARM', 'other': 'Other',
     };
+    const extra = Number(financialProfile?.mortgage_extra) || 0;
 
-    // Empty state: non-mortgage user
+    // ── Analyzer amortization: compute directly from financial profile ──
+    const monthlyRate = rate / 100 / 12;
+    // Roll balance forward from statement month to today
+    let adjustedBalance = balance;
+    if (statementMonth) {
+      const [sy, sm] = statementMonth.split('-').map(Number);
+      if (sy > 0 && sm > 0) {
+        const now = new Date();
+        const monthsSince = Math.max(0, (now.getFullYear() - sy) * 12 + (now.getMonth() - (sm - 1)));
+        if (monthsSince > 0 && monthlyRate > 0 && pi > 0) {
+          let bal = balance;
+          for (let i = 0; i < monthsSince; i++) {
+            const intCharge = bal * monthlyRate;
+            bal -= (pi - intCharge);
+            if (bal <= 0) { bal = 0; break; }
+          }
+          adjustedBalance = Math.max(0, bal);
+        }
+      }
+    }
+
+    // Loop 1: Standard schedule (P&I only, no extra)
+    let stdMonths = 0;
+    let stdInterest = 0;
+    if (monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
+      let bal = adjustedBalance;
+      while (bal > 0.01 && stdMonths < 600) {
+        const intCharge = bal * monthlyRate;
+        stdInterest += intCharge;
+        const principalPaid = pi - intCharge;
+        bal -= principalPaid;
+        stdMonths++;
+        if (bal <= 0) break;
+      }
+    } else if (pi > 0 && adjustedBalance > 0) {
+      stdMonths = Math.ceil(adjustedBalance / pi);
+    }
+
+    // Loop 2: Accelerated schedule (P&I + extra toward principal)
+    let accMonths = stdMonths;
+    let accInterest = stdInterest;
+    if (extra > 0 && monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
+      let bal = adjustedBalance;
+      accMonths = 0;
+      accInterest = 0;
+      const totalPmt = pi + extra;
+      while (bal > 0.01 && accMonths < 600) {
+        const intCharge = bal * monthlyRate;
+        accInterest += intCharge;
+        bal -= Math.min(bal, totalPmt - intCharge);
+        accMonths++;
+        if (bal <= 0) break;
+      }
+    }
+
+    const interestSaved = stdInterest - accInterest;
+    const monthsSaved = stdMonths - accMonths;
+
+    const stdPayoffDate = new Date();
+    stdPayoffDate.setMonth(stdPayoffDate.getMonth() + stdMonths);
+    const accPayoffDate = new Date();
+    accPayoffDate.setMonth(accPayoffDate.getMonth() + accMonths);
+
+    // Debug logging for verification
+    console.log('[Mortgage Analyzer] Amortization debug:', {
+      adjustedBalance: Math.round(adjustedBalance * 100) / 100,
+      monthlyRate,
+      pi,
+      extra,
+      'Loop 1 (standard)': { months: stdMonths, totalInterest: Math.round(stdInterest * 100) / 100 },
+      'Loop 2 (accelerated)': { months: accMonths, totalInterest: Math.round(accInterest * 100) / 100 },
+      interestSaved: Math.round(interestSaved * 100) / 100,
+      monthsSaved,
+    });
+
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
       return (
         <div className="max-w-lg mx-auto pb-32">
@@ -614,16 +689,23 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(adjustedBalance)}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <DetailCell label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
-                      <DetailCell label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
-                      <DetailCell label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
-                      {existingCalc.interestAlreadyPaid > 0 && (
-                        <DetailCell label="Interest Already Paid" value={fmt(existingCalc.interestAlreadyPaid)} />
+                      <DetailCell label="Projected Payoff" value={extra > 0 ? accPayoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : stdPayoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
+                      <DetailCell label="Remaining Term" value={(() => { const m = extra > 0 ? accMonths : stdMonths; return `${Math.floor(m / 12)}y ${m % 12}m`; })()} />
+                      <DetailCell label="Total Interest Remaining" value={fmt(extra > 0 ? accInterest : stdInterest)} />
+                      {extra > 0 && interestSaved > 0 && (
+                        <DetailCell label="Interest Saved" value={fmt(interestSaved)} />
                       )}
                     </div>
+                    {extra > 0 && monthsSaved > 0 && (
+                      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                          Paying {fmt(extra)}/mo extra saves {fmt(interestSaved)} in interest and pays off {Math.floor(monthsSaved / 12) > 0 ? `${Math.floor(monthsSaved / 12)} year${Math.floor(monthsSaved / 12) !== 1 ? 's' : ''} ` : ''}{monthsSaved % 12 > 0 ? `${monthsSaved % 12} month${monthsSaved % 12 !== 1 ? 's' : ''} ` : ''}earlier
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -633,13 +715,13 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                     <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Equity Progress</p>
                       {(() => {
-                        const equity = homeValue - existingCalc.adjustedBalance;
+                        const equity = homeValue - adjustedBalance;
                         const equityPct = homeValue > 0 ? (equity / homeValue) * 100 : 0;
                         return (
                           <>
                             <div className="grid grid-cols-2 gap-3 mb-3">
                               <DetailCell label="Home Value" value={fmt(homeValue)} />
-                              <DetailCell label="Current Balance" value={fmt(existingCalc.adjustedBalance)} />
+                              <DetailCell label="Current Balance" value={fmt(adjustedBalance)} />
                             </div>
                             <div className="flex justify-between items-baseline mb-2">
                               <span className="text-sm font-semibold text-foreground">{fmt(equity)} equity</span>
@@ -666,48 +748,55 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
 
                 {/* Payoff Year Slider */}
                 <PayoffYearSlider
-                  adjustedBalance={existingCalc.adjustedBalance}
-                  monthlyPI={existingCalc.monthlyPI}
-                  monthlyRate={(parseFloat(state.exInterestRate) || (financialProfile?.mortgage_rate ?? 0)) / 100 / 12}
-                  remainingMonths={existingCalc.remainingMonths}
-                  totalInterestRemaining={existingCalc.totalInterestRemaining}
-                  payoffDate={existingCalc.payoffDate}
+                  adjustedBalance={adjustedBalance}
+                  monthlyPI={pi}
+                  monthlyRate={monthlyRate}
+                  remainingMonths={stdMonths}
+                  totalInterestRemaining={stdInterest}
+                  payoffDate={stdPayoffDate}
                   state={state}
                   setState={setState}
                 />
 
                 {/* CFP Indicators */}
-                <div className="px-6 mt-5 space-y-3">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
-                  <div className={`rounded-xl p-4 border ${housingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Housing Ratio</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
+                {(() => {
+                  const totalMonthly = payment;
+                  const analyzerHousingRatio = grossMonthlyIncome > 0 ? totalMonthly / grossMonthlyIncome : 0;
+                  const analyzerHousingOk = analyzerHousingRatio <= 0.28;
+                  return (
+                    <div className="px-6 mt-5 space-y-3">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
+                      <div className={`rounded-xl p-4 border ${analyzerHousingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Housing Ratio</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
+                          </div>
+                          <span className={`text-lg font-bold ${analyzerHousingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {hasProfile ? pct(analyzerHousingRatio) : '—'}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-lg font-bold ${housingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {hasProfile ? pct(existingCalc.housingRatio) : '—'}
-                      </span>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* AI Insights */}
                 <MortgageInsightsSection
                   householdId={householdId}
                   homePrice={0}
-                  loanAmount={existingCalc.adjustedBalance}
+                  loanAmount={adjustedBalance}
                   downPayment={0}
                   downPaymentPct={0}
-                  interestRate={parseFloat(state.exInterestRate) || 0}
-                  loanTermYears={parseInt(state.exOriginalTerm) || 30}
-                  monthlyPI={existingCalc.monthlyPI}
-                  monthlyTax={existingCalc.escrowTax}
-                  monthlyInsurance={existingCalc.escrowIns}
-                  totalHousing={existingCalc.totalMonthly}
-                  housingRatio={existingCalc.housingRatio}
-                  dtiRatio={existingCalc.dtiRatio}
-                  otherDebt={existingCalc.otherDebt}
+                  interestRate={rate}
+                  loanTermYears={30}
+                  monthlyPI={pi}
+                  monthlyTax={escrow}
+                  monthlyInsurance={0}
+                  totalHousing={payment}
+                  housingRatio={grossMonthlyIncome > 0 ? payment / grossMonthlyIncome : 0}
+                  dtiRatio={0}
+                  otherDebt={0}
                   selectedState={state.selectedState}
                   financialProfile={financialProfile}
                   mortgageMode={'existing'}
