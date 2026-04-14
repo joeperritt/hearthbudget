@@ -195,7 +195,9 @@ export function SettingsView({
       group: newCatGroup,
       notesRequired: false,
     };
-    setNextCats(cats => [...cats, { ...newCat }]);
+    const updated = [...categories, newCat];
+    setNextCats(updated.map(c => ({ ...c })));
+    onUpdateCategories(updated);
     setNewCatName('');
     setNewCatBudget('');
     setShowAddCategory(false);
@@ -217,7 +219,9 @@ export function SettingsView({
       group,
       notesRequired: false,
     };
-    setNextFixed(exps => [...exps, { ...newExp }]);
+    const updated = [...fixedExpenses, newExp];
+    setNextFixed(updated.map(e => ({ ...e })));
+    onUpdateFixedExpenses(updated);
     setNewFixedName('');
     setNewFixedAmount('');
     setShowAddFixed(null);
@@ -231,13 +235,21 @@ export function SettingsView({
 
   const saveNextCatEdit = (id: string) => {
     const v = parseFloat(editValue);
-    if (!isNaN(v)) setNextCats(cats => cats.map(c => c.id === id ? { ...c, budgeted: v } : c));
+    if (!isNaN(v)) {
+      const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
+      setNextCats(updated.map(c => ({ ...c })));
+      onUpdateCategories(updated);
+    }
     setEditingId(null);
   };
 
   const saveNextFixedEdit = (id: string) => {
     const v = parseFloat(editValue);
-    if (!isNaN(v)) setNextFixed(exps => exps.map(e => e.id === id ? { ...e, amount: v } : e));
+    if (!isNaN(v)) {
+      const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
+      setNextFixed(updated.map(e => ({ ...e })));
+      onUpdateFixedExpenses(updated);
+    }
     setEditingId(null);
   };
 
