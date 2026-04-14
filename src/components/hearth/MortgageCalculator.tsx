@@ -477,6 +477,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const escrowTax = parseFloat(state.exEscrowTax) || 0;
     const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
     const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
+    const homeValue = Number(financialProfile?.estimated_home_value) || 0;
 
     // Empty state: non-mortgage user
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
