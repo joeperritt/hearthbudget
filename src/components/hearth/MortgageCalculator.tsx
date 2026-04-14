@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader2, ChevronDown, AlertTriangle, Calculator } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
