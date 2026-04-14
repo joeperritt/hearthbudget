@@ -1322,66 +1322,68 @@ export function SettingsView({
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-28">
-      <div className="px-6 pt-12 safe-top">
-        <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
-          <ArrowLeft size={16} /> Back
-        </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
-        </p>
-      </div>
+    <>
+      <div className="max-w-lg mx-auto pb-28">
+        <div className="px-6 pt-12 safe-top">
+          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
+          </p>
+        </div>
 
-      <div className="px-6 mt-6 pb-6">
-
-        {/* Profiles */}
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
-          <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
-            </div>
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+        <div className="px-6 mt-6 pb-6">
+          {/* Profiles */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
+            <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+              </div>
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Month Navigator */}
-        <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
-          <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="text-center">
-            <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
-            </p>
+          {/* Month Navigator */}
+          <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
+            <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="text-center">
+              <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
+              </p>
+            </div>
+            <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronRight size={20} />
+            </button>
           </div>
-          <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronRight size={20} />
-          </button>
-        </div>
 
-        {/* Content based on month */}
-        {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-        {isFutureMonth && renderFutureMonth()}
+          {/* Content based on month */}
+          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
+          {isFutureMonth && renderFutureMonth()}
 
-        {/* Log Out */}
-        <div className="mt-12 mb-8">
-          <button
-            onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
-          >
-            <LogOut size={16} />
-            <span>Log Out</span>
-            <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
-          </button>
+          {/* Log Out */}
+          <div className="mt-12 mb-8">
+            <button
+              onClick={signOut}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
+            >
+              <LogOut size={16} />
+              <span>Log Out</span>
+              <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      {scopePromptDrawer}
+    </>
   );
 }
