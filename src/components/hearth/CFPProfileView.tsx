@@ -108,11 +108,10 @@ const DEFAULT_PROFILE: ProfileData = {
   dependent_life_coverage: 0,
 };
 
-const INCOME_SOURCE_TYPES = [
-  { value: 'w2', label: 'W-2' },
-  { value: '1099', label: '1099' },
-  { value: 'k1', label: 'K-1' },
-  { value: 'scorp', label: 'S-Corp' },
+const INCOME_GRID_TYPES = [
+  { value: 'w2', label: 'W-2 / Salary' },
+  { value: '1099', label: '1099 / Self-Employed' },
+  { value: 'k1', label: 'K-1 / S-Corp' },
   { value: 'rental', label: 'Rental' },
   { value: 'other', label: 'Other' },
 ];
@@ -120,8 +119,7 @@ const INCOME_SOURCE_TYPES = [
 const INCOME_SOURCE_TOOLTIPS: Record<string, string> = {
   w2: 'Wages or salary from an employer. You receive a W-2 form at tax time. This is the most common income type.',
   '1099': 'Self-employment, freelance, or contract income. You receive a 1099 form and are responsible for paying self-employment taxes.',
-  k1: 'Income from a partnership, S-Corporation, or trust where you are an owner or partner. You receive a Schedule K-1 at tax time.',
-  scorp: 'Income distributed to yourself as an owner of an S-Corporation, typically as a salary plus distributions.',
+  k1: 'Income from a partnership or S-Corporation where you are an owner. You receive a Schedule K-1 at tax time. This differs from 1099 in that it reflects ownership distributions rather than payments for services rendered.',
   rental: 'Income from rental properties you own.',
   other: 'Any other taxable income not covered above.',
 };
