@@ -941,7 +941,7 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
   return (
     <div className="space-y-4">
       {/* Side-by-side income grid */}
-      <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+      <div className="space-y-2">
         {/* Column headers */}
         <div className="flex items-center gap-2">
           <div className="w-[120px] shrink-0" />
