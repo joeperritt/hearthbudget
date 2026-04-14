@@ -486,8 +486,83 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       '15-year-fixed': '15-Year Fixed', '10-year-fixed': '10-Year Fixed',
       '5-1-arm': '5/1 ARM', '7-1-arm': '7/1 ARM', 'other': 'Other',
     };
+    const extra = Number(financialProfile?.mortgage_extra) || 0;
 
-    // Empty state: non-mortgage user
+    // ── Analyzer amortization: compute directly from financial profile ──
+    const monthlyRate = rate / 100 / 12;
+    // Roll balance forward from statement month to today
+    let adjustedBalance = balance;
+    if (statementMonth) {
+      const [sy, sm] = statementMonth.split('-').map(Number);
+      if (sy > 0 && sm > 0) {
+        const now = new Date();
+        const monthsSince = Math.max(0, (now.getFullYear() - sy) * 12 + (now.getMonth() - (sm - 1)));
+        if (monthsSince > 0 && monthlyRate > 0 && pi > 0) {
+          let bal = balance;
+          for (let i = 0; i < monthsSince; i++) {
+            const intCharge = bal * monthlyRate;
+            bal -= (pi - intCharge);
+            if (bal <= 0) { bal = 0; break; }
+          }
+          adjustedBalance = Math.max(0, bal);
+        }
+      }
+    }
+
+    // Loop 1: Standard schedule (P&I only, no extra)
+    let stdMonths = 0;
+    let stdInterest = 0;
+    if (monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
+      let bal = adjustedBalance;
+      while (bal > 0.01 && stdMonths < 600) {
+        const intCharge = bal * monthlyRate;
+        stdInterest += intCharge;
+        const principalPaid = pi - intCharge;
+        bal -= principalPaid;
+        stdMonths++;
+        if (bal <= 0) break;
+      }
+    } else if (pi > 0 && adjustedBalance > 0) {
+      stdMonths = Math.ceil(adjustedBalance / pi);
+    }
+
+    // Loop 2: Accelerated schedule (P&I + extra toward principal)
+    let accMonths = stdMonths;
+    let accInterest = stdInterest;
+    if (extra > 0 && monthlyRate > 0 && pi > 0 && adjustedBalance > 0) {
+      let bal = adjustedBalance;
+      accMonths = 0;
+      accInterest = 0;
+      const totalPmt = pi + extra;
+      while (bal > 0.01 && accMonths < 600) {
+        const intCharge = bal * monthlyRate;
+        accInterest += intCharge;
+        bal -= Math.min(bal, totalPmt - intCharge);
+        accMonths++;
+        if (bal <= 0) break;
+      }
+    }
+
+    const interestSaved = stdInterest - accInterest;
+    const monthsSaved = stdMonths - accMonths;
+
+    const stdPayoffDate = new Date();
+    stdPayoffDate.setMonth(stdPayoffDate.getMonth() + stdMonths);
+    const accPayoffDate = new Date();
+    accPayoffDate.setMonth(accPayoffDate.getMonth() + accMonths);
+
+    // Debug logging for verification
+    console.log('[Mortgage Analyzer] Amortization debug:', {
+      adjustedBalance: Math.round(adjustedBalance * 100) / 100,
+      monthlyRate,
+      pi,
+      extra,
+      'Loop 1 (standard)': { months: stdMonths, totalInterest: Math.round(stdInterest * 100) / 100 },
+      'Loop 2 (accelerated)': { months: accMonths, totalInterest: Math.round(accInterest * 100) / 100 },
+      interestSaved: Math.round(interestSaved * 100) / 100,
+      monthsSaved,
+    });
+
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
       return (
         <div className="max-w-lg mx-auto pb-32">
