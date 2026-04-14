@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info } from 'lucide-react';
+import { ageFromDob } from '@/lib/ageUtils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -103,7 +104,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     return raw.filter((m: any) => m.name).map((m: any) => ({
       name: m.name,
       gross_income: Number(m.gross_income) || 0,
-      age: m.age ? Number(m.age) : undefined,
+      age: m.dob ? ageFromDob(m.dob) : (m.age ? Number(m.age) : undefined),
       income_type: m.income_type || 'W-2',
     }));
   }, [financialProfile]);
