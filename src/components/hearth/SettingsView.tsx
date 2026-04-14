@@ -869,7 +869,7 @@ export function SettingsView({
                               {fmtWhole(c.budgeted)}
                             </button>
                           )}
-                          <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                          <button onClick={() => handleDeleteCategory(c.id, c.name)}
                             className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                             <Trash2 size={12} />
                           </button>
@@ -942,7 +942,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1007,7 +1007,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1059,7 +1059,7 @@ export function SettingsView({
                           {fmtWhole(c.budgeted)}
                         </button>
                       )}
-                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                      <button onClick={() => handleDeleteCategory(c.id, c.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1128,7 +1128,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1180,7 +1180,7 @@ export function SettingsView({
                           {fmtWhole(c.budgeted)}
                         </button>
                       )}
-                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                      <button onClick={() => handleDeleteCategory(c.id, c.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
