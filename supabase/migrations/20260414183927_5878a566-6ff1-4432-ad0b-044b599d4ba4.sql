@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_profiles ADD COLUMN mortgage_loan_type text DEFAULT '30-year-fixed';
