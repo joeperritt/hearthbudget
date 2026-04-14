@@ -953,7 +953,7 @@ function TooltipIcon({ text }: { text: string }) {
   );
 }
 
-
+function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
   const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
 
   const getSourceAmount = (m: MemberIncome, type: string): number => {
