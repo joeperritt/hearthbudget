@@ -1238,6 +1238,44 @@ export function SettingsView({
     );
   }
 
+  const viewMonthShortLabel = format(viewMonthDate, 'MMMM');
+
+  const scopePromptDrawer = (
+    <Drawer open={showScopePrompt} onOpenChange={setShowScopePrompt}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
+            {scopeAction === 'add' ? 'Apply to which months?' : `Remove "${pendingDelete?.name}"?`}
+          </DrawerTitle>
+          <DrawerDescription>
+            {scopeAction === 'add'
+              ? `Where should this ${pendingAdd?.type === 'category' ? 'category' : 'item'} be added?`
+              : `From which months should this be removed?`}
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 pb-6 space-y-2">
+          <button
+            onClick={() => handleScopeChoice('month-only')}
+            className="w-full py-3 rounded-lg bg-card border border-border text-sm font-medium text-foreground active:scale-[0.98] transition-transform"
+          >
+            {isCurrentMonth ? 'This month only' : `${viewMonthShortLabel} only`}
+          </button>
+          <button
+            onClick={() => handleScopeChoice('month-and-future')}
+            className="w-full py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform"
+          >
+            {isCurrentMonth ? 'This month and all future months' : `${viewMonthShortLabel} and all future months`}
+          </button>
+          <button
+            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); }}
+            className="w-full py-2 text-sm text-muted-foreground font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
 
   if (embedded) {
     return (
