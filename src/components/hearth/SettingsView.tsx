@@ -160,12 +160,13 @@ export function SettingsView({
   const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => monthFilteredFixed.map(e => ({ ...e })));
 
   // Reset next cats/fixed when categories change
+  // Reset next cats/fixed when categories or viewed month change
   useEffect(() => {
-    setNextCats(categories.map(c => ({ ...c })));
-  }, [categories]);
+    setNextCats(monthFilteredCats.map(c => ({ ...c })));
+  }, [monthFilteredCats]);
   useEffect(() => {
-    setNextFixed(fixedExpenses.map(e => ({ ...e })));
-  }, [fixedExpenses]);
+    setNextFixed(monthFilteredFixed.map(e => ({ ...e })));
+  }, [monthFilteredFixed]);
 
   const navigateMonth = (dir: 'prev' | 'next') => {
     setViewMonthDate(d => dir === 'prev' ? subMonths(d, 1) : addMonths(d, 1));
