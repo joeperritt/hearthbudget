@@ -441,23 +441,24 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
             <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Members</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
+              <div className="space-y-2">
                 {profile.member_incomes.map((member, i) => (
-                  <div key={member.profile_id} className="space-y-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground">Name</label>
-                      <input value={member.name} onChange={e => updateMemberIncome(i, 'name', e.target.value)}
-                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                  <div key={member.profile_id} className="bg-card rounded-xl shadow-sm p-3 flex items-center gap-3">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Name</label>
+                        <input value={member.name} onChange={e => updateMemberIncome(i, 'name', e.target.value)}
+                          placeholder="Name" className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Date of Birth</label>
+                        <input type="date" value={member.dob || ''} onChange={e => updateMemberIncome(i, 'dob', e.target.value || null)}
+                          className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                        {member.dob && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(member.dob) ?? '—'}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Date of Birth</label>
-                      <input type="date" value={member.dob || ''} onChange={e => updateMemberIncome(i, 'dob', e.target.value || null)}
-                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30" />
-                      {member.dob && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Age: {ageFromDob(member.dob) ?? '—'}</p>
-                      )}
-                    </div>
-                    {i < profile.member_incomes.length - 1 && <div className="border-b border-border pt-1" />}
                   </div>
                 ))}
               </div>
