@@ -161,8 +161,13 @@ export type Database = {
           member_incomes: Json
           monthly_rent: number | null
           mortgage_balance: number | null
+          mortgage_breakdown_enabled: boolean | null
+          mortgage_escrow: number | null
+          mortgage_extra: number | null
           mortgage_payment: number | null
+          mortgage_pi: number | null
           mortgage_rate: number | null
+          mortgage_statement_month: string | null
           non_retirement_investments: number | null
           retirement_balance: number | null
           roth_retirement_balance: number | null
@@ -187,8 +192,13 @@ export type Database = {
           member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null
+          mortgage_breakdown_enabled?: boolean | null
+          mortgage_escrow?: number | null
+          mortgage_extra?: number | null
           mortgage_payment?: number | null
+          mortgage_pi?: number | null
           mortgage_rate?: number | null
+          mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
           retirement_balance?: number | null
           roth_retirement_balance?: number | null
@@ -213,8 +223,13 @@ export type Database = {
           member_incomes?: Json
           monthly_rent?: number | null
           mortgage_balance?: number | null
+          mortgage_breakdown_enabled?: boolean | null
+          mortgage_escrow?: number | null
+          mortgage_extra?: number | null
           mortgage_payment?: number | null
+          mortgage_pi?: number | null
           mortgage_rate?: number | null
+          mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
           retirement_balance?: number | null
           roth_retirement_balance?: number | null
