@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader2, ChevronDown, AlertTriangle, Calculator } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -125,9 +125,10 @@ interface MortgageCalculatorProps {
   householdId: string | null;
   shoppingOnly?: boolean;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToCalculator?: (id: string) => void;
 }
 
-export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile }: MortgageCalculatorProps) {
+export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile, onNavigateToCalculator }: MortgageCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxEstCaption, setTaxEstCaption] = useState('');
@@ -466,9 +467,72 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
   // ANALYZER MODE (existing mortgage, read-only from profile)
   // ═══════════════════════════════════════════
   if (isAnalyzer) {
+    const housingType = financialProfile?.housing_type || '';
     const balance = Number(financialProfile?.mortgage_balance) || 0;
     const rate = Number(financialProfile?.mortgage_rate) || 0;
     const payment = Number(financialProfile?.mortgage_payment) || 0;
+    const statementMonth = financialProfile?.mortgage_statement_month || '';
+
+    // Empty state: non-mortgage user
+    if (housingType === 'rent' || housingType === 'own_no_mortgage') {
+      return (
+        <div className="max-w-lg mx-auto pb-32">
+          <div className="px-6 pt-12 safe-top flex items-center gap-3">
+            <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted">
+              <ArrowLeft size={20} className="text-foreground" />
+            </button>
+            <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
+          </div>
+          <div className="flex flex-col items-center justify-center px-6 pt-24 text-center">
+            <Calculator size={40} className="text-muted-foreground/30 mb-4" />
+            <p className="text-base font-semibold text-foreground">According to your Financial Profile, you don't currently have a mortgage.</p>
+            {onNavigateToProfile && (
+              <button onClick={() => onNavigateToProfile('housing')} className="text-sm font-semibold text-accent mt-4">
+                Update your profile →
+              </button>
+            )}
+            <p className="text-sm text-muted-foreground mt-6">
+              Want to explore what a mortgage might look like?{' '}
+              {onNavigateToCalculator ? (
+                <button onClick={() => onNavigateToCalculator('mortgage-shopping')} className="text-accent font-semibold">
+                  Try the Mortgage Calculator →
+                </button>
+              ) : (
+                <span className="text-accent font-semibold">Try the Mortgage Calculator.</span>
+              )}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Empty state: incomplete housing data
+    const missingFields = !statementMonth || balance <= 0 || rate <= 0 || payment <= 0;
+    if (missingFields) {
+      return (
+        <div className="max-w-lg mx-auto pb-32">
+          <div className="px-6 pt-12 safe-top flex items-center gap-3">
+            <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted">
+              <ArrowLeft size={20} className="text-foreground" />
+            </button>
+            <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
+          </div>
+          <div className="flex flex-col items-center justify-center px-6 pt-24 text-center">
+            <AlertTriangle size={40} className="text-accent mb-4" />
+            <p className="text-base font-semibold text-foreground">More information required to use this tool.</p>
+            <p className="text-sm text-muted-foreground mt-2">Complete your housing details — statement month, current balance, interest rate, and monthly minimum payment.</p>
+            {onNavigateToProfile && (
+              <button
+                onClick={() => onNavigateToProfile('housing')}
+                className="mt-6 px-6 py-2.5 rounded-lg bg-accent text-accent-foreground text-sm font-semibold active:scale-95 transition-transform"
+              >
+                Complete Housing Information
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="max-w-lg mx-auto pb-32">
@@ -493,35 +557,23 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 </button>
               )}
             </div>
-
-            {balance === 0 && payment === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground">No mortgage data in your Financial Profile.</p>
-                {onNavigateToProfile && (
-                  <button onClick={() => onNavigateToProfile('housing')} className="text-sm font-semibold text-accent mt-2">
-                    Set up Housing in Financial Profile →
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <ReadOnlyField label="Current Balance" value={fmt(balance)} />
-                <ReadOnlyField label="Interest Rate" value={rate > 0 ? `${rate}%` : 'Not set'} />
-                <ReadOnlyField label="Monthly P&I" value={payment > 0 ? fmt(payment) : 'Not set'} />
-                {(parseFloat(state.exEscrowTax) || 0) > 0 && (
-                  <ReadOnlyField label="Escrow — Tax" value={fmt(parseFloat(state.exEscrowTax))} />
-                )}
-                {(parseFloat(state.exEscrowInsurance) || 0) > 0 && (
-                  <ReadOnlyField label="Escrow — Insurance" value={fmt(parseFloat(state.exEscrowInsurance))} />
-                )}
-                {(parseFloat(state.exEscrowPMI) || 0) > 0 && (
-                  <ReadOnlyField label="Escrow — PMI" value={fmt(parseFloat(state.exEscrowPMI))} />
-                )}
-                {(parseFloat(state.exOriginalLoanAmount) || 0) > 0 && (
-                  <ReadOnlyField label="Original Loan Amount" value={fmt(parseFloat(state.exOriginalLoanAmount))} />
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <ReadOnlyField label="Current Balance" value={fmt(balance)} />
+              <ReadOnlyField label="Interest Rate" value={rate > 0 ? `${rate}%` : 'Not set'} />
+              <ReadOnlyField label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : 'Not set'} />
+              {(parseFloat(state.exEscrowTax) || 0) > 0 && (
+                <ReadOnlyField label="Escrow — Tax" value={fmt(parseFloat(state.exEscrowTax))} />
+              )}
+              {(parseFloat(state.exEscrowInsurance) || 0) > 0 && (
+                <ReadOnlyField label="Escrow — Insurance" value={fmt(parseFloat(state.exEscrowInsurance))} />
+              )}
+              {(parseFloat(state.exEscrowPMI) || 0) > 0 && (
+                <ReadOnlyField label="Escrow — PMI" value={fmt(parseFloat(state.exEscrowPMI))} />
+              )}
+              {(parseFloat(state.exOriginalLoanAmount) || 0) > 0 && (
+                <ReadOnlyField label="Original Loan Amount" value={fmt(parseFloat(state.exOriginalLoanAmount))} />
+              )}
+            </div>
           </div>
         </div>
 

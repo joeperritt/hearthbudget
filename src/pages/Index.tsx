@@ -279,6 +279,12 @@ const Index = () => {
     setActiveTab('plan');
   }, []);
 
+  // Navigate to a calculator/tool
+  const navigateToCalculator = useCallback((toolId: string) => {
+    setPlanSubView(toolId as PlanSubView);
+    setActiveTab('plan');
+  }, []);
+
   // Helper to get back target for tools
   const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
@@ -346,7 +352,7 @@ const Index = () => {
   const renderTool = (toolId: string, onBack: () => void) => {
     switch (toolId) {
       case 'mortgage-analyzer':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToCalculator={navigateToCalculator} />;
       case 'debt-payoff':
         return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'tax-estimator':
