@@ -623,6 +623,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     </div>
                     <NumField label="Current Balance" value={profile.mortgage_balance} onChange={v => update('mortgage_balance', v)} prefix="$" />
                   </div>
+                  <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
                   <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
                   <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 
