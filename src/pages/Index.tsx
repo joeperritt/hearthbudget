@@ -51,6 +51,8 @@ const Index = () => {
     activeMonth, loading, householdId,
     addTransactions, deleteTransaction, addTransfer,
     updateCategories, updateFixedExpenses, startNewMonth,
+    addCategoryForMonth, addFixedExpenseForMonth,
+    removeCategoryFromMonth, removeFixedExpenseFromMonth,
     planningData, updatePlanningData,
   } = useBudgetData();
 
