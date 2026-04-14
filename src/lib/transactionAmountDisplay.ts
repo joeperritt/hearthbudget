@@ -33,7 +33,8 @@ export function getTransactionAmountPresentation(
     }
   }
 
-  if (options.isExcluded) {
+  // Credit card refunds/credits stored as deposits with negative amounts
+  if (transaction.transactionType === 'deposit' || options.isExcluded) {
     return { colorClassName: 'text-success', prefix: '+', value };
   }
 
