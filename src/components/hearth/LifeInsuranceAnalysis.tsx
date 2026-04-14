@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
+import { ageFromDob, yearsUntilAge } from '@/lib/ageUtils';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -74,13 +75,14 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
         const profileDeps = Array.isArray((fp as any).dependents) ? (fp as any).dependents : [];
         setDependents(profileDeps);
 
-        // Auto-calculate years until independent from youngest dependent
+        // Auto-calculate years until independent from youngest dependent DOB
         if (!state.yearsUntilIndependent && profileDeps.length > 0) {
-          const ages = profileDeps.map((d: any) => Number(d.age) || 0).filter((a: number) => a > 0);
-          if (ages.length > 0) {
-            const youngest = Math.min(...ages);
-            const yearsLeft = Math.max(0, 22 - youngest);
-            setState({ yearsUntilIndependent: String(yearsLeft) });
+          const yearsLeftArr = profileDeps
+            .map((d: any) => d.dob ? yearsUntilAge(d.dob, 22) : (d.age ? Math.max(0, 22 - Number(d.age)) : null))
+            .filter((y: number | null): y is number => y !== null && y > 0);
+          if (yearsLeftArr.length > 0) {
+            const maxYears = Math.max(...yearsLeftArr); // youngest dependent = most years left
+            setState({ yearsUntilIndependent: String(maxYears) });
           }
         }
 
