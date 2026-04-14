@@ -279,6 +279,12 @@ const Index = () => {
     setActiveTab('plan');
   }, []);
 
+  // Navigate to a calculator/tool
+  const navigateToCalculator = useCallback((toolId: string) => {
+    setPlanSubView(toolId as PlanSubView);
+    setActiveTab('plan');
+  }, []);
+
   // Helper to get back target for tools
   const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
