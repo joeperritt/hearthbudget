@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Create household
     const { data: household, error: hhError } = await adminClient
       .from("households")
-      .insert({ name: "Perritti Family" })
+      .insert({ name: "Perritt Family" })
       .select()
       .single();
 

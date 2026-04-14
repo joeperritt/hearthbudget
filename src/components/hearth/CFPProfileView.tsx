@@ -294,6 +294,17 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
   }, [save]);
 
+  const householdNameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateHouseholdName = useCallback((name: string) => {
+    setHouseholdName(name);
+    if (householdNameTimeoutRef.current) clearTimeout(householdNameTimeoutRef.current);
+    householdNameTimeoutRef.current = setTimeout(async () => {
+      if (!householdId) return;
+      await supabase.from('households').update({ name } as any).eq('id', householdId);
+      setLastSaved(new Date());
+    }, 1500);
+  }, [householdId]);
+
   const update = (field: keyof ProfileData, value: any) => {
     setProfile(p => {
       const updated = { ...p, [field]: value };
@@ -437,6 +448,18 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         {/* Profile Tab */}
         {activeProfileTab === 'profile' && (
           <div className="space-y-4">
+            <section>
+              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Name</h2>
+              <div className="bg-card rounded-xl shadow-sm p-4">
+                <input
+                  value={householdName}
+                  onChange={e => updateHouseholdName(e.target.value)}
+                  placeholder="e.g. Smith Family"
+                  className="w-full px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+              </div>
+            </section>
+
             <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Members</h2>
               <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
