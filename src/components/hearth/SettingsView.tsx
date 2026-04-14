@@ -92,7 +92,7 @@ export function SettingsView({
   const nextMonthKey = format(nextMonth, 'yyyy-MM');
 
   // Month navigation
-  const [viewMonthDate, setViewMonthDate] = useState<Date>(nextMonth);
+  const [viewMonthDate, setViewMonthDate] = useState<Date>(embedded ? currentMonth : nextMonth);
   const viewMonthKey = format(viewMonthDate, 'yyyy-MM');
   const viewMonthLabel = format(viewMonthDate, 'MMMM yyyy');
 
