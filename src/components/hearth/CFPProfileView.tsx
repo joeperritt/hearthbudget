@@ -168,7 +168,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>(initialTab || 'profile');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [householdName, setHouseholdName] = useState('');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
 
