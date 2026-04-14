@@ -292,8 +292,14 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const save = useCallback(async (profileData: ProfileData) => {
     if (!householdId) return;
     setSaving(true);
-    const combinedGross = profileData.member_incomes.reduce((s, m) => s + m.gross_income, 0);
-    const primaryIncomeType = profileData.member_incomes[0]?.income_type || 'w2';
+    // Compute gross_income from income_sources for each member before saving
+    const membersWithTotals = profileData.member_incomes.map(m => ({
+      ...m,
+      gross_income: (m.income_sources || []).reduce((s, src) => s + src.amount, 0),
+      income_type: (m.income_sources || []).length === 1 ? m.income_sources![0].type : (m.income_sources || []).length > 1 ? 'mixed' : 'w2',
+    }));
+    const combinedGross = membersWithTotals.reduce((s, m) => s + m.gross_income, 0);
+    const primaryIncomeType = membersWithTotals[0]?.income_type || 'w2';
 
     const payload: any = {
       household_id: householdId,
