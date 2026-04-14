@@ -52,6 +52,8 @@ export interface FixedExpense {
   amount: number;
   group: 'bills' | 'savings' | 'tithe';
   notesRequired: boolean;
+  startMonth?: string | null;
+  endMonth?: string | null;
 }
 
 export interface BudgetTransfer {
