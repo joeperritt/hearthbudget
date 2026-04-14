@@ -38,6 +38,7 @@ interface MemberIncome {
   income_type: string;
   dob?: string | null;
   age?: number;
+  age?: number;
   pay_frequency: string;
   mixed_breakdown?: { w2: number; k1: number; '1099': number; scorp: number };
 }
