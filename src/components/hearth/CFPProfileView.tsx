@@ -412,7 +412,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const completeness = (() => {
     const total = 6;
     let filled = 0;
-    if (profile.member_incomes.some(m => m.gross_income > 0)) filled++;
+    if (profile.member_incomes.some(m => (m.income_sources || []).some(s => s.amount > 0))) filled++;
     if (profile.filing_status && profile.state) filled++;
     if (profile.housing_type) filled++;
     if (profile.emergency_fund_balance > 0 || profile.retirement_balance > 0 || profile.non_retirement_investments > 0) filled++;
