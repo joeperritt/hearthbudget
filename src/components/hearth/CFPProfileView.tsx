@@ -881,3 +881,161 @@ function NumFieldInline({ value, onChange }: { value: number; onChange: (v: numb
     </div>
   );
 }
+
+function fmtComma(n: number): string {
+  if (!n) return '';
+  return n.toLocaleString('en-US');
+}
+
+function parseComma(s: string): number {
+  return parseFloat(s.replace(/,/g, '')) || 0;
+}
+
+function CurrencyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [display, setDisplay] = useState(value ? fmtComma(value) : '');
+  useEffect(() => { setDisplay(value ? fmtComma(value) : ''); }, [value]);
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-muted-foreground shrink-0">$</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={display}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^0-9.]/g, '');
+          setDisplay(raw ? parseFloat(raw).toLocaleString('en-US') : '');
+          onChange(parseFloat(raw) || 0);
+        }}
+        onBlur={() => setDisplay(value ? fmtComma(value) : '')}
+        placeholder="0"
+        className="flex-1 min-w-0 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+      />
+    </div>
+  );
+}
+
+function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
+  const [showTypePicker, setShowTypePicker] = useState<number | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
+
+  const memberTotal = (m: MemberIncome) => (m.income_sources || []).reduce((s, src) => s + src.amount, 0);
+  const householdTotal = members.reduce((s, m) => s + memberTotal(m), 0);
+
+  const addSource = (memberIdx: number, type: string) => {
+    const m = members[memberIdx];
+    const sources = [...(m.income_sources || []), { type, amount: 0 }];
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+    setShowTypePicker(null);
+  };
+
+  const updateSource = (memberIdx: number, srcIdx: number, amount: number) => {
+    const m = members[memberIdx];
+    const sources = (m.income_sources || []).map((s, j) => j === srcIdx ? { ...s, amount } : s);
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+  };
+
+  const removeSource = (memberIdx: number, srcIdx: number) => {
+    const m = members[memberIdx];
+    const sources = (m.income_sources || []).filter((_, j) => j !== srcIdx);
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+  };
+
+  const getTypeLabel = (type: string) => INCOME_SOURCE_TYPES.find(t => t.value === type)?.label || type;
+
+  return (
+    <div className="space-y-4">
+      {members.map((member, i) => (
+        <section key={member.profile_id}>
+          <h2 className="font-display text-sm font-semibold text-foreground mb-3">{member.name || `Member ${i + 1}`}</h2>
+          <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
+            {/* Income sources */}
+            {(member.income_sources || []).map((src, j) => (
+              <div key={j} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-foreground">{getTypeLabel(src.type)}</span>
+                  <button
+                    onClick={() => setTooltipOpen(tooltipOpen === `${i}-${j}` ? null : `${i}-${j}`)}
+                    className="text-accent"
+                  >
+                    <Info size={12} />
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => removeSource(i, j)} className="text-destructive/60 hover:text-destructive">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+                {tooltipOpen === `${i}-${j}` && (
+                  <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed">
+                    {INCOME_SOURCE_TOOLTIPS[src.type] || ''}
+                  </p>
+                )}
+                <CurrencyInput value={src.amount} onChange={v => updateSource(i, j, v)} />
+              </div>
+            ))}
+
+            {/* Add source */}
+            {showTypePicker === i ? (
+              <div className="bg-muted rounded-lg p-2 space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">Select income type</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {INCOME_SOURCE_TYPES.map(t => (
+                    <button key={t.value} onClick={() => addSource(i, t.value)}
+                      className="py-1.5 px-2 rounded-lg text-[10px] font-medium bg-background text-foreground hover:bg-accent/10 transition-colors border border-border">
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setShowTypePicker(null)} className="text-[10px] text-muted-foreground mt-1">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setShowTypePicker(i)}
+                className="flex items-center gap-1 text-xs text-accent font-medium active:scale-95 transition-transform">
+                <Plus size={14} /> Add Income Source
+              </button>
+            )}
+
+            {/* Member total */}
+            {(member.income_sources || []).length > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-xs font-medium text-foreground">Total</span>
+                <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal(member))}</span>
+              </div>
+            )}
+
+            {/* Pay Frequency */}
+            <div>
+              <label className="text-xs text-muted-foreground">Pay Frequency</label>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                {PAY_FREQUENCIES.map(f => (
+                  <button key={f.value} onClick={() => onUpdateMember(i, { ...member, pay_frequency: f.value })}
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
+                      (member.pay_frequency || 'biweekly') === f.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {/* Household Income Summary */}
+      <section>
+        <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Income Summary</h2>
+        <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+          {members.map((m, i) => (
+            <div key={m.profile_id} className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{m.name || `Member ${i + 1}`}</span>
+              <span className="text-sm tabular-nums text-foreground">{fmt(memberTotal(m))}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="text-xs font-semibold text-foreground">Combined Household Gross</span>
+            <span className="text-sm font-bold text-foreground tabular-nums">{fmt(householdTotal)}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
