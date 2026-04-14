@@ -31,11 +31,17 @@ interface MemberCoverage {
   mixedTermPct: number;
 }
 
+interface IncomeSource {
+  type: string;
+  amount: number;
+}
+
 interface MemberIncome {
   profile_id: string;
   name: string;
   gross_income: number;
   income_type: string;
+  income_sources?: IncomeSource[];
   dob?: string | null;
   age?: number;
   pay_frequency: string;
