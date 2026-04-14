@@ -33,12 +33,12 @@ export function getTransactionAmountPresentation(
       return { colorClassName: 'text-destructive', prefix: '-', value };
     }
 
-    // Fallback: Wells Fargo convention — positive = money in, negative = money out
-    if (transaction.amount > 0) {
+    // Checking convention: negative amount = inbound credit, positive = outbound debit
+    if (transaction.amount < 0) {
       return { colorClassName: 'text-success', prefix: '+', value };
     }
 
-    if (transaction.amount < 0) {
+    if (transaction.amount > 0) {
       return { colorClassName: 'text-destructive', prefix: '-', value };
     }
   }
