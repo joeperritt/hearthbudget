@@ -620,10 +620,10 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     <NumField label="Current Balance" value={profile.mortgage_balance} onChange={v => update('mortgage_balance', v)} prefix="$" />
                   </div>
                   <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
-                  <NumField label="Total Monthly Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
+                  <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-foreground">Break down P&I vs Escrow</span>
+                    <span className="text-xs text-foreground">Break down payment</span>
                     <button onClick={() => update('mortgage_breakdown_enabled', !profile.mortgage_breakdown_enabled)}
                       className={`w-10 h-5 rounded-full transition-colors relative ${profile.mortgage_breakdown_enabled ? 'bg-accent' : 'bg-muted'}`}>
                       <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${profile.mortgage_breakdown_enabled ? 'translate-x-5' : ''}`} />
@@ -631,11 +631,32 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                   </div>
                   {profile.mortgage_breakdown_enabled && (
                     <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-                      <NumField label="Principal & Interest" value={profile.mortgage_pi} onChange={v => update('mortgage_pi', v)} prefix="$" compact />
-                      <NumField label="Escrow (Tax + Ins + PMI)" value={profile.mortgage_escrow} onChange={v => update('mortgage_escrow', v)} prefix="$" compact />
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs text-muted-foreground">Principal & Interest</label>
+                        <TooltipIcon text="The portion of your payment that goes toward paying down your loan balance (principal) and the cost of borrowing (interest). This is the core of your mortgage payment." />
+                      </div>
+                      <NumField label="" value={profile.mortgage_pi} onChange={v => update('mortgage_pi', v)} prefix="$" compact />
+                      <div className="flex items-center gap-1 mb-1 mt-2">
+                        <label className="text-xs text-muted-foreground">Escrow</label>
+                        <TooltipIcon text="The portion collected by your lender to pay property taxes, homeowners insurance, and PMI on your behalf. It is held in an escrow account and paid out when bills are due." />
+                      </div>
+                      <NumField label="" value={profile.mortgage_escrow} onChange={v => update('mortgage_escrow', v)} prefix="$" compact />
+                      <div className="pt-1 border-t border-border mt-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Total Minimum Payment</span>
+                          <span className="text-xs font-semibold text-foreground">{fmt(profile.mortgage_pi + profile.mortgage_escrow)}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  <NumField label="Extra Toward Principal (optional)" value={profile.mortgage_extra} onChange={v => update('mortgage_extra', v)} prefix="$" />
+
+                  <div className="pt-1">
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-xs text-muted-foreground">Extra Toward Principal (optional)</label>
+                      <TooltipIcon text="Any amount you pay above your minimum payment that goes directly toward reducing your loan balance. This can significantly reduce your total interest paid and shorten your loan term." />
+                    </div>
+                    <NumField label="" value={profile.mortgage_extra} onChange={v => update('mortgage_extra', v)} prefix="$" />
+                  </div>
                 </div>
               )}
 
