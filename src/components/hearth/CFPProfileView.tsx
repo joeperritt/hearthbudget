@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Trash2, Shield, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { ageFromDob, ageToDobApprox, formatDob } from '@/lib/ageUtils';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -19,6 +20,7 @@ interface Debt {
 interface Dependent {
   name: string;
   age: number | null;
+  dob?: string | null;
 }
 
 interface MemberCoverage {
@@ -34,6 +36,7 @@ interface MemberIncome {
   name: string;
   gross_income: number;
   income_type: string;
+  dob?: string | null;
   age?: number;
   pay_frequency: string;
   mixed_breakdown?: { w2: number; k1: number; '1099': number; scorp: number };
