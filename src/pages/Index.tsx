@@ -352,7 +352,7 @@ const Index = () => {
   const renderTool = (toolId: string, onBack: () => void) => {
     switch (toolId) {
       case 'mortgage-analyzer':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToCalculator={navigateToCalculator} />;
       case 'debt-payoff':
         return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'tax-estimator':
