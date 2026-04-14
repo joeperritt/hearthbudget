@@ -958,7 +958,7 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
           return (
             <div key={t.value}>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 w-[120px] shrink-0">
+                <div className="flex items-center gap-1 w-[140px] shrink-0">
                   <span className="text-xs font-medium text-foreground">{t.label}</span>
                   <button
                     onClick={() => setTooltipOpen(tooltipOpen === tipKey ? null : tipKey)}
