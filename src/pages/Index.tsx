@@ -438,6 +438,10 @@ const Index = () => {
             currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
+            onAddCategoryForMonth={addCategoryForMonth}
+            onAddFixedExpenseForMonth={addFixedExpenseForMonth}
+            onRemoveCategoryFromMonth={removeCategoryFromMonth}
+            onRemoveFixedExpenseFromMonth={removeFixedExpenseFromMonth}
             unassignedCount={unassignedTransactions.length}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
