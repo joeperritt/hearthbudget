@@ -235,11 +235,10 @@ export function SettingsView({
       group: newCatGroup,
       notesRequired: false,
     };
-    const updated = [...categories, newCat];
-    setNextCats(updated.map(c => ({ ...c })));
-    onUpdateCategories(updated);
-    setNewCatName('');
-    setNewCatBudget('');
+    // Show scope prompt
+    setPendingAdd({ type: 'category', item: newCat });
+    setScopeAction('add');
+    setShowScopePrompt(true);
     setShowAddCategory(false);
   };
 
@@ -259,12 +258,86 @@ export function SettingsView({
       group,
       notesRequired: false,
     };
-    const updated = [...fixedExpenses, newExp];
-    setNextFixed(updated.map(e => ({ ...e })));
-    onUpdateFixedExpenses(updated);
-    setNewFixedName('');
-    setNewFixedAmount('');
+    // Show scope prompt
+    setPendingAdd({ type: 'fixed', item: newExp, fixedGroup: group });
+    setScopeAction('add');
+    setShowScopePrompt(true);
     setShowAddFixed(null);
+  };
+
+  // Handle scope choice for add
+  const handleScopeChoice = async (scope: ScopeChoice) => {
+    setShowScopePrompt(false);
+
+    if (scopeAction === 'add' && pendingAdd) {
+      if (pendingAdd.type === 'category') {
+        const cat = pendingAdd.item as BudgetCategory;
+        if (isCurrentMonth) {
+          if (scope === 'month-and-future') {
+            // Global add (no start_month restriction)
+            const updated = [...categories, cat];
+            onUpdateCategories(updated);
+          } else {
+            // Current month only — use month-scoped add
+            if (onAddCategoryForMonth) {
+              await onAddCategoryForMonth(cat, scope, viewMonthKey);
+            }
+          }
+        } else {
+          // Future month — always use month-scoped add
+          if (onAddCategoryForMonth) {
+            await onAddCategoryForMonth(cat, scope, viewMonthKey);
+          }
+        }
+        setNewCatName('');
+        setNewCatBudget('');
+      } else {
+        const exp = pendingAdd.item as FixedExpense;
+        if (isCurrentMonth) {
+          if (scope === 'month-and-future') {
+            const updated = [...fixedExpenses, exp];
+            onUpdateFixedExpenses(updated);
+          } else {
+            if (onAddFixedExpenseForMonth) {
+              await onAddFixedExpenseForMonth(exp, scope, viewMonthKey);
+            }
+          }
+        } else {
+          if (onAddFixedExpenseForMonth) {
+            await onAddFixedExpenseForMonth(exp, scope, viewMonthKey);
+          }
+        }
+        setNewFixedName('');
+        setNewFixedAmount('');
+      }
+      setPendingAdd(null);
+    }
+
+    if (scopeAction === 'delete' && pendingDelete) {
+      if (pendingDelete.type === 'category') {
+        if (onRemoveCategoryFromMonth) {
+          await onRemoveCategoryFromMonth(pendingDelete.slug, viewMonthKey, scope);
+        }
+      } else {
+        if (onRemoveFixedExpenseFromMonth) {
+          await onRemoveFixedExpenseFromMonth(pendingDelete.slug, viewMonthKey, scope);
+        }
+      }
+      setPendingDelete(null);
+    }
+  };
+
+  // Scoped delete handlers
+  const handleDeleteCategory = (id: string, name: string) => {
+    setPendingDelete({ type: 'category', slug: id, name });
+    setScopeAction('delete');
+    setShowScopePrompt(true);
+  };
+
+  const handleDeleteFixedExpense = (id: string, name: string) => {
+    setPendingDelete({ type: 'fixed', slug: id, name });
+    setScopeAction('delete');
+    setShowScopePrompt(true);
   };
 
   const toggleFixedNotesRequired = (id: string) => {
