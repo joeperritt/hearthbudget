@@ -472,6 +472,11 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const rate = Number(financialProfile?.mortgage_rate) || 0;
     const payment = Number(financialProfile?.mortgage_payment) || 0;
     const statementMonth = financialProfile?.mortgage_statement_month || '';
+    const pi = Number(financialProfile?.mortgage_pi) || 0;
+    const escrow = Number(financialProfile?.mortgage_escrow) || 0;
+    const escrowTax = parseFloat(state.exEscrowTax) || 0;
+    const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
+    const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
 
     // Empty state: non-mortgage user
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
