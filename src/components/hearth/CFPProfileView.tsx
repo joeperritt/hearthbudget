@@ -938,7 +938,22 @@ function CurrencyInput({ value, onChange }: { value: number; onChange: (v: numbe
   );
 }
 
-function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
+function TooltipIcon({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button onClick={() => setOpen(!open)} className="text-accent"><Info size={12} /></button>
+      {open && (
+        <span className="absolute left-0 top-5 z-50 w-56 text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed shadow-md border border-border">
+          {text}
+          <button onClick={() => setOpen(false)} className="block text-accent text-[9px] mt-1">Close</button>
+        </span>
+      )}
+    </span>
+  );
+}
+
+
   const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
 
   const getSourceAmount = (m: MemberIncome, type: string): number => {
