@@ -19,6 +19,8 @@ function dbToCat(row: Record<string, unknown>): BudgetCategory {
     budgeted: Number(row.budgeted),
     group: row.group as BudgetCategory['group'],
     notesRequired: (row.notes_required as boolean) ?? false,
+    startMonth: (row.start_month as string | null) ?? null,
+    endMonth: (row.end_month as string | null) ?? null,
   };
 }
 
@@ -29,7 +31,21 @@ function dbToFixed(row: Record<string, unknown>): FixedExpense {
     amount: Number(row.amount),
     group: row.group as FixedExpense['group'],
     notesRequired: (row.notes_required as boolean) ?? false,
+    startMonth: (row.start_month as string | null) ?? null,
+    endMonth: (row.end_month as string | null) ?? null,
   };
+}
+
+/** Check if a category/expense is active for a given month */
+export function isActiveForMonth(item: { startMonth?: string | null; endMonth?: string | null }, month: string): boolean {
+  if (item.startMonth && item.startMonth > month) return false;
+  if (item.endMonth && item.endMonth < month) return false;
+  return true;
+}
+
+/** Filter categories/expenses to only those active for a given month */
+export function filterForMonth<T extends { startMonth?: string | null; endMonth?: string | null }>(items: T[], month: string): T[] {
+  return items.filter(item => isActiveForMonth(item, month));
 }
 
 function dbToTx(row: Record<string, unknown>): Transaction {
@@ -283,6 +299,124 @@ export function useBudgetData() {
     setFixedExpenses(exps);
   }, [householdId]);
 
+  // --- Targeted month-scoped add/remove ---
+
+  /** Add a single category with optional month scoping */
+  const addCategoryForMonth = useCallback(async (cat: BudgetCategory, scope: 'month-only' | 'month-and-future', month: string) => {
+    if (!householdId) return;
+    const startMonth = month;
+    const endMonth = scope === 'month-only' ? month : null;
+    const sortOrder = categories.length;
+    await supabase.from('budget_categories').insert({
+      household_id: householdId,
+      slug: cat.id,
+      name: cat.name,
+      budgeted: cat.budgeted,
+      group: cat.group,
+      sort_order: sortOrder,
+      notes_required: cat.notesRequired ?? false,
+      start_month: startMonth,
+      end_month: endMonth,
+    } as any);
+    const newCat = { ...cat, startMonth, endMonth };
+    setCategories(prev => [...prev, newCat]);
+  }, [householdId, categories.length]);
+
+  /** Add a single fixed expense with optional month scoping */
+  const addFixedExpenseForMonth = useCallback(async (exp: FixedExpense, scope: 'month-only' | 'month-and-future', month: string) => {
+    if (!householdId) return;
+    const startMonth = month;
+    const endMonth = scope === 'month-only' ? month : null;
+    const sortOrder = fixedExpenses.length;
+    await supabase.from('fixed_expenses').insert({
+      household_id: householdId,
+      slug: exp.id,
+      name: exp.name,
+      amount: exp.amount,
+      group: exp.group,
+      sort_order: sortOrder,
+      notes_required: exp.notesRequired ?? false,
+      start_month: startMonth,
+      end_month: endMonth,
+    } as any);
+    const newExp = { ...exp, startMonth, endMonth };
+    setFixedExpenses(prev => [...prev, newExp]);
+  }, [householdId, fixedExpenses.length]);
+
+  /** Remove a category from a specific month scope */
+  const removeCategoryFromMonth = useCallback(async (slug: string, month: string, scope: 'month-only' | 'month-and-future') => {
+    if (!householdId) return;
+    const cat = categories.find(c => c.id === slug);
+    if (!cat) return;
+
+    if (scope === 'month-and-future') {
+      if (cat.startMonth && cat.startMonth >= month) {
+        // Category was added starting at or after this month — just delete it
+        await supabase.from('budget_categories').delete().eq('household_id', householdId).eq('slug', slug);
+        setCategories(prev => prev.filter(c => c.id !== slug));
+      } else {
+        // Category existed before this month — set end_month to previous month
+        const [y, m] = month.split('-').map(Number);
+        const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+        await supabase.from('budget_categories').update({ end_month: prevMonth } as any).eq('household_id', householdId).eq('slug', slug);
+        setCategories(prev => prev.map(c => c.id === slug ? { ...c, endMonth: prevMonth } : c));
+      }
+    } else {
+      // month-only removal
+      if (cat.startMonth === month && cat.endMonth === month) {
+        // Was added for this month only — just delete
+        await supabase.from('budget_categories').delete().eq('household_id', householdId).eq('slug', slug);
+        setCategories(prev => prev.filter(c => c.id !== slug));
+      } else if (cat.startMonth === month) {
+        // Started this month, push start to next month
+        const [y, m] = month.split('-').map(Number);
+        const nextMo = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+        await supabase.from('budget_categories').update({ start_month: nextMo } as any).eq('household_id', householdId).eq('slug', slug);
+        setCategories(prev => prev.map(c => c.id === slug ? { ...c, startMonth: nextMo } : c));
+      } else {
+        // Global category — can't remove from single month without splitting. Fall back to month-and-future.
+        const [y, m] = month.split('-').map(Number);
+        const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+        await supabase.from('budget_categories').update({ end_month: prevMonth } as any).eq('household_id', householdId).eq('slug', slug);
+        setCategories(prev => prev.map(c => c.id === slug ? { ...c, endMonth: prevMonth } : c));
+      }
+    }
+  }, [householdId, categories]);
+
+  /** Remove a fixed expense from a specific month scope */
+  const removeFixedExpenseFromMonth = useCallback(async (slug: string, month: string, scope: 'month-only' | 'month-and-future') => {
+    if (!householdId) return;
+    const exp = fixedExpenses.find(e => e.id === slug);
+    if (!exp) return;
+
+    if (scope === 'month-and-future') {
+      if (exp.startMonth && exp.startMonth >= month) {
+        await supabase.from('fixed_expenses').delete().eq('household_id', householdId).eq('slug', slug);
+        setFixedExpenses(prev => prev.filter(e => e.id !== slug));
+      } else {
+        const [y, m] = month.split('-').map(Number);
+        const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+        await supabase.from('fixed_expenses').update({ end_month: prevMonth } as any).eq('household_id', householdId).eq('slug', slug);
+        setFixedExpenses(prev => prev.map(e => e.id === slug ? { ...e, endMonth: prevMonth } : e));
+      }
+    } else {
+      if (exp.startMonth === month && exp.endMonth === month) {
+        await supabase.from('fixed_expenses').delete().eq('household_id', householdId).eq('slug', slug);
+        setFixedExpenses(prev => prev.filter(e => e.id !== slug));
+      } else if (exp.startMonth === month) {
+        const [y, m] = month.split('-').map(Number);
+        const nextMo = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+        await supabase.from('fixed_expenses').update({ start_month: nextMo } as any).eq('household_id', householdId).eq('slug', slug);
+        setFixedExpenses(prev => prev.map(e => e.id === slug ? { ...e, startMonth: nextMo } : e));
+      } else {
+        const [y, m] = month.split('-').map(Number);
+        const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+        await supabase.from('fixed_expenses').update({ end_month: prevMonth } as any).eq('household_id', householdId).eq('slug', slug);
+        setFixedExpenses(prev => prev.map(e => e.id === slug ? { ...e, endMonth: prevMonth } : e));
+      }
+    }
+  }, [householdId, fixedExpenses]);
+
   const startNewMonth = useCallback(async (nextMonth: string, nextCats: BudgetCategory[], nextFixed: FixedExpense[]) => {
     if (!householdId) return;
 
@@ -319,6 +453,10 @@ export function useBudgetData() {
     addTransfer,
     updateCategories,
     updateFixedExpenses,
+    addCategoryForMonth,
+    addFixedExpenseForMonth,
+    removeCategoryFromMonth,
+    removeFixedExpenseFromMonth,
     startNewMonth,
     updatePlanningData,
   };

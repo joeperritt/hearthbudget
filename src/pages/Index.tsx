@@ -51,6 +51,8 @@ const Index = () => {
     activeMonth, loading, householdId,
     addTransactions, deleteTransaction, addTransfer,
     updateCategories, updateFixedExpenses, startNewMonth,
+    addCategoryForMonth, addFixedExpenseForMonth,
+    removeCategoryFromMonth, removeFixedExpenseFromMonth,
     planningData, updatePlanningData,
   } = useBudgetData();
 
@@ -436,6 +438,10 @@ const Index = () => {
             currentMonth={currentMonthDate}
             onUpdateCategories={updateCategories}
             onUpdateFixedExpenses={updateFixedExpenses}
+            onAddCategoryForMonth={addCategoryForMonth}
+            onAddFixedExpenseForMonth={addFixedExpenseForMonth}
+            onRemoveCategoryFromMonth={removeCategoryFromMonth}
+            onRemoveFixedExpenseFromMonth={removeFixedExpenseFromMonth}
             unassignedCount={unassignedTransactions.length}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}

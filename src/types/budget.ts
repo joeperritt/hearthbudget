@@ -35,6 +35,8 @@ export interface BudgetCategory {
   budgeted: number;
   group: 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
   notesRequired: boolean;
+  startMonth?: string | null;
+  endMonth?: string | null;
 }
 
 /** Check if a category requires notes (works for both variable and fixed categories) */
@@ -50,6 +52,8 @@ export interface FixedExpense {
   amount: number;
   group: 'bills' | 'savings' | 'tithe';
   notesRequired: boolean;
+  startMonth?: string | null;
+  endMonth?: string | null;
 }
 
 export interface BudgetTransfer {

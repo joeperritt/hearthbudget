@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           budgeted: number
           created_at: string
+          end_month: string | null
           group: string
           household_id: string
           id: string
@@ -25,10 +26,12 @@ export type Database = {
           notes_required: boolean
           slug: string
           sort_order: number
+          start_month: string | null
         }
         Insert: {
           budgeted?: number
           created_at?: string
+          end_month?: string | null
           group: string
           household_id: string
           id?: string
@@ -36,10 +39,12 @@ export type Database = {
           notes_required?: boolean
           slug: string
           sort_order?: number
+          start_month?: string | null
         }
         Update: {
           budgeted?: number
           created_at?: string
+          end_month?: string | null
           group?: string
           household_id?: string
           id?: string
@@ -47,6 +52,7 @@ export type Database = {
           notes_required?: boolean
           slug?: string
           sort_order?: number
+          start_month?: string | null
         }
         Relationships: [
           {
@@ -219,6 +225,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          end_month: string | null
           group: string
           household_id: string
           id: string
@@ -226,10 +233,12 @@ export type Database = {
           notes_required: boolean
           slug: string
           sort_order: number
+          start_month: string | null
         }
         Insert: {
           amount?: number
           created_at?: string
+          end_month?: string | null
           group: string
           household_id: string
           id?: string
@@ -237,10 +246,12 @@ export type Database = {
           notes_required?: boolean
           slug: string
           sort_order?: number
+          start_month?: string | null
         }
         Update: {
           amount?: number
           created_at?: string
+          end_month?: string | null
           group?: string
           household_id?: string
           id?: string
@@ -248,6 +259,7 @@ export type Database = {
           notes_required?: boolean
           slug?: string
           sort_order?: number
+          start_month?: string | null
         }
         Relationships: [
           {

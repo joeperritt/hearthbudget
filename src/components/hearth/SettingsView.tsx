@@ -6,6 +6,14 @@ import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
+import { filterForMonth } from '@/hooks/useBudgetData';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -28,12 +36,30 @@ interface MonthSnapshot {
   created_at: string;
 }
 
+type ScopeChoice = 'month-only' | 'month-and-future';
+
+interface PendingAdd {
+  type: 'category' | 'fixed';
+  item: BudgetCategory | FixedExpense;
+  fixedGroup?: 'bills' | 'savings' | 'tithe';
+}
+
+interface PendingDelete {
+  type: 'category' | 'fixed';
+  slug: string;
+  name: string;
+}
+
 interface SettingsViewProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   currentMonth: Date;
   onUpdateCategories: (cats: BudgetCategory[]) => void;
   onUpdateFixedExpenses: (exps: FixedExpense[]) => void;
+  onAddCategoryForMonth?: (cat: BudgetCategory, scope: ScopeChoice, month: string) => Promise<void>;
+  onAddFixedExpenseForMonth?: (exp: FixedExpense, scope: ScopeChoice, month: string) => Promise<void>;
+  onRemoveCategoryFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
+  onRemoveFixedExpenseFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
   onBack: () => void;
   unassignedCount?: number;
   // Current month spending data
@@ -50,7 +76,10 @@ type ViewTab = 'variable' | 'fixed' | 'savings' | 'giving';
 
 export function SettingsView({
   categories, fixedExpenses, currentMonth,
-  onUpdateCategories, onUpdateFixedExpenses, onBack,
+  onUpdateCategories, onUpdateFixedExpenses,
+  onAddCategoryForMonth, onAddFixedExpenseForMonth,
+  onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
+  onBack,
   unassignedCount = 0,
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
   embedded = false,
@@ -117,16 +146,27 @@ export function SettingsView({
   const [newFixedName, setNewFixedName] = useState('');
   const [newFixedAmount, setNewFixedAmount] = useState('');
 
-  const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => categories.map(c => ({ ...c })));
-  const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => fixedExpenses.map(e => ({ ...e })));
+  // Scope prompt state
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [showScopePrompt, setShowScopePrompt] = useState(false);
+  const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
+
+  // Filter categories and fixed expenses by the currently viewed month
+  const monthFilteredCats = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
+  const monthFilteredFixed = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+
+  const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => monthFilteredCats.map(c => ({ ...c })));
+  const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => monthFilteredFixed.map(e => ({ ...e })));
 
   // Reset next cats/fixed when categories change
+  // Reset next cats/fixed when categories or viewed month change
   useEffect(() => {
-    setNextCats(categories.map(c => ({ ...c })));
-  }, [categories]);
+    setNextCats(monthFilteredCats.map(c => ({ ...c })));
+  }, [monthFilteredCats]);
   useEffect(() => {
-    setNextFixed(fixedExpenses.map(e => ({ ...e })));
-  }, [fixedExpenses]);
+    setNextFixed(monthFilteredFixed.map(e => ({ ...e })));
+  }, [monthFilteredFixed]);
 
   const navigateMonth = (dir: 'prev' | 'next') => {
     setViewMonthDate(d => dir === 'prev' ? subMonths(d, 1) : addMonths(d, 1));
@@ -195,11 +235,10 @@ export function SettingsView({
       group: newCatGroup,
       notesRequired: false,
     };
-    const updated = [...categories, newCat];
-    setNextCats(updated.map(c => ({ ...c })));
-    onUpdateCategories(updated);
-    setNewCatName('');
-    setNewCatBudget('');
+    // Show scope prompt
+    setPendingAdd({ type: 'category', item: newCat });
+    setScopeAction('add');
+    setShowScopePrompt(true);
     setShowAddCategory(false);
   };
 
@@ -219,12 +258,86 @@ export function SettingsView({
       group,
       notesRequired: false,
     };
-    const updated = [...fixedExpenses, newExp];
-    setNextFixed(updated.map(e => ({ ...e })));
-    onUpdateFixedExpenses(updated);
-    setNewFixedName('');
-    setNewFixedAmount('');
+    // Show scope prompt
+    setPendingAdd({ type: 'fixed', item: newExp, fixedGroup: group });
+    setScopeAction('add');
+    setShowScopePrompt(true);
     setShowAddFixed(null);
+  };
+
+  // Handle scope choice for add
+  const handleScopeChoice = async (scope: ScopeChoice) => {
+    setShowScopePrompt(false);
+
+    if (scopeAction === 'add' && pendingAdd) {
+      if (pendingAdd.type === 'category') {
+        const cat = pendingAdd.item as BudgetCategory;
+        if (isCurrentMonth) {
+          if (scope === 'month-and-future') {
+            // Global add (no start_month restriction)
+            const updated = [...categories, cat];
+            onUpdateCategories(updated);
+          } else {
+            // Current month only — use month-scoped add
+            if (onAddCategoryForMonth) {
+              await onAddCategoryForMonth(cat, scope, viewMonthKey);
+            }
+          }
+        } else {
+          // Future month — always use month-scoped add
+          if (onAddCategoryForMonth) {
+            await onAddCategoryForMonth(cat, scope, viewMonthKey);
+          }
+        }
+        setNewCatName('');
+        setNewCatBudget('');
+      } else {
+        const exp = pendingAdd.item as FixedExpense;
+        if (isCurrentMonth) {
+          if (scope === 'month-and-future') {
+            const updated = [...fixedExpenses, exp];
+            onUpdateFixedExpenses(updated);
+          } else {
+            if (onAddFixedExpenseForMonth) {
+              await onAddFixedExpenseForMonth(exp, scope, viewMonthKey);
+            }
+          }
+        } else {
+          if (onAddFixedExpenseForMonth) {
+            await onAddFixedExpenseForMonth(exp, scope, viewMonthKey);
+          }
+        }
+        setNewFixedName('');
+        setNewFixedAmount('');
+      }
+      setPendingAdd(null);
+    }
+
+    if (scopeAction === 'delete' && pendingDelete) {
+      if (pendingDelete.type === 'category') {
+        if (onRemoveCategoryFromMonth) {
+          await onRemoveCategoryFromMonth(pendingDelete.slug, viewMonthKey, scope);
+        }
+      } else {
+        if (onRemoveFixedExpenseFromMonth) {
+          await onRemoveFixedExpenseFromMonth(pendingDelete.slug, viewMonthKey, scope);
+        }
+      }
+      setPendingDelete(null);
+    }
+  };
+
+  // Scoped delete handlers
+  const handleDeleteCategory = (id: string, name: string) => {
+    setPendingDelete({ type: 'category', slug: id, name });
+    setScopeAction('delete');
+    setShowScopePrompt(true);
+  };
+
+  const handleDeleteFixedExpense = (id: string, name: string) => {
+    setPendingDelete({ type: 'fixed', slug: id, name });
+    setScopeAction('delete');
+    setShowScopePrompt(true);
   };
 
   const toggleFixedNotesRequired = (id: string) => {
@@ -756,7 +869,7 @@ export function SettingsView({
                               {fmtWhole(c.budgeted)}
                             </button>
                           )}
-                          <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                          <button onClick={() => handleDeleteCategory(c.id, c.name)}
                             className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                             <Trash2 size={12} />
                           </button>
@@ -829,7 +942,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -894,7 +1007,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -946,7 +1059,7 @@ export function SettingsView({
                           {fmtWhole(c.budgeted)}
                         </button>
                       )}
-                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                      <button onClick={() => handleDeleteCategory(c.id, c.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1015,7 +1128,7 @@ export function SettingsView({
                           {formatCurrency(e.amount)}
                         </button>
                       )}
-                      <button onClick={() => { deleteFixedExpense(e.id); setNextFixed(exps => exps.filter(ne => ne.id !== e.id)); }}
+                      <button onClick={() => handleDeleteFixedExpense(e.id, e.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1067,7 +1180,7 @@ export function SettingsView({
                           {fmtWhole(c.budgeted)}
                         </button>
                       )}
-                      <button onClick={() => { deleteCategory(c.id); setNextCats(cats => cats.filter(nc => nc.id !== c.id)); }}
+                      <button onClick={() => handleDeleteCategory(c.id, c.name)}
                         className="p-1 text-muted-foreground/30 hover:text-destructive active:scale-95 transition-all shrink-0">
                         <Trash2 size={12} />
                       </button>
@@ -1125,109 +1238,152 @@ export function SettingsView({
     );
   }
 
+  const viewMonthShortLabel = format(viewMonthDate, 'MMMM');
+
+  const scopePromptDrawer = (
+    <Drawer open={showScopePrompt} onOpenChange={setShowScopePrompt}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>
+            {scopeAction === 'add' ? 'Apply to which months?' : `Remove "${pendingDelete?.name}"?`}
+          </DrawerTitle>
+          <DrawerDescription>
+            {scopeAction === 'add'
+              ? `Where should this ${pendingAdd?.type === 'category' ? 'category' : 'item'} be added?`
+              : `From which months should this be removed?`}
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 pb-6 space-y-2">
+          <button
+            onClick={() => handleScopeChoice('month-only')}
+            className="w-full py-3 rounded-lg bg-card border border-border text-sm font-medium text-foreground active:scale-[0.98] transition-transform"
+          >
+            {isCurrentMonth ? 'This month only' : `${viewMonthShortLabel} only`}
+          </button>
+          <button
+            onClick={() => handleScopeChoice('month-and-future')}
+            className="w-full py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform"
+          >
+            {isCurrentMonth ? 'This month and all future months' : `${viewMonthShortLabel} and all future months`}
+          </button>
+          <button
+            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); }}
+            className="w-full py-2 text-sm text-muted-foreground font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
 
   if (embedded) {
     return (
-      <div className="px-6 pb-6">
-        {/* Profiles */}
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
-          <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
-            </div>
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+      <>
+        <div className="px-6 pb-6">
+          {/* Profiles */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
+            <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+              </div>
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Month Navigator */}
-        <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
-          <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="text-center">
-            <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
-            </p>
+          {/* Month Navigator */}
+          <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
+            <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="text-center">
+              <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
+              </p>
+            </div>
+            <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronRight size={20} />
+            </button>
           </div>
-          <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronRight size={20} />
-          </button>
-        </div>
 
-        {/* Content based on month */}
-        {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-        {isFutureMonth && renderFutureMonth()}
-      </div>
+          {/* Content based on month */}
+          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
+          {isFutureMonth && renderFutureMonth()}
+        </div>
+        {scopePromptDrawer}
+      </>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-28">
-      <div className="px-6 pt-12 safe-top">
-        <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
-          <ArrowLeft size={16} /> Back
-        </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
-        </p>
-      </div>
+    <>
+      <div className="max-w-lg mx-auto pb-28">
+        <div className="px-6 pt-12 safe-top">
+          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
+          </p>
+        </div>
 
-      <div className="px-6 mt-6 pb-6">
-
-        {/* Profiles */}
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
-          <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
-            </div>
-            <div className="flex-1 text-center">
-              <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-              <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+        <div className="px-6 mt-6 pb-6">
+          {/* Profiles */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
+            <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+              </div>
+              <div className="flex-1 text-center">
+                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Month Navigator */}
-        <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
-          <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="text-center">
-            <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
-            </p>
+          {/* Month Navigator */}
+          <div className="flex items-center justify-between mb-6 bg-card rounded-lg shadow-sm px-4 py-3">
+            <button onClick={() => navigateMonth('prev')} className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="text-center">
+              <h2 className="font-display text-lg font-semibold text-foreground">{viewMonthLabel}</h2>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isCurrentMonth ? 'Current Month' : isPastMonth ? 'Past Month' : isNextMonth ? 'Next Month' : 'Future Month'}
+              </p>
+            </div>
+            <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
+              <ChevronRight size={20} />
+            </button>
           </div>
-          <button onClick={() => navigateMonth('next')} className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform">
-            <ChevronRight size={20} />
-          </button>
-        </div>
 
-        {/* Content based on month */}
-        {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-        {isFutureMonth && renderFutureMonth()}
+          {/* Content based on month */}
+          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
+          {isFutureMonth && renderFutureMonth()}
 
-        {/* Log Out */}
-        <div className="mt-12 mb-8">
-          <button
-            onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
-          >
-            <LogOut size={16} />
-            <span>Log Out</span>
-            <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
-          </button>
+          {/* Log Out */}
+          <div className="mt-12 mb-8">
+            <button
+              onClick={signOut}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-muted-foreground text-sm font-medium active:scale-[0.98] transition-transform"
+            >
+              <LogOut size={16} />
+              <span>Log Out</span>
+              <span className="text-xs text-muted-foreground/60 ml-1">({profile?.display_name})</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      {scopePromptDrawer}
+    </>
   );
 }
