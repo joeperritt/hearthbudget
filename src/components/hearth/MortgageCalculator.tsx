@@ -125,9 +125,10 @@ interface MortgageCalculatorProps {
   householdId: string | null;
   shoppingOnly?: boolean;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToCalculator?: (id: string) => void;
 }
 
-export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile }: MortgageCalculatorProps) {
+export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile, onNavigateToCalculator }: MortgageCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxEstCaption, setTaxEstCaption] = useState('');
