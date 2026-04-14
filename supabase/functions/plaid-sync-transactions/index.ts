@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
         if (isCheckingAccount && !isCredit && plaidTxType === "credit") {
           isCredit = true;
         }
+        const finalAmount = isCredit && plaidAmount > 0 ? -plaidAmount : plaidAmount;
         const description = buildTransactionDescription(tx);
         const upperDesc = description.toUpperCase();
         const isCcPayment = isCredit && (
@@ -261,7 +262,7 @@ Deno.serve(async (req) => {
             date: tx.date as string,
             description,
             notes: "",
-            amount: plaidAmount,
+            amount: finalAmount,
             category_slug: categorySlug,
             account,
             is_transfer_to_savings: false,
