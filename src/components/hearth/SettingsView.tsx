@@ -6,6 +6,14 @@ import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
+import { filterForMonth } from '@/hooks/useBudgetData';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -28,12 +36,30 @@ interface MonthSnapshot {
   created_at: string;
 }
 
+type ScopeChoice = 'month-only' | 'month-and-future';
+
+interface PendingAdd {
+  type: 'category' | 'fixed';
+  item: BudgetCategory | FixedExpense;
+  fixedGroup?: 'bills' | 'savings' | 'tithe';
+}
+
+interface PendingDelete {
+  type: 'category' | 'fixed';
+  slug: string;
+  name: string;
+}
+
 interface SettingsViewProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   currentMonth: Date;
   onUpdateCategories: (cats: BudgetCategory[]) => void;
   onUpdateFixedExpenses: (exps: FixedExpense[]) => void;
+  onAddCategoryForMonth?: (cat: BudgetCategory, scope: ScopeChoice, month: string) => Promise<void>;
+  onAddFixedExpenseForMonth?: (exp: FixedExpense, scope: ScopeChoice, month: string) => Promise<void>;
+  onRemoveCategoryFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
+  onRemoveFixedExpenseFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
   onBack: () => void;
   unassignedCount?: number;
   // Current month spending data
