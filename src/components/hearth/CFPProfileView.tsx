@@ -174,15 +174,13 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   useEffect(() => {
     if (!householdId) return;
     async function load() {
-      const [membersRes, profileRes, householdRes] = await Promise.all([
+      const [membersRes, profileRes] = await Promise.all([
         supabase.from('profiles').select('id, display_name').eq('household_id', householdId),
         supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle(),
-        supabase.from('households').select('name').eq('id', householdId).maybeSingle(),
       ]);
 
       const membersList = membersRes.data || [];
       setMembers(membersList);
-      if (householdRes.data) setHouseholdName(householdRes.data.name || 'Household');
 
       const data = profileRes.data;
       if (data) {
@@ -296,16 +294,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
   }, [save]);
 
-  const householdNameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const updateHouseholdName = useCallback((name: string) => {
-    setHouseholdName(name);
-    if (householdNameTimeoutRef.current) clearTimeout(householdNameTimeoutRef.current);
-    householdNameTimeoutRef.current = setTimeout(async () => {
-      if (!householdId) return;
-      await supabase.from('households').update({ name } as any).eq('id', householdId);
-      setLastSaved(new Date());
-    }, 1500);
-  }, [householdId]);
 
   const update = (field: keyof ProfileData, value: any) => {
     setProfile(p => {
@@ -412,7 +400,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="font-display text-xl font-bold text-foreground">{householdName}</h1>
+          <h1 className="font-display text-xl font-bold text-foreground">Financial Profile</h1>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[120px]">
               <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${completeness.pct}%` }} />
@@ -450,17 +438,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         {/* Profile Tab */}
         {activeProfileTab === 'profile' && (
           <div className="space-y-4">
-            <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Name</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4">
-                <input
-                  value={householdName}
-                  onChange={e => updateHouseholdName(e.target.value)}
-                  placeholder="e.g. Smith Family"
-                  className="w-full px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-              </div>
-            </section>
 
             <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Members</h2>
