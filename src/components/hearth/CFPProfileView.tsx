@@ -62,6 +62,7 @@ interface ProfileData {
   mortgage_extra: number;
   mortgage_statement_month: string;
   mortgage_breakdown_enabled: boolean;
+  estimated_home_value: number;
   monthly_rent: number;
   debts: Debt[];
   non_retirement_investments: number;
@@ -92,6 +93,7 @@ const DEFAULT_PROFILE: ProfileData = {
   mortgage_extra: 0,
   mortgage_statement_month: '',
   mortgage_breakdown_enabled: false,
+  estimated_home_value: 0,
   monthly_rent: 0,
   debts: [],
   non_retirement_investments: 0,
@@ -257,6 +259,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           mortgage_extra: Number(savedProfile.mortgage_extra) || 0,
           mortgage_statement_month: savedProfile.mortgage_statement_month || '',
           mortgage_breakdown_enabled: !!savedProfile.mortgage_breakdown_enabled,
+          estimated_home_value: Number(savedProfile.estimated_home_value) || 0,
           monthly_rent: Number(savedProfile.monthly_rent) || 0,
           debts: Array.isArray(savedProfile.debts) ? (savedProfile.debts as unknown as Debt[]).map(d => ({
             ...d, extraPayment: Number((d as any).extraPayment) || 0,
@@ -315,6 +318,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       mortgage_escrow: profileData.mortgage_escrow,
       mortgage_extra: profileData.mortgage_extra,
       mortgage_breakdown_enabled: profileData.mortgage_breakdown_enabled,
+      estimated_home_value: profileData.estimated_home_value,
       monthly_rent: profileData.monthly_rent,
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
@@ -619,6 +623,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     </div>
                     <NumField label="Current Balance" value={profile.mortgage_balance} onChange={v => update('mortgage_balance', v)} prefix="$" />
                   </div>
+                  <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
                   <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
                   <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 

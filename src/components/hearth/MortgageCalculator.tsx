@@ -477,6 +477,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const escrowTax = parseFloat(state.exEscrowTax) || 0;
     const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
     const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
+    const homeValue = Number(financialProfile?.estimated_home_value) || 0;
 
     // Empty state: non-mortgage user
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
@@ -594,34 +595,57 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
           <>
             {balance > 0 && payment > 0 && (
               <>
-                {/* Mortgage Analysis */}
+                {/* Mortgage Analysis — condensed 2-column */}
                 <div className="px-6 mt-5">
-                  <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                    <div className="p-4 border-b border-border">
+                  <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
+                    <div>
                       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
                     </div>
-                    <div className="divide-y divide-border">
-                      <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
-                      <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
-                      <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <DetailCell label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
+                      <DetailCell label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
+                      <DetailCell label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
+                      {existingCalc.interestAlreadyPaid > 0 && (
+                        <DetailCell label="Interest Already Paid" value={fmt(existingCalc.interestAlreadyPaid)} />
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Equity Progress */}
-                {existingCalc.originalLoan > 0 && (
+                {/* Equity Progress — requires home value */}
+                {homeValue > 0 ? (
                   <div className="px-6 mt-5">
                     <div className="bg-card rounded-xl shadow-sm border border-border p-4">
-                      <div className="flex justify-between items-baseline mb-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Equity Progress</p>
-                        <span className="text-sm font-bold text-foreground">{existingCalc.equityPct.toFixed(1)}%</span>
-                      </div>
-                      <ProgressBar value={existingCalc.originalLoan - existingCalc.adjustedBalance} max={existingCalc.originalLoan} className="mb-2" />
-                      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-                        <span>{fmt(existingCalc.originalLoan - existingCalc.adjustedBalance)} equity</span>
-                        <span>{fmt(existingCalc.adjustedBalance)} remaining</span>
-                      </div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Equity Progress</p>
+                      {(() => {
+                        const equity = homeValue - existingCalc.adjustedBalance;
+                        const equityPct = homeValue > 0 ? (equity / homeValue) * 100 : 0;
+                        return (
+                          <>
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <DetailCell label="Home Value" value={fmt(homeValue)} />
+                              <DetailCell label="Current Balance" value={fmt(existingCalc.adjustedBalance)} />
+                            </div>
+                            <div className="flex justify-between items-baseline mb-2">
+                              <span className="text-sm font-semibold text-foreground">{fmt(equity)} equity</span>
+                              <span className="text-sm font-bold text-foreground">{equityPct.toFixed(1)}%</span>
+                            </div>
+                            <ProgressBar value={Math.max(0, equity)} max={homeValue} />
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-6 mt-5">
+                    <div className="bg-muted/50 rounded-xl p-4 text-center">
+                      <p className="text-sm text-muted-foreground">Add your estimated home value in your Financial Profile to see equity progress.</p>
+                      {onNavigateToProfile && (
+                        <button onClick={() => onNavigateToProfile('housing')} className="text-sm font-semibold text-accent mt-2">
+                          Update Housing Info →
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
