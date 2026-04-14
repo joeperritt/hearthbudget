@@ -188,7 +188,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const savedIncomes = Array.isArray(data.member_incomes) ? (data.member_incomes as unknown as MemberIncome[]) : [];
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined, pay_frequency: 'biweekly' };
+          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
         });
         if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0) {
           incomes[0].gross_income = Number(data.annual_gross_income);
