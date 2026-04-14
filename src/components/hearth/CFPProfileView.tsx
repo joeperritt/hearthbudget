@@ -545,62 +545,19 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
         {/* Income Tab */}
         {activeProfileTab === 'income' && (
-          <div className="space-y-4">
-            {profile.member_incomes.map((member, i) => (
-              <section key={member.profile_id}>
-                <h2 className="font-display text-sm font-semibold text-foreground mb-3">{member.name || `Member ${i + 1}`}</h2>
-                <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                  <NumField label="Annual Gross Income" value={member.gross_income} onChange={v => updateMemberIncome(i, 'gross_income', v)} prefix="$" />
-                  <div>
-                    <label className="text-xs text-muted-foreground">Income Type</label>
-                    <div className="grid grid-cols-5 gap-1 mt-1">
-                      {INCOME_TYPES.map(t => (
-                        <button key={t.value} onClick={() => updateMemberIncome(i, 'income_type', t.value)}
-                          className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
-                            member.income_type === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                          }`}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {member.income_type === 'mixed' && (
-                    <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] text-muted-foreground font-medium">Income Breakdown (must sum to total)</p>
-                      {['w2', '1099', 'k1', 'scorp'].map(type => (
-                        <div key={type} className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground w-10">{type.toUpperCase()}</span>
-                          <div className="flex items-center gap-1 flex-1">
-                            <span className="text-xs text-muted-foreground">$</span>
-                            <input type="number"
-                              value={member.mixed_breakdown?.[type as keyof typeof member.mixed_breakdown] || ''}
-                              onChange={e => {
-                                const bd = { ...member.mixed_breakdown, [type]: parseFloat(e.target.value) || 0 };
-                                updateMemberIncome(i, 'mixed_breakdown', bd);
-                              }}
-                              className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs text-muted-foreground">Pay Frequency</label>
-                    <div className="grid grid-cols-4 gap-1 mt-1">
-                      {PAY_FREQUENCIES.map(f => (
-                        <button key={f.value} onClick={() => updateMemberIncome(i, 'pay_frequency', f.value)}
-                          className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
-                            (member.pay_frequency || 'biweekly') === f.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                          }`}>
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            ))}
-          </div>
+          <IncomeTab
+            members={profile.member_incomes}
+            onUpdateMember={(index, member) => {
+              setProfile(p => {
+                const updated = {
+                  ...p,
+                  member_incomes: p.member_incomes.map((m, i) => i === index ? member : m),
+                };
+                debouncedSave(updated);
+                return updated;
+              });
+            }}
+          />
         )}
 
         {/* Housing Tab */}
