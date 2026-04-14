@@ -195,7 +195,9 @@ export function SettingsView({
       group: newCatGroup,
       notesRequired: false,
     };
-    setNextCats(cats => [...cats, { ...newCat }]);
+    const updated = [...categories, newCat];
+    setNextCats(updated.map(c => ({ ...c })));
+    onUpdateCategories(updated);
     setNewCatName('');
     setNewCatBudget('');
     setShowAddCategory(false);
