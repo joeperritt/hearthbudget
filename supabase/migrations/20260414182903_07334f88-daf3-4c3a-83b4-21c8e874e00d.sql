@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_profiles ADD COLUMN estimated_home_value numeric DEFAULT 0;

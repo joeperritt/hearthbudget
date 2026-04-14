@@ -150,6 +150,7 @@ export type Database = {
           debts: Json
           dependents: Json
           emergency_fund_balance: number | null
+          estimated_home_value: number | null
           filing_status: string
           has_life_insurance: boolean | null
           household_id: string
@@ -181,6 +182,7 @@ export type Database = {
           debts?: Json
           dependents?: Json
           emergency_fund_balance?: number | null
+          estimated_home_value?: number | null
           filing_status?: string
           has_life_insurance?: boolean | null
           household_id: string
@@ -212,6 +214,7 @@ export type Database = {
           debts?: Json
           dependents?: Json
           emergency_fund_balance?: number | null
+          estimated_home_value?: number | null
           filing_status?: string
           has_life_insurance?: boolean | null
           household_id?: string
