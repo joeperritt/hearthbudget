@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
 import { Info, Pencil } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { filterForMonth } from '@/hooks/useBudgetData';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -26,6 +27,10 @@ interface BudgetTabViewProps {
   currentMonth: Date;
   onUpdateCategories: (cats: BudgetCategory[]) => void;
   onUpdateFixedExpenses: (exps: FixedExpense[]) => void;
+  onAddCategoryForMonth: (cat: BudgetCategory, scope: 'month-only' | 'month-and-future', month: string) => Promise<void>;
+  onAddFixedExpenseForMonth: (exp: FixedExpense, scope: 'month-only' | 'month-and-future', month: string) => Promise<void>;
+  onRemoveCategoryFromMonth: (slug: string, month: string, scope: 'month-only' | 'month-and-future') => Promise<void>;
+  onRemoveFixedExpenseFromMonth: (slug: string, month: string, scope: 'month-only' | 'month-and-future') => Promise<void>;
   unassignedCount: number;
   spentByCategory: Record<string, number>;
   transferAdjustments: Record<string, number>;
@@ -37,6 +42,8 @@ interface BudgetTabViewProps {
 export function BudgetTabView({
   categories, fixedExpenses, currentMonth,
   onUpdateCategories, onUpdateFixedExpenses,
+  onAddCategoryForMonth, onAddFixedExpenseForMonth,
+  onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
   planningData, onUpdatePlanningData,
 }: BudgetTabViewProps) {
@@ -128,6 +135,10 @@ export function BudgetTabView({
           currentMonth={currentMonth}
           onUpdateCategories={onUpdateCategories}
           onUpdateFixedExpenses={onUpdateFixedExpenses}
+          onAddCategoryForMonth={onAddCategoryForMonth}
+          onAddFixedExpenseForMonth={onAddFixedExpenseForMonth}
+          onRemoveCategoryFromMonth={onRemoveCategoryFromMonth}
+          onRemoveFixedExpenseFromMonth={onRemoveFixedExpenseFromMonth}
           onBack={() => {}}
           unassignedCount={unassignedCount}
           spentByCategory={spentByCategory}
