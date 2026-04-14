@@ -618,8 +618,8 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
               {profile.housing_type === 'own' && (
                 <div className="space-y-3 pt-2">
-                  <div className="flex gap-2">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <label className="text-xs text-muted-foreground">Statement Month</label>
                       <input type="month" value={profile.mortgage_statement_month}
                         onChange={e => update('mortgage_statement_month', e.target.value)}
@@ -627,8 +627,10 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     </div>
                     <NumField label="Current Balance" value={profile.mortgage_balance} onChange={v => update('mortgage_balance', v)} prefix="$" />
                   </div>
-                  <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
-                  <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
+                    <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
+                  </div>
                   <div>
                     <label className="text-xs text-muted-foreground">Loan Type</label>
                     <select value={profile.mortgage_loan_type} onChange={e => update('mortgage_loan_type', e.target.value)}
@@ -682,13 +684,11 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     )}
                   </div>
 
-                  <div className="pt-1">
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-xs text-muted-foreground">Extra Toward Principal (optional)</label>
-                      <TooltipIcon text="Any amount you pay above your minimum payment that goes directly toward reducing your loan balance. This can significantly reduce your total interest paid and shorten your loan term." />
-                    </div>
-                    <NumField label="" value={profile.mortgage_extra} onChange={v => update('mortgage_extra', v)} prefix="$" />
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="text-xs text-muted-foreground">Extra Toward Principal (optional)</label>
+                    <TooltipIcon text="Any amount you pay above your minimum payment that goes directly toward reducing your loan balance. This can significantly reduce your total interest paid and shorten your loan term." />
                   </div>
+                  <NumField label="" value={profile.mortgage_extra} onChange={v => update('mortgage_extra', v)} prefix="$" />
                 </div>
               )}
 
