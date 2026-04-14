@@ -119,9 +119,9 @@ const PAY_FREQUENCIES = [
 
 const FILING_STATUSES = [
   { value: 'single', label: 'Single' },
-  { value: 'married_jointly', label: 'MFJ' },
-  { value: 'married_separately', label: 'MFS' },
-  { value: 'head_of_household', label: 'HOH' },
+  { value: 'married_jointly', label: 'Married Filing Jointly' },
+  { value: 'married_separately', label: 'Married Filing Separately' },
+  { value: 'head_of_household', label: 'Head of Household' },
 ];
 
 const US_STATES = [
@@ -277,6 +277,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       has_life_insurance: profileData.has_life_insurance,
       life_insurance_coverage: profileData.life_insurance_coverages.reduce((s, c) => s + c.coverage, 0),
       life_insurance_coverages: profileData.life_insurance_coverages,
+      dependents: profileData.dependents,
     };
 
     if (existingId) {
@@ -502,25 +503,24 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
             </section>
 
             <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Filing Status</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                <div className="grid grid-cols-4 gap-1.5">
-                  {FILING_STATUSES.map(s => (
-                    <button key={s.value} onClick={() => update('filing_status', s.value)}
-                      className={`py-2 px-2 rounded-lg text-[11px] font-medium transition-colors ${
-                        profile.filing_status === s.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                      }`}>
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">State</label>
-                  <select value={profile.state} onChange={e => update('state', e.target.value)}
-                    className="w-full mt-1 px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
-                    <option value="">Select state…</option>
-                    {US_STATES.map(s => <option key={s} value={s}>{STATE_NAMES[s]} ({s})</option>)}
-                  </select>
+              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Filing Status & State</h2>
+              <div className="bg-card rounded-xl shadow-sm p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Filing Status</label>
+                    <select value={profile.filing_status} onChange={e => update('filing_status', e.target.value)}
+                      className="w-full mt-1 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
+                      {FILING_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">State</label>
+                    <select value={profile.state} onChange={e => update('state', e.target.value)}
+                      className="w-full mt-1 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
+                      <option value="">Select…</option>
+                      {US_STATES.map(s => <option key={s} value={s}>{STATE_NAMES[s]} ({s})</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
             </section>
