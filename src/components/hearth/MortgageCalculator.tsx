@@ -472,6 +472,11 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const rate = Number(financialProfile?.mortgage_rate) || 0;
     const payment = Number(financialProfile?.mortgage_payment) || 0;
     const statementMonth = financialProfile?.mortgage_statement_month || '';
+    const pi = Number(financialProfile?.mortgage_pi) || 0;
+    const escrow = Number(financialProfile?.mortgage_escrow) || 0;
+    const escrowTax = parseFloat(state.exEscrowTax) || 0;
+    const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
+    const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
 
     // Empty state: non-mortgage user
     if (housingType === 'rent' || housingType === 'own_no_mortgage') {
@@ -546,7 +551,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
           </div>
         </div>
 
-        {/* Read-only profile data */}
+        {/* Read-only profile data — condensed 2-column layout */}
         <div className="px-6 mt-5">
           <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
             <div className="flex items-center justify-between">
@@ -557,108 +562,120 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 </button>
               )}
             </div>
-            <div className="space-y-2">
-              <ReadOnlyField label="Current Balance" value={fmt(balance)} />
-              <ReadOnlyField label="Interest Rate" value={rate > 0 ? `${rate}%` : 'Not set'} />
-              <ReadOnlyField label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : 'Not set'} />
-              {(parseFloat(state.exEscrowTax) || 0) > 0 && (
-                <ReadOnlyField label="Escrow — Tax" value={fmt(parseFloat(state.exEscrowTax))} />
-              )}
-              {(parseFloat(state.exEscrowInsurance) || 0) > 0 && (
-                <ReadOnlyField label="Escrow — Insurance" value={fmt(parseFloat(state.exEscrowInsurance))} />
-              )}
-              {(parseFloat(state.exEscrowPMI) || 0) > 0 && (
-                <ReadOnlyField label="Escrow — PMI" value={fmt(parseFloat(state.exEscrowPMI))} />
-              )}
-              {(parseFloat(state.exOriginalLoanAmount) || 0) > 0 && (
-                <ReadOnlyField label="Original Loan Amount" value={fmt(parseFloat(state.exOriginalLoanAmount))} />
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <DetailCell label="Current Balance" value={fmt(balance)} />
+              <DetailCell label="Interest Rate" value={rate > 0 ? `${rate}%` : '—'} />
+              <DetailCell label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : '—'} />
+              <DetailCell label="P&I" value={pi > 0 ? fmt(pi) : '—'} />
+              <DetailCell label="Escrow — Tax" value={escrowTax > 0 ? fmt(escrowTax) : '—'} />
+              <DetailCell label="Escrow — Insurance" value={escrowIns > 0 ? fmt(escrowIns) : '—'} />
             </div>
+            {originalLoan > 0 && (
+              <div className="pt-1 border-t border-border">
+                <DetailCell label="Original Loan Amount" value={fmt(originalLoan)} />
+              </div>
+            )}
           </div>
         </div>
 
-        {balance > 0 && payment > 0 && (
+        {/* Check if P&I and Escrow are entered */}
+        {(pi <= 0 || escrow <= 0) ? (
+          <div className="px-6 mt-5">
+            <div className="bg-card rounded-xl p-6 shadow-sm border border-border text-center space-y-3">
+              <p className="text-sm text-foreground font-medium">Enter your P&I and Escrow breakdown in your Financial Profile to unlock full analysis.</p>
+              {onNavigateToProfile && (
+                <button onClick={() => onNavigateToProfile('housing')} className="text-sm font-semibold text-accent">
+                  Complete Housing Information →
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
           <>
-            {/* Mortgage Analysis */}
-            <div className="px-6 mt-5">
-              <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                <div className="p-4 border-b border-border">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
+            {balance > 0 && payment > 0 && (
+              <>
+                {/* Mortgage Analysis */}
+                <div className="px-6 mt-5">
+                  <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                    <div className="p-4 border-b border-border">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(existingCalc.adjustedBalance)}</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                      <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
+                      <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
+                      <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
+                    </div>
+                  </div>
                 </div>
-                <div className="divide-y divide-border">
-                  <Row label="Projected Payoff" value={existingCalc.payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />
-                  <Row label="Remaining Term" value={`${Math.floor(existingCalc.remainingMonths / 12)}y ${existingCalc.remainingMonths % 12}m`} />
-                  <Row label="Total Interest Remaining" value={fmt(existingCalc.totalInterestRemaining)} />
-                </div>
-              </div>
-            </div>
 
-            {/* Equity Progress */}
-            {existingCalc.originalLoan > 0 && (
-              <div className="px-6 mt-5">
-                <div className="bg-card rounded-xl shadow-sm border border-border p-4">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Equity Progress</p>
-                    <span className="text-sm font-bold text-foreground">{existingCalc.equityPct.toFixed(1)}%</span>
+                {/* Equity Progress */}
+                {existingCalc.originalLoan > 0 && (
+                  <div className="px-6 mt-5">
+                    <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                      <div className="flex justify-between items-baseline mb-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Equity Progress</p>
+                        <span className="text-sm font-bold text-foreground">{existingCalc.equityPct.toFixed(1)}%</span>
+                      </div>
+                      <ProgressBar value={existingCalc.originalLoan - existingCalc.adjustedBalance} max={existingCalc.originalLoan} className="mb-2" />
+                      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                        <span>{fmt(existingCalc.originalLoan - existingCalc.adjustedBalance)} equity</span>
+                        <span>{fmt(existingCalc.adjustedBalance)} remaining</span>
+                      </div>
+                    </div>
                   </div>
-                  <ProgressBar value={existingCalc.originalLoan - existingCalc.adjustedBalance} max={existingCalc.originalLoan} className="mb-2" />
-                  <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-                    <span>{fmt(existingCalc.originalLoan - existingCalc.adjustedBalance)} equity</span>
-                    <span>{fmt(existingCalc.adjustedBalance)} remaining</span>
+                )}
+
+                {/* Payoff Year Slider */}
+                <PayoffYearSlider
+                  adjustedBalance={existingCalc.adjustedBalance}
+                  monthlyPI={existingCalc.monthlyPI}
+                  monthlyRate={(parseFloat(state.exInterestRate) || (financialProfile?.mortgage_rate ?? 0)) / 100 / 12}
+                  remainingMonths={existingCalc.remainingMonths}
+                  totalInterestRemaining={existingCalc.totalInterestRemaining}
+                  payoffDate={existingCalc.payoffDate}
+                  state={state}
+                  setState={setState}
+                />
+
+                {/* CFP Indicators */}
+                <div className="px-6 mt-5 space-y-3">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
+                  <div className={`rounded-xl p-4 border ${housingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Housing Ratio</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
+                      </div>
+                      <span className={`text-lg font-bold ${housingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {hasProfile ? pct(existingCalc.housingRatio) : '—'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {/* AI Insights */}
+                <MortgageInsightsSection
+                  householdId={householdId}
+                  homePrice={0}
+                  loanAmount={existingCalc.adjustedBalance}
+                  downPayment={0}
+                  downPaymentPct={0}
+                  interestRate={parseFloat(state.exInterestRate) || 0}
+                  loanTermYears={parseInt(state.exOriginalTerm) || 30}
+                  monthlyPI={existingCalc.monthlyPI}
+                  monthlyTax={existingCalc.escrowTax}
+                  monthlyInsurance={existingCalc.escrowIns}
+                  totalHousing={existingCalc.totalMonthly}
+                  housingRatio={existingCalc.housingRatio}
+                  dtiRatio={existingCalc.dtiRatio}
+                  otherDebt={existingCalc.otherDebt}
+                  selectedState={state.selectedState}
+                  financialProfile={financialProfile}
+                  mortgageMode={'existing'}
+                />
+              </>
             )}
-
-            {/* Payoff Year Slider */}
-            <PayoffYearSlider
-              adjustedBalance={existingCalc.adjustedBalance}
-              monthlyPI={existingCalc.monthlyPI}
-              monthlyRate={(parseFloat(state.exInterestRate) || (financialProfile?.mortgage_rate ?? 0)) / 100 / 12}
-              remainingMonths={existingCalc.remainingMonths}
-              totalInterestRemaining={existingCalc.totalInterestRemaining}
-              payoffDate={existingCalc.payoffDate}
-              state={state}
-              setState={setState}
-            />
-
-            {/* CFP Indicators */}
-            <div className="px-6 mt-5 space-y-3">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
-              <div className={`rounded-xl p-4 border ${housingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Housing Ratio</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
-                  </div>
-                  <span className={`text-lg font-bold ${housingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {hasProfile ? pct(existingCalc.housingRatio) : '—'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Insights */}
-            <MortgageInsightsSection
-              householdId={householdId}
-              homePrice={0}
-              loanAmount={existingCalc.adjustedBalance}
-              downPayment={0}
-              downPaymentPct={0}
-              interestRate={parseFloat(state.exInterestRate) || 0}
-              loanTermYears={parseInt(state.exOriginalTerm) || 30}
-              monthlyPI={existingCalc.monthlyPI}
-              monthlyTax={existingCalc.escrowTax}
-              monthlyInsurance={existingCalc.escrowIns}
-              totalHousing={existingCalc.totalMonthly}
-              housingRatio={existingCalc.housingRatio}
-              dtiRatio={existingCalc.dtiRatio}
-              otherDebt={existingCalc.otherDebt}
-              selectedState={state.selectedState}
-              financialProfile={financialProfile}
-              mortgageMode={'existing'}
-            />
           </>
         )}
       </div>
@@ -912,6 +929,16 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
 }
 
 /* ── Sub-components ────────────────────────────── */
+
+function DetailCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-semibold text-foreground mt-0.5">{value}</p>
+    </div>
+  );
+}
+
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (

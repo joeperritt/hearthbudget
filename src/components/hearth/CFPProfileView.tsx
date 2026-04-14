@@ -622,33 +622,38 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                   <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
                   <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-foreground">Break down payment</span>
-                    <button onClick={() => update('mortgage_breakdown_enabled', !profile.mortgage_breakdown_enabled)}
-                      className={`w-10 h-5 rounded-full transition-colors relative ${profile.mortgage_breakdown_enabled ? 'bg-accent' : 'bg-muted'}`}>
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${profile.mortgage_breakdown_enabled ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-                  {profile.mortgage_breakdown_enabled && (
-                    <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-                      <div className="flex items-center gap-1 mb-1">
-                        <label className="text-xs text-muted-foreground">Principal & Interest</label>
-                        <TooltipIcon text="The portion of your payment that goes toward paying down your loan balance (principal) and the cost of borrowing (interest). This is the core of your mortgage payment." />
-                      </div>
-                      <NumField label="" value={profile.mortgage_pi} onChange={v => update('mortgage_pi', v)} prefix="$" compact />
-                      <div className="flex items-center gap-1 mb-1 mt-2">
-                        <label className="text-xs text-muted-foreground">Escrow</label>
-                        <TooltipIcon text="The portion collected by your lender to pay property taxes, homeowners insurance, and PMI on your behalf. It is held in an escrow account and paid out when bills are due." />
-                      </div>
-                      <NumField label="" value={profile.mortgage_escrow} onChange={v => update('mortgage_escrow', v)} prefix="$" compact />
-                      <div className="pt-1 border-t border-border mt-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Total Minimum Payment</span>
-                          <span className="text-xs font-semibold text-foreground">{fmt(profile.mortgage_pi + profile.mortgage_escrow)}</span>
-                        </div>
+                  <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-xs text-muted-foreground">Principal & Interest</label>
+                      <TooltipIcon text="The portion of your payment that goes toward paying down your loan balance (principal) and the cost of borrowing (interest). This is the core of your mortgage payment." />
+                    </div>
+                    <NumField label="" value={profile.mortgage_pi} onChange={v => update('mortgage_pi', v)} prefix="$" compact />
+                    <div className="flex items-center gap-1 mb-1 mt-2">
+                      <label className="text-xs text-muted-foreground">Escrow</label>
+                      <TooltipIcon text="The portion collected by your lender to pay property taxes, homeowners insurance, and PMI on your behalf. It is held in an escrow account and paid out when bills are due." />
+                    </div>
+                    <NumField label="" value={profile.mortgage_escrow} onChange={v => update('mortgage_escrow', v)} prefix="$" compact />
+                    <div className="pt-1 border-t border-border mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Total</span>
+                        <span className="text-xs font-semibold text-foreground">{fmt(profile.mortgage_pi + profile.mortgage_escrow)}</span>
                       </div>
                     </div>
-                  )}
+                    {profile.mortgage_payment > 0 && (profile.mortgage_pi > 0 || profile.mortgage_escrow > 0) && (
+                      <div className="pt-1">
+                        {Math.abs((profile.mortgage_pi + profile.mortgage_escrow) - profile.mortgage_payment) < 0.01 ? (
+                          <div className="flex items-center gap-1.5">
+                            <Check size={12} className="text-green-600 dark:text-green-400" />
+                            <span className="text-[11px] text-green-600 dark:text-green-400 font-medium">Amounts match</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-destructive font-medium">
+                            Missing {fmt(Math.abs(profile.mortgage_payment - (profile.mortgage_pi + profile.mortgage_escrow)))} — P&I + Escrow should equal your minimum payment
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="pt-1">
                     <div className="flex items-center gap-1 mb-1">
