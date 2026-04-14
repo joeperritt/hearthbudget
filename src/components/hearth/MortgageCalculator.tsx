@@ -119,6 +119,121 @@ function pct(n: number) {
   return (n * 100).toFixed(1) + '%';
 }
 
+type AmortizationPreview = {
+  month: number;
+  startingBalance: number;
+  interest: number;
+  principalPaid: number;
+  extraPaid: number;
+  endingBalance: number;
+};
+
+const LOAN_TYPE_LABELS: Record<string, string> = {
+  '30-year-fixed': '30-Year Fixed',
+  '20-year-fixed': '20-Year Fixed',
+  '15-year-fixed': '15-Year Fixed',
+  '10-year-fixed': '10-Year Fixed',
+  '5-1-arm': '5/1 ARM',
+  '7-1-arm': '7/1 ARM',
+  other: 'Other',
+};
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function applyAmortizationMonth(balance: number, monthlyRate: number, monthlyPI: number, extraPayment = 0) {
+  const interest = balance * Math.max(0, monthlyRate);
+  const scheduledPrincipal = Math.max(0, monthlyPI - interest);
+  const principalPaid = Math.min(balance, scheduledPrincipal);
+  const balanceAfterScheduled = Math.max(0, balance - principalPaid);
+  const extraPaid = Math.min(balanceAfterScheduled, Math.max(0, extraPayment));
+  const endingBalance = Math.max(0, balanceAfterScheduled - extraPaid);
+
+  return {
+    startingBalance: balance,
+    interest,
+    principalPaid,
+    extraPaid,
+    endingBalance,
+  };
+}
+
+function simulateAmortization({
+  startingBalance,
+  monthlyRate,
+  monthlyPI,
+  extraPayment = 0,
+  maxMonths = 600,
+}: {
+  startingBalance: number;
+  monthlyRate: number;
+  monthlyPI: number;
+  extraPayment?: number;
+  maxMonths?: number;
+}) {
+  let balance = Math.max(0, startingBalance);
+  let months = 0;
+  let totalInterest = 0;
+  const preview: AmortizationPreview[] = [];
+
+  while (balance > 0.01 && months < maxMonths) {
+    const step = applyAmortizationMonth(balance, monthlyRate, monthlyPI, extraPayment);
+    if (step.principalPaid <= 0 && step.extraPaid <= 0) break;
+
+    months += 1;
+    totalInterest += step.interest;
+    balance = step.endingBalance;
+
+    if (months <= 3) {
+      preview.push({
+        month: months,
+        startingBalance: roundMoney(step.startingBalance),
+        interest: roundMoney(step.interest),
+        principalPaid: roundMoney(step.principalPaid),
+        extraPaid: roundMoney(step.extraPaid),
+        endingBalance: roundMoney(step.endingBalance),
+      });
+    }
+  }
+
+  const payoffDate = new Date();
+  payoffDate.setMonth(payoffDate.getMonth() + months);
+
+  return {
+    months,
+    totalInterest,
+    payoffDate,
+    preview,
+    finalBalance: balance,
+  };
+}
+
+function adjustBalanceFromStatement(statementBalance: number, statementMonth: string, monthlyRate: number, monthlyPI: number) {
+  let adjustedBalance = Math.max(0, statementBalance);
+  let monthsSinceStatement = 0;
+
+  if (!statementMonth) {
+    return { adjustedBalance, monthsSinceStatement };
+  }
+
+  const [year, month] = statementMonth.split('-').map(Number);
+  if (!year || !month) {
+    return { adjustedBalance, monthsSinceStatement };
+  }
+
+  const now = new Date();
+  monthsSinceStatement = Math.max(0, (now.getFullYear() - year) * 12 + (now.getMonth() - (month - 1)));
+
+  for (let i = 0; i < monthsSinceStatement && adjustedBalance > 0.01; i += 1) {
+    const step = applyAmortizationMonth(adjustedBalance, monthlyRate, monthlyPI, 0);
+    if (step.principalPaid <= 0 && step.extraPaid <= 0) break;
+    adjustedBalance = step.endingBalance;
+  }
+
+  return { adjustedBalance, monthsSinceStatement };
+}
+
 interface MortgageCalculatorProps {
   planningData: Record<string, string>;
   onBack: () => void;

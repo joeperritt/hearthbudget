@@ -618,6 +618,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
               {profile.housing_type === 'own' && (
                 <div className="space-y-3 pt-2">
+                  <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground">Statement Month</label>
@@ -628,27 +629,26 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                     <NumField label="Current Balance" value={profile.mortgage_balance} onChange={v => update('mortgage_balance', v)} prefix="$" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
                     <NumField label="Interest Rate" value={profile.mortgage_rate} onChange={v => update('mortgage_rate', v)} suffix="%" step="0.01" />
+                    <div>
+                      <label className="text-xs text-muted-foreground">Loan Type</label>
+                      <select value={profile.mortgage_loan_type} onChange={e => update('mortgage_loan_type', e.target.value)}
+                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                        <option value="30-year-fixed">30-Year Fixed</option>
+                        <option value="20-year-fixed">20-Year Fixed</option>
+                        <option value="15-year-fixed">15-Year Fixed</option>
+                        <option value="10-year-fixed">10-Year Fixed</option>
+                        <option value="5-1-arm">5/1 ARM</option>
+                        <option value="7-1-arm">7/1 ARM</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Loan Type</label>
-                    <select value={profile.mortgage_loan_type} onChange={e => update('mortgage_loan_type', e.target.value)}
-                      className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
-                      <option value="30-year-fixed">30-Year Fixed</option>
-                      <option value="20-year-fixed">20-Year Fixed</option>
-                      <option value="15-year-fixed">15-Year Fixed</option>
-                      <option value="10-year-fixed">10-Year Fixed</option>
-                      <option value="5-1-arm">5/1 ARM</option>
-                      <option value="7-1-arm">7/1 ARM</option>
-                      <option value="other">Other</option>
-                    </select>
-                    {(profile.mortgage_loan_type === '5-1-arm' || profile.mortgage_loan_type === '7-1-arm') && (
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                        Adjustable rate mortgages have variable interest rates — projections assume your current rate remains fixed, which may not reflect actual future payments.
-                      </p>
-                    )}
-                  </div>
+                  {(profile.mortgage_loan_type === '5-1-arm' || profile.mortgage_loan_type === '7-1-arm') && (
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      Adjustable rate mortgages have variable interest rates — projections assume your current rate remains fixed, which may not reflect actual future payments.
+                    </p>
+                  )}
                   <NumField label="Monthly Minimum Payment" value={profile.mortgage_payment} onChange={v => update('mortgage_payment', v)} prefix="$" />
 
                   <div className="space-y-2 bg-muted/50 rounded-lg p-3">
