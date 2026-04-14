@@ -305,7 +305,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       household_id: householdId,
       annual_gross_income: combinedGross,
       income_type: primaryIncomeType,
-      member_incomes: profileData.member_incomes,
+      member_incomes: membersWithTotals,
       filing_status: profileData.filing_status,
       state: profileData.state || null,
       housing_type: profileData.housing_type,
