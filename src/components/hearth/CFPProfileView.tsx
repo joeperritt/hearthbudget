@@ -259,6 +259,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           mortgage_extra: Number(savedProfile.mortgage_extra) || 0,
           mortgage_statement_month: savedProfile.mortgage_statement_month || '',
           mortgage_breakdown_enabled: !!savedProfile.mortgage_breakdown_enabled,
+          estimated_home_value: Number(savedProfile.estimated_home_value) || 0,
           monthly_rent: Number(savedProfile.monthly_rent) || 0,
           debts: Array.isArray(savedProfile.debts) ? (savedProfile.debts as unknown as Debt[]).map(d => ({
             ...d, extraPayment: Number((d as any).extraPayment) || 0,
