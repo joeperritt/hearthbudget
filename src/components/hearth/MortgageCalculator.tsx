@@ -930,6 +930,16 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
 
 /* ── Sub-components ────────────────────────────── */
 
+function DetailCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-semibold text-foreground mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center py-2">
