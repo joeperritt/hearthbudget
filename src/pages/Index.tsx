@@ -481,7 +481,7 @@ const Index = () => {
           />
         )}
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} />
+          <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
         )}
         {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
           renderTool(planSubView, () => setPlanSubView('menu'))
