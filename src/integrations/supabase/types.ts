@@ -148,6 +148,7 @@ export type Database = {
           annual_gross_income: number
           created_at: string
           debts: Json
+          dependents: Json
           emergency_fund_balance: number | null
           filing_status: string
           has_life_insurance: boolean | null
@@ -173,6 +174,7 @@ export type Database = {
           annual_gross_income?: number
           created_at?: string
           debts?: Json
+          dependents?: Json
           emergency_fund_balance?: number | null
           filing_status?: string
           has_life_insurance?: boolean | null
@@ -198,6 +200,7 @@ export type Database = {
           annual_gross_income?: number
           created_at?: string
           debts?: Json
+          dependents?: Json
           emergency_fund_balance?: number | null
           filing_status?: string
           has_life_insurance?: boolean | null
