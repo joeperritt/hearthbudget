@@ -22,18 +22,8 @@ export function getTransactionAmountPresentation(
       return { colorClassName: 'text-destructive', prefix: '-', value };
     }
 
-    const isInflowByType = transaction.transactionType === 'income' || transaction.transactionType === 'deposit';
-    const isOutflowByType = transaction.transactionType === 'expense';
-
-    if (isInflowByType) {
-      return { colorClassName: 'text-success', prefix: '+', value };
-    }
-
-    if (isOutflowByType) {
-      return { colorClassName: 'text-destructive', prefix: '-', value };
-    }
-
     // Checking convention: negative amount = inbound credit, positive = outbound debit
+    // Amount sign is the source of truth — ignore transactionType for color/prefix
     if (transaction.amount < 0) {
       return { colorClassName: 'text-success', prefix: '+', value };
     }
