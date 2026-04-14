@@ -93,6 +93,7 @@ const DEFAULT_PROFILE: ProfileData = {
   mortgage_extra: 0,
   mortgage_statement_month: '',
   mortgage_breakdown_enabled: false,
+  estimated_home_value: 0,
   monthly_rent: 0,
   debts: [],
   non_retirement_investments: 0,
