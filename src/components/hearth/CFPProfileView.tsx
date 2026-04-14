@@ -62,6 +62,7 @@ interface ProfileData {
   mortgage_extra: number;
   mortgage_statement_month: string;
   mortgage_breakdown_enabled: boolean;
+  estimated_home_value: number;
   monthly_rent: number;
   debts: Debt[];
   non_retirement_investments: number;
