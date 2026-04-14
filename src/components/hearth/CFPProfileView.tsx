@@ -204,11 +204,34 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const savedIncomes = Array.isArray(data.member_incomes) ? (data.member_incomes as unknown as MemberIncome[]) : [];
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
+          const base = existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
+          // Migrate: if no income_sources yet but has gross_income, create one source
+          if (!base.income_sources || base.income_sources.length === 0) {
+            if (base.gross_income > 0) {
+              const typeMap: Record<string, string> = { self_employed: '1099', mixed: 'w2' };
+              const srcType = typeMap[base.income_type] || base.income_type || 'w2';
+              base.income_sources = [{ type: srcType, amount: base.gross_income }];
+              // If mixed, create multiple sources from breakdown
+              if (base.income_type === 'mixed' && base.mixed_breakdown) {
+                const bd = base.mixed_breakdown;
+                base.income_sources = [];
+                if (bd.w2 > 0) base.income_sources.push({ type: 'w2', amount: bd.w2 });
+                if (bd['1099'] > 0) base.income_sources.push({ type: '1099', amount: bd['1099'] });
+                if (bd.k1 > 0) base.income_sources.push({ type: 'k1', amount: bd.k1 });
+                if (bd.scorp > 0) base.income_sources.push({ type: 'scorp', amount: bd.scorp });
+                if (base.income_sources.length === 0) base.income_sources = [{ type: 'w2', amount: base.gross_income }];
+              }
+            } else {
+              base.income_sources = [];
+            }
+          }
+          return base;
         });
-        if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0) {
+        if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0 && (!incomes[0].income_sources || incomes[0].income_sources.length === 0)) {
+          const srcType = data.income_type === 'self_employed' ? '1099' : (data.income_type || 'w2');
           incomes[0].gross_income = Number(data.annual_gross_income);
           incomes[0].income_type = data.income_type || 'w2';
+          incomes[0].income_sources = [{ type: srcType, amount: Number(data.annual_gross_income) }];
         }
 
         const savedCoverages = Array.isArray((data as any).life_insurance_coverages) ? ((data as any).life_insurance_coverages as unknown as MemberCoverage[]) : [];
