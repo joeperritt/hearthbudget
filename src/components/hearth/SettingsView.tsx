@@ -219,7 +219,9 @@ export function SettingsView({
       group,
       notesRequired: false,
     };
-    setNextFixed(exps => [...exps, { ...newExp }]);
+    const updated = [...fixedExpenses, newExp];
+    setNextFixed(updated.map(e => ({ ...e })));
+    onUpdateFixedExpenses(updated);
     setNewFixedName('');
     setNewFixedAmount('');
     setShowAddFixed(null);
