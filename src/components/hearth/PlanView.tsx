@@ -90,7 +90,6 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
   };
 
   const getDisabledReason = (toolId: InsightToolId): string | null => {
-    if (toolId === 'mortgage-analyzer' && isToolDisabled(toolId)) return 'N/A';
     if (toolId === 'debt-payoff' && isToolDisabled(toolId)) return 'N/A';
     return null;
   };
