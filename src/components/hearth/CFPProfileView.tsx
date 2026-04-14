@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Trash2, Shield, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Shield, Check, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,11 +31,17 @@ interface MemberCoverage {
   mixedTermPct: number;
 }
 
+interface IncomeSource {
+  type: string;
+  amount: number;
+}
+
 interface MemberIncome {
   profile_id: string;
   name: string;
   gross_income: number;
   income_type: string;
+  income_sources?: IncomeSource[];
   dob?: string | null;
   age?: number;
   pay_frequency: string;
@@ -102,13 +108,23 @@ const DEFAULT_PROFILE: ProfileData = {
   dependent_life_coverage: 0,
 };
 
-const INCOME_TYPES = [
+const INCOME_SOURCE_TYPES = [
   { value: 'w2', label: 'W-2' },
-  { value: 'self_employed', label: '1099' },
+  { value: '1099', label: '1099' },
   { value: 'k1', label: 'K-1' },
   { value: 'scorp', label: 'S-Corp' },
-  { value: 'mixed', label: 'Mixed' },
+  { value: 'rental', label: 'Rental' },
+  { value: 'other', label: 'Other' },
 ];
+
+const INCOME_SOURCE_TOOLTIPS: Record<string, string> = {
+  w2: 'Wages or salary from an employer. You receive a W-2 form at tax time. This is the most common income type.',
+  '1099': 'Self-employment, freelance, or contract income. You receive a 1099 form and are responsible for paying self-employment taxes.',
+  k1: 'Income from a partnership, S-Corporation, or trust where you are an owner or partner. You receive a Schedule K-1 at tax time.',
+  scorp: 'Income distributed to yourself as an owner of an S-Corporation, typically as a salary plus distributions.',
+  rental: 'Income from rental properties you own.',
+  other: 'Any other taxable income not covered above.',
+};
 
 const PAY_FREQUENCIES = [
   { value: 'weekly', label: 'Weekly' },
@@ -188,11 +204,34 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const savedIncomes = Array.isArray(data.member_incomes) ? (data.member_incomes as unknown as MemberIncome[]) : [];
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
+          const base = existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
+          // Migrate: if no income_sources yet but has gross_income, create one source
+          if (!base.income_sources || base.income_sources.length === 0) {
+            if (base.gross_income > 0) {
+              const typeMap: Record<string, string> = { self_employed: '1099', mixed: 'w2' };
+              const srcType = typeMap[base.income_type] || base.income_type || 'w2';
+              base.income_sources = [{ type: srcType, amount: base.gross_income }];
+              // If mixed, create multiple sources from breakdown
+              if (base.income_type === 'mixed' && base.mixed_breakdown) {
+                const bd = base.mixed_breakdown;
+                base.income_sources = [];
+                if (bd.w2 > 0) base.income_sources.push({ type: 'w2', amount: bd.w2 });
+                if (bd['1099'] > 0) base.income_sources.push({ type: '1099', amount: bd['1099'] });
+                if (bd.k1 > 0) base.income_sources.push({ type: 'k1', amount: bd.k1 });
+                if (bd.scorp > 0) base.income_sources.push({ type: 'scorp', amount: bd.scorp });
+                if (base.income_sources.length === 0) base.income_sources = [{ type: 'w2', amount: base.gross_income }];
+              }
+            } else {
+              base.income_sources = [];
+            }
+          }
+          return base;
         });
-        if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0) {
+        if (savedIncomes.length === 0 && Number(data.annual_gross_income) > 0 && incomes.length > 0 && (!incomes[0].income_sources || incomes[0].income_sources.length === 0)) {
+          const srcType = data.income_type === 'self_employed' ? '1099' : (data.income_type || 'w2');
           incomes[0].gross_income = Number(data.annual_gross_income);
           incomes[0].income_type = data.income_type || 'w2';
+          incomes[0].income_sources = [{ type: srcType, amount: Number(data.annual_gross_income) }];
         }
 
         const savedCoverages = Array.isArray((data as any).life_insurance_coverages) ? ((data as any).life_insurance_coverages as unknown as MemberCoverage[]) : [];
@@ -241,7 +280,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       } else {
         setProfile(p => ({
           ...p,
-          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' })),
+          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', income_sources: [], dob: null, pay_frequency: 'biweekly' })),
           life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 })),
         }));
       }
@@ -253,14 +292,20 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const save = useCallback(async (profileData: ProfileData) => {
     if (!householdId) return;
     setSaving(true);
-    const combinedGross = profileData.member_incomes.reduce((s, m) => s + m.gross_income, 0);
-    const primaryIncomeType = profileData.member_incomes[0]?.income_type || 'w2';
+    // Compute gross_income from income_sources for each member before saving
+    const membersWithTotals = profileData.member_incomes.map(m => ({
+      ...m,
+      gross_income: (m.income_sources || []).reduce((s, src) => s + src.amount, 0),
+      income_type: (m.income_sources || []).length === 1 ? m.income_sources![0].type : (m.income_sources || []).length > 1 ? 'mixed' : 'w2',
+    }));
+    const combinedGross = membersWithTotals.reduce((s, m) => s + m.gross_income, 0);
+    const primaryIncomeType = membersWithTotals[0]?.income_type || 'w2';
 
     const payload: any = {
       household_id: householdId,
       annual_gross_income: combinedGross,
       income_type: primaryIncomeType,
-      member_incomes: profileData.member_incomes,
+      member_incomes: membersWithTotals,
       filing_status: profileData.filing_status,
       state: profileData.state || null,
       housing_type: profileData.housing_type,
@@ -367,7 +412,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const completeness = (() => {
     const total = 6;
     let filled = 0;
-    if (profile.member_incomes.some(m => m.gross_income > 0)) filled++;
+    if (profile.member_incomes.some(m => (m.income_sources || []).some(s => s.amount > 0))) filled++;
     if (profile.filing_status && profile.state) filled++;
     if (profile.housing_type) filled++;
     if (profile.emergency_fund_balance > 0 || profile.retirement_balance > 0 || profile.non_retirement_investments > 0) filled++;
@@ -529,62 +574,19 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
         {/* Income Tab */}
         {activeProfileTab === 'income' && (
-          <div className="space-y-4">
-            {profile.member_incomes.map((member, i) => (
-              <section key={member.profile_id}>
-                <h2 className="font-display text-sm font-semibold text-foreground mb-3">{member.name || `Member ${i + 1}`}</h2>
-                <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                  <NumField label="Annual Gross Income" value={member.gross_income} onChange={v => updateMemberIncome(i, 'gross_income', v)} prefix="$" />
-                  <div>
-                    <label className="text-xs text-muted-foreground">Income Type</label>
-                    <div className="grid grid-cols-5 gap-1 mt-1">
-                      {INCOME_TYPES.map(t => (
-                        <button key={t.value} onClick={() => updateMemberIncome(i, 'income_type', t.value)}
-                          className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
-                            member.income_type === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                          }`}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {member.income_type === 'mixed' && (
-                    <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] text-muted-foreground font-medium">Income Breakdown (must sum to total)</p>
-                      {['w2', '1099', 'k1', 'scorp'].map(type => (
-                        <div key={type} className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground w-10">{type.toUpperCase()}</span>
-                          <div className="flex items-center gap-1 flex-1">
-                            <span className="text-xs text-muted-foreground">$</span>
-                            <input type="number"
-                              value={member.mixed_breakdown?.[type as keyof typeof member.mixed_breakdown] || ''}
-                              onChange={e => {
-                                const bd = { ...member.mixed_breakdown, [type]: parseFloat(e.target.value) || 0 };
-                                updateMemberIncome(i, 'mixed_breakdown', bd);
-                              }}
-                              className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs text-muted-foreground">Pay Frequency</label>
-                    <div className="grid grid-cols-4 gap-1 mt-1">
-                      {PAY_FREQUENCIES.map(f => (
-                        <button key={f.value} onClick={() => updateMemberIncome(i, 'pay_frequency', f.value)}
-                          className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
-                            (member.pay_frequency || 'biweekly') === f.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                          }`}>
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            ))}
-          </div>
+          <IncomeTab
+            members={profile.member_incomes}
+            onUpdateMember={(index, member) => {
+              setProfile(p => {
+                const updated = {
+                  ...p,
+                  member_incomes: p.member_incomes.map((m, i) => i === index ? member : m),
+                };
+                debouncedSave(updated);
+                return updated;
+              });
+            }}
+          />
         )}
 
         {/* Housing Tab */}
@@ -876,6 +878,164 @@ function NumFieldInline({ value, onChange }: { value: number; onChange: (v: numb
       <span className="text-xs text-muted-foreground">$</span>
       <input type="number" value={value || ''} onChange={e => onChange(parseFloat(e.target.value) || 0)}
         placeholder="0" className="flex-1 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+    </div>
+  );
+}
+
+function fmtComma(n: number): string {
+  if (!n) return '';
+  return n.toLocaleString('en-US');
+}
+
+function parseComma(s: string): number {
+  return parseFloat(s.replace(/,/g, '')) || 0;
+}
+
+function CurrencyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [display, setDisplay] = useState(value ? fmtComma(value) : '');
+  useEffect(() => { setDisplay(value ? fmtComma(value) : ''); }, [value]);
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-muted-foreground shrink-0">$</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={display}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^0-9.]/g, '');
+          setDisplay(raw ? parseFloat(raw).toLocaleString('en-US') : '');
+          onChange(parseFloat(raw) || 0);
+        }}
+        onBlur={() => setDisplay(value ? fmtComma(value) : '')}
+        placeholder="0"
+        className="flex-1 min-w-0 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+      />
+    </div>
+  );
+}
+
+function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
+  const [showTypePicker, setShowTypePicker] = useState<number | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
+
+  const memberTotal = (m: MemberIncome) => (m.income_sources || []).reduce((s, src) => s + src.amount, 0);
+  const householdTotal = members.reduce((s, m) => s + memberTotal(m), 0);
+
+  const addSource = (memberIdx: number, type: string) => {
+    const m = members[memberIdx];
+    const sources = [...(m.income_sources || []), { type, amount: 0 }];
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+    setShowTypePicker(null);
+  };
+
+  const updateSource = (memberIdx: number, srcIdx: number, amount: number) => {
+    const m = members[memberIdx];
+    const sources = (m.income_sources || []).map((s, j) => j === srcIdx ? { ...s, amount } : s);
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+  };
+
+  const removeSource = (memberIdx: number, srcIdx: number) => {
+    const m = members[memberIdx];
+    const sources = (m.income_sources || []).filter((_, j) => j !== srcIdx);
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
+  };
+
+  const getTypeLabel = (type: string) => INCOME_SOURCE_TYPES.find(t => t.value === type)?.label || type;
+
+  return (
+    <div className="space-y-4">
+      {members.map((member, i) => (
+        <section key={member.profile_id}>
+          <h2 className="font-display text-sm font-semibold text-foreground mb-3">{member.name || `Member ${i + 1}`}</h2>
+          <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
+            {/* Income sources */}
+            {(member.income_sources || []).map((src, j) => (
+              <div key={j} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-foreground">{getTypeLabel(src.type)}</span>
+                  <button
+                    onClick={() => setTooltipOpen(tooltipOpen === `${i}-${j}` ? null : `${i}-${j}`)}
+                    className="text-accent"
+                  >
+                    <Info size={12} />
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => removeSource(i, j)} className="text-destructive/60 hover:text-destructive">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+                {tooltipOpen === `${i}-${j}` && (
+                  <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed">
+                    {INCOME_SOURCE_TOOLTIPS[src.type] || ''}
+                  </p>
+                )}
+                <CurrencyInput value={src.amount} onChange={v => updateSource(i, j, v)} />
+              </div>
+            ))}
+
+            {/* Add source */}
+            {showTypePicker === i ? (
+              <div className="bg-muted rounded-lg p-2 space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">Select income type</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {INCOME_SOURCE_TYPES.map(t => (
+                    <button key={t.value} onClick={() => addSource(i, t.value)}
+                      className="py-1.5 px-2 rounded-lg text-[10px] font-medium bg-background text-foreground hover:bg-accent/10 transition-colors border border-border">
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setShowTypePicker(null)} className="text-[10px] text-muted-foreground mt-1">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setShowTypePicker(i)}
+                className="flex items-center gap-1 text-xs text-accent font-medium active:scale-95 transition-transform">
+                <Plus size={14} /> Add Income Source
+              </button>
+            )}
+
+            {/* Member total */}
+            {(member.income_sources || []).length > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-xs font-medium text-foreground">Total</span>
+                <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal(member))}</span>
+              </div>
+            )}
+
+            {/* Pay Frequency */}
+            <div>
+              <label className="text-xs text-muted-foreground">Pay Frequency</label>
+              <div className="grid grid-cols-4 gap-1 mt-1">
+                {PAY_FREQUENCIES.map(f => (
+                  <button key={f.value} onClick={() => onUpdateMember(i, { ...member, pay_frequency: f.value })}
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-medium transition-colors ${
+                      (member.pay_frequency || 'biweekly') === f.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {/* Household Income Summary */}
+      <section>
+        <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Income Summary</h2>
+        <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+          {members.map((m, i) => (
+            <div key={m.profile_id} className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{m.name || `Member ${i + 1}`}</span>
+              <span className="text-sm tabular-nums text-foreground">{fmt(memberTotal(m))}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="text-xs font-semibold text-foreground">Combined Household Gross</span>
+            <span className="text-sm font-bold text-foreground tabular-nums">{fmt(householdTotal)}</span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
