@@ -241,7 +241,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       } else {
         setProfile(p => ({
           ...p,
-          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', age: undefined, pay_frequency: 'biweekly' })),
+          member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' })),
           life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 })),
         }));
       }
