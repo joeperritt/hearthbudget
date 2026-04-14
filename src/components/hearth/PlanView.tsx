@@ -81,11 +81,6 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
 
   const isToolDisabled = (toolId: InsightToolId): boolean => {
     const fp = financialProfile;
-    if (toolId === 'mortgage-analyzer') {
-      if (!fp) return false;
-      const ht = fp.housing_type;
-      return ht === 'rent' || ht === 'own-no-mortgage';
-    }
     if (toolId === 'debt-payoff') {
       if (!fp) return false;
       const debts = Array.isArray(fp.debts) ? fp.debts : [];
