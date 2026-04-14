@@ -249,11 +249,16 @@ Deno.serve(async (req) => {
 
         // All transactions sync as "expense" (unassigned) — user assigns type manually.
         // Only cc-payments are auto-tagged since they are structural, not user-categorized.
+        // Credit card refunds (negative Plaid amount) are flagged as deposits so they
+        // display as green credits in the UI for user categorization.
         let transactionType = "expense";
         let categorySlug = "unassigned";
         if (isCcPayment) {
           transactionType = "cc-payment";
           categorySlug = "cc-payment";
+        } else if (isCreditCard && plaidAmount < 0) {
+          transactionType = "deposit";
+          categorySlug = "unassigned";
         }
 
         return {
