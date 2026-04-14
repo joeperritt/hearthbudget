@@ -318,6 +318,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       mortgage_escrow: profileData.mortgage_escrow,
       mortgage_extra: profileData.mortgage_extra,
       mortgage_breakdown_enabled: profileData.mortgage_breakdown_enabled,
+      estimated_home_value: profileData.estimated_home_value,
       monthly_rent: profileData.monthly_rent,
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
