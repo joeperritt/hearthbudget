@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
@@ -47,17 +47,25 @@ export function BudgetTabView({
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
   planningData, onUpdatePlanningData,
 }: BudgetTabViewProps) {
+  const [viewMonthKey, setViewMonthKey] = useState(() => format(currentMonth, 'yyyy-MM'));
   const [takeHomeInput, setTakeHomeInput] = useState(() => {
     const total = (parseFloat(planningData.netIncome || '') || 0) + (parseFloat(planningData.katieNetIncome || '') || 0);
     return total > 0 ? formatWithCommas(String(total)) : '';
   });
 
+  useEffect(() => {
+    setViewMonthKey(format(currentMonth, 'yyyy-MM'));
+  }, [currentMonth]);
+
+  const monthCategories = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
+  const monthFixedExpenses = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+
   // Use the live input value for real-time surplus calculation
   const totalTakeHome = parseNumeric(takeHomeInput);
 
   // Budget totals — sum ALL categories and fixed expenses
-  const allCategoriesTotal = categories.reduce((s, c) => s + c.budgeted, 0);
-  const fixedTotal = fixedExpenses.reduce((s, e) => s + e.amount, 0);
+  const allCategoriesTotal = monthCategories.reduce((s, c) => s + c.budgeted, 0);
+  const fixedTotal = monthFixedExpenses.reduce((s, e) => s + e.amount, 0);
   const budgetTotal = allCategoriesTotal + fixedTotal;
 
   // Surplus = take-home minus budget total, nothing else
@@ -145,6 +153,7 @@ export function BudgetTabView({
           transferAdjustments={transferAdjustments}
           monthTransactions={monthTransactions}
           embedded
+          onViewMonthChange={setViewMonthKey}
         />
       </div>
     </div>

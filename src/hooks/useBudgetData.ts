@@ -123,6 +123,8 @@ export function useBudgetData() {
 
   // Shared helper: build snapshot data for a given month
   const buildSnapshotData = useCallback((month: string, cats: BudgetCategory[], fixed: FixedExpense[]) => {
+    const monthCategories = filterForMonth(cats, month);
+    const monthFixedExpenses = filterForMonth(fixed, month);
     const monthTxns = transactions.filter(t => t.budgetMonth === month);
     const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
 
@@ -145,8 +147,8 @@ export function useBudgetData() {
     return {
       household_id: householdId!,
       month,
-      categories: cats,
-      fixed_expenses: fixed,
+      categories: monthCategories,
+      fixed_expenses: monthFixedExpenses,
       transactions_summary: summary,
       transfers: monthTransfers,
     };
@@ -237,7 +239,15 @@ export function useBudgetData() {
 
   const updateCategories = useCallback(async (cats: BudgetCategory[]) => {
     if (!householdId) return;
-    const ops = cats.map((c, i) =>
+
+    const existingById = new Map(categories.map(c => [c.id, c]));
+    const normalizedCats = cats.map(c => ({
+      ...c,
+      startMonth: c.startMonth ?? existingById.get(c.id)?.startMonth ?? null,
+      endMonth: c.endMonth ?? existingById.get(c.id)?.endMonth ?? null,
+    }));
+
+    const ops = normalizedCats.map((c, i) =>
       supabase.from('budget_categories').upsert({
         household_id: householdId,
         slug: c.id,
@@ -246,11 +256,13 @@ export function useBudgetData() {
         group: c.group,
         sort_order: i,
         notes_required: c.notesRequired ?? false,
+        start_month: c.startMonth,
+        end_month: c.endMonth,
       } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 
-    const existingSlugs = cats.map(c => c.id);
+    const existingSlugs = normalizedCats.map(c => c.id);
     const { data: dbCats } = await supabase
       .from('budget_categories')
       .select('slug')
@@ -264,12 +276,20 @@ export function useBudgetData() {
       );
     }
 
-    setCategories(cats);
-  }, [householdId]);
+    setCategories(normalizedCats);
+  }, [householdId, categories]);
 
   const updateFixedExpenses = useCallback(async (exps: FixedExpense[]) => {
     if (!householdId) return;
-    const ops = exps.map((e, i) =>
+
+    const existingById = new Map(fixedExpenses.map(e => [e.id, e]));
+    const normalizedExpenses = exps.map(e => ({
+      ...e,
+      startMonth: e.startMonth ?? existingById.get(e.id)?.startMonth ?? null,
+      endMonth: e.endMonth ?? existingById.get(e.id)?.endMonth ?? null,
+    }));
+
+    const ops = normalizedExpenses.map((e, i) =>
       supabase.from('fixed_expenses').upsert({
         household_id: householdId,
         slug: e.id,
@@ -278,11 +298,13 @@ export function useBudgetData() {
         group: e.group,
         sort_order: i,
         notes_required: e.notesRequired ?? false,
+        start_month: e.startMonth,
+        end_month: e.endMonth,
       } as any, { onConflict: 'household_id,slug' })
     );
     await Promise.all(ops);
 
-    const existingSlugs = exps.map(e => e.id);
+    const existingSlugs = normalizedExpenses.map(e => e.id);
     const { data: dbExps } = await supabase
       .from('fixed_expenses')
       .select('slug')
@@ -296,8 +318,8 @@ export function useBudgetData() {
       );
     }
 
-    setFixedExpenses(exps);
-  }, [householdId]);
+    setFixedExpenses(normalizedExpenses);
+  }, [householdId, fixedExpenses]);
 
   // --- Targeted month-scoped add/remove ---
 

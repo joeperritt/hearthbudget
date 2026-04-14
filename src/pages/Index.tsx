@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useBudgetData } from '@/hooks/useBudgetData';
+import { filterForMonth, useBudgetData } from '@/hooks/useBudgetData';
 import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -115,6 +115,16 @@ const Index = () => {
     [transactions, monthKey]
   );
 
+  const activeMonthCategories = useMemo(
+    () => filterForMonth(categories, monthKey),
+    [categories, monthKey]
+  );
+
+  const activeMonthFixedExpenses = useMemo(
+    () => filterForMonth(fixedExpenses, monthKey),
+    [fixedExpenses, monthKey]
+  );
+
   const monthTransfers = useMemo(
     () => transfers.filter(t => t.date.startsWith(monthKey)),
     [transfers, monthKey]
@@ -150,33 +160,33 @@ const Index = () => {
     return map;
   }, [monthTransfers]);
 
-  const variableCategoryIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
-  const totalVariableBudget = categories.reduce((s, c) => s + c.budgeted, 0);
+  const variableCategoryIds = useMemo(() => new Set(activeMonthCategories.map(c => c.id)), [activeMonthCategories]);
+  const totalVariableBudget = activeMonthCategories.reduce((s, c) => s + c.budgeted, 0);
   const totalVariableSpent = useMemo(() => {
     const rawSpent = Object.entries(spentByCategory)
       .filter(([id]) => variableCategoryIds.has(id))
       .reduce((s, [, v]) => s + v, 0);
-    const varTransferAdj = categories.reduce((s, c) => s + (transferAdjustments[c.id] || 0), 0);
+    const varTransferAdj = activeMonthCategories.reduce((s, c) => s + (transferAdjustments[c.id] || 0), 0);
     return rawSpent - varTransferAdj;
-  }, [spentByCategory, variableCategoryIds, categories, transferAdjustments]);
-  const totalFixedAll = fixedExpenses.reduce((s, e) => s + e.amount, 0);
+  }, [spentByCategory, variableCategoryIds, activeMonthCategories, transferAdjustments]);
+  const totalFixedAll = activeMonthFixedExpenses.reduce((s, e) => s + e.amount, 0);
 
   const allFixedSpent = useMemo(() => {
-    const ids = new Set(fixedExpenses.map(e => e.id));
+    const ids = new Set(activeMonthFixedExpenses.map(e => e.id));
     const rawSpent = Object.entries(spentByCategory)
       .filter(([id]) => ids.has(id))
       .reduce((s, [, v]) => s + v, 0);
-    const fixedTransferAdj = fixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
+    const fixedTransferAdj = activeMonthFixedExpenses.reduce((s, e) => s + (transferAdjustments[e.id] || 0), 0);
     return rawSpent - fixedTransferAdj;
-  }, [spentByCategory, fixedExpenses, transferAdjustments]);
+  }, [spentByCategory, activeMonthFixedExpenses, transferAdjustments]);
 
   const totalBudget = totalVariableBudget + totalFixedAll;
 
   const assignedCategoryIds = useMemo(() => {
-    const ids = new Set(categories.map(c => c.id));
-    fixedExpenses.forEach(e => ids.add(e.id));
+    const ids = new Set(activeMonthCategories.map(c => c.id));
+    activeMonthFixedExpenses.forEach(e => ids.add(e.id));
     return ids;
-  }, [categories, fixedExpenses]);
+  }, [activeMonthCategories, activeMonthFixedExpenses]);
 
   const accountSpending = useMemo(() => {
     return accounts.map(acct => ({
@@ -202,16 +212,16 @@ const Index = () => {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
     fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
   } = useBudgetInsights(
-    activeMonth, categories, fixedExpenses, monthTransactions,
+    activeMonth, activeMonthCategories, activeMonthFixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
     householdId, planningData,
   );
 
   useEffect(() => {
-    if (activeMonth && categories.length > 0) {
+    if (activeMonth && activeMonthCategories.length > 0) {
       fetchInsights();
     }
-  }, [activeMonth, categories.length]);
+  }, [activeMonth, activeMonthCategories.length]);
 
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     await addTransactions(txns);
@@ -286,13 +296,13 @@ const Index = () => {
   }
 
   if (selectedCategoryId) {
-    const cat = categories.find(c => c.id === selectedCategoryId);
+    const cat = activeMonthCategories.find(c => c.id === selectedCategoryId);
     if (cat) {
       return (
         <CategoryDetail
           category={{ id: cat.id, name: cat.name, budgeted: cat.budgeted }}
-          categories={categories}
-          fixedExpenses={fixedExpenses}
+          categories={activeMonthCategories}
+          fixedExpenses={activeMonthFixedExpenses}
           transactions={budgetTransactions.filter(t => t.categoryId === cat.id)}
           deposits={monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === cat.id)}
           transfers={monthTransfers}
@@ -308,7 +318,7 @@ const Index = () => {
   }
 
   if (selectedFixedExpenseId) {
-    const exp = fixedExpenses.find(e => e.id === selectedFixedExpenseId);
+    const exp = activeMonthFixedExpenses.find(e => e.id === selectedFixedExpenseId);
     if (exp) {
       const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
       const fixedDeposits = monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === exp.id);
@@ -316,8 +326,8 @@ const Index = () => {
       return (
         <CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
-          categories={categories}
-          fixedExpenses={fixedExpenses}
+          categories={activeMonthCategories}
+          fixedExpenses={activeMonthFixedExpenses}
           transactions={fixedTransactions}
           deposits={fixedDeposits}
           transfers={monthTransfers}
@@ -371,8 +381,8 @@ const Index = () => {
             totalPayoffs={totalPayoffs}
             unassignedTransactions={unassignedTransactions}
             onEditTransaction={setEditingTransaction}
-            categories={categories}
-            fixedExpenses={fixedExpenses}
+            categories={activeMonthCategories}
+            fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
             onSelectCategory={setSelectedCategoryId}
@@ -397,8 +407,8 @@ const Index = () => {
         )}
         {activeTab === 'variable' && (
           <SpendingView
-            categories={categories}
-            fixedExpenses={fixedExpenses}
+            categories={activeMonthCategories}
+            fixedExpenses={activeMonthFixedExpenses}
             transactions={monthTransactions}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
@@ -417,8 +427,8 @@ const Index = () => {
         {activeTab === 'transactions' && (
           <TransactionsView
             transactions={monthTransactions}
-            categories={categories}
-            fixedExpenses={fixedExpenses}
+            categories={activeMonthCategories}
+            fixedExpenses={activeMonthFixedExpenses}
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
@@ -495,8 +505,8 @@ const Index = () => {
         {activeTab === 'more' && moreSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
-            categories={categories}
-            fixedExpenses={fixedExpenses}
+            categories={activeMonthCategories}
+            fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
             onBack={() => setMoreSubView('menu')}
           />
@@ -517,8 +527,8 @@ const Index = () => {
       <AddTransactionSheet
         open={showAddTransaction}
         onOpenChange={setShowAddTransaction}
-        categories={categories}
-        fixedExpenses={fixedExpenses}
+        categories={activeMonthCategories}
+        fixedExpenses={activeMonthFixedExpenses}
         onAdd={handleAddTransactions}
         monthTransactions={monthTransactions}
         accounts={accounts}
@@ -528,8 +538,8 @@ const Index = () => {
         transaction={editingTransaction}
         open={!!editingTransaction}
         onOpenChange={open => { if (!open) { setEditingTransaction(null); setEditingSplitSiblings([]); } }}
-        categories={categories}
-        fixedExpenses={fixedExpenses}
+        categories={activeMonthCategories}
+        fixedExpenses={activeMonthFixedExpenses}
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
         splitSiblings={editingSplitSiblings}
@@ -541,8 +551,8 @@ const Index = () => {
         <MoveFundsSheet
           open={!!moveFundsCategoryId}
           onOpenChange={open => { if (!open) setMoveFundsCategoryId(null); }}
-          categories={categories}
-          fixedExpenses={fixedExpenses}
+          categories={activeMonthCategories}
+          fixedExpenses={activeMonthFixedExpenses}
           fromCategoryId={moveFundsCategoryId}
           onMove={addTransfer}
         />
@@ -552,8 +562,8 @@ const Index = () => {
         <MoveFundsSheet
           open={!!moveFundsFixedId}
           onOpenChange={open => { if (!open) setMoveFundsFixedId(null); }}
-          categories={categories}
-          fixedExpenses={fixedExpenses}
+          categories={activeMonthCategories}
+          fixedExpenses={activeMonthFixedExpenses}
           fromCategoryId={moveFundsFixedId}
           onMove={addTransfer}
         />
