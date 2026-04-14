@@ -449,6 +449,18 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         {activeProfileTab === 'profile' && (
           <div className="space-y-4">
             <section>
+              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Name</h2>
+              <div className="bg-card rounded-xl shadow-sm p-4">
+                <input
+                  value={householdName}
+                  onChange={e => updateHouseholdName(e.target.value)}
+                  placeholder="e.g. Smith Family"
+                  className="w-full px-2 py-1.5 rounded bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+              </div>
+            </section>
+
+            <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Members</h2>
               <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
                 {profile.member_incomes.map((member, i) => (
