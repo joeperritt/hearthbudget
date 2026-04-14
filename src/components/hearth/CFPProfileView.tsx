@@ -941,10 +941,10 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
   return (
     <div className="space-y-4">
       {/* Side-by-side income grid */}
-      <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+      <div className="space-y-2">
         {/* Column headers */}
         <div className="flex items-center gap-2">
-          <div className="w-[120px] shrink-0" />
+          <div className="w-[140px] shrink-0" />
           {members.map((m, i) => (
             <div key={m.profile_id} className="flex-1 min-w-0 text-center">
               <span className="text-xs font-semibold text-foreground">{m.name || `Member ${i + 1}`}</span>
@@ -958,7 +958,7 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
           return (
             <div key={t.value}>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 w-[120px] shrink-0">
+                <div className="flex items-center gap-1 w-[140px] shrink-0">
                   <span className="text-xs font-medium text-foreground">{t.label}</span>
                   <button
                     onClick={() => setTooltipOpen(tooltipOpen === tipKey ? null : tipKey)}
@@ -972,7 +972,7 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
                 ))}
               </div>
               {tooltipOpen === tipKey && (
-                <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed mt-1 ml-[120px]">
+                <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed mt-1 ml-[140px]">
                   {INCOME_SOURCE_TOOLTIPS[t.value] || ''}
                 </p>
               )}
@@ -982,7 +982,7 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
 
         {/* Total row */}
         <div className="flex items-center gap-2 pt-2 border-t border-border">
-          <div className="w-[120px] shrink-0">
+          <div className="w-[140px] shrink-0">
             <span className="text-xs font-semibold text-foreground">Total</span>
           </div>
           {members.map(m => (
