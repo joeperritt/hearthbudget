@@ -108,11 +108,10 @@ const DEFAULT_PROFILE: ProfileData = {
   dependent_life_coverage: 0,
 };
 
-const INCOME_SOURCE_TYPES = [
-  { value: 'w2', label: 'W-2' },
-  { value: '1099', label: '1099' },
-  { value: 'k1', label: 'K-1' },
-  { value: 'scorp', label: 'S-Corp' },
+const INCOME_GRID_TYPES = [
+  { value: 'w2', label: 'W-2 / Salary' },
+  { value: '1099', label: '1099 / Self-Employed' },
+  { value: 'k1', label: 'K-1 / S-Corp' },
   { value: 'rental', label: 'Rental' },
   { value: 'other', label: 'Other' },
 ];
@@ -120,8 +119,7 @@ const INCOME_SOURCE_TYPES = [
 const INCOME_SOURCE_TOOLTIPS: Record<string, string> = {
   w2: 'Wages or salary from an employer. You receive a W-2 form at tax time. This is the most common income type.',
   '1099': 'Self-employment, freelance, or contract income. You receive a 1099 form and are responsible for paying self-employment taxes.',
-  k1: 'Income from a partnership, S-Corporation, or trust where you are an owner or partner. You receive a Schedule K-1 at tax time.',
-  scorp: 'Income distributed to yourself as an owner of an S-Corporation, typically as a salary plus distributions.',
+  k1: 'Income from a partnership or S-Corporation where you are an owner. You receive a Schedule K-1 at tax time. This differs from 1099 in that it reflects ownership distributions rather than payments for services rendered.',
   rental: 'Income from rental properties you own.',
   other: 'Any other taxable income not covered above.',
 };
@@ -915,32 +913,34 @@ function CurrencyInput({ value, onChange }: { value: number; onChange: (v: numbe
 }
 
 function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
-  const [showTypePicker, setShowTypePicker] = useState<number | null>(null);
   const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
+
+  const getSourceAmount = (m: MemberIncome, type: string): number => {
+    const src = (m.income_sources || []).find(s => s.type === type || (type === 'k1' && s.type === 'scorp'));
+    return src?.amount || 0;
+  };
+
+  const setSourceAmount = (memberIdx: number, type: string, amount: number) => {
+    const m = members[memberIdx];
+    let sources = [...(m.income_sources || [])];
+    // Merge scorp into k1
+    const effectiveType = type;
+    const idx = sources.findIndex(s => s.type === effectiveType || (effectiveType === 'k1' && s.type === 'scorp'));
+    if (idx >= 0) {
+      sources[idx] = { type: effectiveType, amount };
+    } else {
+      sources.push({ type: effectiveType, amount });
+    }
+    // Normalize any old scorp entries into k1
+    sources = sources.filter(s => s.type !== 'scorp').map(s => s);
+    const gross = sources.reduce((s, src) => s + src.amount, 0);
+    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: gross });
+  };
 
   const memberTotal = (m: MemberIncome) => (m.income_sources || []).reduce((s, src) => s + src.amount, 0);
   const householdTotal = members.reduce((s, m) => s + memberTotal(m), 0);
 
-  const addSource = (memberIdx: number, type: string) => {
-    const m = members[memberIdx];
-    const sources = [...(m.income_sources || []), { type, amount: 0 }];
-    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
-    setShowTypePicker(null);
-  };
-
-  const updateSource = (memberIdx: number, srcIdx: number, amount: number) => {
-    const m = members[memberIdx];
-    const sources = (m.income_sources || []).map((s, j) => j === srcIdx ? { ...s, amount } : s);
-    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
-  };
-
-  const removeSource = (memberIdx: number, srcIdx: number) => {
-    const m = members[memberIdx];
-    const sources = (m.income_sources || []).filter((_, j) => j !== srcIdx);
-    onUpdateMember(memberIdx, { ...m, income_sources: sources, gross_income: sources.reduce((s, src) => s + src.amount, 0) });
-  };
-
-  const getTypeLabel = (type: string) => INCOME_SOURCE_TYPES.find(t => t.value === type)?.label || type;
+  const typeTotal = (type: string) => members.reduce((s, m) => s + getSourceAmount(m, type), 0);
 
   return (
     <div className="space-y-4">
@@ -948,59 +948,39 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
         <section key={member.profile_id}>
           <h2 className="font-display text-sm font-semibold text-foreground mb-3">{member.name || `Member ${i + 1}`}</h2>
           <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-            {/* Income sources */}
-            {(member.income_sources || []).map((src, j) => (
-              <div key={j} className="space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-foreground">{getTypeLabel(src.type)}</span>
-                  <button
-                    onClick={() => setTooltipOpen(tooltipOpen === `${i}-${j}` ? null : `${i}-${j}`)}
-                    className="text-accent"
-                  >
-                    <Info size={12} />
-                  </button>
-                  <div className="flex-1" />
-                  <button onClick={() => removeSource(i, j)} className="text-destructive/60 hover:text-destructive">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-                {tooltipOpen === `${i}-${j}` && (
-                  <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed">
-                    {INCOME_SOURCE_TOOLTIPS[src.type] || ''}
-                  </p>
-                )}
-                <CurrencyInput value={src.amount} onChange={v => updateSource(i, j, v)} />
-              </div>
-            ))}
-
-            {/* Add source */}
-            {showTypePicker === i ? (
-              <div className="bg-muted rounded-lg p-2 space-y-1">
-                <p className="text-[10px] text-muted-foreground font-medium mb-1">Select income type</p>
-                <div className="grid grid-cols-3 gap-1">
-                  {INCOME_SOURCE_TYPES.map(t => (
-                    <button key={t.value} onClick={() => addSource(i, t.value)}
-                      className="py-1.5 px-2 rounded-lg text-[10px] font-medium bg-background text-foreground hover:bg-accent/10 transition-colors border border-border">
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => setShowTypePicker(null)} className="text-[10px] text-muted-foreground mt-1">Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setShowTypePicker(i)}
-                className="flex items-center gap-1 text-xs text-accent font-medium active:scale-95 transition-transform">
-                <Plus size={14} /> Add Income Source
-              </button>
-            )}
+            {/* Income grid */}
+            <div className="space-y-2">
+              {INCOME_GRID_TYPES.map(t => {
+                const tipKey = `${i}-${t.value}`;
+                return (
+                  <div key={t.value}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 w-[130px] shrink-0">
+                        <span className="text-xs font-medium text-foreground">{t.label}</span>
+                        <button
+                          onClick={() => setTooltipOpen(tooltipOpen === tipKey ? null : tipKey)}
+                          className="text-accent"
+                        >
+                          <Info size={11} />
+                        </button>
+                      </div>
+                      <CurrencyInput value={getSourceAmount(member, t.value)} onChange={v => setSourceAmount(i, t.value, v)} />
+                    </div>
+                    {tooltipOpen === tipKey && (
+                      <p className="text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed mt-1 ml-[130px]">
+                        {INCOME_SOURCE_TOOLTIPS[t.value] || ''}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
             {/* Member total */}
-            {(member.income_sources || []).length > 0 && (
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <span className="text-xs font-medium text-foreground">Total</span>
-                <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal(member))}</span>
-              </div>
-            )}
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <span className="text-xs font-medium text-foreground">Total</span>
+              <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal(member))}</span>
+            </div>
 
             {/* Pay Frequency */}
             <div>
@@ -1024,12 +1004,16 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
       <section>
         <h2 className="font-display text-sm font-semibold text-foreground mb-3">Household Income Summary</h2>
         <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
-          {members.map((m, i) => (
-            <div key={m.profile_id} className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{m.name || `Member ${i + 1}`}</span>
-              <span className="text-sm tabular-nums text-foreground">{fmt(memberTotal(m))}</span>
-            </div>
-          ))}
+          {INCOME_GRID_TYPES.map(t => {
+            const total = typeTotal(t.value);
+            if (total <= 0) return null;
+            return (
+              <div key={t.value} className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{t.label} Total</span>
+                <span className="text-sm tabular-nums text-foreground">{fmt(total)}</span>
+              </div>
+            );
+          })}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <span className="text-xs font-semibold text-foreground">Combined Household Gross</span>
             <span className="text-sm font-bold text-foreground tabular-nums">{fmt(householdTotal)}</span>
