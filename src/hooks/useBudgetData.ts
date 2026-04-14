@@ -19,6 +19,8 @@ function dbToCat(row: Record<string, unknown>): BudgetCategory {
     budgeted: Number(row.budgeted),
     group: row.group as BudgetCategory['group'],
     notesRequired: (row.notes_required as boolean) ?? false,
+    startMonth: (row.start_month as string | null) ?? null,
+    endMonth: (row.end_month as string | null) ?? null,
   };
 }
 
@@ -29,7 +31,21 @@ function dbToFixed(row: Record<string, unknown>): FixedExpense {
     amount: Number(row.amount),
     group: row.group as FixedExpense['group'],
     notesRequired: (row.notes_required as boolean) ?? false,
+    startMonth: (row.start_month as string | null) ?? null,
+    endMonth: (row.end_month as string | null) ?? null,
   };
+}
+
+/** Check if a category/expense is active for a given month */
+export function isActiveForMonth(item: { startMonth?: string | null; endMonth?: string | null }, month: string): boolean {
+  if (item.startMonth && item.startMonth > month) return false;
+  if (item.endMonth && item.endMonth < month) return false;
+  return true;
+}
+
+/** Filter categories/expenses to only those active for a given month */
+export function filterForMonth<T extends { startMonth?: string | null; endMonth?: string | null }>(items: T[], month: string): T[] {
+  return items.filter(item => isActiveForMonth(item, month));
 }
 
 function dbToTx(row: Record<string, unknown>): Transaction {
