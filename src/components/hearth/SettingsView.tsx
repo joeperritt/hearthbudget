@@ -146,8 +146,18 @@ export function SettingsView({
   const [newFixedName, setNewFixedName] = useState('');
   const [newFixedAmount, setNewFixedAmount] = useState('');
 
-  const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => categories.map(c => ({ ...c })));
-  const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => fixedExpenses.map(e => ({ ...e })));
+  // Scope prompt state
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [showScopePrompt, setShowScopePrompt] = useState(false);
+  const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
+
+  // Filter categories and fixed expenses by the currently viewed month
+  const monthFilteredCats = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
+  const monthFilteredFixed = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+
+  const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => monthFilteredCats.map(c => ({ ...c })));
+  const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => monthFilteredFixed.map(e => ({ ...e })));
 
   // Reset next cats/fixed when categories change
   useEffect(() => {
