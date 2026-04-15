@@ -38,10 +38,25 @@ export function DebtInsightsSection({ householdId, debts, payoffResults, baselin
     setError(null);
     try {
       const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
+      const totalMonthlyDebtPayments = debts.reduce((s, d) => s + d.monthlyPayment, 0) + extraPayment;
+      const grossMonthlyIncome = financialProfile ? Number(financialProfile.annual_gross_income) / 12 : 0;
+      const mortgagePayment = financialProfile ? Number(financialProfile.mortgage_payment) || 0 : 0;
+      const monthlyRent = financialProfile ? Number(financialProfile.monthly_rent) || 0 : 0;
+      const housingPayment = financialProfile?.housing_type === 'own' ? mortgagePayment : monthlyRent;
+      const frontEndDTI = grossMonthlyIncome > 0 ? (housingPayment / grossMonthlyIncome) * 100 : 0;
+      const backEndDTI = grossMonthlyIncome > 0 ? ((housingPayment + totalMonthlyDebtPayments) / grossMonthlyIncome) * 100 : 0;
+
       const debtPayload = {
         currentMonth: new Date().toISOString().slice(0, 7),
         context: 'debt_payoff_analysis',
         totalDebtBalance: totalBalance,
+        debtToIncomeRatios: {
+          grossMonthlyIncome: Math.round(grossMonthlyIncome),
+          housingPayment,
+          totalMonthlyDebtPayments,
+          frontEndDTI: Math.round(frontEndDTI * 10) / 10,
+          backEndDTI: Math.round(backEndDTI * 10) / 10,
+        },
         debts: payoffResults.results.map(r => ({
           type: r.type, balance: r.balance, rate: r.rate,
           monthlyPayment: r.monthlyPayment, projectedPayoffMonths: r.payoffMonths,
@@ -55,6 +70,7 @@ export function DebtInsightsSection({ householdId, debts, payoffResults, baselin
         extraMonthlyPayment: extraPayment,
         ...(financialProfile ? {
           financialProfile: {
+            annual_gross_income: Number(financialProfile.annual_gross_income) || 0,
             member_incomes: Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [],
             filing_status: financialProfile.filing_status,
             emergency_fund_balance: Number(financialProfile.emergency_fund_balance) || 0,
@@ -67,7 +83,7 @@ export function DebtInsightsSection({ householdId, debts, payoffResults, baselin
         } : {}),
       };
 
-      const systemOverride = `You are a CFP (Certified Financial Planner) analyzing a household's debt payoff strategy. Focus specifically on debt payoff — surface 2-3 insights covering: interest cost awareness (how much interest they'll pay), payoff acceleration opportunities (extra payments, refinancing, etc.), and how eliminating this debt affects their overall financial health. Be specific with dollar amounts and timelines from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+      const systemOverride = `You are a CFP (Certified Financial Planner) analyzing a household's debt payoff strategy. The data includes debtToIncomeRatios with frontEndDTI (housing/income) and backEndDTI (housing+debts/income). ALWAYS analyze DTI ratios: front-end should be under 28%, back-end under 36%. If back-end DTI exceeds 36%, issue a warning — above 43% is critical (FHA max). If DTI is healthy, acknowledge it as encouragement. Also cover: interest cost awareness, payoff acceleration opportunities, and overall financial health impact. Be specific with dollar amounts, percentages, and timelines. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: {
