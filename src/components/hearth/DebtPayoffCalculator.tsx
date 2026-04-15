@@ -385,9 +385,9 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           </div>
 
           {/* Roll Forward + Slider */}
-          <div className="px-6 mt-5">
-            <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-4">
-              <p className="text-sm font-semibold text-foreground">Payoff Goal</p>
+          <div className="px-6 mt-4">
+            <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Payoff Goal</p>
 
               {/* Roll Forward Toggle */}
               <div className="flex items-center justify-between">
@@ -475,9 +475,9 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center p-4">
-      <p className="text-sm text-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value}</p>
+    <div className="flex justify-between items-center px-4 py-2.5">
+      <p className="text-xs text-foreground">{label}</p>
+      <p className="text-xs font-medium text-foreground">{value}</p>
     </div>
   );
 }
