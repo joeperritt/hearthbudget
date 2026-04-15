@@ -589,8 +589,6 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const statementMonth = financialProfile?.mortgage_statement_month || '';
     const pi = Number(financialProfile?.mortgage_pi) || 0;
     const escrow = Number(financialProfile?.mortgage_escrow) || 0;
-    const escrowTax = parseFloat(state.exEscrowTax) || 0;
-    const escrowIns = parseFloat(state.exEscrowInsurance) || 0;
     const originalLoan = parseFloat(state.exOriginalLoanAmount) || 0;
     const homeValue = Number(financialProfile?.estimated_home_value) || 0;
     const loanType = financialProfile?.mortgage_loan_type || '30-year-fixed';
@@ -739,8 +737,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <DetailCell label="Loan Type" value={LOAN_TYPE_LABELS[loanType] || loanType} />
               <DetailCell label="Monthly Minimum Payment" value={payment > 0 ? fmt(payment) : '—'} />
               <DetailCell label="P&I" value={pi > 0 ? fmt(pi) : '—'} />
-              <DetailCell label="Escrow — Tax" value={escrowTax > 0 ? fmt(escrowTax) : '—'} />
-              <DetailCell label="Escrow — Insurance" value={escrowIns > 0 ? fmt(escrowIns) : '—'} />
+              <DetailCell label="Escrow" value={escrow > 0 ? fmt(escrow) : '—'} />
             </div>
             {(loanType === '5-1-arm' || loanType === '7-1-arm') && (
               <p className="text-[10px] text-muted-foreground leading-tight">
