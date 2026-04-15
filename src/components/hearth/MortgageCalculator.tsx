@@ -118,6 +118,7 @@ type AmortizationPreview = {
   interest: number;
   principalPaid: number;
   extraPaid: number;
+  balanceAfterScheduledPayment: number;
   endingBalance: number;
 };
 
@@ -135,19 +136,31 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function roundForLog(value: number, decimals = 2) {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
 function applyAmortizationMonth(balance: number, monthlyRate: number, monthlyPI: number, extraPayment = 0) {
-  const interest = balance * Math.max(0, monthlyRate);
-  const scheduledPrincipal = Math.max(0, monthlyPI - interest);
-  const principalPaid = Math.min(balance, scheduledPrincipal);
-  const balanceAfterScheduled = Math.max(0, balance - principalPaid);
-  const extraPaid = Math.min(balanceAfterScheduled, Math.max(0, extraPayment));
-  const endingBalance = Math.max(0, balanceAfterScheduled - extraPaid);
+  const startingBalance = Math.max(0, balance);
+  const safeMonthlyRate = Math.max(0, monthlyRate);
+  const scheduledPayment = Math.max(0, monthlyPI);
+  const extraPrincipalPayment = Math.max(0, extraPayment);
+
+  const interest = startingBalance * safeMonthlyRate;
+  const scheduledPrincipal = Math.max(0, scheduledPayment - interest);
+  const principalPaid = Math.min(startingBalance, scheduledPrincipal);
+  const balanceAfterScheduledPayment = Math.max(0, startingBalance - principalPaid);
+  const extraPaid = Math.min(balanceAfterScheduledPayment, extraPrincipalPayment);
+  const endingBalance = Math.max(0, balanceAfterScheduledPayment - extraPaid);
 
   return {
-    startingBalance: balance,
+    startingBalance,
     interest,
     principalPaid,
     extraPaid,
+    balanceAfterScheduledPayment,
     endingBalance,
   };
 }
@@ -185,6 +198,7 @@ function simulateAmortization({
         interest: roundMoney(step.interest),
         principalPaid: roundMoney(step.principalPaid),
         extraPaid: roundMoney(step.extraPaid),
+        balanceAfterScheduledPayment: roundMoney(step.balanceAfterScheduledPayment),
         endingBalance: roundMoney(step.endingBalance),
       });
     }
@@ -198,6 +212,7 @@ function simulateAmortization({
     totalInterest,
     payoffDate,
     preview,
+    firstMonth: preview[0] ?? null,
     finalBalance: balance,
   };
 }
@@ -442,31 +457,21 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       monthsSinceStatement = Math.max(0, (now.getFullYear() - stmtDate.getFullYear()) * 12 + (now.getMonth() - stmtDate.getMonth()));
     }
 
-    let adjustedBalance = currentBalance;
-    if (monthsSinceStatement > 0 && rate > 0 && monthlyPI > 0) {
-      let bal = currentBalance;
-      for (let i = 0; i < monthsSinceStatement; i++) {
-        const intCharge = bal * rate;
-        bal -= (monthlyPI - intCharge);
-        if (bal <= 0) { bal = 0; break; }
-      }
-      adjustedBalance = Math.max(0, bal);
-    }
+    const adjustedBalance = monthsSinceStatement > 0 && rate > 0 && monthlyPI > 0
+      ? adjustBalanceFromStatement(currentBalance, `${stmtYear}-${String(stmtMonth).padStart(2, '0')}`, rate, monthlyPI).adjustedBalance
+      : currentBalance;
 
-    let remainingMonths = 0;
-    let totalInterestRemaining = 0;
-    if (rate > 0 && monthlyPI > 0 && adjustedBalance > 0) {
-      let bal = adjustedBalance;
-      while (bal > 0 && remainingMonths < 600) {
-        const intCharge = bal * rate;
-        totalInterestRemaining += intCharge;
-        bal -= (monthlyPI - intCharge);
-        remainingMonths++;
-        if (bal <= 0) break;
-      }
-    } else if (monthlyPI > 0 && adjustedBalance > 0) {
-      remainingMonths = Math.ceil(adjustedBalance / monthlyPI);
-    }
+    const standardSchedule = rate > 0 && monthlyPI > 0 && adjustedBalance > 0
+      ? simulateAmortization({
+          startingBalance: adjustedBalance,
+          monthlyRate: rate,
+          monthlyPI,
+          extraPayment: 0,
+        })
+      : null;
+
+    const remainingMonths = standardSchedule?.months ?? (monthlyPI > 0 && adjustedBalance > 0 ? Math.ceil(adjustedBalance / monthlyPI) : 0);
+    const totalInterestRemaining = standardSchedule?.totalInterest ?? 0;
 
     let interestAlreadyPaid = 0;
     if (originalLoan > 0 && rate > 0 && monthlyPI > 0) {
@@ -485,23 +490,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const dtiRatio = grossMonthlyIncome > 0 ? (totalMonthly + otherDebt) / grossMonthlyIncome : 0;
 
     const extra = parseFloat(state.exExtraPayment) || 0;
-    let monthsWithExtra = remainingMonths;
-    let totalInterestExtra = totalInterestRemaining;
-    if (extra > 0 && rate > 0 && adjustedBalance > 0 && monthlyPI > 0) {
-      let bal = adjustedBalance;
-      let months = 0;
-      let interest = 0;
-      const totalPayment = monthlyPI + extra;
-      while (bal > 0 && months < 600) {
-        const intCharge = bal * rate;
-        interest += intCharge;
-        bal -= Math.min(bal, totalPayment - intCharge);
-        months++;
-        if (bal <= 0) break;
-      }
-      monthsWithExtra = months;
-      totalInterestExtra = interest;
-    }
+    const acceleratedSchedule = extra > 0 && rate > 0 && adjustedBalance > 0 && monthlyPI > 0
+      ? simulateAmortization({
+          startingBalance: adjustedBalance,
+          monthlyRate: rate,
+          monthlyPI,
+          extraPayment: extra,
+        })
+      : null;
+
+    const monthsWithExtra = acceleratedSchedule?.months ?? remainingMonths;
+    const totalInterestExtra = acceleratedSchedule?.totalInterest ?? totalInterestRemaining;
     const interestSaved = totalInterestRemaining - totalInterestExtra;
     const monthsSaved = remainingMonths - monthsWithExtra;
 
@@ -611,24 +610,31 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     const interestSaved = standardSchedule.totalInterest - acceleratedSchedule.totalInterest;
     const monthsSaved = standardSchedule.months - acceleratedSchedule.months;
 
-    console.log('[Mortgage Analyzer] Amortization debug:', {
-      adjustedBalance: roundMoney(adjustedBalance),
-      monthlyRate: roundMoney(monthlyRate),
-      pi: roundMoney(pi),
-      extra: roundMoney(extra),
-      standardFirst3Months: standardSchedule.preview,
-      acceleratedFirst3Months: acceleratedSchedule.preview,
-      standardTotals: {
+    console.log('[Mortgage Analyzer] Amortization verification:', {
+      inputs: {
+        startingBalance: roundForLog(adjustedBalance),
+        annualRate: roundForLog(rate, 6),
+        monthlyRate: roundForLog(monthlyRate, 10),
+        monthlyPI: roundForLog(pi),
+        extraPayment: roundForLog(extra),
+      },
+      standardLoop: {
+        month1Interest: roundForLog(standardSchedule.firstMonth?.interest ?? 0),
+        month1EndingBalance: roundForLog(standardSchedule.firstMonth?.endingBalance ?? adjustedBalance),
+        first3Months: standardSchedule.preview,
+        totalInterest: roundForLog(standardSchedule.totalInterest),
         months: standardSchedule.months,
-        totalInterest: roundMoney(standardSchedule.totalInterest),
         payoffDate: standardSchedule.payoffDate.toISOString(),
       },
-      acceleratedTotals: {
+      acceleratedLoop: {
+        month1Interest: roundForLog(acceleratedSchedule.firstMonth?.interest ?? 0),
+        month1EndingBalance: roundForLog(acceleratedSchedule.firstMonth?.endingBalance ?? adjustedBalance),
+        first3Months: acceleratedSchedule.preview,
+        totalInterest: roundForLog(acceleratedSchedule.totalInterest),
         months: acceleratedSchedule.months,
-        totalInterest: roundMoney(acceleratedSchedule.totalInterest),
         payoffDate: acceleratedSchedule.payoffDate.toISOString(),
       },
-      interestSaved: roundMoney(interestSaved),
+      interestSaved: roundForLog(interestSaved),
       monthsSaved,
     });
 
