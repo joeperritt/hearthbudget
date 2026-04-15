@@ -300,18 +300,29 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           {/* Payoff Order */}
           <div className="px-6 mt-5 space-y-2">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Payoff Order</p>
-            {displayResults.results.map((debt, i) => (
-              <div key={i} className="bg-card rounded-lg p-3 shadow-sm border border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-accent bg-primary w-6 h-6 rounded-full flex items-center justify-center">{debt.payoffOrder}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground capitalize">{debt.name.replace(/_/g, ' ')}</p>
-                    <p className="text-[10px] text-muted-foreground">{debt.rate}% · {fmt(debt.balance)}</p>
+            <p className="text-[11px] text-muted-foreground -mt-1">Extra payments target the highest rate first (avalanche). Order below reflects when each debt reaches $0.</p>
+            {displayResults.results.map((debt, i) => {
+              // Determine if this debt is the current avalanche target (highest rate among unpaid)
+              const highestRate = Math.max(...debts.map(d => d.rate));
+              const isAvalancheTarget = debt.rate === highestRate;
+              return (
+                <div key={i} className="bg-card rounded-lg p-3 shadow-sm border border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-accent bg-primary w-6 h-6 rounded-full flex items-center justify-center">{debt.payoffOrder}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground capitalize">{debt.name.replace(/_/g, ' ')}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] text-muted-foreground">{debt.rate}% · {fmt(debt.balance)}</p>
+                        {isAvalancheTarget && (
+                          <span className="text-[9px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">Extra → here</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  <p className="text-xs font-medium text-muted-foreground">{formatMonths(debt.payoffMonths)}</p>
                 </div>
-                <p className="text-xs font-medium text-muted-foreground">{formatMonths(debt.payoffMonths)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Roll Forward + Slider */}
