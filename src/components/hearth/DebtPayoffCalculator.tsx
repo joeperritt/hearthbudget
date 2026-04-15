@@ -297,35 +297,21 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
             </div>
           </div>
 
-          {/* CFP Guideline Indicators */}
+          {/* CFP Guideline Indicator */}
           {(() => {
             const grossMonthly = financialProfile ? Number(financialProfile.annual_gross_income) / 12 : 0;
             const mortgagePmt = financialProfile ? Number(financialProfile.mortgage_payment) || 0 : 0;
             const rent = financialProfile ? Number(financialProfile.monthly_rent) || 0 : 0;
             const housing = financialProfile?.housing_type === 'own' ? mortgagePmt : rent;
             const totalDebtPmts = totalMinPayments + totalExtraFromProfile;
-            const frontEnd = grossMonthly > 0 ? (housing / grossMonthly) * 100 : 0;
             const backEnd = grossMonthly > 0 ? ((housing + totalDebtPmts) / grossMonthly) * 100 : 0;
-            const frontOk = frontEnd <= 28;
             const backOk = backEnd <= 36;
             const hasIncome = grossMonthly > 0;
             const pctFmt = (v: number) => `${v.toFixed(1)}%`;
 
             return (
               <div className="px-6 mt-4 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
-
-                <div className={`rounded-xl p-3.5 border ${frontOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Housing Ratio</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">Total housing ÷ gross income (guideline: ≤ 28%)</p>
-                    </div>
-                    <span className={`text-lg font-bold ${frontOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {hasIncome ? pctFmt(frontEnd) : '—'}
-                    </span>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicator</p>
 
                 <div className={`rounded-xl p-3.5 border ${backOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
                   <div className="flex justify-between items-center">
@@ -339,17 +325,13 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                   </div>
                 </div>
 
-                {hasIncome && (
-                  <div className={`rounded-xl p-3 border text-center ${frontOk && backOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
-                    <p className={`text-sm font-bold ${frontOk && backOk ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                      {frontOk && backOk ? '✓ Within Guidelines' : '⚠ Exceeds Recommended Limits'}
-                    </p>
+                {hasIncome && !backOk && (
+                  <div className="rounded-xl p-3 border text-center bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800">
+                    <p className="text-sm font-bold text-red-700 dark:text-red-300">⚠ Exceeds Recommended Limits</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {frontOk && backOk
-                        ? 'Your debt load is within standard financial planning guidelines.'
-                        : backEnd > 43
-                          ? 'Your DTI exceeds 43% — above FHA qualifying limits. Prioritize debt reduction.'
-                          : 'Consider accelerating debt payoff to bring ratios within guidelines.'}
+                      {backEnd > 43
+                        ? 'Your DTI exceeds 43% — above FHA qualifying limits. Prioritize debt reduction.'
+                        : 'Consider accelerating debt payoff to bring ratios within guidelines.'}
                     </p>
                   </div>
                 )}
