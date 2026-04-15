@@ -182,6 +182,7 @@ function simulateAmortization({
   let months = 0;
   let totalInterest = 0;
   const preview: AmortizationPreview[] = [];
+  let balanceAtMonth300: number | null = null;
 
   while (balance > 0.01 && months < maxMonths) {
     const step = applyAmortizationMonth(balance, monthlyRate, monthlyPI, extraPayment);
@@ -190,6 +191,10 @@ function simulateAmortization({
     months += 1;
     totalInterest += step.interest;
     balance = step.endingBalance;
+
+    if (months === 300) {
+      balanceAtMonth300 = roundMoney(balance);
+    }
 
     if (months <= 3) {
       preview.push({
@@ -213,6 +218,7 @@ function simulateAmortization({
     payoffDate,
     preview,
     firstMonth: preview[0] ?? null,
+    balanceAtMonth300,
     finalBalance: balance,
   };
 }
@@ -619,18 +625,24 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
         extraPayment: roundForLog(extra),
       },
       standardLoop: {
+        totalMonths: standardSchedule.months,
+        totalInterest: roundForLog(standardSchedule.totalInterest),
+        month300Balance: roundForLog(standardSchedule.balanceAtMonth300 ?? standardSchedule.finalBalance),
         month1Interest: roundForLog(standardSchedule.firstMonth?.interest ?? 0),
         month1EndingBalance: roundForLog(standardSchedule.firstMonth?.endingBalance ?? adjustedBalance),
         first3Months: standardSchedule.preview,
-        totalInterest: roundForLog(standardSchedule.totalInterest),
         months: standardSchedule.months,
         payoffDate: standardSchedule.payoffDate.toISOString(),
       },
       acceleratedLoop: {
+        totalMonths: acceleratedSchedule.months,
+        totalInterest: roundForLog(acceleratedSchedule.totalInterest),
+        month300Balance: roundForLog(acceleratedSchedule.balanceAtMonth300 ?? acceleratedSchedule.finalBalance),
         month1Interest: roundForLog(acceleratedSchedule.firstMonth?.interest ?? 0),
         month1EndingBalance: roundForLog(acceleratedSchedule.firstMonth?.endingBalance ?? adjustedBalance),
+        month1BalanceAfterScheduledPayment: roundForLog(acceleratedSchedule.firstMonth?.balanceAfterScheduledPayment ?? adjustedBalance),
+        month1ExtraPaid: roundForLog(acceleratedSchedule.firstMonth?.extraPaid ?? 0),
         first3Months: acceleratedSchedule.preview,
-        totalInterest: roundForLog(acceleratedSchedule.totalInterest),
         months: acceleratedSchedule.months,
         payoffDate: acceleratedSchedule.payoffDate.toISOString(),
       },
