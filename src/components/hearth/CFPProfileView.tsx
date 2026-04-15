@@ -765,16 +765,13 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       <span className="text-xs font-semibold text-foreground">{m.name || `Member ${i + 1}`}</span>
                     </div>
                   ))}
-                  <div className="flex-1 min-w-0 text-center">
-                    <span className="text-xs font-semibold text-foreground">Joint</span>
-                  </div>
                 </div>
 
                 {/* Non-Retirement row */}
                 <div className="flex items-center gap-2">
-                  <div className="w-[100px] shrink-0">
+                  <div className="w-[100px] shrink-0 flex items-center gap-1">
                     <span className="text-xs font-medium text-foreground">Non-Retirement</span>
-                    <p className="text-[9px] text-muted-foreground/70 leading-tight">Brokerage</p>
+                    <button type="button" className="text-muted-foreground/60 hover:text-foreground" title="Brokerage accounts, taxable investment accounts" onClick={() => toast.info('Non-Retirement', { description: 'Individual brokerage or taxable investment accounts (not tax-advantaged).' })}><Info size={12} /></button>
                   </div>
                   {profile.member_incomes.map(m => (
                     <CurrencyInput key={`nr-${m.profile_id}`}
@@ -788,22 +785,13 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       }}
                     />
                   ))}
-                  <CurrencyInput
-                    value={profile.non_retirement_per_member['joint'] || 0}
-                    onChange={v => {
-                      const updated = { ...profile.non_retirement_per_member, joint: v };
-                      const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
-                      update('non_retirement_per_member', updated);
-                      setTimeout(() => update('non_retirement_investments', total), 0);
-                    }}
-                  />
                 </div>
 
                 {/* Pre-Tax Retirement row */}
                 <div className="flex items-center gap-2">
-                  <div className="w-[100px] shrink-0">
+                  <div className="w-[100px] shrink-0 flex items-center gap-1">
                     <span className="text-xs font-medium text-foreground">Pre-Tax</span>
-                    <p className="text-[9px] text-muted-foreground/70 leading-tight">401k, Trad. IRA</p>
+                    <button type="button" className="text-muted-foreground/60 hover:text-foreground" title="401k, Traditional IRA, 403b, TSP" onClick={() => toast.info('Pre-Tax Retirement', { description: 'Tax-deferred accounts like 401(k), Traditional IRA, 403(b), or TSP. Contributions reduce taxable income; withdrawals are taxed.' })}><Info size={12} /></button>
                   </div>
                   {profile.member_incomes.map(m => (
                     <CurrencyInput key={`ret-${m.profile_id}`}
@@ -816,16 +804,13 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       }}
                     />
                   ))}
-                  <div className="flex-1 min-w-0 text-center">
-                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
-                  </div>
                 </div>
 
                 {/* Roth Retirement row */}
                 <div className="flex items-center gap-2">
-                  <div className="w-[100px] shrink-0">
+                  <div className="w-[100px] shrink-0 flex items-center gap-1">
                     <span className="text-xs font-medium text-foreground">Roth</span>
-                    <p className="text-[9px] text-muted-foreground/70 leading-tight">Roth IRA/401k</p>
+                    <button type="button" className="text-muted-foreground/60 hover:text-foreground" title="Roth IRA, Roth 401k" onClick={() => toast.info('Roth Retirement', { description: 'Roth IRA or Roth 401(k). Contributions are after-tax; qualified withdrawals in retirement are tax-free.' })}><Info size={12} /></button>
                   </div>
                   {profile.member_incomes.map(m => (
                     <CurrencyInput key={`roth-${m.profile_id}`}
@@ -838,9 +823,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       }}
                     />
                   ))}
-                  <div className="flex-1 min-w-0 text-center">
-                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
-                  </div>
                 </div>
 
                 {/* Total row */}
@@ -858,9 +840,23 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       </div>
                     );
                   })}
-                  <div className="flex-1 min-w-0 text-right">
-                    <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(profile.non_retirement_per_member['joint'] || 0)}</span>
+                </div>
+
+                {/* Joint Non-Retirement below grid */}
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-xs font-medium text-foreground">Joint Non-Retirement</span>
+                    <button type="button" className="text-muted-foreground/60 hover:text-foreground" title="Joint brokerage or taxable investment accounts" onClick={() => toast.info('Joint Non-Retirement', { description: 'Jointly held brokerage or taxable investment accounts shared between household members.' })}><Info size={12} /></button>
                   </div>
+                  <CurrencyInput
+                    value={profile.non_retirement_per_member['joint'] || 0}
+                    onChange={v => {
+                      const updated = { ...profile.non_retirement_per_member, joint: v };
+                      const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
+                      update('non_retirement_per_member', updated);
+                      setTimeout(() => update('non_retirement_investments', total), 0);
+                    }}
+                  />
                 </div>
               </div>
             </section>
