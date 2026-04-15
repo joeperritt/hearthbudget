@@ -278,6 +278,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           retirement_balance_per_member: savedProfile.retirement_balance_per_member || {},
           roth_retirement_balance: Number(savedProfile.roth_retirement_balance) || 0,
           roth_balance_per_member: savedProfile.roth_balance_per_member || {},
+          monthly_additions_per_key: savedProfile.monthly_additions_per_key || {},
           emergency_fund_balance: Number(savedProfile.emergency_fund_balance) || 0,
           savings_balance: Number(savedProfile.savings_balance) || 0,
           has_life_insurance: !!savedProfile.has_life_insurance,
