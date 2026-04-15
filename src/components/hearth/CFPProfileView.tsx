@@ -1047,10 +1047,18 @@ function NumField({ label, value, onChange, prefix, suffix, step, compact }: {
 }
 
 function NumFieldInline({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [display, setDisplay] = useState(value ? fmtComma(value) : '');
+  useEffect(() => { setDisplay(value ? fmtComma(value) : ''); }, [value]);
   return (
     <div className="flex items-center gap-1 mt-1">
       <span className="text-xs text-muted-foreground">$</span>
-      <input type="number" value={value || ''} onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      <input type="text" inputMode="numeric" value={display}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^0-9.]/g, '');
+          setDisplay(raw ? parseFloat(raw).toLocaleString('en-US') : '');
+          onChange(parseFloat(raw) || 0);
+        }}
+        onBlur={() => setDisplay(value ? fmtComma(value) : '')}
         placeholder="0" className="flex-1 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
     </div>
   );
