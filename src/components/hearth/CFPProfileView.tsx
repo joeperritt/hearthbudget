@@ -1088,19 +1088,23 @@ function CurrencyInput({ value, onChange }: { value: number; onChange: (v: numbe
   );
 }
 
-function TooltipIcon({ text }: { text: string }) {
+function InfoPopover({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <span className="relative inline-flex">
-      <button onClick={() => setOpen(!open)} className="text-accent"><Info size={12} /></button>
+    <span className="relative inline-flex items-center">
+      <button type="button" onClick={() => setOpen(!open)} className="text-accent"><Info size={12} /></button>
       {open && (
-        <span className="absolute left-0 top-5 z-50 w-56 text-[10px] text-muted-foreground bg-muted rounded-lg px-2 py-1.5 leading-relaxed shadow-md border border-border">
+        <span className="absolute left-0 top-5 z-50 w-56 text-[10px] text-muted-foreground bg-card rounded-lg px-3 py-2 leading-relaxed shadow-lg border border-border">
           {text}
-          <button onClick={() => setOpen(false)} className="block text-accent text-[9px] mt-1">Close</button>
+          <button type="button" onClick={() => setOpen(false)} className="absolute top-1 right-1.5 text-muted-foreground hover:text-foreground">✕</button>
         </span>
       )}
     </span>
   );
+}
+
+function TooltipIcon({ text }: { text: string }) {
+  return <InfoPopover text={text} />;
 }
 
 function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpdateMember: (index: number, member: MemberIncome) => void }) {
