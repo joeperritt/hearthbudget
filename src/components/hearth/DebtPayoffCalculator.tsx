@@ -279,11 +279,11 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           </div>
 
           {/* Debt Analysis */}
-          <div className="px-6 mt-5">
+          <div className="px-6 mt-4">
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
+              <div className="px-4 pt-3 pb-2 border-b border-border">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Debt Analysis</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Avalanche method — highest rate first</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Avalanche method — highest rate first</p>
               </div>
               <div className="divide-y divide-border">
                 <SummaryRow label="Projected Debt-Free" value={(() => {
