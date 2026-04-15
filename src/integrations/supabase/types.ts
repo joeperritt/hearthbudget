@@ -160,6 +160,7 @@ export type Database = {
           life_insurance_coverage: number | null
           life_insurance_coverages: Json
           member_incomes: Json
+          monthly_additions_per_key: Json | null
           monthly_rent: number | null
           mortgage_balance: number | null
           mortgage_breakdown_enabled: boolean | null
@@ -193,6 +194,7 @@ export type Database = {
           life_insurance_coverage?: number | null
           life_insurance_coverages?: Json
           member_incomes?: Json
+          monthly_additions_per_key?: Json | null
           monthly_rent?: number | null
           mortgage_balance?: number | null
           mortgage_breakdown_enabled?: boolean | null
@@ -226,6 +228,7 @@ export type Database = {
           life_insurance_coverage?: number | null
           life_insurance_coverages?: Json
           member_incomes?: Json
+          monthly_additions_per_key?: Json | null
           monthly_rent?: number | null
           mortgage_balance?: number | null
           mortgage_breakdown_enabled?: boolean | null

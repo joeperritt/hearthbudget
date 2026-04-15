@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_profiles ADD COLUMN IF NOT EXISTS monthly_additions_per_key jsonb DEFAULT '{}'::jsonb;
