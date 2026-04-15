@@ -73,6 +73,7 @@ interface ProfileData {
   retirement_balance_per_member: Record<string, number>;
   roth_retirement_balance: number;
   roth_balance_per_member: Record<string, number>;
+  monthly_additions_per_key: Record<string, number>;
   emergency_fund_balance: number;
   savings_balance: number;
   has_life_insurance: boolean;
