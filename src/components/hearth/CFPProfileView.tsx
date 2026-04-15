@@ -10,6 +10,7 @@ function fmt(n: number) {
 }
 
 interface Debt {
+  name: string;
   type: string;
   balance: number;
   interestRate: number;
@@ -373,7 +374,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
   const addDebt = () => {
     setProfile(p => {
-      const updated = { ...p, debts: [...p.debts, { type: 'Credit Card', balance: 0, interestRate: 0, monthlyPayment: 0, extraPayment: 0 }] };
+      const updated = { ...p, debts: [...p.debts, { name: '', type: 'Auto Loan', balance: 0, interestRate: 0, monthlyPayment: 0, extraPayment: 0 }] };
       debouncedSave(updated);
       return updated;
     });
@@ -716,12 +717,19 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
               <div className="space-y-2">
                 {profile.debts.map((debt, i) => (
                   <div key={i} className="bg-card rounded-xl shadow-sm p-4 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={debt.name || ''}
+                        onChange={e => updateDebt(i, 'name', e.target.value)}
+                        placeholder="Debt name"
+                        className="flex-1 min-w-0 text-sm font-medium text-foreground bg-transparent border-b border-border/50 outline-none placeholder:text-muted-foreground/50 py-0.5"
+                      />
                       <select value={debt.type} onChange={e => updateDebt(i, 'type', e.target.value)}
-                        className="text-sm font-medium text-foreground bg-transparent border-none outline-none">
+                        className="text-xs text-muted-foreground bg-transparent border-b border-border/50 outline-none py-0.5">
                         {DEBT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
-                      <button onClick={() => removeDebt(i)} className="text-destructive/60 hover:text-destructive active:scale-90 transition-all">
+                      <button onClick={() => removeDebt(i)} className="text-destructive/60 hover:text-destructive active:scale-90 transition-all shrink-0">
                         <Trash2 size={14} />
                       </button>
                     </div>
