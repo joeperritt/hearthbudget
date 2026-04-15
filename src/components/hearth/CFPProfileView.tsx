@@ -337,6 +337,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       total_investment_balance: profileData.non_retirement_investments + profileData.retirement_balance + profileData.roth_retirement_balance,
       retirement_balance: profileData.retirement_balance,
       roth_retirement_balance: profileData.roth_retirement_balance,
+      monthly_additions_per_key: profileData.monthly_additions_per_key,
       emergency_fund_balance: profileData.emergency_fund_balance,
       has_life_insurance: profileData.has_life_insurance,
       life_insurance_coverage: profileData.life_insurance_coverages.reduce((s, c) => s + c.coverage, 0),
