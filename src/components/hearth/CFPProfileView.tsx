@@ -330,6 +330,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       monthly_rent: profileData.monthly_rent,
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
+      non_retirement_per_member: profileData.non_retirement_per_member,
       total_investment_balance: profileData.non_retirement_investments + profileData.retirement_balance + profileData.roth_retirement_balance,
       retirement_balance: profileData.retirement_balance,
       roth_retirement_balance: profileData.roth_retirement_balance,
