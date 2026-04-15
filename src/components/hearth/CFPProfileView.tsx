@@ -102,7 +102,7 @@ const DEFAULT_PROFILE: ProfileData = {
   monthly_rent: 0,
   debts: [],
   non_retirement_investments: 0,
-  non_retirement_per_member: {},
+  monthly_additions_per_key: {},
   retirement_balance: 0,
   retirement_balance_per_member: {},
   roth_retirement_balance: 0,
