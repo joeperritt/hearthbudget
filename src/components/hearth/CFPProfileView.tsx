@@ -68,6 +68,7 @@ interface ProfileData {
   monthly_rent: number;
   debts: Debt[];
   non_retirement_investments: number;
+  non_retirement_per_member: Record<string, number>;
   retirement_balance: number;
   retirement_balance_per_member: Record<string, number>;
   roth_retirement_balance: number;
@@ -100,6 +101,7 @@ const DEFAULT_PROFILE: ProfileData = {
   monthly_rent: 0,
   debts: [],
   non_retirement_investments: 0,
+  non_retirement_per_member: {},
   retirement_balance: 0,
   retirement_balance_per_member: {},
   roth_retirement_balance: 0,
@@ -269,6 +271,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
             ...d, extraPayment: Number((d as any).extraPayment) || 0,
           })) : [],
           non_retirement_investments: Number(savedProfile.non_retirement_investments) || 0,
+          non_retirement_per_member: savedProfile.non_retirement_per_member || {},
           retirement_balance: Number(savedProfile.retirement_balance) || 0,
           retirement_balance_per_member: savedProfile.retirement_balance_per_member || {},
           roth_retirement_balance: Number(savedProfile.roth_retirement_balance) || 0,
@@ -749,56 +752,115 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         {/* Accounts Tab */}
         {activeProfileTab === 'accounts' && (
           <div className="space-y-4">
+            {/* Column-based accounts grid like Income tab */}
             <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Investments</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Non-Retirement Investments</label>
-                  <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Brokerage accounts, non-qualified</p>
-                  <NumFieldInline value={profile.non_retirement_investments} onChange={v => update('non_retirement_investments', v)} />
+              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Investment Accounts</h2>
+              <div className="space-y-2">
+                {/* Column headers */}
+                <div className="flex items-center gap-2">
+                  <div className="w-[100px] shrink-0" />
+                  {profile.member_incomes.map((m, i) => (
+                    <div key={m.profile_id} className="flex-1 min-w-0 text-center">
+                      <span className="text-xs font-semibold text-foreground">{m.name || `Member ${i + 1}`}</span>
+                    </div>
+                  ))}
+                  <div className="flex-1 min-w-0 text-center">
+                    <span className="text-xs font-semibold text-foreground">Joint</span>
+                  </div>
                 </div>
 
-                {profile.member_incomes.length > 1 ? (
-                  <>
-                    {profile.member_incomes.map(m => (
-                      <div key={`ret-${m.profile_id}`}>
-                        <label className="text-xs text-muted-foreground">{m.name}'s Pre-Tax Retirement</label>
-                        <p className="text-[10px] text-muted-foreground/70 -mt-0.5">401k, Traditional IRA</p>
-                        <NumFieldInline value={profile.retirement_balance_per_member[m.profile_id] || 0} onChange={v => {
-                          const updated = { ...profile.retirement_balance_per_member, [m.profile_id]: v };
-                          const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
-                          update('retirement_balance_per_member', updated);
-                          setTimeout(() => update('retirement_balance', total), 0);
-                        }} />
+                {/* Non-Retirement row */}
+                <div className="flex items-center gap-2">
+                  <div className="w-[100px] shrink-0">
+                    <span className="text-xs font-medium text-foreground">Non-Retirement</span>
+                    <p className="text-[9px] text-muted-foreground/70 leading-tight">Brokerage</p>
+                  </div>
+                  {profile.member_incomes.map(m => (
+                    <CurrencyInput key={`nr-${m.profile_id}`}
+                      value={profile.non_retirement_per_member[m.profile_id] || 0}
+                      onChange={v => {
+                        const updated = { ...profile.non_retirement_per_member, [m.profile_id]: v };
+                        const jointVal = profile.non_retirement_per_member['joint'] || 0;
+                        const total = Object.entries(updated).filter(([k]) => k !== 'joint').reduce((s, [, x]) => s + (x as number), 0) + jointVal;
+                        update('non_retirement_per_member', updated);
+                        setTimeout(() => update('non_retirement_investments', total), 0);
+                      }}
+                    />
+                  ))}
+                  <CurrencyInput
+                    value={profile.non_retirement_per_member['joint'] || 0}
+                    onChange={v => {
+                      const updated = { ...profile.non_retirement_per_member, joint: v };
+                      const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
+                      update('non_retirement_per_member', updated);
+                      setTimeout(() => update('non_retirement_investments', total), 0);
+                    }}
+                  />
+                </div>
+
+                {/* Pre-Tax Retirement row */}
+                <div className="flex items-center gap-2">
+                  <div className="w-[100px] shrink-0">
+                    <span className="text-xs font-medium text-foreground">Pre-Tax</span>
+                    <p className="text-[9px] text-muted-foreground/70 leading-tight">401k, Trad. IRA</p>
+                  </div>
+                  {profile.member_incomes.map(m => (
+                    <CurrencyInput key={`ret-${m.profile_id}`}
+                      value={profile.retirement_balance_per_member[m.profile_id] || 0}
+                      onChange={v => {
+                        const updated = { ...profile.retirement_balance_per_member, [m.profile_id]: v };
+                        const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
+                        update('retirement_balance_per_member', updated);
+                        setTimeout(() => update('retirement_balance', total), 0);
+                      }}
+                    />
+                  ))}
+                  <div className="flex-1 min-w-0 text-center">
+                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
+                  </div>
+                </div>
+
+                {/* Roth Retirement row */}
+                <div className="flex items-center gap-2">
+                  <div className="w-[100px] shrink-0">
+                    <span className="text-xs font-medium text-foreground">Roth</span>
+                    <p className="text-[9px] text-muted-foreground/70 leading-tight">Roth IRA/401k</p>
+                  </div>
+                  {profile.member_incomes.map(m => (
+                    <CurrencyInput key={`roth-${m.profile_id}`}
+                      value={profile.roth_balance_per_member[m.profile_id] || 0}
+                      onChange={v => {
+                        const updated = { ...profile.roth_balance_per_member, [m.profile_id]: v };
+                        const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
+                        update('roth_balance_per_member', updated);
+                        setTimeout(() => update('roth_retirement_balance', total), 0);
+                      }}
+                    />
+                  ))}
+                  <div className="flex-1 min-w-0 text-center">
+                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
+                  </div>
+                </div>
+
+                {/* Total row */}
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                  <div className="w-[100px] shrink-0">
+                    <span className="text-xs font-semibold text-foreground">Total</span>
+                  </div>
+                  {profile.member_incomes.map(m => {
+                    const memberTotal = (profile.non_retirement_per_member[m.profile_id] || 0)
+                      + (profile.retirement_balance_per_member[m.profile_id] || 0)
+                      + (profile.roth_balance_per_member[m.profile_id] || 0);
+                    return (
+                      <div key={m.profile_id} className="flex-1 min-w-0 text-right">
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal)}</span>
                       </div>
-                    ))}
-                    {profile.member_incomes.map(m => (
-                      <div key={`roth-${m.profile_id}`}>
-                        <label className="text-xs text-muted-foreground">{m.name}'s Roth Retirement</label>
-                        <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Roth IRA, Roth 401k</p>
-                        <NumFieldInline value={profile.roth_balance_per_member[m.profile_id] || 0} onChange={v => {
-                          const updated = { ...profile.roth_balance_per_member, [m.profile_id]: v };
-                          const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
-                          update('roth_balance_per_member', updated);
-                          setTimeout(() => update('roth_retirement_balance', total), 0);
-                        }} />
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Pre-Tax Retirement</label>
-                      <p className="text-[10px] text-muted-foreground/70 -mt-0.5">401k, Traditional IRA</p>
-                      <NumFieldInline value={profile.retirement_balance} onChange={v => update('retirement_balance', v)} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Roth Retirement</label>
-                      <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Roth IRA, Roth 401k</p>
-                      <NumFieldInline value={profile.roth_retirement_balance} onChange={v => update('roth_retirement_balance', v)} />
-                    </div>
-                  </>
-                )}
+                    );
+                  })}
+                  <div className="flex-1 min-w-0 text-right">
+                    <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(profile.non_retirement_per_member['joint'] || 0)}</span>
+                  </div>
+                </div>
               </div>
             </section>
 
