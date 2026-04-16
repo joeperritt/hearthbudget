@@ -1109,10 +1109,7 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
   updateCoverage: (index: number, fields: Partial<MemberCoverage>) => void;
   onNavigateToTool?: (toolId: string) => void;
 }) {
-  const [openMembers, setOpenMembers] = useState<Record<string, boolean>>({});
   const [expandedPolicies, setExpandedPolicies] = useState<Record<string, string | null>>({});
-  const toggleMember = (key: string) => setOpenMembers(prev => ({ ...prev, [key]: !prev[key] }));
-  const isMemberOpen = (key: string) => !!openMembers[key];
   const [showContingent, setShowContingent] = useState<Record<string, boolean>>({});
 
   const currentYear = new Date().getFullYear();
