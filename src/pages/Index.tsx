@@ -285,6 +285,13 @@ const Index = () => {
     setActiveTab('plan');
   }, []);
 
+  // Navigate to Budget tab with a specific month preselected
+  const navigateToBudget = useCallback((monthKey: string) => {
+    setBudgetTargetMonth(monthKey);
+    setBudgetSubView('main');
+    setActiveTab('budget');
+  }, []);
+
   // Helper to get back target for tools
   const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
