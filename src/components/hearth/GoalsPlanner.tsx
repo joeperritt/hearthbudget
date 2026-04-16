@@ -214,18 +214,27 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                 <span className="font-semibold text-foreground tabular-nums">{fmt(savingsPool.allocated)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                <span className="text-muted-foreground font-semibold">{savingsPool.surplus >= 0 ? 'Surplus' : 'Shortfall'}</span>
-                <span className={`font-bold tabular-nums ${savingsPool.surplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                  {savingsPool.surplus >= 0 ? '+' : ''}{fmt(savingsPool.surplus)}/mo
+                <span className="text-muted-foreground font-semibold">Unallocated</span>
+                <span className={`font-bold tabular-nums ${savingsPool.surplus > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  {fmt(Math.max(0, savingsPool.surplus))}/mo
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
-              className="mt-2 text-[11px] font-semibold text-accent flex items-center gap-1"
-            >
-              From Financial Profile →
-            </button>
+            {savingsPool.surplus <= 0 ? (
+              <button
+                onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+                className="mt-2 text-[11px] font-semibold text-accent flex items-center gap-1"
+              >
+                Increase your monthly savings →
+              </button>
+            ) : (
+              <button
+                onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+                className="mt-2 text-[11px] font-semibold text-accent flex items-center gap-1"
+              >
+                From Financial Profile →
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
