@@ -362,9 +362,9 @@ const Index = () => {
       case 'emergency-fund':
         return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} />;
       case 'savings-goals':
-        return <GoalsPlanner onBack={onBack} householdId={householdId} />;
+        return <GoalsPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'retirement':
-        return <RetirementPlanner onBack={onBack} householdId={householdId} />;
+        return <RetirementPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'mortgage-shopping':
         return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly />;
       case 'car-loan':
