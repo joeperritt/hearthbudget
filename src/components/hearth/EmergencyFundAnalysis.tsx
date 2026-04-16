@@ -3,7 +3,7 @@ import { ArrowLeft, Sparkles, Loader2, Info, CheckCircle2, AlertTriangle, Refres
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
@@ -224,7 +224,6 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
   }[status];
 
   return (
-    <TooltipProvider>
     <div className="max-w-lg mx-auto pb-32">
       {/* Header */}
       <div className="px-6 pt-12 safe-top flex items-center gap-3">
@@ -286,16 +285,16 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
             <div className="flex flex-col">
               <div className="h-9 flex items-end gap-1">
                 <Label className="text-xs text-muted-foreground leading-tight">Non-Essential to Back Out</Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="More info">
                       <Info size={11} />
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[240px] text-xs">
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[260px] text-xs p-3">
                     Think about what you would cut immediately if income stopped: dining out, subscriptions, entertainment, clothing, travel, etc.
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
@@ -539,6 +538,5 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
         </p>
       </div>
     </div>
-    </TooltipProvider>
   );
 }
