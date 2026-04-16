@@ -54,6 +54,8 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const [aiEstimatingMember, setAiEstimatingMember] = useState<string | null>(null);
   const [showLongevityInfo, setShowLongevityInfo] = useState(false);
   const [showWhyFourPercent, setShowWhyFourPercent] = useState(false);
+  const [collapsedPhases, setCollapsedPhases] = useState<Record<number, boolean>>({});
+  const [cfpCollapsed, setCfpCollapsed] = useState(false);
 
   const currentYear = new Date().getFullYear();
 
@@ -482,7 +484,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
         </button>
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Retirement Planner</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Are you on track to retire?</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Will your savings sustain your lifestyle in retirement?</p>
         </div>
       </div>
 
@@ -490,7 +492,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       <div className="px-6 mt-4 space-y-3">
         {/* Member ages */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Ages</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Current Ages</p>
           <div className={`grid gap-3 ${members.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {members.map(m => (
               <div key={m.name}>
@@ -527,7 +529,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
         {/* Current Balances */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Retirement Balances</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Current Retirement Balances</p>
           <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
@@ -549,58 +551,35 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           <p className="text-[10px] text-muted-foreground mt-1">From your Financial Profile</p>
         </div>
 
-        {/* Three contribution buckets */}
+        {/* Three contribution buckets — read-only from Financial Profile */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Monthly Retirement Contributions</p>
-          <div className="space-y-2">
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Pre-Tax (401k/Traditional IRA)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.preTaxContrib}
-                  onChange={e => setState({ preTaxContrib: e.target.value })}
-                  placeholder="0"
-                />
+          <p className="text-sm font-semibold text-foreground mb-2">Monthly Retirement Contributions</p>
+          <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Pre-Tax</p>
+                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(preTaxContrib)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Roth</p>
+                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(rothContrib)}</p>
               </div>
             </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Roth (Roth 401k/Roth IRA)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.rothContrib}
-                  onChange={e => setState({ rothContrib: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
+            <div className="pt-1">
+              <p className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(nonQualContrib)}</p>
             </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.nonQualContrib}
-                  onChange={e => setState({ nonQualContrib: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div className="bg-muted/50 rounded-lg px-3 py-2 flex justify-between text-sm">
-              <span className="text-muted-foreground font-medium">Combined Monthly</span>
+            <div className="flex justify-between text-sm border-t border-border pt-1.5">
+              <span className="text-muted-foreground font-semibold">Combined Monthly</span>
               <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Non-Qualified contributions reflect retirement-directed portion only —{' '}
-            <button onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()} className="text-accent font-semibold">from Financial Profile</button>
-          </p>
+          <button
+            onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+          >
+            From Financial Profile →
+          </button>
         </div>
 
         <div>
@@ -854,7 +833,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
           {/* Projections */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Portfolio at Retirement</p>
+            <p className="text-sm font-semibold text-foreground mb-2">Projected Portfolio at Retirement</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
@@ -877,71 +856,88 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
           {/* Monthly Income — Phase-based */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Monthly Retirement Income</p>
+            <p className="text-sm font-semibold text-foreground mb-2">Projected Monthly Retirement Income</p>
             <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
+              const isCollapsed = !!collapsedPhases[i];
               return (
-                <div key={i} className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[11px] font-semibold text-muted-foreground">{phase.label}</p>
-                    {phase.durationYears > 0 && phase.durationYears < 50 && (
-                      <span className="text-[10px] text-muted-foreground">{Math.round(phase.durationYears)} yrs</span>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Portfolio draw
-                        <span className="ml-1 text-[10px] text-muted-foreground">
-                          ({pct(safeWithdrawalRate)}/yr)
-                        </span>
-                        {monthlyExpenses > 0 && phaseGap < 0 && (() => {
-                          const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
-                          return (
-                            <span className="ml-1 text-[10px] text-yellow-600">
-                              — would need {pct(impliedRate)}/yr
+                <Collapsible
+                  key={i}
+                  open={!isCollapsed}
+                  onOpenChange={(open) => setCollapsedPhases(prev => ({ ...prev, [i]: !open }))}
+                >
+                  <div className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between mb-1.5 active:opacity-70">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isCollapsed ? <ChevronDown size={12} className="text-muted-foreground shrink-0" /> : <ChevronUp size={12} className="text-muted-foreground shrink-0" />}
+                        <p className="text-[11px] font-semibold text-muted-foreground truncate text-left">{phase.label}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold text-foreground">{fmt(phase.totalIncome)}</span>
+                        {monthlyExpenses > 0 && (
+                          <span className={`text-[11px] font-semibold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}
+                          </span>
+                        )}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Portfolio draw
+                            <span className="ml-1 text-[10px] text-muted-foreground">
+                              ({pct(safeWithdrawalRate)}/yr)
                             </span>
-                          );
-                        })()}
-                      </span>
-                      <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
-                    </div>
-                    {i === 0 && (
-                      <div>
-                        <button
-                          onClick={() => setShowWhyFourPercent(v => !v)}
-                          className="text-[10px] font-semibold text-accent active:opacity-70"
-                        >
-                          {showWhyFourPercent ? 'Hide' : 'Why 4%?'}
-                        </button>
-                        {showWhyFourPercent && (
-                          <div className="bg-muted/60 rounded-lg p-2.5 mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                            The 4% rule comes from the Trinity Study, a landmark 1994 research study that analyzed historical market returns. It found that retirees who withdrew 4% of their portfolio in year one — then adjusted for inflation annually — had a very high probability of their money lasting 30 years across various market conditions, including downturns. It has become the standard Certified Financial Planner (CFP) benchmark for sustainable retirement income. Some planners use 3.5% for longer retirements or uncertain markets, and up to 5% for shorter ones.
+                            {monthlyExpenses > 0 && phaseGap < 0 && (() => {
+                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                              return (
+                                <span className="ml-1 text-[10px] text-yellow-600">
+                                  — would need {pct(impliedRate)}/yr
+                                </span>
+                              );
+                            })()}
+                          </span>
+                          <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
+                        </div>
+                        {i === 0 && (
+                          <div>
+                            <button
+                              onClick={() => setShowWhyFourPercent(v => !v)}
+                              className="text-[10px] font-semibold text-accent active:opacity-70"
+                            >
+                              {showWhyFourPercent ? 'Hide' : 'Why 4%?'}
+                            </button>
+                            {showWhyFourPercent && (
+                              <div className="bg-muted/60 rounded-lg p-2.5 mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                                The 4% rule comes from the Trinity Study, a landmark 1994 research study that analyzed historical market returns. It found that retirees who withdrew 4% of their portfolio in year one — then adjusted for inflation annually — had a very high probability of their money lasting 30 years across various market conditions, including downturns. It has become the standard Certified Financial Planner (CFP) benchmark for sustainable retirement income. Some planners use 3.5% for longer retirements or uncertain markets, and up to 5% for shorter ones.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {phase.ssIncome > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Social Security</span>
+                            <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm border-t border-border pt-1">
+                          <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
+                          <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
+                        </div>
+                        {monthlyExpenses > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{phaseGap >= 0 ? 'Surplus' : 'Gap'} vs. expenses</span>
+                            <span className={`font-bold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                              {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}/mo
+                            </span>
                           </div>
                         )}
                       </div>
-                    )}
-                    {phase.ssIncome > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Social Security</span>
-                        <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm border-t border-border pt-1">
-                      <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
-                      <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
-                    </div>
-                    {monthlyExpenses > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{phaseGap >= 0 ? 'Surplus' : 'Gap'} vs. expenses</span>
-                        <span className={`font-bold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                          {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}/mo
-                        </span>
-                      </div>
-                    )}
+                    </CollapsibleContent>
                   </div>
-                </div>
+                </Collapsible>
               );
             })}
             {showSS && incomePhases.length > 1 && (
@@ -954,7 +950,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           {/* Gap / Surplus summary */}
           {monthlyExpenses > 0 && lumpSumNeeded > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Closing the Income Gap</p>
+              <p className="text-sm font-semibold text-foreground mb-2">Closing the Income Gap</p>
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                 <p className="text-xs text-muted-foreground">
                   To fully fund all phases through age {longevityAge}: save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> more by retirement.
@@ -964,11 +960,32 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           )}
 
           {/* CFP Guidelines */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Certified Financial Planner (CFP) Guidelines
-            </p>
-            <div className="space-y-3">
+          {(() => {
+            const checks = [
+              savingsRateOk,
+              salaryMultiple >= 10,
+              !rothSkewed,
+              yearsToRetirement >= 30,
+              ...(monthlyExpenses > 0 ? [withdrawalSustainable] : []),
+            ];
+            const onTrackCount = checks.filter(Boolean).length;
+            const totalCount = checks.length;
+            return (
+              <Collapsible open={!cfpCollapsed} onOpenChange={(open) => setCfpCollapsed(!open)}>
+                <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between active:opacity-70">
+                    <p className="text-sm font-semibold text-foreground text-left">
+                      Certified Financial Planner (CFP®) Guidelines
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs font-semibold ${onTrackCount === totalCount ? 'text-green-600' : onTrackCount >= totalCount - 1 ? 'text-yellow-600' : 'text-destructive'}`}>
+                        {onTrackCount} of {totalCount} on track
+                      </span>
+                      {cfpCollapsed ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronUp size={14} className="text-muted-foreground" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="space-y-3 mt-3">
               <div className="flex items-start gap-2">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${savingsRateOk ? 'bg-green-500' : 'bg-yellow-500'}`} />
                 <div>
@@ -1071,8 +1088,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })()}
         </div>
       )}
 
@@ -1115,6 +1136,11 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                       onChange={e => setEstDebtOverride(e.target.value)}
                     />
                   </div>
+                  {totalMonthlyDebt > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Based on {fmt(totalMonthlyDebt)}/mo in debt payments from Financial Profile.
+                    </p>
+                  )}
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Subtotal after debt</span>
                     <span className="font-semibold text-foreground">{fmt(budgetTotal - (estDebtOverride !== '' ? Number(estDebtOverride) : totalMonthlyDebt))}</span>
@@ -1141,6 +1167,11 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                       onChange={e => setEstContribOverride(e.target.value)}
                     />
                   </div>
+                  {monthlyContributions > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Based on {fmt(monthlyContributions)}/mo in retirement contributions from Financial Profile.
+                    </p>
+                  )}
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Subtotal after contributions</span>
                     <span className="font-semibold text-foreground">{fmt(estimatorResult.adjusted)}</span>
