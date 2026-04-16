@@ -36,18 +36,36 @@ interface Dependent {
   dob?: string | null;
 }
 
+interface TermPolicy {
+  id: string;
+  coverage: number;
+  premium: number;
+  termLength: string;
+  startYear: number;
+}
+
+interface WholePolicy {
+  id: string;
+  coverage: number;
+  premium: number;
+  cashValue: number;
+  startYear: number;
+}
+
 interface MemberCoverage {
   profile_id: string;
   name: string;
   coverage: number;
   coverageType: 'term' | 'whole' | 'mixed' | 'none';
   mixedTermPct: number;
-  // Term fields
+  // Multi-policy arrays
+  termPolicies: TermPolicy[];
+  wholePolicies: WholePolicy[];
+  // Legacy single-policy fields (kept for migration)
   termCoverage?: number;
   termPremium?: number;
   termLength?: string;
   termStartYear?: number;
-  // Whole fields
   wholeCoverage?: number;
   wholePremium?: number;
   wholeCashValue?: number;
@@ -297,26 +315,57 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         const coverages: MemberCoverage[] = membersList.map(m => {
           const existing = savedCoverages.find(c => c.profile_id === m.id);
           if (existing) {
-            // Migrate old single-coverage to term fields if needed
-            if (existing.coverage > 0 && !existing.termCoverage && !existing.wholeCoverage && existing.coverageType !== 'none') {
-              if (existing.coverageType === 'term') {
-                existing.termCoverage = existing.coverage;
-              } else if (existing.coverageType === 'whole') {
-                existing.wholeCoverage = existing.coverage;
-              } else if (existing.coverageType === 'mixed') {
-                const termPct = (existing.mixedTermPct || 50) / 100;
-                existing.termCoverage = Math.round(existing.coverage * termPct);
-                existing.wholeCoverage = existing.coverage - (existing.termCoverage || 0);
+            // Ensure arrays exist
+            if (!Array.isArray(existing.termPolicies)) existing.termPolicies = [];
+            if (!Array.isArray(existing.wholePolicies)) existing.wholePolicies = [];
+            // Migrate old single-coverage fields to policy arrays
+            if (existing.termPolicies.length === 0 && (existing.termCoverage || 0) > 0) {
+              existing.termPolicies = [{
+                id: crypto.randomUUID(),
+                coverage: existing.termCoverage || 0,
+                premium: existing.termPremium || 0,
+                termLength: existing.termLength || '',
+                startYear: existing.termStartYear || 0,
+              }];
+            }
+            if (existing.wholePolicies.length === 0 && (existing.wholeCoverage || 0) > 0) {
+              existing.wholePolicies = [{
+                id: crypto.randomUUID(),
+                coverage: existing.wholeCoverage || 0,
+                premium: existing.wholePremium || 0,
+                cashValue: existing.wholeCashValue || 0,
+                startYear: existing.wholeStartYear || 0,
+              }];
+            }
+            // Migrate old single coverage to term if no policies exist
+            if (existing.coverage > 0 && existing.termPolicies.length === 0 && existing.wholePolicies.length === 0 && existing.coverageType !== 'none') {
+              if (existing.coverageType === 'term' || existing.coverageType === 'mixed') {
+                existing.termPolicies = [{
+                  id: crypto.randomUUID(),
+                  coverage: existing.coverageType === 'mixed' ? Math.round(existing.coverage * (existing.mixedTermPct || 50) / 100) : existing.coverage,
+                  premium: 0, termLength: '', startYear: 0,
+                }];
+              }
+              if (existing.coverageType === 'whole' || existing.coverageType === 'mixed') {
+                existing.wholePolicies = [{
+                  id: crypto.randomUUID(),
+                  coverage: existing.coverageType === 'mixed' ? existing.coverage - (existing.termPolicies[0]?.coverage || 0) : existing.coverage,
+                  premium: 0, cashValue: 0, startYear: 0,
+                }];
               }
             }
             return existing;
           }
-          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 };
+          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50, termPolicies: [], wholePolicies: [] };
         });
         if (savedCoverages.length === 0 && Number(data.life_insurance_coverage) > 0 && coverages.length > 0) {
           coverages[0].coverage = Number(data.life_insurance_coverage);
           coverages[0].coverageType = 'term';
-          coverages[0].termCoverage = Number(data.life_insurance_coverage);
+          coverages[0].termPolicies = [{
+            id: crypto.randomUUID(),
+            coverage: Number(data.life_insurance_coverage),
+            premium: 0, termLength: '', startYear: 0,
+          }];
         }
 
         const savedProfile = data as any;
@@ -363,7 +412,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         setProfile(p => ({
           ...p,
           member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', income_sources: [], dob: null, pay_frequency: 'biweekly' })),
-          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 })),
+          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50, termPolicies: [], wholePolicies: [] })),
         }));
       }
       setLoading(false);
@@ -382,14 +431,14 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
     const combinedGross = membersWithTotals.reduce((s, m) => s + m.gross_income, 0);
     const primaryIncomeType = membersWithTotals[0]?.income_type || 'w2';
 
-    // Compute total coverage from expanded fields
+    // Compute total coverage from policy arrays
     const totalCoverage = profileData.life_insurance_coverages.reduce((s, c) => {
-      const term = c.termCoverage || 0;
-      const whole = c.wholeCoverage || 0;
+      const termTotal = (c.termPolicies || []).reduce((ts, tp) => ts + (tp.coverage || 0), 0);
+      const wholeTotal = (c.wholePolicies || []).reduce((ws, wp) => ws + (wp.coverage || 0), 0);
       const employer = c.employerCoverage || 0;
-      if (c.coverageType === 'term') return s + term + employer;
-      if (c.coverageType === 'whole') return s + whole + employer;
-      if (c.coverageType === 'mixed') return s + term + whole + employer;
+      if (c.coverageType === 'term') return s + termTotal + employer;
+      if (c.coverageType === 'whole') return s + wholeTotal + employer;
+      if (c.coverageType === 'mixed') return s + termTotal + wholeTotal + employer;
       return s + employer;
     }, 0);
 
@@ -519,12 +568,12 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => {
           if (ci !== index) return c;
           const merged = { ...c, ...fields };
-          // Recompute legacy coverage field
-          const term = merged.termCoverage || 0;
-          const whole = merged.wholeCoverage || 0;
-          if (merged.coverageType === 'term') merged.coverage = term;
-          else if (merged.coverageType === 'whole') merged.coverage = whole;
-          else if (merged.coverageType === 'mixed') merged.coverage = term + whole;
+          // Recompute legacy coverage field from policy arrays
+          const termTotal = (merged.termPolicies || []).reduce((s, tp) => s + (tp.coverage || 0), 0);
+          const wholeTotal = (merged.wholePolicies || []).reduce((s, wp) => s + (wp.coverage || 0), 0);
+          if (merged.coverageType === 'term') merged.coverage = termTotal;
+          else if (merged.coverageType === 'whole') merged.coverage = wholeTotal;
+          else if (merged.coverageType === 'mixed') merged.coverage = termTotal + wholeTotal;
           else merged.coverage = 0;
           return merged;
         }),
@@ -941,28 +990,69 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
   const currentYear = new Date().getFullYear();
 
   const getMemberTotals = (mc: MemberCoverage) => {
-    let totalCoverage = 0;
+    const termCov = (mc.termPolicies || []).reduce((s, p) => s + (p.coverage || 0), 0);
+    const termPrem = (mc.termPolicies || []).reduce((s, p) => s + (p.premium || 0), 0);
+    const wholeCov = (mc.wholePolicies || []).reduce((s, p) => s + (p.coverage || 0), 0);
+    const wholePrem = (mc.wholePolicies || []).reduce((s, p) => s + (p.premium || 0), 0);
+    let totalCoverage = mc.employerCoverage || 0;
     let totalPremium = 0;
-    if (mc.coverageType === 'term') {
-      totalCoverage = (mc.termCoverage || 0) + (mc.employerCoverage || 0);
-      totalPremium = mc.termPremium || 0;
-    } else if (mc.coverageType === 'whole') {
-      totalCoverage = (mc.wholeCoverage || 0) + (mc.employerCoverage || 0);
-      totalPremium = mc.wholePremium || 0;
-    } else if (mc.coverageType === 'mixed') {
-      totalCoverage = (mc.termCoverage || 0) + (mc.wholeCoverage || 0) + (mc.employerCoverage || 0);
-      totalPremium = (mc.termPremium || 0) + (mc.wholePremium || 0);
-    } else {
-      totalCoverage = mc.employerCoverage || 0;
-    }
+    if (mc.coverageType === 'term') { totalCoverage += termCov; totalPremium = termPrem; }
+    else if (mc.coverageType === 'whole') { totalCoverage += wholeCov; totalPremium = wholePrem; }
+    else if (mc.coverageType === 'mixed') { totalCoverage += termCov + wholeCov; totalPremium = termPrem + wholePrem; }
     return { totalCoverage, totalPremium };
   };
 
-  const getYearsRemaining = (mc: MemberCoverage) => {
-    if (!mc.termLength || !mc.termStartYear) return null;
-    const years = parseInt(mc.termLength) || 0;
-    const remaining = (mc.termStartYear + years) - currentYear;
+  const getTermYearsRemaining = (p: TermPolicy) => {
+    if (!p.termLength || !p.startYear) return null;
+    const years = parseInt(p.termLength) || 0;
+    const remaining = (p.startYear + years) - currentYear;
     return remaining > 0 ? remaining : 0;
+  };
+
+  const getTermExpiry = (p: TermPolicy) => {
+    if (!p.termLength || !p.startYear) return null;
+    return p.startYear + (parseInt(p.termLength) || 0);
+  };
+
+  // Helpers for modifying policy arrays
+  const addTermPolicy = (memberIdx: number, mc: MemberCoverage) => {
+    const newPolicy: TermPolicy = { id: crypto.randomUUID(), coverage: 0, premium: 0, termLength: '', startYear: 0 };
+    updateCoverage(memberIdx, { termPolicies: [...(mc.termPolicies || []), newPolicy] });
+  };
+
+  const updateTermPolicy = (memberIdx: number, mc: MemberCoverage, policyId: string, fields: Partial<TermPolicy>) => {
+    const updated = (mc.termPolicies || []).map(p => p.id === policyId ? { ...p, ...fields } : p);
+    updateCoverage(memberIdx, { termPolicies: updated });
+  };
+
+  const removeTermPolicy = (memberIdx: number, mc: MemberCoverage, policyId: string) => {
+    updateCoverage(memberIdx, { termPolicies: (mc.termPolicies || []).filter(p => p.id !== policyId) });
+  };
+
+  const addWholePolicy = (memberIdx: number, mc: MemberCoverage) => {
+    const newPolicy: WholePolicy = { id: crypto.randomUUID(), coverage: 0, premium: 0, cashValue: 0, startYear: 0 };
+    updateCoverage(memberIdx, { wholePolicies: [...(mc.wholePolicies || []), newPolicy] });
+  };
+
+  const updateWholePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string, fields: Partial<WholePolicy>) => {
+    const updated = (mc.wholePolicies || []).map(p => p.id === policyId ? { ...p, ...fields } : p);
+    updateCoverage(memberIdx, { wholePolicies: updated });
+  };
+
+  const removeWholePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string) => {
+    updateCoverage(memberIdx, { wholePolicies: (mc.wholePolicies || []).filter(p => p.id !== policyId) });
+  };
+
+  // When switching to term/mixed and no policies exist, seed one empty
+  const handleCoverageTypeChange = (memberIdx: number, mc: MemberCoverage, newType: MemberCoverage['coverageType']) => {
+    const updates: Partial<MemberCoverage> = { coverageType: newType };
+    if ((newType === 'term' || newType === 'mixed') && (mc.termPolicies || []).length === 0) {
+      updates.termPolicies = [{ id: crypto.randomUUID(), coverage: 0, premium: 0, termLength: '', startYear: 0 }];
+    }
+    if ((newType === 'whole' || newType === 'mixed') && (mc.wholePolicies || []).length === 0) {
+      updates.wholePolicies = [{ id: crypto.randomUUID(), coverage: 0, premium: 0, cashValue: 0, startYear: 0 }];
+    }
+    updateCoverage(memberIdx, updates);
   };
 
   return (
@@ -1036,7 +1126,7 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                       <label className="text-xs text-muted-foreground">Coverage Type</label>
                       <div className="grid grid-cols-4 gap-1 mt-1">
                         {(['term', 'whole', 'mixed', 'none'] as const).map(t => (
-                          <button key={t} onClick={() => updateCoverage(i, { coverageType: t })}
+                          <button key={t} onClick={() => handleCoverageTypeChange(i, mc, t)}
                             className={`py-1.5 rounded-lg text-[10px] font-medium capitalize transition-colors ${
                               mc.coverageType === t ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                             }`}>
@@ -1046,77 +1136,142 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                       </div>
                     </div>
 
-                    {/* Term fields */}
+                    {/* Term Policies List */}
                     {(mc.coverageType === 'term' || mc.coverageType === 'mixed') && (
                       <div className="space-y-2">
                         {mc.coverageType === 'mixed' && (
-                          <h3 className="text-xs font-semibold text-foreground">Term Policy</h3>
+                          <h3 className="text-xs font-semibold text-foreground">Term Policies</h3>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
-                            <CurrencyInput value={mc.termCoverage || 0} onChange={v => updateCoverage(i, { termCoverage: v })} />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Annual Premium</label>
-                            <CurrencyInput value={mc.termPremium || 0} onChange={v => updateCoverage(i, { termPremium: v })} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Term Length</label>
-                            <select value={mc.termLength || ''} onChange={e => updateCoverage(i, { termLength: e.target.value })}
-                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
-                              <option value="">Select…</option>
-                              {TERM_LENGTHS.map(tl => <option key={tl} value={tl}>{tl}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
-                            <input type="number" value={mc.termStartYear || ''} onChange={e => updateCoverage(i, { termStartYear: parseInt(e.target.value) || 0 })}
-                              placeholder={String(currentYear)}
-                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                          </div>
-                        </div>
-                        {mc.termLength && mc.termStartYear ? (
-                          <p className="text-[10px] text-muted-foreground">
-                            Years Remaining: <span className="font-semibold text-foreground">{getYearsRemaining(mc)}</span>
-                          </p>
-                        ) : null}
+                        {(mc.termPolicies || []).map((tp) => {
+                          const expiry = getTermExpiry(tp);
+                          const yrsRemaining = getTermYearsRemaining(tp);
+                          const policyKey = `term_${mc.profile_id}_${tp.id}`;
+                          return (
+                            <div key={tp.id} className="bg-muted/30 rounded-lg overflow-hidden border border-border/50">
+                              <button type="button" onClick={() => toggle(policyKey)}
+                                className="w-full flex items-center justify-between px-3 py-2 text-left">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xs font-medium text-foreground truncate">
+                                    {tp.coverage > 0 ? fmt(tp.coverage) : 'New Policy'}
+                                  </span>
+                                  {tp.premium > 0 && <span className="text-[10px] text-muted-foreground">• {fmt(tp.premium)}/yr</span>}
+                                  {expiry && <span className="text-[10px] text-muted-foreground">• Expires {expiry}</span>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button type="button" onClick={(e) => { e.stopPropagation(); removeTermPolicy(i, mc, tp.id); }}
+                                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                    <Trash2 size={12} />
+                                  </button>
+                                  <ChevronDown size={14} className={`text-muted-foreground transition-transform ${isOpen(policyKey) ? 'rotate-180' : ''}`} />
+                                </div>
+                              </button>
+                              {isOpen(policyKey) && (
+                                <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-2">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
+                                      <CurrencyInput value={tp.coverage || 0} onChange={v => updateTermPolicy(i, mc, tp.id, { coverage: v })} />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Annual Premium</label>
+                                      <CurrencyInput value={tp.premium || 0} onChange={v => updateTermPolicy(i, mc, tp.id, { premium: v })} />
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Term Length</label>
+                                      <select value={tp.termLength || ''} onChange={e => updateTermPolicy(i, mc, tp.id, { termLength: e.target.value })}
+                                        className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                                        <option value="">Select…</option>
+                                        {TERM_LENGTHS.map(tl => <option key={tl} value={tl}>{tl}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                                      <input type="number" value={tp.startYear || ''} onChange={e => updateTermPolicy(i, mc, tp.id, { startYear: parseInt(e.target.value) || 0 })}
+                                        placeholder={String(currentYear)}
+                                        className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                                    </div>
+                                  </div>
+                                  {tp.termLength && tp.startYear ? (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      Years Remaining: <span className="font-semibold text-foreground">{yrsRemaining}</span>
+                                    </p>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <button onClick={() => addTermPolicy(i, mc)}
+                          className="flex items-center gap-1 text-xs text-accent font-medium mt-1">
+                          <Plus size={14} /> Add Another Term Policy
+                        </button>
                       </div>
                     )}
 
-                    {/* Whole fields */}
+                    {/* Whole Life Policies List */}
                     {(mc.coverageType === 'whole' || mc.coverageType === 'mixed') && (
                       <div className="space-y-2">
                         {mc.coverageType === 'mixed' && (
-                          <h3 className="text-xs font-semibold text-foreground mt-2">Whole Life Policy</h3>
+                          <h3 className="text-xs font-semibold text-foreground mt-2">Whole Life Policies</h3>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
-                            <CurrencyInput value={mc.wholeCoverage || 0} onChange={v => updateCoverage(i, { wholeCoverage: v })} />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Annual Premium</label>
-                            <CurrencyInput value={mc.wholePremium || 0} onChange={v => updateCoverage(i, { wholePremium: v })} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <label className="text-[10px] text-muted-foreground">Cash Value (optional)</label>
-                              <InfoPopover text="The accumulated cash value of your whole life policy. This is the amount you could receive if you surrendered the policy." />
+                        {(mc.wholePolicies || []).map((wp) => {
+                          const policyKey = `whole_${mc.profile_id}_${wp.id}`;
+                          return (
+                            <div key={wp.id} className="bg-muted/30 rounded-lg overflow-hidden border border-border/50">
+                              <button type="button" onClick={() => toggle(policyKey)}
+                                className="w-full flex items-center justify-between px-3 py-2 text-left">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xs font-medium text-foreground truncate">
+                                    {wp.coverage > 0 ? fmt(wp.coverage) : 'New Policy'}
+                                  </span>
+                                  {wp.premium > 0 && <span className="text-[10px] text-muted-foreground">• {fmt(wp.premium)}/yr</span>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button type="button" onClick={(e) => { e.stopPropagation(); removeWholePolicy(i, mc, wp.id); }}
+                                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                    <Trash2 size={12} />
+                                  </button>
+                                  <ChevronDown size={14} className={`text-muted-foreground transition-transform ${isOpen(policyKey) ? 'rotate-180' : ''}`} />
+                                </div>
+                              </button>
+                              {isOpen(policyKey) && (
+                                <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-2">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
+                                      <CurrencyInput value={wp.coverage || 0} onChange={v => updateWholePolicy(i, mc, wp.id, { coverage: v })} />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Annual Premium</label>
+                                      <CurrencyInput value={wp.premium || 0} onChange={v => updateWholePolicy(i, mc, wp.id, { premium: v })} />
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <div className="flex items-center gap-1">
+                                        <label className="text-[10px] text-muted-foreground">Cash Value (optional)</label>
+                                        <InfoPopover text="The accumulated cash value of your whole life policy. This is the amount you could receive if you surrendered the policy." />
+                                      </div>
+                                      <CurrencyInput value={wp.cashValue || 0} onChange={v => updateWholePolicy(i, mc, wp.id, { cashValue: v })} />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                                      <input type="number" value={wp.startYear || ''} onChange={e => updateWholePolicy(i, mc, wp.id, { startYear: parseInt(e.target.value) || 0 })}
+                                        placeholder={String(currentYear)}
+                                        className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <CurrencyInput value={mc.wholeCashValue || 0} onChange={v => updateCoverage(i, { wholeCashValue: v })} />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
-                            <input type="number" value={mc.wholeStartYear || ''} onChange={e => updateCoverage(i, { wholeStartYear: parseInt(e.target.value) || 0 })}
-                              placeholder={String(currentYear)}
-                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                          </div>
-                        </div>
+                          );
+                        })}
+                        <button onClick={() => addWholePolicy(i, mc)}
+                          className="flex items-center gap-1 text-xs text-accent font-medium mt-1">
+                          <Plus size={14} /> Add Another Whole Life Policy
+                        </button>
                       </div>
                     )}
 
