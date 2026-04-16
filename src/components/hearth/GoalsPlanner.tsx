@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Target, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -23,6 +23,7 @@ interface GoalData {
   targetDate: string;     // YYYY-MM
   targetMonths: string;
   expanded: boolean;
+  recExpanded?: boolean;
 }
 
 function newGoal(): GoalData {
@@ -38,6 +39,7 @@ function newGoal(): GoalData {
     targetDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
     targetMonths: '24',
     expanded: true,
+    recExpanded: true,
   };
 }
 
@@ -98,13 +100,6 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
     setState({ goals: goals.filter(g => g.id !== id) });
   }, [goals, setState]);
 
-  const moveGoal = useCallback((idx: number, dir: -1 | 1) => {
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= goals.length) return;
-    const arr = [...goals];
-    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-    setState({ goals: arr });
-  }, [goals, setState]);
 
   // Computed per-goal
   const computed = useMemo(() => {
@@ -208,7 +203,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       <div className="mx-6 mt-5">
         {savingsPool && savingsPool.hasData ? (
           <div className="bg-card rounded-xl shadow-sm p-4">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Monthly Savings Pool</h2>
+            <h2 className="text-sm font-display font-semibold text-foreground mb-3">Monthly Savings Pool</h2>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Monthly Non-Retirement Savings</span>
@@ -248,7 +243,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       {/* Summary Card */}
       {goals.length > 0 && (
         <div className="mx-6 mt-4 bg-card rounded-xl shadow-sm p-4">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Goals Summary</h2>
+          <h2 className="text-sm font-display font-semibold text-foreground mb-3">Goals Summary</h2>
           <div className="grid grid-cols-2 gap-3 text-center">
             <div>
               <p className="text-[11px] text-muted-foreground">Total Monthly Needed</p>
@@ -260,34 +255,15 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-border text-center">
-            <p className="text-[11px] text-muted-foreground">Combined Surplus / Shortfall</p>
-            <p className={`text-xl font-bold font-display ${summary.combinedSurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-              {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo
-            </p>
-          </div>
-          <div className="mt-2 flex justify-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 size={12} className="text-green-600" /> {summary.onTrackCount} on track
-            </span>
-            {summary.offTrackCount > 0 && (
-              <span className="flex items-center gap-1">
-                <AlertTriangle size={12} className="text-destructive" /> {summary.offTrackCount} off track
-              </span>
-            )}
-          </div>
-          {/* Summary Verdict */}
-          <div className="mt-3 pt-3 border-t border-border text-center">
             {summary.offTrackCount === 0 ? (
               <p className="text-sm font-semibold text-green-600 flex items-center justify-center gap-1.5">
-                <CheckCircle2 size={14} /> All Goals On Track
-              </p>
-            ) : summary.onTrackCount === 0 ? (
-              <p className="text-sm font-semibold text-destructive flex items-center justify-center gap-1.5">
-                <AlertTriangle size={14} /> All Goals Off Track
+                <CheckCircle2 size={14} />
+                All goals on track · +{fmt(summary.combinedSurplus)}/mo surplus
               </p>
             ) : (
-              <p className="text-sm font-semibold text-[#C9A84C] flex items-center justify-center gap-1.5">
-                <AlertTriangle size={14} /> {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} Goals Need Attention
+              <p className={`text-sm font-semibold flex items-center justify-center gap-1.5 ${summary.combinedSurplus >= 0 ? 'text-[#C9A84C]' : 'text-destructive'}`}>
+                <AlertTriangle size={14} />
+                {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} goals off track · {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo {summary.combinedSurplus >= 0 ? 'surplus' : 'shortfall'}
               </p>
             )}
           </div>
@@ -410,27 +386,35 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                             </>
                           )}
                         </div>
+                        {c.contrib > 0 && c.target > 0 && (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed pt-1.5 border-t border-border">
+                            At <span className="font-semibold text-foreground">{fmt(c.contrib)}/mo</span>, you'll reach your <span className="font-semibold text-foreground">{fmt(c.target)}</span> goal by <span className="font-semibold text-foreground">{c.projectedDate ? formatMonthYear(c.projectedDate) : 'N/A'}</span>.
+                            {!c.onTrack && c.targetMonths > 0 && (
+                              <> To hit your <span className="font-semibold text-foreground">{goal.useDate ? formatMonthYear(goal.targetDate) : `${c.targetMonths}-month`}</span> deadline, increase to <span className="font-semibold text-foreground">{fmt(c.monthlyNeeded)}/mo</span>.</>
+                            )}
+                          </p>
+                        )}
                       </div>
                     )}
 
-                    {/* Savings Vehicle Recommendation */}
+                    {/* Savings Vehicle Recommendation (collapsible) */}
                     {c.target > 0 && c.targetMonths > 0 && (
-                      <div className="bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] border-l-[#C9A84C]">
-                        <p className="text-xs font-semibold text-foreground font-display">{rec.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{rec.body}</p>
-                      </div>
+                      <Collapsible open={goal.recExpanded ?? false} onOpenChange={(open) => updateGoal(goal.id, { recExpanded: open })}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left">
+                          <span className="text-xs font-semibold text-foreground">Savings Vehicle Recommendation</span>
+                          {goal.recExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="bg-card rounded-lg shadow-sm p-3.5 mt-2 border-l-[3px] border-l-[#C9A84C]">
+                            <p className="text-xs font-semibold text-foreground font-display">{rec.label}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{rec.body}</p>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     )}
 
-                    {/* Reorder & Delete */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex gap-1">
-                        <button onClick={() => moveGoal(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30">
-                          <ChevronUp size={14} className="text-muted-foreground" />
-                        </button>
-                        <button onClick={() => moveGoal(idx, 1)} disabled={idx === goals.length - 1} className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30">
-                          <ChevronDown size={14} className="text-muted-foreground" />
-                        </button>
-                      </div>
+                    {/* Delete */}
+                    <div className="flex items-center justify-end pt-1">
                       <button onClick={() => removeGoal(goal.id)} className="flex items-center gap-1 text-xs text-destructive active:opacity-70">
                         <Trash2 size={12} /> Remove
                       </button>
