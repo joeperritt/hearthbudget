@@ -36,18 +36,36 @@ interface Dependent {
   dob?: string | null;
 }
 
+interface TermPolicy {
+  id: string;
+  coverage: number;
+  premium: number;
+  termLength: string;
+  startYear: number;
+}
+
+interface WholePolicy {
+  id: string;
+  coverage: number;
+  premium: number;
+  cashValue: number;
+  startYear: number;
+}
+
 interface MemberCoverage {
   profile_id: string;
   name: string;
   coverage: number;
   coverageType: 'term' | 'whole' | 'mixed' | 'none';
   mixedTermPct: number;
-  // Term fields
+  // Multi-policy arrays
+  termPolicies: TermPolicy[];
+  wholePolicies: WholePolicy[];
+  // Legacy single-policy fields (kept for migration)
   termCoverage?: number;
   termPremium?: number;
   termLength?: string;
   termStartYear?: number;
-  // Whole fields
   wholeCoverage?: number;
   wholePremium?: number;
   wholeCashValue?: number;
