@@ -971,13 +971,14 @@ function evenSplit(count: number): number[] {
 }
 
 // Beneficiary chip selector — defined OUTSIDE InsuranceTab so it doesn't remount on every parent render
-function BeneficiarySection({ label, beneficiaries, onChange, currentMemberId, householdMembers, dependentNames }: {
+function BeneficiarySection({ label, beneficiaries, onChange, currentMemberId, householdMembers, dependentNames, helperText }: {
   label: string;
   beneficiaries: Beneficiary[];
   onChange: (b: Beneficiary[]) => void;
   currentMemberId: string;
   householdMembers: { id: string; name: string }[];
   dependentNames: string[];
+  helperText?: string;
 }) {
   const [showOther, setShowOther] = useState(false);
   const [otherText, setOtherText] = useState('');
@@ -1005,6 +1006,7 @@ function BeneficiarySection({ label, beneficiaries, onChange, currentMemberId, h
   return (
     <div className="space-y-1.5">
       <label className="text-[10px] text-muted-foreground font-medium">{label}</label>
+      {helperText && <p className="text-[9px] text-muted-foreground -mt-1">{helperText}</p>}
       <div className="flex flex-wrap gap-1">
         {allSuggestions.map(name => {
           const isSelected = beneficiaries.some(b => b.name === name);
@@ -1067,8 +1069,10 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
   onNavigateToTool?: (toolId: string) => void;
 }) {
   const [openMembers, setOpenMembers] = useState<Record<string, boolean>>({});
+  const [expandedPolicies, setExpandedPolicies] = useState<Record<string, string | null>>({});
   const toggleMember = (key: string) => setOpenMembers(prev => ({ ...prev, [key]: !prev[key] }));
   const isMemberOpen = (key: string) => !!openMembers[key];
+  const [showContingent, setShowContingent] = useState<Record<string, boolean>>({});
 
   const currentYear = new Date().getFullYear();
 
@@ -1098,7 +1102,10 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
       id: crypto.randomUUID(), type: 'term', coverage: 0, premium: 0,
       primaryBeneficiaries: [], contingentBeneficiaries: [],
     };
-    updateCoverage(memberIdx, { policies: [...(mc.policies || []), newPolicy] });
+    const updatedPolicies = [...(mc.policies || []), newPolicy];
+    updateCoverage(memberIdx, { policies: updatedPolicies });
+    // Auto-expand the new policy
+    setExpandedPolicies(prev => ({ ...prev, [mc.profile_id]: newPolicy.id }));
   };
 
   const updatePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string, fields: Partial<InsurancePolicy>) => {
@@ -1108,50 +1115,63 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
 
   const removePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string) => {
     updateCoverage(memberIdx, { policies: (mc.policies || []).filter(p => p.id !== policyId) });
+    if (expandedPolicies[mc.profile_id] === policyId) {
+      setExpandedPolicies(prev => ({ ...prev, [mc.profile_id]: null }));
+    }
   };
+
+  const togglePolicy = (memberId: string, policyId: string) => {
+    setExpandedPolicies(prev => ({
+      ...prev,
+      [memberId]: prev[memberId] === policyId ? null : policyId,
+    }));
+  };
+
+  const getPolicySummaryDetail = (p: InsurancePolicy) => {
+    if (p.type === 'term') {
+      const expiry = getTermExpiry(p);
+      return expiry ? `Expires ${expiry}` : '';
+    }
+    if (p.type === 'whole') {
+      if (p.cashValue) return `CV ${fmt(p.cashValue)}`;
+      if (p.startYear) return `Started ${p.startYear}`;
+      return '';
+    }
+    return 'Employer';
+  };
+
+  // Check if all members have zero policies and dependent coverage is off
+  const allEmpty = profile.life_insurance_coverages.every(mc => (mc.policies || []).length === 0)
+    && !profile.dependent_life_insurance;
 
   return (
     <div className="space-y-4">
       <section>
         <h2 className="font-display text-sm font-semibold text-foreground mb-3">Life Insurance</h2>
-        <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">Has Life Insurance</span>
-            <div className="flex gap-2">
-              {[true, false].map(v => (
-                <button key={String(v)} onClick={() => update('has_life_insurance', v)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    profile.has_life_insurance === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
-                  {v ? 'Yes' : 'No'}
-                </button>
-              ))}
-            </div>
+
+        {/* Empty state when no policies exist anywhere */}
+        {allEmpty && (
+          <div className="bg-card rounded-xl shadow-sm px-4 py-6 text-center space-y-2 mb-3">
+            <Shield size={28} className="mx-auto text-accent" />
+            <p className="text-sm text-foreground font-medium leading-relaxed">
+              Life insurance is one of the most important protections for your household.
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Add your policies here, or visit the Life Insurance Analysis tool to see what coverage you may need.
+            </p>
+            {onNavigateToTool && (
+              <button onClick={() => onNavigateToTool('life-insurance')} className="text-xs text-accent font-medium mt-1 underline underline-offset-2">
+                Life Insurance Analysis →
+              </button>
+            )}
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* No insurance — friendly empty state */}
-      {!profile.has_life_insurance && (
-        <div className="bg-card rounded-xl shadow-sm px-4 py-6 text-center space-y-2">
-          <Shield size={28} className="mx-auto text-accent" />
-          <p className="text-sm text-foreground font-medium">Life insurance is one of the most important protections for your family.</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            It provides a financial safety net if something unexpected happens. Even a basic term policy can make a significant difference.
-          </p>
-          {onNavigateToTool && (
-            <button onClick={() => onNavigateToTool('life-insurance')} className="text-xs text-accent font-medium mt-1 underline underline-offset-2">
-              Explore the Life Insurance Analysis →
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Has insurance — per-member collapsible cards */}
-      {profile.has_life_insurance && (
+        {/* Per-member collapsible cards — always visible */}
         <div className="space-y-2">
           {profile.life_insurance_coverages.map((mc, i) => {
             const totals = getMemberTotals(mc);
+            const hasPolicies = (mc.policies || []).length > 0;
             return (
               <div key={mc.profile_id} className="bg-card rounded-xl shadow-sm overflow-hidden">
                 {/* Collapsed member row */}
@@ -1159,140 +1179,183 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                   className="w-full flex items-center justify-between px-4 py-3 text-left">
                   <span className="text-sm font-medium text-foreground">{mc.name}</span>
                   <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Coverage</p>
-                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalCoverage)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Annual</p>
-                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalPremium)}/yr</p>
-                    </div>
+                    {hasPolicies && (
+                      <>
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground">Coverage</p>
+                          <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalCoverage)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground">Annual</p>
+                          <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalPremium)}/yr</p>
+                        </div>
+                      </>
+                    )}
                     <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isMemberOpen(`ins_${mc.profile_id}`) ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
 
                 {isMemberOpen(`ins_${mc.profile_id}`) && (
-                  <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
-                    {/* Policies — fully expanded, no inner collapse */}
-                    {(mc.policies || []).map((policy) => (
-                      <div key={policy.id} className="bg-muted/30 rounded-lg border border-border/50 p-3 space-y-3">
-                        {/* Header: type badge + delete */}
-                        <div className="flex items-center justify-between">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                            policy.type === 'term' ? 'bg-primary/10 text-primary' :
-                            policy.type === 'whole' ? 'bg-accent/10 text-accent' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            {POLICY_TYPE_LABELS[policy.type] || policy.type}
-                          </span>
-                          <button type="button" onClick={() => removePolicy(i, mc, policy.id)}
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
+                  <div className="px-4 pb-4 pt-1 border-t border-border space-y-2">
+                    {!hasPolicies && (
+                      <p className="text-xs text-muted-foreground text-center py-3">No policies added yet</p>
+                    )}
 
-                        {/* Policy Type dropdown */}
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Policy Type</label>
-                          <select value={policy.type} onChange={e => updatePolicy(i, mc, policy.id, { type: e.target.value as InsurancePolicy['type'] })}
-                            className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
-                            {POLICY_TYPES.map(pt => (
-                              <option key={pt.value} value={pt.value}>{pt.label}</option>
-                            ))}
-                          </select>
-                          {policy.type === 'group_employer' && (
-                            <p className="text-[10px] text-muted-foreground mt-1 italic">
-                              Group life coverage provided by an employer typically ends at employment separation. It's worth having personal coverage that doesn't depend on your job.
-                            </p>
+                    {/* Policy summary rows */}
+                    {(mc.policies || []).map((policy) => {
+                      const isExpanded = expandedPolicies[mc.profile_id] === policy.id;
+                      const hasContingent = (policy.contingentBeneficiaries || []).length > 0;
+                      const contingentKey = `${mc.profile_id}_${policy.id}`;
+                      const showContingentSection = showContingent[contingentKey] || hasContingent;
+
+                      return (
+                        <div key={policy.id} className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+                          {/* Collapsed policy summary row */}
+                          <button type="button" onClick={() => togglePolicy(mc.profile_id, policy.id)}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0 ${
+                              policy.type === 'term' ? 'bg-primary/10 text-primary' :
+                              policy.type === 'whole' ? 'bg-accent/10 text-accent' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {POLICY_TYPE_LABELS[policy.type] || policy.type}
+                            </span>
+                            <span className="text-xs text-foreground tabular-nums">{fmt(policy.coverage || 0)}</span>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">{fmt(policy.premium || 0)}/yr</span>
+                            <span className="text-[10px] text-muted-foreground flex-1 text-right truncate">{getPolicySummaryDetail(policy)}</span>
+                            <button type="button" onClick={e => { e.stopPropagation(); removePolicy(i, mc, policy.id); }}
+                              className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                              <Trash2 size={12} />
+                            </button>
+                            <ChevronDown size={14} className={`text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Expanded policy fields */}
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
+                              {/* Policy Type dropdown */}
+                              <div>
+                                <label className="text-[10px] text-muted-foreground">Policy Type</label>
+                                <select value={policy.type} onChange={e => updatePolicy(i, mc, policy.id, { type: e.target.value as InsurancePolicy['type'] })}
+                                  className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                                  {POLICY_TYPES.map(pt => (
+                                    <option key={pt.value} value={pt.value}>{pt.label}</option>
+                                  ))}
+                                </select>
+                                {policy.type === 'group_employer' && (
+                                  <p className="text-[10px] text-muted-foreground mt-1 italic">
+                                    Group life coverage provided by an employer typically ends at employment separation. It's worth having personal coverage that doesn't depend on your job.
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Coverage + Premium */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
+                                  <CurrencyInput value={policy.coverage || 0} onChange={v => updatePolicy(i, mc, policy.id, { coverage: v })} />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Annual Premium</label>
+                                  <CurrencyInput value={policy.premium || 0} onChange={v => updatePolicy(i, mc, policy.id, { premium: v })} />
+                                </div>
+                              </div>
+
+                              {policy.type === 'term' && (
+                                <>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Term Length</label>
+                                      <select value={policy.termLength || ''} onChange={e => updatePolicy(i, mc, policy.id, { termLength: e.target.value })}
+                                        className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                                        <option value="">Select…</option>
+                                        {TERM_LENGTHS.map(tl => <option key={tl} value={tl}>{tl}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                                      <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
+                                        placeholder={String(currentYear)}
+                                        className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                                    </div>
+                                  </div>
+                                  {policy.termLength && policy.startYear ? (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      Years Remaining: <span className="font-semibold text-foreground">{getTermYearsRemaining(policy)}</span> · Expires <span className="font-semibold text-foreground">{getTermExpiry(policy)}</span>
+                                    </p>
+                                  ) : null}
+                                </>
+                              )}
+
+                              {policy.type === 'whole' && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-1">
+                                      <label className="text-[10px] text-muted-foreground">Cash Value (optional)</label>
+                                      <InfoPopover text="The accumulated cash value of your whole life policy. This is the amount you could receive if you surrendered the policy." />
+                                    </div>
+                                    <CurrencyInput value={policy.cashValue || 0} onChange={v => updatePolicy(i, mc, policy.id, { cashValue: v })} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                                    <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
+                                      placeholder={String(currentYear)}
+                                      className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                                  </div>
+                                </div>
+                              )}
+
+                              {policy.type === 'group_employer' && (
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Policy Start Year (optional)</label>
+                                  <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
+                                    placeholder={String(currentYear)}
+                                    className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                                </div>
+                              )}
+
+                              {/* Beneficiaries */}
+                              <div className="pt-2 border-t border-border/50 space-y-3">
+                                <BeneficiarySection
+                                  label="Primary Beneficiary"
+                                  helperText="(select all that apply)"
+                                  beneficiaries={policy.primaryBeneficiaries || []}
+                                  onChange={b => updatePolicy(i, mc, policy.id, { primaryBeneficiaries: b })}
+                                  currentMemberId={mc.profile_id}
+                                  householdMembers={householdMembers}
+                                  dependentNames={dependentNames}
+                                />
+                                {showContingentSection ? (
+                                  <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground font-medium">Contingent Beneficiary</span>
+                                      <button type="button" onClick={() => {
+                                        updatePolicy(i, mc, policy.id, { contingentBeneficiaries: [] });
+                                        setShowContingent(prev => ({ ...prev, [contingentKey]: false }));
+                                      }} className="text-[10px] text-muted-foreground hover:text-destructive">✕ Remove</button>
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground -mt-1">(select all that apply)</p>
+                                    <BeneficiarySection
+                                      label=""
+                                      beneficiaries={policy.contingentBeneficiaries || []}
+                                      onChange={b => updatePolicy(i, mc, policy.id, { contingentBeneficiaries: b })}
+                                      currentMemberId={mc.profile_id}
+                                      householdMembers={householdMembers}
+                                      dependentNames={dependentNames}
+                                    />
+                                  </div>
+                                ) : (
+                                  <button type="button" onClick={() => setShowContingent(prev => ({ ...prev, [contingentKey]: true }))}
+                                    className="text-xs text-accent font-medium">
+                                    + Add Contingent Beneficiary
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
-
-                        {/* Coverage + Premium */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
-                            <CurrencyInput value={policy.coverage || 0} onChange={v => updatePolicy(i, mc, policy.id, { coverage: v })} />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Annual Premium</label>
-                            <CurrencyInput value={policy.premium || 0} onChange={v => updatePolicy(i, mc, policy.id, { premium: v })} />
-                          </div>
-                        </div>
-
-                        {policy.type === 'term' && (
-                          <>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-[10px] text-muted-foreground">Term Length</label>
-                                <select value={policy.termLength || ''} onChange={e => updatePolicy(i, mc, policy.id, { termLength: e.target.value })}
-                                  className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
-                                  <option value="">Select…</option>
-                                  {TERM_LENGTHS.map(tl => <option key={tl} value={tl}>{tl}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
-                                <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
-                                  placeholder={String(currentYear)}
-                                  className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                              </div>
-                            </div>
-                            {policy.termLength && policy.startYear ? (
-                              <p className="text-[10px] text-muted-foreground">
-                                Years Remaining: <span className="font-semibold text-foreground">{getTermYearsRemaining(policy)}</span> · Expires <span className="font-semibold text-foreground">{getTermExpiry(policy)}</span>
-                              </p>
-                            ) : null}
-                          </>
-                        )}
-
-                        {policy.type === 'whole' && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <label className="text-[10px] text-muted-foreground">Cash Value (optional)</label>
-                                <InfoPopover text="The accumulated cash value of your whole life policy. This is the amount you could receive if you surrendered the policy." />
-                              </div>
-                              <CurrencyInput value={policy.cashValue || 0} onChange={v => updatePolicy(i, mc, policy.id, { cashValue: v })} />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
-                              <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
-                                placeholder={String(currentYear)}
-                                className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                            </div>
-                          </div>
-                        )}
-
-                        {policy.type === 'group_employer' && (
-                          <div>
-                            <label className="text-[10px] text-muted-foreground">Policy Start Year (optional)</label>
-                            <input type="number" value={policy.startYear || ''} onChange={e => updatePolicy(i, mc, policy.id, { startYear: parseInt(e.target.value) || 0 })}
-                              placeholder={String(currentYear)}
-                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                          </div>
-                        )}
-
-                        {/* Beneficiaries */}
-                        <div className="pt-2 border-t border-border/50 space-y-3">
-                          <BeneficiarySection
-                            label="Primary Beneficiary"
-                            beneficiaries={policy.primaryBeneficiaries || []}
-                            onChange={b => updatePolicy(i, mc, policy.id, { primaryBeneficiaries: b })}
-                            currentMemberId={mc.profile_id}
-                            householdMembers={householdMembers}
-                            dependentNames={dependentNames}
-                          />
-                          <BeneficiarySection
-                            label="Contingent Beneficiary (optional)"
-                            beneficiaries={policy.contingentBeneficiaries || []}
-                            onChange={b => updatePolicy(i, mc, policy.id, { contingentBeneficiaries: b })}
-                            currentMemberId={mc.profile_id}
-                            householdMembers={householdMembers}
-                            dependentNames={dependentNames}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Add Policy button */}
                     <button onClick={() => addPolicy(i, mc)}
@@ -1305,7 +1368,7 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
             );
           })}
         </div>
-      )}
+      </section>
 
       {/* Dependent Life Insurance */}
       <section>
