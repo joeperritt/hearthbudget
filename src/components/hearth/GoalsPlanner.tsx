@@ -327,14 +327,52 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                       </div>
                     </div>
 
-                    {/* Monthly Contribution */}
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Monthly Contribution</Label>
-                      <div className="relative mt-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                        <Input value={goal.monthlyContribution} onChange={e => updateGoal(goal.id, { monthlyContribution: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="500" className="h-9 text-sm pl-7" inputMode="decimal" />
-                      </div>
-                    </div>
+                    {/* Monthly Allocation (from Savings Pool) */}
+                    {(() => {
+                      const poolTotal = savingsPool?.totalAvailable ?? 0;
+                      const poolAllocated = savingsPool?.allocated ?? 0;
+                      const thisAlloc = Number(goal.monthlyContribution) || 0;
+                      const otherAlloc = poolAllocated - thisAlloc;
+                      const remainingForThis = poolTotal > 0 ? Math.max(0, poolTotal - otherAlloc) : Infinity;
+                      const atCap = poolTotal > 0 && thisAlloc >= remainingForThis && remainingForThis > 0;
+                      const fullyAllocated = poolTotal > 0 && (poolTotal - poolAllocated) <= 0;
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-xs text-muted-foreground">Monthly Allocation</Label>
+                            {poolTotal > 0 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Pool remaining: <span className="font-semibold text-foreground">{fmt(Math.max(0, poolTotal - poolAllocated))}/mo</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                            <Input
+                              value={goal.monthlyContribution}
+                              onChange={e => {
+                                const raw = e.target.value.replace(/[^0-9.]/g, '');
+                                const num = Number(raw) || 0;
+                                if (poolTotal > 0 && num > remainingForThis) {
+                                  updateGoal(goal.id, { monthlyContribution: String(remainingForThis) });
+                                } else {
+                                  updateGoal(goal.id, { monthlyContribution: raw });
+                                }
+                              }}
+                              placeholder="500"
+                              className="h-9 text-sm pl-7"
+                              inputMode="decimal"
+                            />
+                          </div>
+                          {fullyAllocated && (
+                            <p className="text-[10px] text-destructive mt-1">Pool fully allocated. Increase your savings to allocate more.</p>
+                          )}
+                          {!fullyAllocated && atCap && (
+                            <p className="text-[10px] text-muted-foreground mt-1">Capped at pool remaining.</p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Target Date vs Months toggle */}
                     <div>
