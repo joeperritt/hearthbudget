@@ -1140,9 +1140,8 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
     return 'Employer';
   };
 
-  // Check if all members have zero policies and dependent coverage is off
-  const allEmpty = profile.life_insurance_coverages.every(mc => (mc.policies || []).length === 0)
-    && !profile.dependent_life_insurance;
+  // Check if all members have zero policies
+  const allEmpty = profile.life_insurance_coverages.every(mc => (mc.policies || []).length === 0);
 
   return (
     <div className="space-y-4">
@@ -1370,27 +1369,10 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
         </div>
       </section>
 
-      {/* Dependent Life Insurance */}
-      <section>
-        <h2 className="font-display text-sm font-semibold text-foreground mb-3">Dependent Life Insurance</h2>
-        <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">Dependent Coverage</span>
-            <button onClick={() => update('dependent_life_insurance', !profile.dependent_life_insurance)}
-              className={`w-10 h-5 rounded-full transition-colors relative ${profile.dependent_life_insurance ? 'bg-accent' : 'bg-muted'}`}>
-              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${profile.dependent_life_insurance ? 'translate-x-5' : ''}`} />
-            </button>
-          </div>
-          {profile.dependent_life_insurance && (
-            <NumField label="Coverage Amount" value={profile.dependent_life_coverage} onChange={v => update('dependent_life_coverage', v)} prefix="$" />
-          )}
-        </div>
-      </section>
-
       {/* Disclaimer */}
       <div className="bg-muted/50 rounded-xl p-4 border border-border">
         <p className="text-[10px] text-muted-foreground leading-relaxed">
-          This analysis covers life insurance only. Disability insurance and long-term care coverage are critical components of a complete protection plan and are often overlooked. We strongly encourage meeting with a Certified Financial Planner (CFP®) to discuss these additional protections for your household.
+          This section covers individual life insurance only. Dependent life insurance, disability insurance, and long-term care coverage are critical components of a complete protection plan and are often overlooked. We strongly encourage meeting with a Certified Financial Planner (CFP®) to discuss these additional protections for your household.
         </p>
       </div>
     </div>
