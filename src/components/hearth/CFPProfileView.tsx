@@ -487,9 +487,35 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
     }
   }, [householdId, existingId]);
 
+  const pendingProfileRef = useRef<ProfileData | null>(null);
+
   const debouncedSave = useCallback((newProfile: ProfileData) => {
+    pendingProfileRef.current = newProfile;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
+    saveTimeoutRef.current = setTimeout(() => {
+      pendingProfileRef.current = null;
+      save(newProfile);
+    }, 1500);
+  }, [save]);
+
+  // Flush pending save on tab hide / unmount so navigating away doesn't drop data
+  useEffect(() => {
+    const flush = () => {
+      if (pendingProfileRef.current) {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        const pending = pendingProfileRef.current;
+        pendingProfileRef.current = null;
+        save(pending);
+      }
+    };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
   }, [save]);
 
 
