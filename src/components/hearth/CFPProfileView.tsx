@@ -36,32 +36,35 @@ interface Dependent {
   dob?: string | null;
 }
 
-interface TermPolicy {
-  id: string;
-  coverage: number;
-  premium: number;
-  termLength: string;
-  startYear: number;
+interface Beneficiary {
+  name: string;
+  percentage: number;
+  household_member_id?: string;
 }
 
-interface WholePolicy {
+interface InsurancePolicy {
   id: string;
+  type: 'term' | 'whole' | 'group_employer';
   coverage: number;
   premium: number;
-  cashValue: number;
-  startYear: number;
+  termLength?: string;
+  startYear?: number;
+  cashValue?: number;
+  primaryBeneficiaries: Beneficiary[];
+  contingentBeneficiaries: Beneficiary[];
+  beneficiaryLastConfirmed?: string;
 }
 
 interface MemberCoverage {
   profile_id: string;
   name: string;
-  coverage: number;
-  coverageType: 'term' | 'whole' | 'mixed' | 'none';
-  mixedTermPct: number;
-  // Multi-policy arrays
-  termPolicies: TermPolicy[];
-  wholePolicies: WholePolicy[];
-  // Legacy single-policy fields (kept for migration)
+  policies: InsurancePolicy[];
+  // Legacy fields kept for migration only
+  coverage?: number;
+  coverageType?: string;
+  mixedTermPct?: number;
+  termPolicies?: any[];
+  wholePolicies?: any[];
   termCoverage?: number;
   termPremium?: number;
   termLength?: string;
@@ -70,9 +73,7 @@ interface MemberCoverage {
   wholePremium?: number;
   wholeCashValue?: number;
   wholeStartYear?: number;
-  // Employer
   employerCoverage?: number;
-  // Beneficiary
   beneficiaryConfirmed?: boolean;
   beneficiaryName?: string;
 }
