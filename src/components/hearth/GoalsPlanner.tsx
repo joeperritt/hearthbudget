@@ -208,7 +208,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       <div className="mx-6 mt-5">
         {savingsPool && savingsPool.hasData ? (
           <div className="bg-card rounded-xl shadow-sm p-4">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Monthly Savings Pool</h2>
+            <h2 className="text-sm font-display font-semibold text-foreground mb-3">Monthly Savings Pool</h2>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Monthly Non-Retirement Savings</span>
