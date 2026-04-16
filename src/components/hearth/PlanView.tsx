@@ -100,7 +100,7 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     { id: 'retirement', name: 'Retirement Planner', subtitle: 'Are you on track to retire?', icon: PiggyBank },
     { id: 'life-insurance', name: 'Life Insurance Analysis', subtitle: 'Is your family protected?', icon: Heart },
     { id: 'emergency-fund', name: 'Emergency Fund Analysis', subtitle: 'Are you prepared for the unexpected?', icon: Shield },
-    { id: 'savings-goals', name: 'Savings Goals', subtitle: 'Track and plan your savings goals', icon: Target },
+    { id: 'savings-goals', name: 'Non-Retirement Goals', subtitle: 'Plan and track your non-retirement savings goals', icon: Target },
   ];
 
   // Record last_visited_at when navigating to a tool

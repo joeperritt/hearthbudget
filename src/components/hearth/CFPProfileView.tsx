@@ -760,13 +760,24 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
             {/* Savings — first */}
             <section>
               <h2 className="font-display text-sm font-semibold text-foreground mb-2">Savings</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4">
-                <label className="text-xs text-muted-foreground">Savings & Emergency Fund</label>
-                <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Combined liquid savings</p>
-                <CurrencyInput value={profile.savings_balance || profile.emergency_fund_balance} onChange={v => {
-                  update('savings_balance', v);
-                  update('emergency_fund_balance', v);
-                }} />
+              <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Savings & Emergency Fund</label>
+                  <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Combined liquid savings</p>
+                  <CurrencyInput value={profile.savings_balance || profile.emergency_fund_balance} onChange={v => {
+                    update('savings_balance', v);
+                    update('emergency_fund_balance', v);
+                  }} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
+                  <CurrencyInput
+                    value={profile.monthly_additions_per_key['savings'] || 0}
+                    onChange={v => {
+                      update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, savings: v });
+                    }}
+                  />
+                </div>
               </div>
             </section>
 
@@ -777,28 +788,43 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                 <InfoPopover text="Jointly held brokerage or taxable investment accounts shared between household members. Not tax-advantaged." />
               </div>
               <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Total Balance</label>
-                    <CurrencyInput
-                      value={profile.non_retirement_per_member['joint'] || 0}
-                      onChange={v => {
-                        const updated = { ...profile.non_retirement_per_member, joint: v };
-                        const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
-                        update('non_retirement_per_member', updated);
-                        setTimeout(() => update('non_retirement_investments', total), 0);
-                      }}
-                    />
+                <div>
+                  <label className="text-[10px] text-muted-foreground">Total Balance</label>
+                  <CurrencyInput
+                    value={profile.non_retirement_per_member['joint'] || 0}
+                    onChange={v => {
+                      const updated = { ...profile.non_retirement_per_member, joint: v };
+                      const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
+                      update('non_retirement_per_member', updated);
+                      setTimeout(() => update('non_retirement_investments', total), 0);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground/70">Retirement</label>
+                      <CurrencyInput
+                        value={profile.monthly_additions_per_key['nq_joint_retirement'] || 0}
+                        onChange={v => {
+                          update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_retirement: v });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground/70">Non-Retirement</label>
+                      <CurrencyInput
+                        value={profile.monthly_additions_per_key['nq_joint_nonret'] || 0}
+                        onChange={v => {
+                          update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_nonret: v });
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
-                    <CurrencyInput
-                      value={profile.monthly_additions_per_key['nq_joint'] || 0}
-                      onChange={v => {
-                        update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint: v });
-                      }}
-                    />
-                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
+                    Total: {fmt((profile.monthly_additions_per_key['nq_joint_retirement'] || 0) + (profile.monthly_additions_per_key['nq_joint_nonret'] || 0))}/mo
+                  </p>
                 </div>
               </div>
             </section>
@@ -842,15 +868,32 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                             }}
                           />
                         </div>
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
-                          <CurrencyInput
-                            value={profile.monthly_additions_per_key[`nq_${pid}`] || 0}
-                            onChange={v => {
-                              update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}`]: v });
-                            }}
-                          />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground/70">Retirement</label>
+                            <CurrencyInput
+                              value={profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0}
+                              onChange={v => {
+                                update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_retirement`]: v });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground/70">Non-Retirement</label>
+                            <CurrencyInput
+                              value={profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0}
+                              onChange={v => {
+                                update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_nonret`]: v });
+                              }}
+                            />
+                          </div>
                         </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
+                          Total: {fmt((profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0) + (profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0))}/mo
+                        </p>
                       </div>
                     </div>
 

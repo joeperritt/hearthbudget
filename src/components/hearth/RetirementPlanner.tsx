@@ -42,9 +42,10 @@ function ssClaimingNote(age: number): { text: string; color: string } {
 interface RetirementPlannerProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProps) {
+export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: RetirementPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxWithholdingState, setTaxWithholdingState] = useState<any>(null);
@@ -115,6 +116,20 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
     return (financialProfile.debts as any[]).reduce((s, d) => s + (Number(d.monthly_payment || d.minimum_payment) || 0), 0);
   }, [financialProfile]);
 
+  // Compute retirement-directed contributions from Financial Profile
+  const profileContributions = useMemo(() => {
+    if (!financialProfile?.monthly_additions_per_key) return null;
+    const additions = financialProfile.monthly_additions_per_key as Record<string, number>;
+    let preTax = 0, roth = 0, nqRetirement = 0;
+    Object.entries(additions).forEach(([key, val]) => {
+      const v = Number(val) || 0;
+      if (key.startsWith('pretax_')) preTax += v;
+      else if (key.startsWith('roth_')) roth += v;
+      else if (key.endsWith('_retirement')) nqRetirement += v;
+    });
+    return { preTax, roth, nqRetirement };
+  }, [financialProfile]);
+
   // Auto-populate on first load
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
@@ -130,13 +145,23 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
       if (changed) updates.memberAges = ages;
     }
 
-    // Pre-populate pre-tax contributions from tax withholding if available
-    if (!state.preTaxContrib && taxWithholdingState?.retirementDeduction) {
-      const perPaycheck = Number(taxWithholdingState.retirementDeduction) || 0;
-      const freq = taxWithholdingState.payFrequency || 'biweekly';
-      const periods: Record<string, number> = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
-      const annual = perPaycheck * (periods[freq] || 26);
-      updates.preTaxContrib = String(Math.round(annual / 12));
+    // Pre-populate contributions from Financial Profile
+    if (profileContributions) {
+      if (!state.preTaxContrib && profileContributions.preTax > 0) {
+        updates.preTaxContrib = String(profileContributions.preTax);
+      } else if (!state.preTaxContrib && taxWithholdingState?.retirementDeduction) {
+        const perPaycheck = Number(taxWithholdingState.retirementDeduction) || 0;
+        const freq = taxWithholdingState.payFrequency || 'biweekly';
+        const periods: Record<string, number> = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
+        const annual = perPaycheck * (periods[freq] || 26);
+        updates.preTaxContrib = String(Math.round(annual / 12));
+      }
+      if (!state.rothContrib && profileContributions.roth > 0) {
+        updates.rothContrib = String(profileContributions.roth);
+      }
+      if (!state.nonQualContrib && profileContributions.nqRetirement > 0) {
+        updates.nonQualContrib = String(profileContributions.nqRetirement);
+      }
     }
 
     if (members.length > 0 && Object.keys(state.ssClaimingAges).length === 0) {
@@ -147,7 +172,7 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
 
     if (Object.keys(updates).length) setState(updates);
     setInitialized(true);
-  }, [toolStateLoaded, financialProfile, members, initialized, taxWithholdingState]);
+  }, [toolStateLoaded, financialProfile, members, initialized, taxWithholdingState, profileContributions]);
 
   // Parsed values
   const retirementYear = Number(state.retirementYear) || (currentYear + 25);
@@ -572,9 +597,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
               <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
             </div>
           </div>
-          {taxWithholdingState?.retirementDeduction && (
-            <p className="text-[10px] text-muted-foreground mt-1">Pre-tax pre-populated from Tax Withholding tool</p>
-          )}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Non-Qualified contributions reflect retirement-directed portion only —{' '}
+            <button onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()} className="text-accent font-semibold">from Financial Profile</button>
+          </p>
         </div>
 
         <div>

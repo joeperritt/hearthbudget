@@ -67,9 +67,10 @@ function formatMonthYear(s: string): string {
 interface GoalsPlannerProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
+export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: GoalsPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state, setState, loaded } = useToolState(householdId, 'goals-planner', {
@@ -162,6 +163,21 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
     targetMonths: computed[i].targetMonths,
   })), [goals, computed]);
 
+  // Compute non-retirement savings pool from financial profile
+  const savingsPool = useMemo(() => {
+    if (!financialProfile) return null;
+    const additions = (financialProfile.monthly_additions_per_key || {}) as Record<string, number>;
+    let nqNonRet = 0;
+    Object.entries(additions).forEach(([key, val]) => {
+      if (key.endsWith('_nonret')) nqNonRet += (Number(val) || 0);
+    });
+    const savingsAdditions = Number(additions['savings']) || 0;
+    const totalAvailable = nqNonRet + savingsAdditions;
+    const allocated = goals.reduce((s, g) => s + (Number(g.monthlyContribution) || 0), 0);
+    const surplus = totalAvailable - allocated;
+    return { totalAvailable, allocated, surplus, hasData: totalAvailable > 0 };
+  }, [financialProfile, goals]);
+
   if (!loaded) {
     return (
       <div className="max-w-lg mx-auto px-6 pt-16 safe-top">
@@ -181,14 +197,55 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Savings Goals</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Plan and track non-retirement goals</p>
+          <h1 className="font-display text-xl font-bold text-foreground">Non-Retirement Goals</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Plan and track your non-retirement savings goals</p>
         </div>
+      </div>
+
+      {/* Savings Pool Card */}
+      <div className="mx-6 mt-5">
+        {savingsPool && savingsPool.hasData ? (
+          <div className="bg-card rounded-xl shadow-sm p-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Monthly Savings Pool</h2>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Monthly Non-Retirement Savings</span>
+                <span className="font-semibold text-foreground tabular-nums">{fmt(savingsPool.totalAvailable)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Allocated to Goals</span>
+                <span className="font-semibold text-foreground tabular-nums">{fmt(savingsPool.allocated)}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                <span className="text-muted-foreground font-semibold">{savingsPool.surplus >= 0 ? 'Surplus' : 'Shortfall'}</span>
+                <span className={`font-bold tabular-nums ${savingsPool.surplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  {savingsPool.surplus >= 0 ? '+' : ''}{fmt(savingsPool.surplus)}/mo
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+              className="mt-2 text-[11px] font-semibold text-accent flex items-center gap-1"
+            >
+              From Financial Profile →
+            </button>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl shadow-sm p-4 text-center">
+            <p className="text-xs text-muted-foreground">Add your monthly non-retirement savings in your Financial Profile to see your savings pool.</p>
+            <button
+              onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+              className="mt-2 text-[11px] font-semibold text-accent"
+            >
+              Go to Financial Profile →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary Card */}
       {goals.length > 0 && (
-        <div className="mx-6 mt-5 bg-card rounded-xl shadow-sm p-4">
+        <div className="mx-6 mt-4 bg-card rounded-xl shadow-sm p-4">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Goals Summary</h2>
           <div className="grid grid-cols-2 gap-3 text-center">
             <div>
