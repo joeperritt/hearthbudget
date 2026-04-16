@@ -860,67 +860,84 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
             <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
+              const isCollapsed = !!collapsedPhases[i];
               return (
-                <div key={i} className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[11px] font-semibold text-muted-foreground">{phase.label}</p>
-                    {phase.durationYears > 0 && phase.durationYears < 50 && (
-                      <span className="text-[10px] text-muted-foreground">{Math.round(phase.durationYears)} yrs</span>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Portfolio draw
-                        <span className="ml-1 text-[10px] text-muted-foreground">
-                          ({pct(safeWithdrawalRate)}/yr)
-                        </span>
-                        {monthlyExpenses > 0 && phaseGap < 0 && (() => {
-                          const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
-                          return (
-                            <span className="ml-1 text-[10px] text-yellow-600">
-                              — would need {pct(impliedRate)}/yr
+                <Collapsible
+                  key={i}
+                  open={!isCollapsed}
+                  onOpenChange={(open) => setCollapsedPhases(prev => ({ ...prev, [i]: !open }))}
+                >
+                  <div className={`${i > 0 ? 'mt-3 pt-3 border-t border-border' : ''}`}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between mb-1.5 active:opacity-70">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isCollapsed ? <ChevronDown size={12} className="text-muted-foreground shrink-0" /> : <ChevronUp size={12} className="text-muted-foreground shrink-0" />}
+                        <p className="text-[11px] font-semibold text-muted-foreground truncate text-left">{phase.label}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold text-foreground">{fmt(phase.totalIncome)}</span>
+                        {monthlyExpenses > 0 && (
+                          <span className={`text-[11px] font-semibold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}
+                          </span>
+                        )}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Portfolio draw
+                            <span className="ml-1 text-[10px] text-muted-foreground">
+                              ({pct(safeWithdrawalRate)}/yr)
                             </span>
-                          );
-                        })()}
-                      </span>
-                      <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
-                    </div>
-                    {i === 0 && (
-                      <div>
-                        <button
-                          onClick={() => setShowWhyFourPercent(v => !v)}
-                          className="text-[10px] font-semibold text-accent active:opacity-70"
-                        >
-                          {showWhyFourPercent ? 'Hide' : 'Why 4%?'}
-                        </button>
-                        {showWhyFourPercent && (
-                          <div className="bg-muted/60 rounded-lg p-2.5 mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                            The 4% rule comes from the Trinity Study, a landmark 1994 research study that analyzed historical market returns. It found that retirees who withdrew 4% of their portfolio in year one — then adjusted for inflation annually — had a very high probability of their money lasting 30 years across various market conditions, including downturns. It has become the standard Certified Financial Planner (CFP) benchmark for sustainable retirement income. Some planners use 3.5% for longer retirements or uncertain markets, and up to 5% for shorter ones.
+                            {monthlyExpenses > 0 && phaseGap < 0 && (() => {
+                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                              return (
+                                <span className="ml-1 text-[10px] text-yellow-600">
+                                  — would need {pct(impliedRate)}/yr
+                                </span>
+                              );
+                            })()}
+                          </span>
+                          <span className="font-semibold text-foreground">{fmt(phase.portfolioIncome)}</span>
+                        </div>
+                        {i === 0 && (
+                          <div>
+                            <button
+                              onClick={() => setShowWhyFourPercent(v => !v)}
+                              className="text-[10px] font-semibold text-accent active:opacity-70"
+                            >
+                              {showWhyFourPercent ? 'Hide' : 'Why 4%?'}
+                            </button>
+                            {showWhyFourPercent && (
+                              <div className="bg-muted/60 rounded-lg p-2.5 mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                                The 4% rule comes from the Trinity Study, a landmark 1994 research study that analyzed historical market returns. It found that retirees who withdrew 4% of their portfolio in year one — then adjusted for inflation annually — had a very high probability of their money lasting 30 years across various market conditions, including downturns. It has become the standard Certified Financial Planner (CFP) benchmark for sustainable retirement income. Some planners use 3.5% for longer retirements or uncertain markets, and up to 5% for shorter ones.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {phase.ssIncome > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Social Security</span>
+                            <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm border-t border-border pt-1">
+                          <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
+                          <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
+                        </div>
+                        {monthlyExpenses > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{phaseGap >= 0 ? 'Surplus' : 'Gap'} vs. expenses</span>
+                            <span className={`font-bold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                              {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}/mo
+                            </span>
                           </div>
                         )}
                       </div>
-                    )}
-                    {phase.ssIncome > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Social Security</span>
-                        <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm border-t border-border pt-1">
-                      <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
-                      <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
-                    </div>
-                    {monthlyExpenses > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{phaseGap >= 0 ? 'Surplus' : 'Gap'} vs. expenses</span>
-                        <span className={`font-bold ${phaseGap >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                          {phaseGap >= 0 ? '+' : '-'}{fmt(Math.abs(phaseGap))}/mo
-                        </span>
-                      </div>
-                    )}
+                    </CollapsibleContent>
                   </div>
-                </div>
+                </Collapsible>
               );
             })}
             {showSS && incomePhases.length > 1 && (
