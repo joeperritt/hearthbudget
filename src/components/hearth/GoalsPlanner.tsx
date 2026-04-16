@@ -67,9 +67,10 @@ function formatMonthYear(s: string): string {
 interface GoalsPlannerProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
+export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: GoalsPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state, setState, loaded } = useToolState(householdId, 'goals-planner', {

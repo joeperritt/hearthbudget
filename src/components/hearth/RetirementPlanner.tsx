@@ -42,9 +42,10 @@ function ssClaimingNote(age: number): { text: string; color: string } {
 interface RetirementPlannerProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProps) {
+export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: RetirementPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxWithholdingState, setTaxWithholdingState] = useState<any>(null);
