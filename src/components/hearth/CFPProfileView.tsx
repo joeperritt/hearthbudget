@@ -1401,11 +1401,10 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                       <Plus size={14} /> Add Policy
                     </button>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
       </section>
 
       {/* Disclaimer */}
