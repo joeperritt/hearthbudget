@@ -449,16 +449,47 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
             </div>
             {shortfall > 0 && (
               <div className="border-t border-border pt-3 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Monthly contribution to reach target:</p>
+                {/* Current monthly savings from profile */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Current monthly savings</span>
+                  <span className="font-semibold text-foreground tabular-nums">{fmt(efContribution)}/mo</span>
+                </div>
+                {onNavigateToProfile && (
+                  <button onClick={() => onNavigateToProfile('accounts')} className="text-[10px] text-accent font-medium hover:underline">
+                    From Financial Profile →
+                  </button>
+                )}
+                <p className="text-xs text-muted-foreground font-medium pt-1">Additional monthly contribution to reach low target:</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-muted-foreground">In 12 months</p>
-                    <p className="font-bold text-foreground text-sm tabular-nums">{fmt(monthly12)}/mo</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-muted-foreground">In 24 months</p>
-                    <p className="font-bold text-foreground text-sm tabular-nums">{fmt(monthly24)}/mo</p>
-                  </div>
+                  {(() => {
+                    const renderCard = (months: number, label: string) => {
+                      const totalNeeded = Math.ceil(shortfall / months);
+                      const additional = Math.max(0, totalNeeded - efContribution);
+                      const onPace = additional === 0;
+                      const yearsToReach = efContribution > 0 ? Math.ceil(shortfall / efContribution) : null;
+                      if (onPace && yearsToReach !== null) {
+                        return (
+                          <div key={label} className="bg-muted/50 rounded-lg p-3 col-span-2">
+                            <p className="text-muted-foreground">On pace</p>
+                            <p className="font-semibold text-green-700 text-xs leading-snug mt-1">
+                              At your current pace of {fmt(efContribution)}/mo, you'll reach your low target in approximately {yearsToReach} months.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={label} className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground">{label}</p>
+                          <p className="font-bold text-foreground text-sm tabular-nums">+{fmt(additional)}/mo</p>
+                        </div>
+                      );
+                    };
+                    const totalNeeded12 = Math.ceil(shortfall / 12);
+                    if (totalNeeded12 <= efContribution && efContribution > 0) {
+                      return renderCard(12, 'In 12 months');
+                    }
+                    return [renderCard(12, 'In 12 months'), renderCard(24, 'In 24 months')];
+                  })()}
                 </div>
                 {onNavigateToProfile && (
                   <button
