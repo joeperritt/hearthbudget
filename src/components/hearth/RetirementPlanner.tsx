@@ -960,11 +960,32 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           )}
 
           {/* CFP Guidelines */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Certified Financial Planner (CFP) Guidelines
-            </p>
-            <div className="space-y-3">
+          {(() => {
+            const checks = [
+              savingsRateOk,
+              salaryMultiple >= 10,
+              !rothSkewed,
+              yearsToRetirement >= 30,
+              ...(monthlyExpenses > 0 ? [withdrawalSustainable] : []),
+            ];
+            const onTrackCount = checks.filter(Boolean).length;
+            const totalCount = checks.length;
+            return (
+              <Collapsible open={!cfpCollapsed} onOpenChange={(open) => setCfpCollapsed(!open)}>
+                <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between active:opacity-70">
+                    <p className="text-sm font-semibold text-foreground text-left">
+                      Certified Financial Planner (CFP®) Guidelines
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs font-semibold ${onTrackCount === totalCount ? 'text-green-600' : onTrackCount >= totalCount - 1 ? 'text-yellow-600' : 'text-destructive'}`}>
+                        {onTrackCount} of {totalCount} on track
+                      </span>
+                      {cfpCollapsed ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronUp size={14} className="text-muted-foreground" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="space-y-3 mt-3">
               <div className="flex items-start gap-2">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${savingsRateOk ? 'bg-green-500' : 'bg-yellow-500'}`} />
                 <div>
@@ -1067,8 +1088,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })()}
         </div>
       )}
 
