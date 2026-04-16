@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Trash2, Shield, Check, Info } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Shield, Check, Info, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -756,222 +756,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
         {/* Accounts Tab */}
         {activeProfileTab === 'accounts' && (
-          <div className="space-y-5">
-            {/* Savings — first */}
-            <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-2">Savings</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">Savings & Emergency Fund</label>
-                  <p className="text-[10px] text-muted-foreground/70 -mt-0.5">Combined liquid savings</p>
-                  <CurrencyInput value={profile.savings_balance || profile.emergency_fund_balance} onChange={v => {
-                    update('savings_balance', v);
-                    update('emergency_fund_balance', v);
-                  }} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1">
-                    <label className="text-[10px] text-muted-foreground">Monthly Net Additions</label>
-                    <InfoPopover text="Your average monthly net change to this account — total deposits minus total withdrawals in a typical month. Some months you may add to it, others you may draw from it. Use your typical net to get the most accurate picture for planning purposes." />
-                  </div>
-                  <CurrencyInput
-                    value={profile.monthly_additions_per_key['savings'] || 0}
-                    onChange={v => {
-                      update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, savings: v });
-                    }}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Joint Non-Qualified */}
-            <section>
-              <div className="flex items-center gap-1 mb-2">
-                <h2 className="font-display text-sm font-semibold text-foreground">Joint Non-Qualified</h2>
-                <InfoPopover text="Jointly held brokerage or taxable investment accounts shared between household members. Not tax-advantaged." />
-              </div>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-2">
-                <div>
-                  <label className="text-[10px] text-muted-foreground">Total Balance</label>
-                  <CurrencyInput
-                    value={profile.non_retirement_per_member['joint'] || 0}
-                    onChange={v => {
-                      const updated = { ...profile.non_retirement_per_member, joint: v };
-                      const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
-                      update('non_retirement_per_member', updated);
-                      setTimeout(() => update('non_retirement_investments', total), 0);
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
-                      <CurrencyInput
-                        value={profile.monthly_additions_per_key['nq_joint_retirement'] || 0}
-                        onChange={v => {
-                          update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_retirement: v });
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
-                      <CurrencyInput
-                        value={profile.monthly_additions_per_key['nq_joint_nonret'] || 0}
-                        onChange={v => {
-                          update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_nonret: v });
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
-                    Total: {fmt((profile.monthly_additions_per_key['nq_joint_retirement'] || 0) + (profile.monthly_additions_per_key['nq_joint_nonret'] || 0))}/mo
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Per-member sections — first member first */}
-            {profile.member_incomes.map((m, mi) => {
-              const pid = m.profile_id;
-              const memberName = m.name || `Member ${mi + 1}`;
-              const nq = profile.non_retirement_per_member[pid] || 0;
-              const pretax = profile.retirement_balance_per_member[pid] || 0;
-              const roth = profile.roth_balance_per_member[pid] || 0;
-              const memberTotal = nq + pretax + roth;
-              return (
-                <section key={pid}>
-                  <h2 className="font-display text-sm font-semibold text-foreground mb-2">{memberName}</h2>
-                  <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                    {/* Column headers */}
-                    <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-end">
-                      <div />
-                      <div className="w-[1px]" />
-                      <div />
-                    </div>
-
-                    {/* Non-Qualified */}
-                    <div>
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <span className="text-xs font-medium text-foreground">Non-Qualified</span>
-                        <InfoPopover text="Individual brokerage or taxable investment accounts. Not tax-advantaged — gains are subject to capital gains tax." />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Total</label>
-                          <CurrencyInput
-                            value={nq}
-                            onChange={v => {
-                              const updated = { ...profile.non_retirement_per_member, [pid]: v };
-                              const jointVal = profile.non_retirement_per_member['joint'] || 0;
-                              const total = Object.entries(updated).filter(([k]) => k !== 'joint').reduce((s, [, x]) => s + (x as number), 0) + jointVal;
-                              update('non_retirement_per_member', updated);
-                              setTimeout(() => update('non_retirement_investments', total), 0);
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="col-span-2">
-                        <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
-                            <CurrencyInput
-                              value={profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0}
-                              onChange={v => {
-                                update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_retirement`]: v });
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
-                            <CurrencyInput
-                              value={profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0}
-                              onChange={v => {
-                                update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_nonret`]: v });
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
-                          Total: {fmt((profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0) + (profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0))}/mo
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Pre-Tax */}
-                    <div>
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <span className="text-xs font-medium text-foreground">Pre-Tax</span>
-                        <InfoPopover text="Tax-deferred accounts like 401(k), Traditional IRA, 403(b), or TSP. Contributions reduce taxable income; withdrawals are taxed in retirement." />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Total</label>
-                          <CurrencyInput
-                            value={pretax}
-                            onChange={v => {
-                              const updated = { ...profile.retirement_balance_per_member, [pid]: v };
-                              const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
-                              update('retirement_balance_per_member', updated);
-                              setTimeout(() => update('retirement_balance', total), 0);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
-                          <CurrencyInput
-                            value={profile.monthly_additions_per_key[`pretax_${pid}`] || 0}
-                            onChange={v => {
-                              update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`pretax_${pid}`]: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Roth */}
-                    <div>
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <span className="text-xs font-medium text-foreground">Roth</span>
-                        <InfoPopover text="Roth IRA or Roth 401(k). Contributions are after-tax; qualified withdrawals in retirement are tax-free." />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Total</label>
-                          <CurrencyInput
-                            value={roth}
-                            onChange={v => {
-                              const updated = { ...profile.roth_balance_per_member, [pid]: v };
-                              const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
-                              update('roth_balance_per_member', updated);
-                              setTimeout(() => update('roth_retirement_balance', total), 0);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
-                          <CurrencyInput
-                            value={profile.monthly_additions_per_key[`roth_${pid}`] || 0}
-                            onChange={v => {
-                              update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`roth_${pid}`]: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Member total */}
-                    <div className="pt-2 border-t border-border flex justify-between items-center">
-                      <span className="text-xs font-semibold text-foreground">Total</span>
-                      <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(memberTotal)}</span>
-                    </div>
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+          <AccountsTab profile={profile} update={update} members={profile.member_incomes} />
         )}
 
         {/* Insurance Tab */}
@@ -1138,6 +923,307 @@ function CurrencyInput({ value, onChange }: { value: number; onChange: (v: numbe
         placeholder="0"
         className="flex-1 min-w-0 px-2 py-1 rounded bg-background border border-border text-sm tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
       />
+    </div>
+  );
+}
+
+function AccountsTab({ profile, update, members }: { profile: ProfileData; update: (field: keyof ProfileData, value: any) => void; members: MemberIncome[] }) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const isOpen = (key: string) => !!openSections[key];
+
+  // Savings computed values
+  const savingsBalance = profile.savings_balance || profile.emergency_fund_balance;
+  const efAdditions = Number(profile.monthly_additions_per_key['savings_ef'] || 0);
+  const nrGoalsAdditions = Number(profile.monthly_additions_per_key['savings_nonret'] || 0);
+  const totalSavingsMonthly = efAdditions + nrGoalsAdditions;
+
+  // Helper to compute member investment totals
+  const getMemberInvestmentTotals = (pid: string) => {
+    const nq = Number(profile.non_retirement_per_member[pid] || 0);
+    const pretax = Number(profile.retirement_balance_per_member[pid] || 0);
+    const roth = Number(profile.roth_balance_per_member[pid] || 0);
+    const totalBalance = nq + pretax + roth;
+    const nqRet = Number(profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0);
+    const nqNonret = Number(profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0);
+    const pretaxAdd = Number(profile.monthly_additions_per_key[`pretax_${pid}`] || 0);
+    const rothAdd = Number(profile.monthly_additions_per_key[`roth_${pid}`] || 0);
+    const totalMonthly = nqRet + nqNonret + pretaxAdd + rothAdd;
+    return { nq, pretax, roth, totalBalance, nqRet, nqNonret, pretaxAdd, rothAdd, totalMonthly };
+  };
+
+  // Joint NQ
+  const jointNq = Number(profile.non_retirement_per_member['joint'] || 0);
+  const jointNqRet = Number(profile.monthly_additions_per_key['nq_joint_retirement'] || 0);
+  const jointNqNonret = Number(profile.monthly_additions_per_key['nq_joint_nonret'] || 0);
+  const jointMonthly = jointNqRet + jointNqNonret;
+
+  // Investment member sections: joint first, then members in order
+  const investmentSections: { key: string; label: string; isJoint: boolean; pid?: string }[] = [];
+  if (jointNq > 0 || jointMonthly > 0 || true) {
+    investmentSections.push({ key: 'joint', label: 'Joint Non-Qualified', isJoint: true });
+  }
+  members.forEach((m, i) => {
+    investmentSections.push({ key: m.profile_id, label: m.name || `Member ${i + 1}`, isJoint: false, pid: m.profile_id });
+  });
+
+  return (
+    <div className="space-y-5">
+      {/* ═══ SAVINGS SECTION ═══ */}
+      <div>
+        <h2 className="font-display text-base font-bold text-foreground mb-2">Savings</h2>
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+          {/* Collapsed summary row */}
+          <button
+            type="button"
+            onClick={() => toggle('savings')}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
+            <span className="text-sm font-medium text-foreground">Savings & Emergency Fund</span>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Balance</p>
+                <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(savingsBalance)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Monthly</p>
+                <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totalSavingsMonthly)}/mo</p>
+              </div>
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isOpen('savings') ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+
+          {isOpen('savings') && (
+            <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Current Balance</label>
+                <CurrencyInput value={savingsBalance} onChange={v => { update('savings_balance', v); update('emergency_fund_balance', v); }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground mb-1 block">Monthly Additions</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <label className="text-[10px] text-muted-foreground">Emergency Fund</label>
+                      <InfoPopover text="Amount you're actively adding to your emergency fund each month to build your safety net." />
+                    </div>
+                    <CurrencyInput
+                      value={efAdditions}
+                      onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, savings_ef: v })}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <label className="text-[10px] text-muted-foreground">Non-Retirement Goals</label>
+                      <InfoPopover text="Amount set aside monthly for non-retirement goals like vacations, a car, or other near-term purchases. This feeds your Non-Retirement Goals Planner." />
+                    </div>
+                    <CurrencyInput
+                      value={nrGoalsAdditions}
+                      onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, savings_nonret: v })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ DIVIDER ═══ */}
+      <div className="border-t border-border" />
+
+      {/* ═══ INVESTMENTS SECTION ═══ */}
+      <div>
+        <h2 className="font-display text-base font-bold text-foreground mb-2">Investments</h2>
+        <div className="space-y-2">
+          {investmentSections.map(sec => {
+            if (sec.isJoint) {
+              // Joint Non-Qualified row
+              return (
+                <div key="joint" className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggle('joint')}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-foreground">Joint Non-Qualified</span>
+                      <InfoPopover text="Jointly held brokerage or taxable investment accounts shared between household members. Not tax-advantaged." />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Balance</p>
+                        <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(jointNq)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Monthly</p>
+                        <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(jointMonthly)}/mo</p>
+                      </div>
+                      <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isOpen('joint') ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+                  {isOpen('joint') && (
+                    <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Total Balance</label>
+                        <CurrencyInput
+                          value={jointNq}
+                          onChange={v => {
+                            const updated = { ...profile.non_retirement_per_member, joint: v };
+                            const total = Object.entries(updated).reduce((s, [, x]) => s + (x as number), 0);
+                            update('non_retirement_per_member', updated);
+                            setTimeout(() => update('non_retirement_investments', total), 0);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
+                            <CurrencyInput value={jointNqRet} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_retirement: v })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
+                            <CurrencyInput value={jointNqNonret} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_nonret: v })} />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">Total: {fmt(jointMonthly)}/mo</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Per-member investment row
+            const pid = sec.pid!;
+            const t = getMemberInvestmentTotals(pid);
+            return (
+              <div key={pid} className="bg-card rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggle(pid)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                >
+                  <div>
+                    <span className="text-sm font-medium text-foreground">{sec.label}</span>
+                    <span className="text-[10px] text-muted-foreground ml-1.5">NQ · Pre-Tax · Roth</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Balance</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(t.totalBalance)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Monthly</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(t.totalMonthly)}/mo</p>
+                    </div>
+                    <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isOpen(pid) ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                {isOpen(pid) && (
+                  <div className="px-4 pb-4 pt-1 border-t border-border space-y-4">
+                    {/* Non-Qualified */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs font-medium text-foreground">Non-Qualified</span>
+                        <InfoPopover text="Individual brokerage or taxable investment accounts. Not tax-advantaged — gains are subject to capital gains tax." />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground">Total Balance</label>
+                        <CurrencyInput
+                          value={t.nq}
+                          onChange={v => {
+                            const updated = { ...profile.non_retirement_per_member, [pid]: v };
+                            const jointVal = profile.non_retirement_per_member['joint'] || 0;
+                            const total = Object.entries(updated).filter(([k]) => k !== 'joint').reduce((s, [, x]) => s + (x as number), 0) + (jointVal as number);
+                            update('non_retirement_per_member', updated);
+                            setTimeout(() => update('non_retirement_investments', total), 0);
+                          }}
+                        />
+                      </div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block mt-2">Monthly Additions</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
+                          <CurrencyInput value={t.nqRet} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_retirement`]: v })} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
+                          <CurrencyInput value={t.nqNonret} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_nonret`]: v })} />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">Total: {fmt(t.nqRet + t.nqNonret)}/mo</p>
+                    </div>
+
+                    {/* Pre-Tax */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs font-medium text-foreground">Pre-Tax</span>
+                        <InfoPopover text="Tax-deferred accounts like 401(k), Traditional IRA, 403(b), or TSP. Contributions reduce taxable income; withdrawals are taxed in retirement." />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Total Balance</label>
+                          <CurrencyInput
+                            value={t.pretax}
+                            onChange={v => {
+                              const updated = { ...profile.retirement_balance_per_member, [pid]: v };
+                              const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
+                              update('retirement_balance_per_member', updated);
+                              setTimeout(() => update('retirement_balance', total), 0);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
+                          <CurrencyInput value={t.pretaxAdd} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`pretax_${pid}`]: v })} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Roth */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs font-medium text-foreground">Roth</span>
+                        <InfoPopover text="Roth IRA or Roth 401(k). Contributions are after-tax; qualified withdrawals in retirement are tax-free." />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Total Balance</label>
+                          <CurrencyInput
+                            value={t.roth}
+                            onChange={v => {
+                              const updated = { ...profile.roth_balance_per_member, [pid]: v };
+                              const total = Object.values(updated).reduce((s, x) => s + (x as number), 0);
+                              update('roth_balance_per_member', updated);
+                              setTimeout(() => update('roth_retirement_balance', total), 0);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
+                          <CurrencyInput value={t.rothAdd} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`roth_${pid}`]: v })} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Member Total */}
+                    <div className="pt-2 border-t border-border flex justify-between items-center">
+                      <span className="text-xs font-semibold text-foreground">Total</span>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{fmt(t.totalBalance)}</span>
+                        <span className="text-xs text-muted-foreground ml-2 tabular-nums">{fmt(t.totalMonthly)}/mo</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

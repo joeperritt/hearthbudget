@@ -167,12 +167,14 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
   const savingsPool = useMemo(() => {
     if (!financialProfile) return null;
     const additions = (financialProfile.monthly_additions_per_key || {}) as Record<string, number>;
+    // Non-Retirement Goals additions from Savings section
+    const savingsNonret = Number(additions['savings_nonret']) || 0;
+    // "For Non-Retirement Goals" from all NQ accounts (joint + per-member)
     let nqNonRet = 0;
     Object.entries(additions).forEach(([key, val]) => {
-      if (key.endsWith('_nonret')) nqNonRet += (Number(val) || 0);
+      if (key.endsWith('_nonret') && key.startsWith('nq_')) nqNonRet += (Number(val) || 0);
     });
-    const savingsAdditions = Number(additions['savings']) || 0;
-    const totalAvailable = nqNonRet + savingsAdditions;
+    const totalAvailable = savingsNonret + nqNonRet;
     const allocated = goals.reduce((s, g) => s + (Number(g.monthlyContribution) || 0), 0);
     const surplus = totalAvailable - allocated;
     return { totalAvailable, allocated, surplus, hasData: totalAvailable > 0 };
