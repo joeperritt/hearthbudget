@@ -412,7 +412,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         setProfile(p => ({
           ...p,
           member_incomes: membersList.map(m => ({ profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', income_sources: [], dob: null, pay_frequency: 'biweekly' })),
-          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 })),
+          life_insurance_coverages: membersList.map(m => ({ profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50, termPolicies: [], wholePolicies: [] })),
         }));
       }
       setLoading(false);
