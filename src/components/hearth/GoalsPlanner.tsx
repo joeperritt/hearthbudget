@@ -248,7 +248,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       {/* Summary Card */}
       {goals.length > 0 && (
         <div className="mx-6 mt-4 bg-card rounded-xl shadow-sm p-4">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Goals Summary</h2>
+          <h2 className="text-sm font-display font-semibold text-foreground mb-3">Goals Summary</h2>
           <div className="grid grid-cols-2 gap-3 text-center">
             <div>
               <p className="text-[11px] text-muted-foreground">Total Monthly Needed</p>
@@ -260,34 +260,15 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-border text-center">
-            <p className="text-[11px] text-muted-foreground">Combined Surplus / Shortfall</p>
-            <p className={`text-xl font-bold font-display ${summary.combinedSurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-              {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo
-            </p>
-          </div>
-          <div className="mt-2 flex justify-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 size={12} className="text-green-600" /> {summary.onTrackCount} on track
-            </span>
-            {summary.offTrackCount > 0 && (
-              <span className="flex items-center gap-1">
-                <AlertTriangle size={12} className="text-destructive" /> {summary.offTrackCount} off track
-              </span>
-            )}
-          </div>
-          {/* Summary Verdict */}
-          <div className="mt-3 pt-3 border-t border-border text-center">
             {summary.offTrackCount === 0 ? (
               <p className="text-sm font-semibold text-green-600 flex items-center justify-center gap-1.5">
-                <CheckCircle2 size={14} /> All Goals On Track
-              </p>
-            ) : summary.onTrackCount === 0 ? (
-              <p className="text-sm font-semibold text-destructive flex items-center justify-center gap-1.5">
-                <AlertTriangle size={14} /> All Goals Off Track
+                <CheckCircle2 size={14} />
+                All goals on track · +{fmt(summary.combinedSurplus)}/mo surplus
               </p>
             ) : (
-              <p className="text-sm font-semibold text-[#C9A84C] flex items-center justify-center gap-1.5">
-                <AlertTriangle size={14} /> {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} Goals Need Attention
+              <p className={`text-sm font-semibold flex items-center justify-center gap-1.5 ${summary.combinedSurplus >= 0 ? 'text-[#C9A84C]' : 'text-destructive'}`}>
+                <AlertTriangle size={14} />
+                {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} goals off track · {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo {summary.combinedSurplus >= 0 ? 'surplus' : 'shortfall'}
               </p>
             )}
           </div>
