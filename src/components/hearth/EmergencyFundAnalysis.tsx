@@ -351,7 +351,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
           <div className={`grid ${state.householdType === 'dual' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
             <div>
               <Label className="text-xs text-muted-foreground">
-                {state.householdType === 'dual' ? 'Primary Stability' : 'Income Stability'}
+                {state.householdType === 'dual' ? `${earnerNames.primary}'s Stability` : `${earnerNames.primary}'s Stability`}
               </Label>
               <Select value={state.primaryStability} onValueChange={(v: IncomeStability) => setState({ primaryStability: v })}>
                 <SelectTrigger className="mt-1 h-[38px] text-xs"><SelectValue /></SelectTrigger>
@@ -365,7 +365,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
             </div>
             {state.householdType === 'dual' && (
               <div>
-                <Label className="text-xs text-muted-foreground">Second Earner Stability</Label>
+                <Label className="text-xs text-muted-foreground">{earnerNames.secondary || 'Second Earner'}'s Stability</Label>
                 <Select value={state.secondaryStability} onValueChange={(v: IncomeStability) => setState({ secondaryStability: v })}>
                   <SelectTrigger className="mt-1 h-[38px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
