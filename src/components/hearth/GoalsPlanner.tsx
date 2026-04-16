@@ -393,27 +393,35 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                             </>
                           )}
                         </div>
+                        {c.contrib > 0 && c.target > 0 && (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed pt-1.5 border-t border-border">
+                            At <span className="font-semibold text-foreground">{fmt(c.contrib)}/mo</span>, you'll reach your <span className="font-semibold text-foreground">{fmt(c.target)}</span> goal by <span className="font-semibold text-foreground">{c.projectedDate ? formatMonthYear(c.projectedDate) : 'N/A'}</span>.
+                            {!c.onTrack && c.targetMonths > 0 && (
+                              <> To hit your <span className="font-semibold text-foreground">{goal.useDate ? formatMonthYear(goal.targetDate) : `${c.targetMonths}-month`}</span> deadline, increase to <span className="font-semibold text-foreground">{fmt(c.monthlyNeeded)}/mo</span>.</>
+                            )}
+                          </p>
+                        )}
                       </div>
                     )}
 
-                    {/* Savings Vehicle Recommendation */}
+                    {/* Savings Vehicle Recommendation (collapsible) */}
                     {c.target > 0 && c.targetMonths > 0 && (
-                      <div className="bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] border-l-[#C9A84C]">
-                        <p className="text-xs font-semibold text-foreground font-display">{rec.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{rec.body}</p>
-                      </div>
+                      <Collapsible open={goal.recExpanded ?? false} onOpenChange={(open) => updateGoal(goal.id, { recExpanded: open })}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left">
+                          <span className="text-xs font-semibold text-foreground">Savings Vehicle Recommendation</span>
+                          {goal.recExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="bg-card rounded-lg shadow-sm p-3.5 mt-2 border-l-[3px] border-l-[#C9A84C]">
+                            <p className="text-xs font-semibold text-foreground font-display">{rec.label}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{rec.body}</p>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     )}
 
-                    {/* Reorder & Delete */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex gap-1">
-                        <button onClick={() => moveGoal(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30">
-                          <ChevronUp size={14} className="text-muted-foreground" />
-                        </button>
-                        <button onClick={() => moveGoal(idx, 1)} disabled={idx === goals.length - 1} className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30">
-                          <ChevronDown size={14} className="text-muted-foreground" />
-                        </button>
-                      </div>
+                    {/* Delete */}
+                    <div className="flex items-center justify-end pt-1">
                       <button onClick={() => removeGoal(goal.id)} className="flex items-center gap-1 text-xs text-destructive active:opacity-70">
                         <Trash2 size={12} /> Remove
                       </button>
