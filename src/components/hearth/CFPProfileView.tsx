@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Trash2, Shield, Check, Info } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Shield, Check, Info, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
