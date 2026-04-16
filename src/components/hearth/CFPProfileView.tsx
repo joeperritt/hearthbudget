@@ -1109,10 +1109,7 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
   updateCoverage: (index: number, fields: Partial<MemberCoverage>) => void;
   onNavigateToTool?: (toolId: string) => void;
 }) {
-  const [openMembers, setOpenMembers] = useState<Record<string, boolean>>({});
   const [expandedPolicies, setExpandedPolicies] = useState<Record<string, string | null>>({});
-  const toggleMember = (key: string) => setOpenMembers(prev => ({ ...prev, [key]: !prev[key] }));
-  const isMemberOpen = (key: string) => !!openMembers[key];
   const [showContingent, setShowContingent] = useState<Record<string, boolean>>({});
 
   const currentYear = new Date().getFullYear();
@@ -1207,16 +1204,15 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
           </div>
         )}
 
-        {/* Per-member collapsible cards — always visible */}
+        {/* Per-member cards — always showing policy list */}
         <div className="space-y-2">
           {profile.life_insurance_coverages.map((mc, i) => {
             const totals = getMemberTotals(mc);
             const hasPolicies = (mc.policies || []).length > 0;
             return (
               <div key={mc.profile_id} className="bg-card rounded-xl shadow-sm overflow-hidden">
-                {/* Collapsed member row */}
-                <button type="button" onClick={() => toggleMember(`ins_${mc.profile_id}`)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left">
+                {/* Member header row — no collapse behavior */}
+                <div className="w-full flex items-center justify-between px-4 py-3 border-b border-border">
                   <span className="text-sm font-medium text-foreground">{mc.name}</span>
                   <div className="flex items-center gap-3">
                     {hasPolicies && (
@@ -1231,18 +1227,17 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                         </div>
                       </>
                     )}
-                    <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isMemberOpen(`ins_${mc.profile_id}`) ? 'rotate-180' : ''}`} />
                   </div>
-                </button>
+                </div>
 
-                {isMemberOpen(`ins_${mc.profile_id}`) && (
-                  <div className="px-4 pb-4 pt-1 border-t border-border space-y-2">
-                    {!hasPolicies && (
-                      <p className="text-xs text-muted-foreground text-center py-3">No policies added yet</p>
-                    )}
+                {/* Policy list — always visible */}
+                <div className="px-4 pb-4 pt-3 space-y-2">
+                  {!hasPolicies && (
+                    <p className="text-xs text-muted-foreground text-center py-3">No policies added yet</p>
+                  )}
 
-                    {/* Policy summary rows */}
-                    {(mc.policies || []).map((policy) => {
+                  {/* Policy summary rows */}
+                  {(mc.policies || []).map((policy) => {
                       const isExpanded = expandedPolicies[mc.profile_id] === policy.id;
                       const hasContingent = (policy.contingentBeneficiaries || []).length > 0;
                       const contingentKey = `${mc.profile_id}_${policy.id}`;
@@ -1403,11 +1398,10 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
                       <Plus size={14} /> Add Policy
                     </button>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
       </section>
 
       {/* Disclaimer */}
