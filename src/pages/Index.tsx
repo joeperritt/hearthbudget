@@ -89,6 +89,7 @@ const Index = () => {
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [moreSubView, setMoreSubView] = useState<MoreSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
+  const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
