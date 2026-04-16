@@ -2,11 +2,23 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Plus, Trash2, Shield, Check, Info, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
 import { ageFromDob, ageToDobApprox, formatDob } from '@/lib/ageUtils';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+}
+
+function formatSavedTimestamp(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 30) return 'Saved just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Saved ${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `Saved ${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `Saved ${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
 }
 
 interface Debt {
@@ -30,6 +42,21 @@ interface MemberCoverage {
   coverage: number;
   coverageType: 'term' | 'whole' | 'mixed' | 'none';
   mixedTermPct: number;
+  // Term fields
+  termCoverage?: number;
+  termPremium?: number;
+  termLength?: string;
+  termStartYear?: number;
+  // Whole fields
+  wholeCoverage?: number;
+  wholePremium?: number;
+  wholeCashValue?: number;
+  wholeStartYear?: number;
+  // Employer
+  employerCoverage?: number;
+  // Beneficiary
+  beneficiaryConfirmed?: boolean;
+  beneficiaryName?: string;
 }
 
 interface IncomeSource {
@@ -66,6 +93,9 @@ interface ProfileData {
   mortgage_loan_type: string;
   estimated_home_value: number;
   monthly_rent: number;
+  renters_insurance: boolean;
+  renters_insurance_premium: number;
+  lease_end_date: string;
   debts: Debt[];
   non_retirement_investments: number;
   non_retirement_per_member: Record<string, number>;
@@ -100,6 +130,9 @@ const DEFAULT_PROFILE: ProfileData = {
   mortgage_loan_type: '30-year-fixed',
   estimated_home_value: 0,
   monthly_rent: 0,
+  renters_insurance: false,
+  renters_insurance_premium: 0,
+  lease_end_date: '',
   debts: [],
   non_retirement_investments: 0,
   non_retirement_per_member: {},
@@ -164,12 +197,25 @@ const STATE_NAMES: Record<string, string> = {
   WI:'Wisconsin',WY:'Wyoming',
 };
 
-const DEBT_TYPES = ['Auto Loan', 'Student Loan', 'Credit Card', 'Personal Loan', 'Medical', 'Other'];
+const DEBT_TYPES = [
+  'Mortgage',
+  'Auto Loan',
+  'Student Loan',
+  'Credit Card',
+  'Personal Loan',
+  'HELOC',
+  'Medical Debt',
+  'Business Buy-In / Partnership Investment',
+  'Other',
+];
+
 const HOUSING_TYPES = [
   { value: 'own_no_mortgage', label: 'Own — No Mortgage' },
   { value: 'own', label: 'Own — Mortgage' },
   { value: 'rent', label: 'Rent' },
 ];
+
+const TERM_LENGTHS = ['10-Year', '15-Year', '20-Year', '25-Year', '30-Year'];
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
 
@@ -182,9 +228,10 @@ interface CFPProfileViewProps {
   onBack: () => void;
   householdId: string | null;
   initialTab?: ProfileTab;
+  onNavigateToTool?: (toolId: string) => void;
 }
 
-export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileViewProps) {
+export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTool }: CFPProfileViewProps) {
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
   const [existingId, setExistingId] = useState<string | null>(null);
@@ -193,6 +240,13 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Tick every 30s to update timestamp display
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!householdId) return;
@@ -212,13 +266,11 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const incomes: MemberIncome[] = membersList.map(m => {
           const existing = savedIncomes.find(i => i.profile_id === m.id);
           const base = existing || { profile_id: m.id, name: m.display_name, gross_income: 0, income_type: 'w2', dob: null, pay_frequency: 'biweekly' };
-          // Migrate: if no income_sources yet but has gross_income, create one source
           if (!base.income_sources || base.income_sources.length === 0) {
             if (base.gross_income > 0) {
               const typeMap: Record<string, string> = { self_employed: '1099', mixed: 'w2' };
               const srcType = typeMap[base.income_type] || base.income_type || 'w2';
               base.income_sources = [{ type: srcType, amount: base.gross_income }];
-              // If mixed, create multiple sources from breakdown
               if (base.income_type === 'mixed' && base.mixed_breakdown) {
                 const bd = base.mixed_breakdown;
                 base.income_sources = [];
@@ -244,11 +296,27 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
         const savedCoverages = Array.isArray((data as any).life_insurance_coverages) ? ((data as any).life_insurance_coverages as unknown as MemberCoverage[]) : [];
         const coverages: MemberCoverage[] = membersList.map(m => {
           const existing = savedCoverages.find(c => c.profile_id === m.id);
-          return existing || { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none', mixedTermPct: 50 };
+          if (existing) {
+            // Migrate old single-coverage to term fields if needed
+            if (existing.coverage > 0 && !existing.termCoverage && !existing.wholeCoverage && existing.coverageType !== 'none') {
+              if (existing.coverageType === 'term') {
+                existing.termCoverage = existing.coverage;
+              } else if (existing.coverageType === 'whole') {
+                existing.wholeCoverage = existing.coverage;
+              } else if (existing.coverageType === 'mixed') {
+                const termPct = (existing.mixedTermPct || 50) / 100;
+                existing.termCoverage = Math.round(existing.coverage * termPct);
+                existing.wholeCoverage = existing.coverage - (existing.termCoverage || 0);
+              }
+            }
+            return existing;
+          }
+          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 };
         });
         if (savedCoverages.length === 0 && Number(data.life_insurance_coverage) > 0 && coverages.length > 0) {
           coverages[0].coverage = Number(data.life_insurance_coverage);
           coverages[0].coverageType = 'term';
+          coverages[0].termCoverage = Number(data.life_insurance_coverage);
         }
 
         const savedProfile = data as any;
@@ -269,6 +337,9 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
           mortgage_loan_type: savedProfile.mortgage_loan_type || '30-year-fixed',
           estimated_home_value: Number(savedProfile.estimated_home_value) || 0,
           monthly_rent: Number(savedProfile.monthly_rent) || 0,
+          renters_insurance: !!savedProfile.renters_insurance,
+          renters_insurance_premium: Number(savedProfile.renters_insurance_premium) || 0,
+          lease_end_date: savedProfile.lease_end_date || '',
           debts: Array.isArray(savedProfile.debts) ? (savedProfile.debts as unknown as Debt[]).map(d => ({
             ...d, extraPayment: Number((d as any).extraPayment) || 0,
           })) : [],
@@ -303,7 +374,6 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
   const save = useCallback(async (profileData: ProfileData) => {
     if (!householdId) return;
     setSaving(true);
-    // Compute gross_income from income_sources for each member before saving
     const membersWithTotals = profileData.member_incomes.map(m => ({
       ...m,
       gross_income: (m.income_sources || []).reduce((s, src) => s + src.amount, 0),
@@ -311,6 +381,17 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     }));
     const combinedGross = membersWithTotals.reduce((s, m) => s + m.gross_income, 0);
     const primaryIncomeType = membersWithTotals[0]?.income_type || 'w2';
+
+    // Compute total coverage from expanded fields
+    const totalCoverage = profileData.life_insurance_coverages.reduce((s, c) => {
+      const term = c.termCoverage || 0;
+      const whole = c.wholeCoverage || 0;
+      const employer = c.employerCoverage || 0;
+      if (c.coverageType === 'term') return s + term + employer;
+      if (c.coverageType === 'whole') return s + whole + employer;
+      if (c.coverageType === 'mixed') return s + term + whole + employer;
+      return s + employer;
+    }, 0);
 
     const payload: any = {
       household_id: householdId,
@@ -331,6 +412,9 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       mortgage_loan_type: profileData.mortgage_loan_type,
       estimated_home_value: profileData.estimated_home_value,
       monthly_rent: profileData.monthly_rent,
+      renters_insurance: profileData.renters_insurance,
+      renters_insurance_premium: profileData.renters_insurance_premium,
+      lease_end_date: profileData.lease_end_date || null,
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
       non_retirement_per_member: profileData.non_retirement_per_member,
@@ -340,7 +424,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
       monthly_additions_per_key: profileData.monthly_additions_per_key,
       emergency_fund_balance: profileData.emergency_fund_balance,
       has_life_insurance: profileData.has_life_insurance,
-      life_insurance_coverage: profileData.life_insurance_coverages.reduce((s, c) => s + c.coverage, 0),
+      life_insurance_coverage: totalCoverage,
       life_insurance_coverages: profileData.life_insurance_coverages,
       dependents: profileData.dependents,
     };
@@ -428,6 +512,28 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
     });
   };
 
+  const updateCoverage = (index: number, fields: Partial<MemberCoverage>) => {
+    setProfile(p => {
+      const updated = {
+        ...p,
+        life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => {
+          if (ci !== index) return c;
+          const merged = { ...c, ...fields };
+          // Recompute legacy coverage field
+          const term = merged.termCoverage || 0;
+          const whole = merged.wholeCoverage || 0;
+          if (merged.coverageType === 'term') merged.coverage = term;
+          else if (merged.coverageType === 'whole') merged.coverage = whole;
+          else if (merged.coverageType === 'mixed') merged.coverage = term + whole;
+          else merged.coverage = 0;
+          return merged;
+        }),
+      };
+      debouncedSave(updated);
+      return updated;
+    });
+  };
+
   // Completeness
   const completeness = (() => {
     const total = 6;
@@ -474,7 +580,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
             <span className="text-[10px] text-muted-foreground">{completeness.filled}/{completeness.total}</span>
             {lastSaved && (
               <span className="text-[10px] text-muted-foreground ml-2">
-                {saving ? 'Saving…' : `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`}
+                {saving ? 'Saving…' : formatSavedTimestamp(lastSaved)}
               </span>
             )}
           </div>
@@ -625,6 +731,14 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                 ))}
               </div>
 
+              {/* Own — No Mortgage */}
+              {profile.housing_type === 'own_no_mortgage' && (
+                <div className="space-y-3 pt-2">
+                  <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
+                </div>
+              )}
+
+              {/* Own — Mortgage */}
               {profile.housing_type === 'own' && (
                 <div className="space-y-3 pt-2">
                   <NumField label="Estimated Home Value (optional)" value={profile.estimated_home_value} onChange={v => update('estimated_home_value', v)} prefix="$" />
@@ -701,8 +815,37 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                 </div>
               )}
 
+              {/* Rent */}
               {profile.housing_type === 'rent' && (
-                <NumField label="Monthly Rent" value={profile.monthly_rent} onChange={v => update('monthly_rent', v)} prefix="$" />
+                <div className="space-y-3 pt-2">
+                  <NumField label="Monthly Rent" value={profile.monthly_rent} onChange={v => update('monthly_rent', v)} prefix="$" />
+                  
+                  {/* Renters Insurance */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Renters Insurance</span>
+                    <div className="flex gap-2">
+                      {[true, false].map(v => (
+                        <button key={String(v)} onClick={() => update('renters_insurance', v)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            profile.renters_insurance === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                          }`}>
+                          {v ? 'Yes' : 'No'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {profile.renters_insurance && (
+                    <NumField label="Annual Premium" value={profile.renters_insurance_premium} onChange={v => update('renters_insurance_premium', v)} prefix="$" />
+                  )}
+                  
+                  {/* Lease End Date */}
+                  <div>
+                    <label className="text-xs text-muted-foreground">Lease End Date (optional)</label>
+                    <input type="date" value={profile.lease_end_date || ''}
+                      onChange={e => update('lease_end_date', e.target.value || '')}
+                      className="w-full mt-0.5 px-2 py-1.5 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                  </div>
+                </div>
               )}
             </div>
           </section>
@@ -733,14 +876,22 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                         placeholder="Debt name"
                         className="flex-1 min-w-0 text-sm font-medium text-foreground bg-transparent border-b border-border/50 outline-none placeholder:text-muted-foreground/50 py-0.5"
                       />
-                      <select value={debt.type} onChange={e => updateDebt(i, 'type', e.target.value)}
-                        className="text-xs text-muted-foreground bg-transparent border-b border-border/50 outline-none py-0.5">
-                        {DEBT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                      <div className="relative">
+                        <select value={debt.type} onChange={e => updateDebt(i, 'type', e.target.value)}
+                          className="text-xs text-muted-foreground bg-transparent border-b border-border/50 outline-none py-0.5 pr-5">
+                          {DEBT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {debt.type === 'Business Buy-In / Partnership Investment' && (
+                          <InfoPopover text="Debt taken to purchase equity in a business or partnership. This is treated differently from consumer debt in the Debt Payoff Analyzer because it's backed by an investment with its own return profile." />
+                        )}
+                      </div>
                       <button onClick={() => removeDebt(i)} className="text-destructive/60 hover:text-destructive active:scale-90 transition-all shrink-0">
                         <Trash2 size={14} />
                       </button>
                     </div>
+                    {debt.type === 'Mortgage' && (
+                      <p className="text-[10px] text-muted-foreground">For a second mortgage or HELOC not captured in your Housing tab.</p>
+                    )}
                     <div className="grid grid-cols-3 gap-2">
                       <NumField label="Balance" value={debt.balance} onChange={v => updateDebt(i, 'balance', v)} prefix="$" compact />
                       <NumField label="Rate" value={debt.interestRate} onChange={v => updateDebt(i, 'interestRate', v)} suffix="%" step="0.01" compact />
@@ -761,51 +912,131 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
 
         {/* Insurance Tab */}
         {activeProfileTab === 'insurance' && (
-          <div className="space-y-4">
-            <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Life Insurance</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Has Life Insurance</span>
-                  <div className="flex gap-2">
-                    {[true, false].map(v => (
-                      <button key={String(v)} onClick={() => update('has_life_insurance', v)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          profile.has_life_insurance === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                        }`}>
-                        {v ? 'Yes' : 'No'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          <InsuranceTab
+            profile={profile}
+            update={update}
+            updateCoverage={updateCoverage}
+            onNavigateToTool={onNavigateToTool}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
-                {profile.has_life_insurance && profile.life_insurance_coverages.map((mc, i) => (
-                  <div key={mc.profile_id} className="space-y-2 pt-2 border-t border-border">
-                    <p className="text-xs font-semibold text-foreground">{mc.name}</p>
-                    <NumField label="Coverage Amount" value={mc.coverage} onChange={v => {
-                      setProfile(p => {
-                        const updated = {
-                          ...p,
-                          life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => ci === i ? { ...c, coverage: v } : c),
-                        };
-                        debouncedSave(updated);
-                        return updated;
-                      });
-                    }} prefix="$" />
+/* ═══════════════════════════════════════════
+   Insurance Tab Component
+   ═══════════════════════════════════════════ */
+
+function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
+  profile: ProfileData;
+  update: (field: keyof ProfileData, value: any) => void;
+  updateCoverage: (index: number, fields: Partial<MemberCoverage>) => void;
+  onNavigateToTool?: (toolId: string) => void;
+}) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const isOpen = (key: string) => !!openSections[key];
+
+  const currentYear = new Date().getFullYear();
+
+  const getMemberTotals = (mc: MemberCoverage) => {
+    let totalCoverage = 0;
+    let totalPremium = 0;
+    if (mc.coverageType === 'term') {
+      totalCoverage = (mc.termCoverage || 0) + (mc.employerCoverage || 0);
+      totalPremium = mc.termPremium || 0;
+    } else if (mc.coverageType === 'whole') {
+      totalCoverage = (mc.wholeCoverage || 0) + (mc.employerCoverage || 0);
+      totalPremium = mc.wholePremium || 0;
+    } else if (mc.coverageType === 'mixed') {
+      totalCoverage = (mc.termCoverage || 0) + (mc.wholeCoverage || 0) + (mc.employerCoverage || 0);
+      totalPremium = (mc.termPremium || 0) + (mc.wholePremium || 0);
+    } else {
+      totalCoverage = mc.employerCoverage || 0;
+    }
+    return { totalCoverage, totalPremium };
+  };
+
+  const getYearsRemaining = (mc: MemberCoverage) => {
+    if (!mc.termLength || !mc.termStartYear) return null;
+    const years = parseInt(mc.termLength) || 0;
+    const remaining = (mc.termStartYear + years) - currentYear;
+    return remaining > 0 ? remaining : 0;
+  };
+
+  return (
+    <div className="space-y-4">
+      <section>
+        <h2 className="font-display text-sm font-semibold text-foreground mb-3">Life Insurance</h2>
+        <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">Has Life Insurance</span>
+            <div className="flex gap-2">
+              {[true, false].map(v => (
+                <button key={String(v)} onClick={() => update('has_life_insurance', v)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    profile.has_life_insurance === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                  {v ? 'Yes' : 'No'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* No insurance — friendly empty state */}
+      {!profile.has_life_insurance && (
+        <div className="bg-card rounded-xl shadow-sm px-4 py-6 text-center space-y-2">
+          <Shield size={28} className="mx-auto text-accent" />
+          <p className="text-sm text-foreground font-medium">Life insurance is one of the most important protections for your family.</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            It provides a financial safety net if something unexpected happens. Even a basic term policy can make a significant difference.
+          </p>
+          {onNavigateToTool && (
+            <button onClick={() => onNavigateToTool('life-insurance')} className="text-xs text-accent font-medium mt-1 underline underline-offset-2">
+              Explore the Life Insurance Analysis →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Has insurance — per-member collapsible cards */}
+      {profile.has_life_insurance && (
+        <div className="space-y-2">
+          {profile.life_insurance_coverages.map((mc, i) => {
+            const totals = getMemberTotals(mc);
+            return (
+              <div key={mc.profile_id} className="bg-card rounded-xl shadow-sm overflow-hidden">
+                {/* Collapsed row */}
+                <button
+                  type="button"
+                  onClick={() => toggle(`ins_${mc.profile_id}`)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                >
+                  <span className="text-sm font-medium text-foreground">{mc.name}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">Coverage</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalCoverage)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">Annual</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totals.totalPremium)}/yr</p>
+                    </div>
+                    <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isOpen(`ins_${mc.profile_id}`) ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {isOpen(`ins_${mc.profile_id}`) && (
+                  <div className="px-4 pb-4 pt-1 border-t border-border space-y-4">
+                    {/* Coverage Type pills */}
                     <div>
                       <label className="text-xs text-muted-foreground">Coverage Type</label>
                       <div className="grid grid-cols-4 gap-1 mt-1">
                         {(['term', 'whole', 'mixed', 'none'] as const).map(t => (
-                          <button key={t} onClick={() => {
-                            setProfile(p => {
-                              const updated = {
-                                ...p,
-                                life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => ci === i ? { ...c, coverageType: t } : c),
-                              };
-                              debouncedSave(updated);
-                              return updated;
-                            });
-                          }}
+                          <button key={t} onClick={() => updateCoverage(i, { coverageType: t })}
                             className={`py-1.5 rounded-lg text-[10px] font-medium capitalize transition-colors ${
                               mc.coverageType === t ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                             }`}>
@@ -814,46 +1045,145 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                         ))}
                       </div>
                     </div>
-                    {mc.coverageType === 'mixed' && (
-                      <div className="bg-muted/50 rounded-lg p-3">
-                        <label className="text-[10px] text-muted-foreground">Approximate % Term</label>
-                        <input type="number" value={mc.mixedTermPct || 50}
-                          onChange={e => {
-                            const val = parseInt(e.target.value) || 50;
-                            setProfile(p => {
-                              const updated = {
-                                ...p,
-                                life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => ci === i ? { ...c, mixedTermPct: val } : c),
-                              };
-                              debouncedSave(updated);
-                              return updated;
-                            });
-                          }}
-                          className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+
+                    {/* Term fields */}
+                    {(mc.coverageType === 'term' || mc.coverageType === 'mixed') && (
+                      <div className="space-y-2">
+                        {mc.coverageType === 'mixed' && (
+                          <h3 className="text-xs font-semibold text-foreground">Term Policy</h3>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
+                            <CurrencyInput value={mc.termCoverage || 0} onChange={v => updateCoverage(i, { termCoverage: v })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Annual Premium</label>
+                            <CurrencyInput value={mc.termPremium || 0} onChange={v => updateCoverage(i, { termPremium: v })} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Term Length</label>
+                            <select value={mc.termLength || ''} onChange={e => updateCoverage(i, { termLength: e.target.value })}
+                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30">
+                              <option value="">Select…</option>
+                              {TERM_LENGTHS.map(tl => <option key={tl} value={tl}>{tl}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                            <input type="number" value={mc.termStartYear || ''} onChange={e => updateCoverage(i, { termStartYear: parseInt(e.target.value) || 0 })}
+                              placeholder={String(currentYear)}
+                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          </div>
+                        </div>
+                        {mc.termLength && mc.termStartYear ? (
+                          <p className="text-[10px] text-muted-foreground">
+                            Years Remaining: <span className="font-semibold text-foreground">{getYearsRemaining(mc)}</span>
+                          </p>
+                        ) : null}
                       </div>
                     )}
-                  </div>
-                ))}
-              </div>
-            </section>
 
-            <section>
-              <h2 className="font-display text-sm font-semibold text-foreground mb-3">Dependent Life Insurance</h2>
-              <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Dependent Coverage</span>
-                  <button onClick={() => update('dependent_life_insurance', !profile.dependent_life_insurance)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${profile.dependent_life_insurance ? 'bg-accent' : 'bg-muted'}`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${profile.dependent_life_insurance ? 'translate-x-5' : ''}`} />
-                  </button>
-                </div>
-                {profile.dependent_life_insurance && (
-                  <NumField label="Coverage Amount" value={profile.dependent_life_coverage} onChange={v => update('dependent_life_coverage', v)} prefix="$" />
+                    {/* Whole fields */}
+                    {(mc.coverageType === 'whole' || mc.coverageType === 'mixed') && (
+                      <div className="space-y-2">
+                        {mc.coverageType === 'mixed' && (
+                          <h3 className="text-xs font-semibold text-foreground mt-2">Whole Life Policy</h3>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Coverage Amount</label>
+                            <CurrencyInput value={mc.wholeCoverage || 0} onChange={v => updateCoverage(i, { wholeCoverage: v })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Annual Premium</label>
+                            <CurrencyInput value={mc.wholePremium || 0} onChange={v => updateCoverage(i, { wholePremium: v })} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <label className="text-[10px] text-muted-foreground">Cash Value (optional)</label>
+                              <InfoPopover text="The accumulated cash value of your whole life policy. This is the amount you could receive if you surrendered the policy." />
+                            </div>
+                            <CurrencyInput value={mc.wholeCashValue || 0} onChange={v => updateCoverage(i, { wholeCashValue: v })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Policy Start Year</label>
+                            <input type="number" value={mc.wholeStartYear || ''} onChange={e => updateCoverage(i, { wholeStartYear: parseInt(e.target.value) || 0 })}
+                              placeholder={String(currentYear)}
+                              className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Employer-Provided Coverage */}
+                    <div className="pt-2 border-t border-border">
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs text-muted-foreground">Employer-Provided Coverage</label>
+                        <InfoPopover text="Group life coverage provided by an employer typically ends at employment separation. It's worth having personal coverage that doesn't depend on your job." />
+                      </div>
+                      <CurrencyInput value={mc.employerCoverage || 0} onChange={v => updateCoverage(i, { employerCoverage: v })} />
+                    </div>
+
+                    {/* Beneficiary */}
+                    <div className="pt-2 border-t border-border space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-foreground">Primary Beneficiary Confirmed</span>
+                        <div className="flex gap-2">
+                          {[true, false].map(v => (
+                            <button key={String(v)} onClick={() => updateCoverage(i, { beneficiaryConfirmed: v })}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
+                                mc.beneficiaryConfirmed === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                              }`}>
+                              {v ? 'Yes' : 'No'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {mc.beneficiaryConfirmed && (
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Primary Beneficiary Name</label>
+                          <input type="text" value={mc.beneficiaryName || ''} onChange={e => updateCoverage(i, { beneficiaryName: e.target.value })}
+                            placeholder="Name"
+                            className="w-full mt-0.5 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground italic">Have you confirmed your beneficiary designations recently?</p>
+                    </div>
+                  </div>
                 )}
               </div>
-            </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dependent Life Insurance */}
+      <section>
+        <h2 className="font-display text-sm font-semibold text-foreground mb-3">Dependent Life Insurance</h2>
+        <div className="bg-card rounded-xl shadow-sm p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground">Dependent Coverage</span>
+            <button onClick={() => update('dependent_life_insurance', !profile.dependent_life_insurance)}
+              className={`w-10 h-5 rounded-full transition-colors relative ${profile.dependent_life_insurance ? 'bg-accent' : 'bg-muted'}`}>
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${profile.dependent_life_insurance ? 'translate-x-5' : ''}`} />
+            </button>
           </div>
-        )}
+          {profile.dependent_life_insurance && (
+            <NumField label="Coverage Amount" value={profile.dependent_life_coverage} onChange={v => update('dependent_life_coverage', v)} prefix="$" />
+          )}
+        </div>
+      </section>
+
+      {/* Disclaimer */}
+      <div className="bg-muted/50 rounded-xl p-4 border border-border">
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          This analysis covers life insurance only. Disability insurance and long-term care coverage are critical components of a complete protection plan and are often overlooked. We strongly encourage meeting with a Certified Financial Planner (CFP®) to discuss these additional protections for your household.
+        </p>
       </div>
     </div>
   );
@@ -979,7 +1309,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
             onClick={() => toggle('savings')}
             className="w-full flex items-center justify-between px-4 py-3 text-left"
           >
-            <span className="text-sm font-medium text-foreground">Savings & Emergency Fund</span>
+            <span className="text-sm font-medium text-foreground">Savings</span>
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Balance</p>
@@ -1088,7 +1418,6 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                             <CurrencyInput value={jointNqNonret} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, nq_joint_nonret: v })} />
                           </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">Total: {fmt(jointMonthly)}/mo</p>
                       </div>
                     </div>
                   )}
@@ -1154,7 +1483,6 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                           <CurrencyInput value={t.nqNonret} onChange={v => update('monthly_additions_per_key', { ...profile.monthly_additions_per_key, [`nq_${pid}_nonret`]: v })} />
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">Total: {fmt(t.nqRet + t.nqNonret)}/mo</p>
                     </div>
 
                     {/* Pre-Tax */}
