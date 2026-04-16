@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Target, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -100,13 +100,6 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
     setState({ goals: goals.filter(g => g.id !== id) });
   }, [goals, setState]);
 
-  const moveGoal = useCallback((idx: number, dir: -1 | 1) => {
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= goals.length) return;
-    const arr = [...goals];
-    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-    setState({ goals: arr });
-  }, [goals, setState]);
 
   // Computed per-goal
   const computed = useMemo(() => {
