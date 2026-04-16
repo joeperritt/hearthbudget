@@ -599,7 +599,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           </div>
           <p className="text-[10px] text-muted-foreground mt-1">
             Non-Qualified contributions reflect retirement-directed portion only —{' '}
-            <button onClick={onBack} className="text-accent font-semibold">from Financial Profile</button>
+            <button onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()} className="text-accent font-semibold">from Financial Profile</button>
           </p>
         </div>
 

@@ -224,7 +224,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
               </div>
             </div>
             <button
-              onClick={() => onBack()}
+              onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
               className="mt-2 text-[11px] font-semibold text-accent flex items-center gap-1"
             >
               From Financial Profile →
@@ -234,7 +234,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
           <div className="bg-card rounded-xl shadow-sm p-4 text-center">
             <p className="text-xs text-muted-foreground">Add your monthly non-retirement savings in your Financial Profile to see your savings pool.</p>
             <button
-              onClick={() => onBack()}
+              onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
               className="mt-2 text-[11px] font-semibold text-accent"
             >
               Go to Financial Profile →
