@@ -408,9 +408,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
           </div>
           {aiInsights.length > 0 ? (
             <div className="space-y-3">
-              {aiInsights.map((insight, i) => (
-                <p key={i} className="text-xs text-muted-foreground leading-relaxed">{insight}</p>
-              ))}
+              <AIInsightsList insights={aiInsights} />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
