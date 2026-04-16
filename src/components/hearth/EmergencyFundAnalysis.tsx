@@ -19,6 +19,8 @@ interface EmergencyFundAnalysisProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: ProfileTab) => void;
+  onNavigateToBudget?: (monthKey: string) => void;
+  householdMembers?: { primaryName: string; partnerName: string | null };
 }
 
 type IncomeStability = 'very-stable' | 'stable' | 'variable' | 'self-employed';
