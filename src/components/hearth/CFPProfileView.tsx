@@ -1140,9 +1140,8 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
     return 'Employer';
   };
 
-  // Check if all members have zero policies and dependent coverage is off
-  const allEmpty = profile.life_insurance_coverages.every(mc => (mc.policies || []).length === 0)
-    && !profile.dependent_life_insurance;
+  // Check if all members have zero policies
+  const allEmpty = profile.life_insurance_coverages.every(mc => (mc.policies || []).length === 0);
 
   return (
     <div className="space-y-4">
