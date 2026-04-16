@@ -37,6 +37,7 @@ interface BudgetTabViewProps {
   monthTransactions: Transaction[];
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
+  initialViewMonth?: string;
 }
 
 export function BudgetTabView({
@@ -45,9 +46,13 @@ export function BudgetTabView({
   onAddCategoryForMonth, onAddFixedExpenseForMonth,
   onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
-  planningData, onUpdatePlanningData,
+  planningData, onUpdatePlanningData, initialViewMonth,
 }: BudgetTabViewProps) {
-  const [viewMonthKey, setViewMonthKey] = useState(() => format(currentMonth, 'yyyy-MM'));
+  const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
+
+  useEffect(() => {
+    if (initialViewMonth) setViewMonthKey(initialViewMonth);
+  }, [initialViewMonth]);
   const [takeHomeInput, setTakeHomeInput] = useState(() => {
     const total = (parseFloat(planningData.netIncome || '') || 0) + (parseFloat(planningData.katieNetIncome || '') || 0);
     return total > 0 ? formatWithCommas(String(total)) : '';
