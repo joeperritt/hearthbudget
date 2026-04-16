@@ -131,11 +131,20 @@ ${state.householdType === 'dual' ? `- Secondary stability: ${state.secondaryStab
 
 Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund adequacy assessment, 2) Where to keep it (HYSA recommendation — educational only), 3) How it connects to overall financial stability. Be warm, stewardship-framed, and specific. No markdown formatting.`;
 
-      const { data } = await supabase.functions.invoke('budget-insights', {
+      const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { prompt, householdId },
       });
-      if (data?.insights) {
-        const parsed = Array.isArray(data.insights) ? data.insights : data.insights.split('\n\n').filter(Boolean);
+      if (fnError) {
+        console.error('AI insights function error:', fnError);
+        throw new Error(fnError.message || 'Edge function call failed');
+      }
+      if (data?.error) {
+        console.error('AI insights returned error:', data.error);
+        throw new Error(data.error);
+      }
+      const raw = data?.insights ?? data?.content ?? '';
+      if (raw) {
+        const parsed = Array.isArray(raw) ? raw : String(raw).split('\n\n').map((s: string) => s.trim()).filter(Boolean);
         setAiInsights(parsed.slice(0, 3));
       }
       setAiLastUpdated(new Date());
