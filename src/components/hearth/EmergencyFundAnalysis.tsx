@@ -538,6 +538,5 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
         </p>
       </div>
     </div>
-    </TooltipProvider>
   );
 }
