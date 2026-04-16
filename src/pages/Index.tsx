@@ -472,6 +472,7 @@ const Index = () => {
             monthTransactions={monthTransactions}
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
+            initialViewMonth={budgetTargetMonth}
           />
         )}
 
