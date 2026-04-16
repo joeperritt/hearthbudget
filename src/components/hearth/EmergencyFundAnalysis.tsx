@@ -130,7 +130,7 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
 ${state.householdType === 'dual' ? `- Secondary stability: ${state.secondaryStability}` : ''}
 - Dependents: ${state.dependents}
 
-Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund adequacy assessment, 2) Where to keep it (HYSA recommendation — educational only), 3) How it connects to overall financial stability. Be warm, stewardship-framed, and specific. No markdown formatting.`;
+Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment, 2) Where to keep it (HYSA recommendation — educational only), 3) How it connects to overall financial stability. Be warm, stewardship-framed, and specific. Format as a JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers). Do NOT use markdown formatting.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { prompt, householdId },
@@ -144,10 +144,8 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Emergency fund 
         throw new Error(data.error);
       }
       const raw = data?.insights ?? data?.content ?? '';
-      if (raw) {
-        const parsed = Array.isArray(raw) ? raw : String(raw).split('\n\n').map((s: string) => s.trim()).filter(Boolean);
-        setAiInsights(parsed.slice(0, 3));
-      }
+      const parsed = parseAIInsights(raw);
+      setAiInsights(parsed.slice(0, 3));
       setAiLastUpdated(new Date());
     } catch (e) {
       console.error('AI insights error:', e);
