@@ -492,7 +492,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       <div className="px-6 mt-4 space-y-3">
         {/* Member ages */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Ages</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Current Ages</p>
           <div className={`grid gap-3 ${members.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {members.map(m => (
               <div key={m.name}>
@@ -529,7 +529,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
         {/* Current Balances */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Retirement Balances</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Current Retirement Balances</p>
           <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
@@ -551,58 +551,35 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           <p className="text-[10px] text-muted-foreground mt-1">From your Financial Profile</p>
         </div>
 
-        {/* Three contribution buckets */}
+        {/* Three contribution buckets — read-only from Financial Profile */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Monthly Retirement Contributions</p>
-          <div className="space-y-2">
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Pre-Tax (401k/Traditional IRA)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.preTaxContrib}
-                  onChange={e => setState({ preTaxContrib: e.target.value })}
-                  placeholder="0"
-                />
+          <p className="text-sm font-semibold text-foreground mb-2">Monthly Retirement Contributions</p>
+          <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Pre-Tax</p>
+                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(preTaxContrib)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Roth</p>
+                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(rothContrib)}</p>
               </div>
             </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Roth (Roth 401k/Roth IRA)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.rothContrib}
-                  onChange={e => setState({ rothContrib: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
+            <div className="pt-1">
+              <p className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(nonQualContrib)}</p>
             </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  className="pl-7"
-                  value={state.nonQualContrib}
-                  onChange={e => setState({ nonQualContrib: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div className="bg-muted/50 rounded-lg px-3 py-2 flex justify-between text-sm">
-              <span className="text-muted-foreground font-medium">Combined Monthly</span>
+            <div className="flex justify-between text-sm border-t border-border pt-1.5">
+              <span className="text-muted-foreground font-semibold">Combined Monthly</span>
               <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Non-Qualified contributions reflect retirement-directed portion only —{' '}
-            <button onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()} className="text-accent font-semibold">from Financial Profile</button>
-          </p>
+          <button
+            onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+          >
+            From Financial Profile →
+          </button>
         </div>
 
         <div>
@@ -856,7 +833,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
           {/* Projections */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Portfolio at Retirement</p>
+            <p className="text-sm font-semibold text-foreground mb-2">Projected Portfolio at Retirement</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
@@ -879,7 +856,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
           {/* Monthly Income — Phase-based */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Projected Monthly Retirement Income</p>
+            <p className="text-sm font-semibold text-foreground mb-2">Projected Monthly Retirement Income</p>
             <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
@@ -956,7 +933,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           {/* Gap / Surplus summary */}
           {monthlyExpenses > 0 && lumpSumNeeded > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Closing the Income Gap</p>
+              <p className="text-sm font-semibold text-foreground mb-2">Closing the Income Gap</p>
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                 <p className="text-xs text-muted-foreground">
                   To fully fund all phases through age {longevityAge}: save an additional <span className="font-semibold text-foreground">{fmt(additionalMonthlyNeeded)}/mo</span>, or accumulate <span className="font-semibold text-foreground">{fmt(lumpSumNeeded)}</span> more by retirement.
