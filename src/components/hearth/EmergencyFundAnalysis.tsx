@@ -65,7 +65,7 @@ export function EmergencyFundAnalysis({ onBack, householdId }: EmergencyFundAnal
   const [totalBudget, setTotalBudget] = useState(0);
 
   // AI Insights
-  const [aiInsights, setAiInsights] = useState<string[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
 
