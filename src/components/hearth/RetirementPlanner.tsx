@@ -54,6 +54,8 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const [aiEstimatingMember, setAiEstimatingMember] = useState<string | null>(null);
   const [showLongevityInfo, setShowLongevityInfo] = useState(false);
   const [showWhyFourPercent, setShowWhyFourPercent] = useState(false);
+  const [collapsedPhases, setCollapsedPhases] = useState<Record<number, boolean>>({});
+  const [cfpCollapsed, setCfpCollapsed] = useState(false);
 
   const currentYear = new Date().getFullYear();
 
