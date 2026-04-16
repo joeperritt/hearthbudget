@@ -79,7 +79,7 @@ export function RetirementInsightsSection({ householdId, retirementPicture, fina
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Sparkles size={14} className="text-accent" />
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">AI Insights</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground ">AI Insights</h3>
         </div>
         <button onClick={fetchInsights} disabled={loading} className="flex items-center gap-1 text-xs text-accent font-medium active:opacity-70 disabled:opacity-50">
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
