@@ -299,10 +299,18 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="pl-7 h-[38px]"
-                  value={state.nonEssentialBackout}
-                  onChange={e => setState({ nonEssentialBackout: e.target.value })}
+                  value={
+                    state.nonEssentialBackout && state.nonEssentialBackout !== '0'
+                      ? Number(String(state.nonEssentialBackout).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-US')
+                      : ''
+                  }
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, '');
+                    setState({ nonEssentialBackout: raw });
+                  }}
                   placeholder="0"
                 />
               </div>
