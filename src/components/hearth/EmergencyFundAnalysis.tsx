@@ -269,16 +269,23 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
 
           {/* Row 1: Budget + Non-Essential */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Current Monthly Budget</Label>
-              <div className="mt-1 bg-muted/50 rounded-lg px-3 py-2.5">
+            <div className="flex flex-col">
+              <div className="h-9 flex items-end">
+                <Label className="text-xs text-muted-foreground leading-tight">Current Monthly Budget</Label>
+              </div>
+              <div className="mt-1 bg-muted/50 rounded-lg px-3 h-[38px] flex items-center">
                 <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totalBudget)}</p>
               </div>
-              <button onClick={onBack} className="mt-1 text-[10px] text-accent font-medium hover:underline">From Budget →</button>
+              <button
+                onClick={() => onNavigateToBudget ? onNavigateToBudget(nextMonth.key) : onBack()}
+                className="mt-1 text-[10px] text-accent font-medium hover:underline text-left"
+              >
+                From {nextMonth.label} Budget →
+              </button>
             </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Non-Essential to Back Out</Label>
+            <div className="flex flex-col">
+              <div className="h-9 flex items-end gap-1">
+                <Label className="text-xs text-muted-foreground leading-tight">Non-Essential to Back Out</Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button type="button" className="text-muted-foreground hover:text-foreground">
