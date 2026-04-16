@@ -23,6 +23,7 @@ interface GoalData {
   targetDate: string;     // YYYY-MM
   targetMonths: string;
   expanded: boolean;
+  recExpanded?: boolean;
 }
 
 function newGoal(): GoalData {
@@ -38,6 +39,7 @@ function newGoal(): GoalData {
     targetDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
     targetMonths: '24',
     expanded: true,
+    recExpanded: true,
   };
 }
 
