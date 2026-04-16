@@ -425,7 +425,6 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
     const totalCoverage = profileData.life_insurance_coverages.reduce((s, c) => {
       return s + (c.policies || []).reduce((ps, p) => ps + (p.coverage || 0), 0);
     }, 0);
-    }, 0);
 
     const payload: any = {
       household_id: householdId,
