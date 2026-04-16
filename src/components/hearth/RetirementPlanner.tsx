@@ -490,23 +490,28 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
       {/* Inputs */}
       <div className="px-6 mt-4 space-y-3">
-        {/* Member ages */}
+        {/* Member ages — read-only from Financial Profile DOBs */}
         <div>
           <p className="text-sm font-semibold text-foreground mb-2">Current Ages</p>
-          <div className={`grid gap-3 ${members.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {members.map(m => (
-              <div key={m.name}>
-                <Label className="text-xs text-muted-foreground">{members.length > 1 ? m.name : 'Your Age'}</Label>
-                <Input
-                  type="number"
-                  className="mt-1"
-                  value={state.memberAges?.[m.name] || ''}
-                  onChange={e => setState({ memberAges: { ...state.memberAges, [m.name]: e.target.value } })}
-                  placeholder="e.g. 35"
-                />
-              </div>
-            ))}
+          <div className="bg-card rounded-xl shadow-sm p-3">
+            <div className={`grid gap-3 ${members.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {members.map(m => {
+                const age = state.memberAges?.[m.name];
+                return (
+                  <div key={m.name}>
+                    <p className="text-[11px] text-muted-foreground">{members.length > 1 ? m.name : 'Your Age'}</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{age ? `${age}` : '—'}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+          <button
+            onClick={() => onNavigateToProfile ? onNavigateToProfile('profile') : onBack()}
+            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+          >
+            From Financial Profile →
+          </button>
         </div>
 
         {/* Target Retirement Year slider */}
@@ -548,7 +553,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               <span className="font-bold text-foreground">{fmt(currentTotal)}</span>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">From your Financial Profile</p>
+          <button
+            onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+          >
+            From Financial Profile →
+          </button>
         </div>
 
         {/* Three contribution buckets — read-only from Financial Profile */}
