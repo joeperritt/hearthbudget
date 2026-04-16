@@ -162,6 +162,21 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
     targetMonths: computed[i].targetMonths,
   })), [goals, computed]);
 
+  // Compute non-retirement savings pool from financial profile
+  const savingsPool = useMemo(() => {
+    if (!financialProfile) return null;
+    const additions = (financialProfile.monthly_additions_per_key || {}) as Record<string, number>;
+    let nqNonRet = 0;
+    Object.entries(additions).forEach(([key, val]) => {
+      if (key.endsWith('_nonret')) nqNonRet += (Number(val) || 0);
+    });
+    const savingsAdditions = Number(additions['savings']) || 0;
+    const totalAvailable = nqNonRet + savingsAdditions;
+    const allocated = goals.reduce((s, g) => s + (Number(g.monthlyContribution) || 0), 0);
+    const surplus = totalAvailable - allocated;
+    return { totalAvailable, allocated, surplus, hasData: totalAvailable > 0 };
+  }, [financialProfile, goals]);
+
   if (!loaded) {
     return (
       <div className="max-w-lg mx-auto px-6 pt-16 safe-top">
@@ -172,23 +187,6 @@ export function GoalsPlanner({ onBack, householdId }: GoalsPlannerProps) {
       </div>
     );
   }
-
-  // Compute non-retirement savings pool from financial profile
-  const savingsPool = useMemo(() => {
-    if (!financialProfile) return null;
-    const additions = (financialProfile.monthly_additions_per_key || {}) as Record<string, number>;
-    // Non-retirement portion of NQ contributions (joint + per-member)
-    let nqNonRet = 0;
-    Object.entries(additions).forEach(([key, val]) => {
-      if (key.endsWith('_nonret')) nqNonRet += (Number(val) || 0);
-    });
-    // Savings & Emergency Fund monthly additions
-    const savingsAdditions = Number(additions['savings']) || 0;
-    const totalAvailable = nqNonRet + savingsAdditions;
-    const allocated = goals.reduce((s, g) => s + (Number(g.monthlyContribution) || 0), 0);
-    const surplus = totalAvailable - allocated;
-    return { totalAvailable, allocated, surplus, hasData: totalAvailable > 0 };
-  }, [financialProfile, goals]);
 
   return (
     <div className="max-w-lg mx-auto pb-32">
