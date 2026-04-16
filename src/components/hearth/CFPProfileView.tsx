@@ -316,56 +316,45 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         const coverages: MemberCoverage[] = membersList.map(m => {
           const existing = savedCoverages.find(c => c.profile_id === m.id);
           if (existing) {
-            // Ensure arrays exist
-            if (!Array.isArray(existing.termPolicies)) existing.termPolicies = [];
-            if (!Array.isArray(existing.wholePolicies)) existing.wholePolicies = [];
-            // Migrate old single-coverage fields to policy arrays
-            if (existing.termPolicies.length === 0 && (existing.termCoverage || 0) > 0) {
-              existing.termPolicies = [{
-                id: crypto.randomUUID(),
-                coverage: existing.termCoverage || 0,
-                premium: existing.termPremium || 0,
-                termLength: existing.termLength || '',
-                startYear: existing.termStartYear || 0,
-              }];
-            }
-            if (existing.wholePolicies.length === 0 && (existing.wholeCoverage || 0) > 0) {
-              existing.wholePolicies = [{
-                id: crypto.randomUUID(),
-                coverage: existing.wholeCoverage || 0,
-                premium: existing.wholePremium || 0,
-                cashValue: existing.wholeCashValue || 0,
-                startYear: existing.wholeStartYear || 0,
-              }];
-            }
-            // Migrate old single coverage to term if no policies exist
-            if (existing.coverage > 0 && existing.termPolicies.length === 0 && existing.wholePolicies.length === 0 && existing.coverageType !== 'none') {
-              if (existing.coverageType === 'term' || existing.coverageType === 'mixed') {
-                existing.termPolicies = [{
-                  id: crypto.randomUUID(),
-                  coverage: existing.coverageType === 'mixed' ? Math.round(existing.coverage * (existing.mixedTermPct || 50) / 100) : existing.coverage,
-                  premium: 0, termLength: '', startYear: 0,
-                }];
+            // Migrate from old separate termPolicies/wholePolicies to unified policies array
+            if (!Array.isArray(existing.policies)) {
+              existing.policies = [];
+              // Migrate term policies
+              const termArr = Array.isArray(existing.termPolicies) ? existing.termPolicies : [];
+              if (termArr.length === 0 && (existing.termCoverage || 0) > 0) {
+                termArr.push({ id: crypto.randomUUID(), coverage: existing.termCoverage || 0, premium: existing.termPremium || 0, termLength: existing.termLength || '', startYear: existing.termStartYear || 0 });
               }
-              if (existing.coverageType === 'whole' || existing.coverageType === 'mixed') {
-                existing.wholePolicies = [{
-                  id: crypto.randomUUID(),
-                  coverage: existing.coverageType === 'mixed' ? existing.coverage - (existing.termPolicies[0]?.coverage || 0) : existing.coverage,
-                  premium: 0, cashValue: 0, startYear: 0,
-                }];
+              for (const tp of termArr) {
+                existing.policies.push({ id: tp.id || crypto.randomUUID(), type: 'term', coverage: tp.coverage || 0, premium: tp.premium || 0, termLength: tp.termLength || '', startYear: tp.startYear || 0, primaryBeneficiaries: [], contingentBeneficiaries: [] });
+              }
+              // Migrate whole policies
+              const wholeArr = Array.isArray(existing.wholePolicies) ? existing.wholePolicies : [];
+              if (wholeArr.length === 0 && (existing.wholeCoverage || 0) > 0) {
+                wholeArr.push({ id: crypto.randomUUID(), coverage: existing.wholeCoverage || 0, premium: existing.wholePremium || 0, cashValue: existing.wholeCashValue || 0, startYear: existing.wholeStartYear || 0 });
+              }
+              for (const wp of wholeArr) {
+                existing.policies.push({ id: wp.id || crypto.randomUUID(), type: 'whole', coverage: wp.coverage || 0, premium: wp.premium || 0, cashValue: wp.cashValue || 0, startYear: wp.startYear || 0, primaryBeneficiaries: [], contingentBeneficiaries: [] });
+              }
+              // Migrate employer coverage
+              if ((existing.employerCoverage || 0) > 0) {
+                existing.policies.push({ id: crypto.randomUUID(), type: 'group_employer', coverage: existing.employerCoverage || 0, premium: 0, primaryBeneficiaries: [], contingentBeneficiaries: [] });
+              }
+              // Migrate old single coverage field
+              if (existing.policies.length === 0 && (existing.coverage || 0) > 0 && existing.coverageType !== 'none') {
+                existing.policies.push({ id: crypto.randomUUID(), type: 'term', coverage: existing.coverage || 0, premium: 0, primaryBeneficiaries: [], contingentBeneficiaries: [] });
+              }
+              // Migrate beneficiary name into first policy
+              if (existing.beneficiaryName && existing.policies.length > 0) {
+                existing.policies[0].primaryBeneficiaries = [{ name: existing.beneficiaryName, percentage: 100 }];
               }
             }
-            return existing;
+            return { profile_id: existing.profile_id, name: existing.name, policies: existing.policies };
           }
-          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50, termPolicies: [], wholePolicies: [] };
+          return { profile_id: m.id, name: m.display_name, policies: [] };
         });
         if (savedCoverages.length === 0 && Number(data.life_insurance_coverage) > 0 && coverages.length > 0) {
-          coverages[0].coverage = Number(data.life_insurance_coverage);
-          coverages[0].coverageType = 'term';
-          coverages[0].termPolicies = [{
-            id: crypto.randomUUID(),
-            coverage: Number(data.life_insurance_coverage),
-            premium: 0, termLength: '', startYear: 0,
+          coverages[0].policies = [{
+            id: crypto.randomUUID(), type: 'term', coverage: Number(data.life_insurance_coverage), premium: 0, primaryBeneficiaries: [], contingentBeneficiaries: [],
           }];
         }
 
