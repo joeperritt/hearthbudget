@@ -315,26 +315,57 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         const coverages: MemberCoverage[] = membersList.map(m => {
           const existing = savedCoverages.find(c => c.profile_id === m.id);
           if (existing) {
-            // Migrate old single-coverage to term fields if needed
-            if (existing.coverage > 0 && !existing.termCoverage && !existing.wholeCoverage && existing.coverageType !== 'none') {
-              if (existing.coverageType === 'term') {
-                existing.termCoverage = existing.coverage;
-              } else if (existing.coverageType === 'whole') {
-                existing.wholeCoverage = existing.coverage;
-              } else if (existing.coverageType === 'mixed') {
-                const termPct = (existing.mixedTermPct || 50) / 100;
-                existing.termCoverage = Math.round(existing.coverage * termPct);
-                existing.wholeCoverage = existing.coverage - (existing.termCoverage || 0);
+            // Ensure arrays exist
+            if (!Array.isArray(existing.termPolicies)) existing.termPolicies = [];
+            if (!Array.isArray(existing.wholePolicies)) existing.wholePolicies = [];
+            // Migrate old single-coverage fields to policy arrays
+            if (existing.termPolicies.length === 0 && (existing.termCoverage || 0) > 0) {
+              existing.termPolicies = [{
+                id: crypto.randomUUID(),
+                coverage: existing.termCoverage || 0,
+                premium: existing.termPremium || 0,
+                termLength: existing.termLength || '',
+                startYear: existing.termStartYear || 0,
+              }];
+            }
+            if (existing.wholePolicies.length === 0 && (existing.wholeCoverage || 0) > 0) {
+              existing.wholePolicies = [{
+                id: crypto.randomUUID(),
+                coverage: existing.wholeCoverage || 0,
+                premium: existing.wholePremium || 0,
+                cashValue: existing.wholeCashValue || 0,
+                startYear: existing.wholeStartYear || 0,
+              }];
+            }
+            // Migrate old single coverage to term if no policies exist
+            if (existing.coverage > 0 && existing.termPolicies.length === 0 && existing.wholePolicies.length === 0 && existing.coverageType !== 'none') {
+              if (existing.coverageType === 'term' || existing.coverageType === 'mixed') {
+                existing.termPolicies = [{
+                  id: crypto.randomUUID(),
+                  coverage: existing.coverageType === 'mixed' ? Math.round(existing.coverage * (existing.mixedTermPct || 50) / 100) : existing.coverage,
+                  premium: 0, termLength: '', startYear: 0,
+                }];
+              }
+              if (existing.coverageType === 'whole' || existing.coverageType === 'mixed') {
+                existing.wholePolicies = [{
+                  id: crypto.randomUUID(),
+                  coverage: existing.coverageType === 'mixed' ? existing.coverage - (existing.termPolicies[0]?.coverage || 0) : existing.coverage,
+                  premium: 0, cashValue: 0, startYear: 0,
+                }];
               }
             }
             return existing;
           }
-          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50 };
+          return { profile_id: m.id, name: m.display_name, coverage: 0, coverageType: 'none' as const, mixedTermPct: 50, termPolicies: [], wholePolicies: [] };
         });
         if (savedCoverages.length === 0 && Number(data.life_insurance_coverage) > 0 && coverages.length > 0) {
           coverages[0].coverage = Number(data.life_insurance_coverage);
           coverages[0].coverageType = 'term';
-          coverages[0].termCoverage = Number(data.life_insurance_coverage);
+          coverages[0].termPolicies = [{
+            id: crypto.randomUUID(),
+            coverage: Number(data.life_insurance_coverage),
+            premium: 0, termLength: '', startYear: 0,
+          }];
         }
 
         const savedProfile = data as any;
