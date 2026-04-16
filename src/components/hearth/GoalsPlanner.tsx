@@ -219,6 +219,21 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                   {fmt(Math.max(0, savingsPool.surplus))}/mo
                 </span>
               </div>
+              {goals.length > 0 && (
+                <div className="pt-2 mt-1 border-t border-border text-center">
+                  {summary.offTrackCount === 0 ? (
+                    <p className="text-xs font-semibold text-green-600 flex items-center justify-center gap-1.5">
+                      <CheckCircle2 size={12} />
+                      All goals on track · +{fmt(summary.combinedSurplus)}/mo surplus
+                    </p>
+                  ) : (
+                    <p className={`text-xs font-semibold flex items-center justify-center gap-1.5 ${summary.combinedSurplus >= 0 ? 'text-[#C9A84C]' : 'text-destructive'}`}>
+                      <AlertTriangle size={12} />
+                      {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} goals off track · {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo {summary.combinedSurplus >= 0 ? 'surplus' : 'shortfall'}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             {savingsPool.surplus <= 0 ? (
               <button
@@ -248,36 +263,6 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
           </div>
         )}
       </div>
-
-      {/* Summary Card */}
-      {goals.length > 0 && (
-        <div className="mx-6 mt-4 bg-card rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-display font-semibold text-foreground mb-3">Goals Summary</h2>
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div>
-              <p className="text-[11px] text-muted-foreground">Total Monthly Needed</p>
-              <p className="text-lg font-bold font-display text-foreground">{fmt(summary.totalNeeded)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground">Currently Contributing</p>
-              <p className="text-lg font-bold font-display text-foreground">{fmt(summary.totalContributing)}</p>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-border text-center">
-            {summary.offTrackCount === 0 ? (
-              <p className="text-sm font-semibold text-green-600 flex items-center justify-center gap-1.5">
-                <CheckCircle2 size={14} />
-                All goals on track · +{fmt(summary.combinedSurplus)}/mo surplus
-              </p>
-            ) : (
-              <p className={`text-sm font-semibold flex items-center justify-center gap-1.5 ${summary.combinedSurplus >= 0 ? 'text-[#C9A84C]' : 'text-destructive'}`}>
-                <AlertTriangle size={14} />
-                {summary.offTrackCount} of {summary.onTrackCount + summary.offTrackCount} goals off track · {summary.combinedSurplus >= 0 ? '+' : ''}{fmt(summary.combinedSurplus)}/mo {summary.combinedSurplus >= 0 ? 'surplus' : 'shortfall'}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Goal Cards */}
       <div className="px-6 mt-5 space-y-3">
