@@ -1228,7 +1228,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
   );
 }
 
-
+function InfoPopover({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-flex items-center">
