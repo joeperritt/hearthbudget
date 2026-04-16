@@ -961,19 +961,117 @@ const POLICY_TYPES: { value: InsurancePolicy['type']; label: string }[] = [
 
 const POLICY_TYPE_LABELS: Record<string, string> = { term: 'Term', whole: 'Whole', group_employer: 'Group' };
 
+// Distribute 100% evenly with remainder going to last (e.g. 3 → [33,33,34])
+function evenSplit(count: number): number[] {
+  if (count <= 0) return [];
+  const base = Math.floor(100 / count);
+  const arr = Array(count).fill(base);
+  arr[count - 1] = 100 - base * (count - 1);
+  return arr;
+}
+
+// Beneficiary chip selector — defined OUTSIDE InsuranceTab so it doesn't remount on every parent render
+function BeneficiarySection({ label, beneficiaries, onChange, currentMemberId, householdMembers, dependentNames }: {
+  label: string;
+  beneficiaries: Beneficiary[];
+  onChange: (b: Beneficiary[]) => void;
+  currentMemberId: string;
+  householdMembers: { id: string; name: string }[];
+  dependentNames: string[];
+}) {
+  const [showOther, setShowOther] = useState(false);
+  const [otherText, setOtherText] = useState('');
+  const otherMembers = householdMembers.filter(m => m.id !== currentMemberId);
+  const allSuggestions = [...otherMembers.map(m => m.name), ...dependentNames];
+  const percentTotal = beneficiaries.reduce((s, b) => s + (b.percentage || 0), 0);
+
+  const addBeneficiary = (name: string, memberId?: string) => {
+    if (beneficiaries.some(b => b.name === name)) return;
+    const next = [...beneficiaries, { name, percentage: 0, household_member_id: memberId } as Beneficiary];
+    const splits = evenSplit(next.length);
+    onChange(next.map((b, i) => ({ ...b, percentage: splits[i] })));
+  };
+
+  const updateBeneficiaryPct = (idx: number, pct: number) => {
+    onChange(beneficiaries.map((b, i) => i === idx ? { ...b, percentage: pct } : b));
+  };
+
+  const removeBeneficiary = (idx: number) => {
+    const next = beneficiaries.filter((_, i) => i !== idx);
+    const splits = evenSplit(next.length);
+    onChange(next.map((b, i) => ({ ...b, percentage: splits[i] })));
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] text-muted-foreground font-medium">{label}</label>
+      <div className="flex flex-wrap gap-1">
+        {allSuggestions.map(name => {
+          const isSelected = beneficiaries.some(b => b.name === name);
+          const member = otherMembers.find(m => m.name === name);
+          return (
+            <button key={name} type="button"
+              onClick={() => isSelected ? removeBeneficiary(beneficiaries.findIndex(b => b.name === name)) : addBeneficiary(name, member?.id)}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                isSelected ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+              {name}
+            </button>
+          );
+        })}
+        <button type="button" onClick={() => setShowOther(!showOther)}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${showOther ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+          Other
+        </button>
+      </div>
+      {showOther && (
+        <div className="flex gap-1">
+          <input type="text" placeholder="Trust, charity, parent…" value={otherText}
+            onChange={e => setOtherText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && otherText.trim()) { addBeneficiary(otherText.trim()); setOtherText(''); } }}
+            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
+          <button type="button" onClick={() => { if (otherText.trim()) { addBeneficiary(otherText.trim()); setOtherText(''); } }}
+            className="px-2 py-1 rounded bg-accent text-accent-foreground text-[10px] font-medium">Add</button>
+        </div>
+      )}
+      {beneficiaries.length > 0 && (
+        <div className="space-y-1">
+          {beneficiaries.map((b, idx) => (
+            <div key={`${b.name}-${idx}`} className="flex items-center gap-2">
+              <span className="text-xs text-foreground flex-1 truncate">{b.name}</span>
+              {beneficiaries.length > 1 && (
+                <div className="flex items-center gap-1">
+                  <input type="number" min={0} max={100} value={b.percentage || ''} onChange={e => updateBeneficiaryPct(idx, parseInt(e.target.value) || 0)}
+                    className="w-14 px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
+                  <span className="text-[10px] text-muted-foreground">%</span>
+                </div>
+              )}
+              <button type="button" onClick={() => removeBeneficiary(idx)} className="p-0.5 text-muted-foreground hover:text-destructive">
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+          {beneficiaries.length > 1 && percentTotal !== 100 && (
+            <p className="text-[10px] text-destructive">Must total 100% (currently {percentTotal}%)</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
   profile: ProfileData;
   update: (field: keyof ProfileData, value: any) => void;
   updateCoverage: (index: number, fields: Partial<MemberCoverage>) => void;
   onNavigateToTool?: (toolId: string) => void;
 }) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-  const isOpen = (key: string) => !!openSections[key];
+  const [openMembers, setOpenMembers] = useState<Record<string, boolean>>({});
+  const toggleMember = (key: string) => setOpenMembers(prev => ({ ...prev, [key]: !prev[key] }));
+  const isMemberOpen = (key: string) => !!openMembers[key];
 
   const currentYear = new Date().getFullYear();
 
-  // Gather household members + dependents for beneficiary chips
   const householdMembers = profile.life_insurance_coverages.map(mc => ({ id: mc.profile_id, name: mc.name }));
   const dependentNames = profile.dependents.map(d => d.name).filter(Boolean);
 
@@ -1000,10 +1098,7 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
       id: crypto.randomUUID(), type: 'term', coverage: 0, premium: 0,
       primaryBeneficiaries: [], contingentBeneficiaries: [],
     };
-    const policies = [...(mc.policies || []), newPolicy];
-    updateCoverage(memberIdx, { policies });
-    // Auto-expand the new policy
-    setOpenSections(prev => ({ ...prev, [`policy_${mc.profile_id}_${newPolicy.id}`]: true }));
+    updateCoverage(memberIdx, { policies: [...(mc.policies || []), newPolicy] });
   };
 
   const updatePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string, fields: Partial<InsurancePolicy>) => {
@@ -1013,102 +1108,6 @@ function InsuranceTab({ profile, update, updateCoverage, onNavigateToTool }: {
 
   const removePolicy = (memberIdx: number, mc: MemberCoverage, policyId: string) => {
     updateCoverage(memberIdx, { policies: (mc.policies || []).filter(p => p.id !== policyId) });
-  };
-
-  const getPolicySummary = (p: InsurancePolicy) => {
-    if (p.type === 'term') {
-      const expiry = getTermExpiry(p);
-      return expiry ? `Expires ${expiry}` : '';
-    }
-    if (p.type === 'whole') {
-      if (p.cashValue && p.cashValue > 0) return `CV ${fmt(p.cashValue)}`;
-      if (p.startYear) return `Started ${p.startYear}`;
-      return '';
-    }
-    return 'Group / Employer';
-  };
-
-  // Beneficiary chip selector component
-  const BeneficiarySection = ({ label, beneficiaries, onChange, currentMemberId, helperText }: {
-    label: string;
-    beneficiaries: Beneficiary[];
-    onChange: (b: Beneficiary[]) => void;
-    currentMemberId: string;
-    helperText?: string;
-  }) => {
-    const [showOther, setShowOther] = useState(false);
-    const otherMembers = householdMembers.filter(m => m.id !== currentMemberId);
-    const allSuggestions = [...otherMembers.map(m => m.name), ...dependentNames];
-    const percentTotal = beneficiaries.reduce((s, b) => s + (b.percentage || 0), 0);
-
-    const addBeneficiary = (name: string, memberId?: string) => {
-      if (beneficiaries.some(b => b.name === name)) return;
-      const newB: Beneficiary = { name, percentage: beneficiaries.length === 0 ? 100 : 0, household_member_id: memberId };
-      onChange([...beneficiaries, newB]);
-    };
-
-    const updateBeneficiaryPct = (idx: number, pct: number) => {
-      onChange(beneficiaries.map((b, i) => i === idx ? { ...b, percentage: pct } : b));
-    };
-
-    const removeBeneficiary = (idx: number) => {
-      const updated = beneficiaries.filter((_, i) => i !== idx);
-      if (updated.length === 1) updated[0].percentage = 100;
-      onChange(updated);
-    };
-
-    return (
-      <div className="space-y-1.5">
-        <label className="text-[10px] text-muted-foreground font-medium">{label}</label>
-        {/* Chips */}
-        <div className="flex flex-wrap gap-1">
-          {allSuggestions.map(name => {
-            const isSelected = beneficiaries.some(b => b.name === name);
-            const member = otherMembers.find(m => m.name === name);
-            return (
-              <button key={name} type="button"
-                onClick={() => isSelected ? removeBeneficiary(beneficiaries.findIndex(b => b.name === name)) : addBeneficiary(name, member?.id)}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
-                  isSelected ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
-                {name}
-              </button>
-            );
-          })}
-          <button type="button" onClick={() => setShowOther(!showOther)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${showOther ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
-            Other
-          </button>
-        </div>
-        {showOther && (
-          <input type="text" placeholder="Trust, charity, parent…"
-            onKeyDown={e => { if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) { addBeneficiary((e.target as HTMLInputElement).value.trim()); (e.target as HTMLInputElement).value = ''; } }}
-            className="w-full px-2 py-1 rounded bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30" />
-        )}
-        {/* Selected with percentages */}
-        {beneficiaries.length > 0 && (
-          <div className="space-y-1">
-            {beneficiaries.map((b, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <span className="text-xs text-foreground flex-1 truncate">{b.name}</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" min={0} max={100} value={b.percentage || ''} onChange={e => updateBeneficiaryPct(idx, parseInt(e.target.value) || 0)}
-                    className="w-14 px-1.5 py-0.5 rounded bg-background border border-border text-xs tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
-                  <span className="text-[10px] text-muted-foreground">%</span>
-                </div>
-                <button type="button" onClick={() => removeBeneficiary(idx)} className="p-0.5 text-muted-foreground hover:text-destructive">
-                  <Trash2 size={10} />
-                </button>
-              </div>
-            ))}
-            {beneficiaries.length > 1 && percentTotal !== 100 && (
-              <p className="text-[10px] text-destructive">Percentages must total 100% (currently {percentTotal}%)</p>
-            )}
-          </div>
-        )}
-        {helperText && <p className="text-[10px] text-muted-foreground italic">{helperText}</p>}
-      </div>
-    );
   };
 
   return (
