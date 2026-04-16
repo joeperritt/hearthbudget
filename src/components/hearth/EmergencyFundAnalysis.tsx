@@ -62,19 +62,32 @@ function getRecommendedMonths(s: EFState, dependents: number): [number, number] 
   return [6 + extra, 9 + extra];
 }
 
-export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile }: EmergencyFundAnalysisProps) {
+export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, householdMembers }: EmergencyFundAnalysisProps) {
   const { state, setState, loaded } = useToolState<EFState>(householdId, 'emergency-fund', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [totalBudget, setTotalBudget] = useState(0);
   const [profileBalance, setProfileBalance] = useState(0);
   const [profileDependents, setProfileDependents] = useState(0);
+  const [efContribution, setEfContribution] = useState(0);
+  const [earnerNames, setEarnerNames] = useState<{ primary: string; secondary: string | null }>({ primary: 'Primary', secondary: null });
   const [showWhy, setShowWhy] = useState(false);
 
   // AI Insights
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
+
+  // Next upcoming month (e.g., "May 2026")
+  const nextMonth = useMemo(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    return {
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    };
+  }, []);
 
   // Load financial profile & budget
   useEffect(() => {
@@ -89,15 +102,23 @@ export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile
 
       if (fp) {
         const members = Array.isArray(fp.member_incomes) ? (fp.member_incomes as any[]) : [];
-        const earners = members.filter(m => Number(m?.gross_income) > 0).length;
-        const smartHouseholdType: 'single' | 'dual' = earners >= 2 ? 'dual' : 'single';
+        const earners = members.filter(m => Number(m?.gross_income) > 0);
+        const smartHouseholdType: 'single' | 'dual' = earners.length >= 2 ? 'dual' : 'single';
         if (!state.householdTypeOverridden) {
           updates.householdType = smartHouseholdType;
         }
 
+        // Map earner names from member_incomes (fallback to profile names)
+        const primaryName = earners[0]?.name || householdMembers?.primaryName || 'Primary';
+        const secondaryName = earners[1]?.name || (earners.length >= 2 ? householdMembers?.partnerName || 'Second Earner' : null);
+        setEarnerNames({ primary: primaryName, secondary: secondaryName });
+
         const deps = Array.isArray(fp.dependents) ? (fp.dependents as any[]) : [];
         setProfileDependents(deps.length);
         setProfileBalance(Number(fp.emergency_fund_balance) || 0);
+
+        const additions = (fp.monthly_additions_per_key as Record<string, number>) || {};
+        setEfContribution(Number(additions['savings_ef']) || 0);
       }
 
       const catTotal = (catRes.data || []).reduce((s: number, c: any) => s + (Number(c.budgeted) || 0), 0);
@@ -109,7 +130,7 @@ export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile
       setProfileLoading(false);
       setProfileLoaded(true);
     });
-  }, [householdId, profileLoaded]);
+  }, [householdId, profileLoaded, householdMembers]);
 
   const nonEssential = Number(state.nonEssentialBackout) || 0;
   const adjustedExpenses = Math.max(0, totalBudget - nonEssential);
