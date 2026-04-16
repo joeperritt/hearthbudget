@@ -224,7 +224,6 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
   }[status];
 
   return (
-    <TooltipProvider>
     <div className="max-w-lg mx-auto pb-32">
       {/* Header */}
       <div className="px-6 pt-12 safe-top flex items-center gap-3">
