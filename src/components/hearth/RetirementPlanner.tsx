@@ -596,8 +596,10 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
               <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
             </div>
           </div>
-          {taxWithholdingState?.retirementDeduction && (
-            <p className="text-[10px] text-muted-foreground mt-1">Pre-tax pre-populated from Tax Withholding tool</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Non-Qualified contributions reflect retirement-directed portion only —{' '}
+            <button onClick={onBack} className="text-accent font-semibold">from Financial Profile</button>
+          </p>
           )}
         </div>
 
