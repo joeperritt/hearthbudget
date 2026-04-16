@@ -552,15 +552,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
         ...p,
         life_insurance_coverages: p.life_insurance_coverages.map((c, ci) => {
           if (ci !== index) return c;
-          const merged = { ...c, ...fields };
-          // Recompute legacy coverage field from policy arrays
-          const termTotal = (merged.termPolicies || []).reduce((s, tp) => s + (tp.coverage || 0), 0);
-          const wholeTotal = (merged.wholePolicies || []).reduce((s, wp) => s + (wp.coverage || 0), 0);
-          if (merged.coverageType === 'term') merged.coverage = termTotal;
-          else if (merged.coverageType === 'whole') merged.coverage = wholeTotal;
-          else if (merged.coverageType === 'mixed') merged.coverage = termTotal + wholeTotal;
-          else merged.coverage = 0;
-          return merged;
+          return { ...c, ...fields };
         }),
       };
       debouncedSave(updated);
