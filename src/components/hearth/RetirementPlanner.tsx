@@ -1136,6 +1136,11 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                       onChange={e => setEstDebtOverride(e.target.value)}
                     />
                   </div>
+                  {totalMonthlyDebt > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Based on {fmt(totalMonthlyDebt)}/mo in debt payments from Financial Profile.
+                    </p>
+                  )}
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Subtotal after debt</span>
                     <span className="font-semibold text-foreground">{fmt(budgetTotal - (estDebtOverride !== '' ? Number(estDebtOverride) : totalMonthlyDebt))}</span>
@@ -1162,6 +1167,11 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                       onChange={e => setEstContribOverride(e.target.value)}
                     />
                   </div>
+                  {monthlyContributions > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Based on {fmt(monthlyContributions)}/mo in retirement contributions from Financial Profile.
+                    </p>
+                  )}
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>Subtotal after contributions</span>
                     <span className="font-semibold text-foreground">{fmt(estimatorResult.adjusted)}</span>
