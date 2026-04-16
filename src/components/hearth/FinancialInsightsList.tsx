@@ -35,7 +35,7 @@ const tools: { id: InsightToolId; name: string; subtitle: string; icon: typeof S
   { id: 'tax-estimator', name: 'Federal Tax Estimator', subtitle: 'Estimate your federal tax liability', icon: FileText },
   { id: 'life-insurance', name: 'Life Insurance Analysis', subtitle: 'Is your family protected?', icon: Heart },
   { id: 'emergency-fund', name: 'Emergency Fund Analysis', subtitle: 'Are you prepared for the unexpected?', icon: Shield },
-  { id: 'savings-goals', name: 'Savings Goals', subtitle: 'Track and plan your savings goals', icon: Target },
+  { id: 'savings-goals', name: 'Non-Retirement Goals', subtitle: 'Plan and track your non-retirement savings goals', icon: Target },
   { id: 'retirement', name: 'Retirement Planner', subtitle: 'Are you on track to retire?', icon: PiggyBank },
 ];
 
