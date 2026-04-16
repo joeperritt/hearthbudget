@@ -453,7 +453,9 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
       non_retirement_per_member: profileData.non_retirement_per_member,
       total_investment_balance: profileData.non_retirement_investments + profileData.retirement_balance + profileData.roth_retirement_balance,
       retirement_balance: profileData.retirement_balance,
+      retirement_balance_per_member: profileData.retirement_balance_per_member,
       roth_retirement_balance: profileData.roth_retirement_balance,
+      roth_balance_per_member: profileData.roth_balance_per_member,
       monthly_additions_per_key: profileData.monthly_additions_per_key,
       emergency_fund_balance: profileData.emergency_fund_balance,
       has_life_insurance: profileData.has_life_insurance,
@@ -462,19 +464,58 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
       dependents: profileData.dependents,
     };
 
-    if (existingId) {
-      await supabase.from('financial_profiles').update(payload).eq('id', existingId);
-    } else {
-      const { data } = await supabase.from('financial_profiles').insert(payload).select().single();
-      if (data) setExistingId(data.id);
+    try {
+      if (existingId) {
+        const { error } = await supabase.from('financial_profiles').update(payload).eq('id', existingId);
+        if (error) {
+          console.error('[CFPProfileView] Failed to update financial_profiles:', error);
+          throw error;
+        }
+      } else {
+        const { data, error } = await supabase.from('financial_profiles').insert(payload).select().single();
+        if (error) {
+          console.error('[CFPProfileView] Failed to insert financial_profiles:', error);
+          throw error;
+        }
+        if (data) setExistingId(data.id);
+      }
+      setLastSaved(new Date());
+    } catch (err) {
+      console.error('[CFPProfileView] Save threw:', err);
+    } finally {
+      setSaving(false);
     }
-    setLastSaved(new Date());
-    setSaving(false);
   }, [householdId, existingId]);
 
+  const pendingProfileRef = useRef<ProfileData | null>(null);
+
   const debouncedSave = useCallback((newProfile: ProfileData) => {
+    pendingProfileRef.current = newProfile;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => save(newProfile), 1500);
+    saveTimeoutRef.current = setTimeout(() => {
+      pendingProfileRef.current = null;
+      save(newProfile);
+    }, 1500);
+  }, [save]);
+
+  // Flush pending save on tab hide / unmount so navigating away doesn't drop data
+  useEffect(() => {
+    const flush = () => {
+      if (pendingProfileRef.current) {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        const pending = pendingProfileRef.current;
+        pendingProfileRef.current = null;
+        save(pending);
+      }
+    };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
   }, [save]);
 
 

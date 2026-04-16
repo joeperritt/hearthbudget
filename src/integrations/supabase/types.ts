@@ -173,9 +173,12 @@ export type Database = {
           mortgage_rate: number | null
           mortgage_statement_month: string | null
           non_retirement_investments: number | null
+          non_retirement_per_member: Json
           renters_insurance: boolean | null
           renters_insurance_premium: number | null
           retirement_balance: number | null
+          retirement_balance_per_member: Json
+          roth_balance_per_member: Json
           roth_retirement_balance: number | null
           state: string | null
           total_investment_balance: number | null
@@ -210,9 +213,12 @@ export type Database = {
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
+          non_retirement_per_member?: Json
           renters_insurance?: boolean | null
           renters_insurance_premium?: number | null
           retirement_balance?: number | null
+          retirement_balance_per_member?: Json
+          roth_balance_per_member?: Json
           roth_retirement_balance?: number | null
           state?: string | null
           total_investment_balance?: number | null
@@ -247,9 +253,12 @@ export type Database = {
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
+          non_retirement_per_member?: Json
           renters_insurance?: boolean | null
           renters_insurance_premium?: number | null
           retirement_balance?: number | null
+          retirement_balance_per_member?: Json
+          roth_balance_per_member?: Json
           roth_retirement_balance?: number | null
           state?: string | null
           total_investment_balance?: number | null
