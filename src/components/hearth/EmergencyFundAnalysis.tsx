@@ -19,6 +19,8 @@ interface EmergencyFundAnalysisProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: ProfileTab) => void;
+  onNavigateToBudget?: (monthKey: string) => void;
+  householdMembers?: { primaryName: string; partnerName: string | null };
 }
 
 type IncomeStability = 'very-stable' | 'stable' | 'variable' | 'self-employed';
@@ -60,19 +62,32 @@ function getRecommendedMonths(s: EFState, dependents: number): [number, number] 
   return [6 + extra, 9 + extra];
 }
 
-export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile }: EmergencyFundAnalysisProps) {
+export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, householdMembers }: EmergencyFundAnalysisProps) {
   const { state, setState, loaded } = useToolState<EFState>(householdId, 'emergency-fund', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [totalBudget, setTotalBudget] = useState(0);
   const [profileBalance, setProfileBalance] = useState(0);
   const [profileDependents, setProfileDependents] = useState(0);
+  const [efContribution, setEfContribution] = useState(0);
+  const [earnerNames, setEarnerNames] = useState<{ primary: string; secondary: string | null }>({ primary: 'Primary', secondary: null });
   const [showWhy, setShowWhy] = useState(false);
 
   // AI Insights
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
+
+  // Next upcoming month (e.g., "May 2026")
+  const nextMonth = useMemo(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    return {
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    };
+  }, []);
 
   // Load financial profile & budget
   useEffect(() => {
@@ -87,15 +102,23 @@ export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile
 
       if (fp) {
         const members = Array.isArray(fp.member_incomes) ? (fp.member_incomes as any[]) : [];
-        const earners = members.filter(m => Number(m?.gross_income) > 0).length;
-        const smartHouseholdType: 'single' | 'dual' = earners >= 2 ? 'dual' : 'single';
+        const earners = members.filter(m => Number(m?.gross_income) > 0);
+        const smartHouseholdType: 'single' | 'dual' = earners.length >= 2 ? 'dual' : 'single';
         if (!state.householdTypeOverridden) {
           updates.householdType = smartHouseholdType;
         }
 
+        // Map earner names from member_incomes (fallback to profile names)
+        const primaryName = earners[0]?.name || householdMembers?.primaryName || 'Primary';
+        const secondaryName = earners[1]?.name || (earners.length >= 2 ? householdMembers?.partnerName || 'Second Earner' : null);
+        setEarnerNames({ primary: primaryName, secondary: secondaryName });
+
         const deps = Array.isArray(fp.dependents) ? (fp.dependents as any[]) : [];
         setProfileDependents(deps.length);
         setProfileBalance(Number(fp.emergency_fund_balance) || 0);
+
+        const additions = (fp.monthly_additions_per_key as Record<string, number>) || {};
+        setEfContribution(Number(additions['savings_ef']) || 0);
       }
 
       const catTotal = (catRes.data || []).reduce((s: number, c: any) => s + (Number(c.budgeted) || 0), 0);
@@ -107,7 +130,7 @@ export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile
       setProfileLoading(false);
       setProfileLoaded(true);
     });
-  }, [householdId, profileLoaded]);
+  }, [householdId, profileLoaded, householdMembers]);
 
   const nonEssential = Number(state.nonEssentialBackout) || 0;
   const adjustedExpenses = Math.max(0, totalBudget - nonEssential);
@@ -246,16 +269,23 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
 
           {/* Row 1: Budget + Non-Essential */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Current Monthly Budget</Label>
-              <div className="mt-1 bg-muted/50 rounded-lg px-3 py-2.5">
+            <div className="flex flex-col">
+              <div className="h-9 flex items-end">
+                <Label className="text-xs text-muted-foreground leading-tight">Current Monthly Budget</Label>
+              </div>
+              <div className="mt-1 bg-muted/50 rounded-lg px-3 h-[38px] flex items-center">
                 <p className="text-sm font-semibold text-foreground tabular-nums">{fmt(totalBudget)}</p>
               </div>
-              <button onClick={onBack} className="mt-1 text-[10px] text-accent font-medium hover:underline">From Budget →</button>
+              <button
+                onClick={() => onNavigateToBudget ? onNavigateToBudget(nextMonth.key) : onBack()}
+                className="mt-1 text-[10px] text-accent font-medium hover:underline text-left"
+              >
+                From {nextMonth.label} Budget →
+              </button>
             </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Non-Essential to Back Out</Label>
+            <div className="flex flex-col">
+              <div className="h-9 flex items-end gap-1">
+                <Label className="text-xs text-muted-foreground leading-tight">Non-Essential to Back Out</Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button type="button" className="text-muted-foreground hover:text-foreground">
@@ -321,7 +351,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
           <div className={`grid ${state.householdType === 'dual' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
             <div>
               <Label className="text-xs text-muted-foreground">
-                {state.householdType === 'dual' ? 'Primary Stability' : 'Income Stability'}
+                {state.householdType === 'dual' ? `${earnerNames.primary}'s Stability` : `${earnerNames.primary}'s Stability`}
               </Label>
               <Select value={state.primaryStability} onValueChange={(v: IncomeStability) => setState({ primaryStability: v })}>
                 <SelectTrigger className="mt-1 h-[38px] text-xs"><SelectValue /></SelectTrigger>
@@ -335,7 +365,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
             </div>
             {state.householdType === 'dual' && (
               <div>
-                <Label className="text-xs text-muted-foreground">Second Earner Stability</Label>
+                <Label className="text-xs text-muted-foreground">{earnerNames.secondary || 'Second Earner'}'s Stability</Label>
                 <Select value={state.secondaryStability} onValueChange={(v: IncomeStability) => setState({ secondaryStability: v })}>
                   <SelectTrigger className="mt-1 h-[38px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -419,16 +449,47 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
             </div>
             {shortfall > 0 && (
               <div className="border-t border-border pt-3 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Monthly contribution to reach target:</p>
+                {/* Current monthly savings from profile */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Current monthly savings</span>
+                  <span className="font-semibold text-foreground tabular-nums">{fmt(efContribution)}/mo</span>
+                </div>
+                {onNavigateToProfile && (
+                  <button onClick={() => onNavigateToProfile('accounts')} className="text-[10px] text-accent font-medium hover:underline">
+                    From Financial Profile →
+                  </button>
+                )}
+                <p className="text-xs text-muted-foreground font-medium pt-1">Additional monthly contribution to reach low target:</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-muted-foreground">In 12 months</p>
-                    <p className="font-bold text-foreground text-sm tabular-nums">{fmt(monthly12)}/mo</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-muted-foreground">In 24 months</p>
-                    <p className="font-bold text-foreground text-sm tabular-nums">{fmt(monthly24)}/mo</p>
-                  </div>
+                  {(() => {
+                    const renderCard = (months: number, label: string) => {
+                      const totalNeeded = Math.ceil(shortfall / months);
+                      const additional = Math.max(0, totalNeeded - efContribution);
+                      const onPace = additional === 0;
+                      const yearsToReach = efContribution > 0 ? Math.ceil(shortfall / efContribution) : null;
+                      if (onPace && yearsToReach !== null) {
+                        return (
+                          <div key={label} className="bg-muted/50 rounded-lg p-3 col-span-2">
+                            <p className="text-muted-foreground">On pace</p>
+                            <p className="font-semibold text-green-700 text-xs leading-snug mt-1">
+                              At your current pace of {fmt(efContribution)}/mo, you'll reach your low target in approximately {yearsToReach} months.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={label} className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground">{label}</p>
+                          <p className="font-bold text-foreground text-sm tabular-nums">+{fmt(additional)}/mo</p>
+                        </div>
+                      );
+                    };
+                    const totalNeeded12 = Math.ceil(shortfall / 12);
+                    if (totalNeeded12 <= efContribution && efContribution > 0) {
+                      return renderCard(12, 'In 12 months');
+                    }
+                    return [renderCard(12, 'In 12 months'), renderCard(24, 'In 24 months')];
+                  })()}
                 </div>
                 {onNavigateToProfile && (
                   <button

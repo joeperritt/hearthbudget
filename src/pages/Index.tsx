@@ -89,6 +89,7 @@ const Index = () => {
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [moreSubView, setMoreSubView] = useState<MoreSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
+  const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -285,6 +286,13 @@ const Index = () => {
     setActiveTab('plan');
   }, []);
 
+  // Navigate to Budget tab with a specific month preselected
+  const navigateToBudget = useCallback((monthKey: string) => {
+    setBudgetTargetMonth(monthKey);
+    setBudgetSubView('main');
+    setActiveTab('budget');
+  }, []);
+
   // Helper to get back target for tools
   const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
@@ -360,7 +368,7 @@ const Index = () => {
       case 'life-insurance':
         return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'emergency-fund':
-        return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} householdMembers={householdMembers} />;
       case 'savings-goals':
         return <GoalsPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'retirement':
@@ -464,6 +472,7 @@ const Index = () => {
             monthTransactions={monthTransactions}
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
+            initialViewMonth={budgetTargetMonth}
           />
         )}
 
