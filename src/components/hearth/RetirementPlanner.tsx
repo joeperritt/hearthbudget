@@ -600,7 +600,6 @@ export function RetirementPlanner({ onBack, householdId }: RetirementPlannerProp
             Non-Qualified contributions reflect retirement-directed portion only —{' '}
             <button onClick={onBack} className="text-accent font-semibold">from Financial Profile</button>
           </p>
-          )}
         </div>
 
         <div>
