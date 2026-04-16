@@ -421,15 +421,10 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
     const combinedGross = membersWithTotals.reduce((s, m) => s + m.gross_income, 0);
     const primaryIncomeType = membersWithTotals[0]?.income_type || 'w2';
 
-    // Compute total coverage from policy arrays
+    // Compute total coverage from unified policies
     const totalCoverage = profileData.life_insurance_coverages.reduce((s, c) => {
-      const termTotal = (c.termPolicies || []).reduce((ts, tp) => ts + (tp.coverage || 0), 0);
-      const wholeTotal = (c.wholePolicies || []).reduce((ws, wp) => ws + (wp.coverage || 0), 0);
-      const employer = c.employerCoverage || 0;
-      if (c.coverageType === 'term') return s + termTotal + employer;
-      if (c.coverageType === 'whole') return s + wholeTotal + employer;
-      if (c.coverageType === 'mixed') return s + termTotal + wholeTotal + employer;
-      return s + employer;
+      return s + (c.policies || []).reduce((ps, p) => ps + (p.coverage || 0), 0);
+    }, 0);
     }, 0);
 
     const payload: any = {
