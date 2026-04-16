@@ -770,7 +770,10 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                   }} />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground">Monthly Additions</label>
+                  <div className="flex items-center gap-1">
+                    <label className="text-[10px] text-muted-foreground">Monthly Net Additions</label>
+                    <InfoPopover text="Your average monthly net change to this account — total deposits minus total withdrawals in a typical month. Some months you may add to it, others you may draw from it. Use your typical net to get the most accurate picture for planning purposes." />
+                  </div>
                   <CurrencyInput
                     value={profile.monthly_additions_per_key['savings'] || 0}
                     onChange={v => {
@@ -804,7 +807,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                   <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-muted-foreground/70">Retirement</label>
+                      <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
                       <CurrencyInput
                         value={profile.monthly_additions_per_key['nq_joint_retirement'] || 0}
                         onChange={v => {
@@ -813,7 +816,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-muted-foreground/70">Non-Retirement</label>
+                      <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
                       <CurrencyInput
                         value={profile.monthly_additions_per_key['nq_joint_nonret'] || 0}
                         onChange={v => {
@@ -873,7 +876,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                         <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-[10px] text-muted-foreground/70">Retirement</label>
+                            <label className="text-[10px] text-muted-foreground/70">For Retirement Goals</label>
                             <CurrencyInput
                               value={profile.monthly_additions_per_key[`nq_${pid}_retirement`] || 0}
                               onChange={v => {
@@ -882,7 +885,7 @@ export function CFPProfileView({ onBack, householdId, initialTab }: CFPProfileVi
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] text-muted-foreground/70">Non-Retirement</label>
+                            <label className="text-[10px] text-muted-foreground/70">For Non-Retirement Goals</label>
                             <CurrencyInput
                               value={profile.monthly_additions_per_key[`nq_${pid}_nonret`] || 0}
                               onChange={v => {
