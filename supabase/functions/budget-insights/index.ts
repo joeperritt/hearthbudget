@@ -11,22 +11,38 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { budgetSummary, chatMessages } = await req.json();
+    const body = await req.json();
+    const { budgetSummary, chatMessages, prompt } = body || {};
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const isChat = chatMessages && chatMessages.length > 0;
+    let messages: Array<{ role: string; content: string }>;
 
-    const messages = isChat
-      ? [
-          { role: "system", content: SYSTEM_PROMPT.replace('Format your response as a JSON array of insight objects, each with a "type" field (one of: warning, encouragement, tip, giving, savings), a "title" field (5 words or less), and a "body" field (2-3 sentences max referencing real numbers from their data).', 'When answering follow-up questions, respond conversationally and specifically using the budget data provided. Be concise and helpful.') },
-          { role: "user", content: `The current active budget month is ${budgetSummary.currentMonth}. Here is the budget data for ${budgetSummary.currentMonth}:\n${JSON.stringify(budgetSummary, null, 2)}` },
-          ...chatMessages,
-        ]
-      : [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `The current active budget month is ${budgetSummary.currentMonth}. Here is the budget data for ${budgetSummary.currentMonth}:\n${JSON.stringify(budgetSummary, null, 2)}` },
-        ];
+    if (prompt && typeof prompt === "string") {
+      // Simple prompt mode (used by tools like Emergency Fund Analysis)
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ];
+    } else if (budgetSummary) {
+      const isChat = chatMessages && chatMessages.length > 0;
+      const month = budgetSummary.currentMonth || "the current month";
+      messages = isChat
+        ? [
+            { role: "system", content: SYSTEM_PROMPT.replace('Format your response as a JSON array of insight objects, each with a "type" field (one of: warning, encouragement, tip, giving, savings), a "title" field (5 words or less), and a "body" field (2-3 sentences max referencing real numbers from their data).', 'When answering follow-up questions, respond conversationally and specifically using the budget data provided. Be concise and helpful.') },
+            { role: "user", content: `The current active budget month is ${month}. Here is the budget data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
+            ...chatMessages,
+          ]
+        : [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `The current active budget month is ${month}. Here is the budget data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
+          ];
+    } else {
+      console.error("budget-insights: missing payload", JSON.stringify(body));
+      return new Response(JSON.stringify({ error: "Missing 'budgetSummary' or 'prompt' in request body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
