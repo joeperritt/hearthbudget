@@ -157,6 +157,7 @@ export type Database = {
           housing_type: string
           id: string
           income_type: string
+          lease_end_date: string | null
           life_insurance_coverage: number | null
           life_insurance_coverages: Json
           member_incomes: Json
@@ -172,6 +173,8 @@ export type Database = {
           mortgage_rate: number | null
           mortgage_statement_month: string | null
           non_retirement_investments: number | null
+          renters_insurance: boolean | null
+          renters_insurance_premium: number | null
           retirement_balance: number | null
           roth_retirement_balance: number | null
           state: string | null
@@ -191,6 +194,7 @@ export type Database = {
           housing_type?: string
           id?: string
           income_type?: string
+          lease_end_date?: string | null
           life_insurance_coverage?: number | null
           life_insurance_coverages?: Json
           member_incomes?: Json
@@ -206,6 +210,8 @@ export type Database = {
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
+          renters_insurance?: boolean | null
+          renters_insurance_premium?: number | null
           retirement_balance?: number | null
           roth_retirement_balance?: number | null
           state?: string | null
@@ -225,6 +231,7 @@ export type Database = {
           housing_type?: string
           id?: string
           income_type?: string
+          lease_end_date?: string | null
           life_insurance_coverage?: number | null
           life_insurance_coverages?: Json
           member_incomes?: Json
@@ -240,6 +247,8 @@ export type Database = {
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
           non_retirement_investments?: number | null
+          renters_insurance?: boolean | null
+          renters_insurance_premium?: number | null
           retirement_balance?: number | null
           roth_retirement_balance?: number | null
           state?: string | null
