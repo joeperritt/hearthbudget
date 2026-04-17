@@ -364,7 +364,7 @@ const Index = () => {
       case 'debt-payoff':
         return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'tax-estimator':
-        return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} />;
+        return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'life-insurance':
         return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'emergency-fund':
@@ -376,7 +376,7 @@ const Index = () => {
       case 'mortgage-shopping':
         return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
       case 'car-loan':
-        return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly />;
+        return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
       case 'financial-profile':
         return <CFPProfileView onBack={onBack} householdId={householdId} initialTab={profileInitialTab} />;
       default:
