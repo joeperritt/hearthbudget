@@ -432,7 +432,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       <div className="px-6 mt-5 space-y-3">
         {goals.map((goal, idx) => {
           const c = computed[idx];
-          const rec = savingsVehicleRec(c.yearsToGoal);
+          const rec = savingsVehicleRec(c.yearsToGoal, c.returnRate);
           return (
             <Collapsible key={goal.id} open={goal.expanded} onOpenChange={(open) => updateGoal(goal.id, { expanded: open })}>
               <div className="bg-card rounded-xl shadow-sm overflow-hidden">
