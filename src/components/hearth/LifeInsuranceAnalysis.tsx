@@ -566,7 +566,21 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
                       <p className="text-sm font-bold text-primary mt-1 tabular-nums">{fmt(member.irLow)}–{fmt(member.irHigh)}</p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[11px] font-semibold text-foreground">DIME Method</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-[11px] font-semibold text-foreground">DIME Method</p>
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="text-muted-foreground active:opacity-70">
+                                <Info size={11} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px] text-[11px] leading-relaxed">
+                              The DIME method can produce very large numbers for younger households because the Income component multiplies annual income by many years. DIME is best used as an upper bound. The Income Replacement method (10–12× income) is typically the more practical planning target.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <p className="text-[10px] text-muted-foreground">Debt + Income + Mortgage + Education</p>
                       <p className="text-sm font-bold text-primary mt-1 tabular-nums">{fmt(member.dime)}</p>
                     </div>
