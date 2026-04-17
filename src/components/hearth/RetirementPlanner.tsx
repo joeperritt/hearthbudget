@@ -943,9 +943,25 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
-                            <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] text-muted-foreground">Dollars</Label>
+                              <div className="flex bg-muted rounded-full p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => updateOtherIncome(oi.id, { inflationAdjusted: true })}
+                                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${oi.inflationAdjusted ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                >Today's Dollars</button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateOtherIncome(oi.id, { inflationAdjusted: false })}
+                                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${!oi.inflationAdjusted ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                >Future Dollars</button>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                              Most people find it easier to enter amounts in today's dollars. The tool will adjust for inflation automatically.
+                            </p>
                           </div>
                           <div className="flex justify-end">
                             <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
