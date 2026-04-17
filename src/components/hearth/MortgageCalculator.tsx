@@ -805,7 +805,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 {homeValue > 0 ? (
                   <div className="px-6 mt-5">
                     <div className="bg-card rounded-xl shadow-sm border border-border p-4">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Equity Progress</p>
+                      <p className="text-sm font-semibold text-foreground mb-3">Equity Progress</p>
                       {(() => {
                         const equity = homeValue - adjustedBalance;
                         const equityPct = homeValue > 0 ? (equity / homeValue) * 100 : 0;
