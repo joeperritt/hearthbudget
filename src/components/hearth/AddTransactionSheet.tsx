@@ -24,9 +24,10 @@ interface AddTransactionSheetProps {
   onAdd: (transactions: Omit<Transaction, 'id'>[]) => void;
   monthTransactions?: Transaction[];
   accounts?: AppAccount[];
+  transferAdjustments?: Record<string, number>;
 }
 
-export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [], accounts = [] }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpenses, onAdd, monthTransactions = [], accounts = [], transferAdjustments = {} }: AddTransactionSheetProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -277,7 +278,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} />
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} transferAdjustment={transferAdjustments[variableCategoryId] || 0} />
             </div>
           )}
 
@@ -320,7 +321,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                   </optgroup>
                 )}
               </select>
-              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} />
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={parseFloat(amount) || 0} transferAdjustment={transferAdjustments[fixedCategoryId] || 0} />
             </div>
           )}
 
@@ -344,6 +345,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
                 lines={splitLines}
                 onChange={setSplitLines}
                 transactions={monthTransactions}
+                transferAdjustments={transferAdjustments}
               />
             </div>
           )}
