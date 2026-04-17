@@ -974,7 +974,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               ({pct(safeWithdrawalRate)}/yr)
                             </span>
                             {monthlyExpenses > 0 && phaseGap < 0 && (() => {
-                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome - (phase.otherIncome || 0)) * 12) / projectedPortfolio : 0;
                               return (
                                 <span className="ml-1 text-[10px] text-yellow-600">
                                   — would need {pct(impliedRate)}/yr
@@ -1005,6 +1005,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                             <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
                           </div>
                         )}
+                        {phase.otherIncomeBreakdown && phase.otherIncomeBreakdown.map((oi, j) => (
+                          <div key={j} className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{oi.name}</span>
+                            <span className="font-semibold text-foreground">{fmt(oi.amount)}</span>
+                          </div>
+                        ))}
                         <div className="flex justify-between text-sm border-t border-border pt-1">
                           <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
                           <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
