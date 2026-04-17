@@ -295,6 +295,8 @@ ${timelineLines || '  (no coverage in force)'}
 
 Generate exactly 3 insights with nextStep actions per the system instructions.`;
 
+      console.log('[LifeInsuranceInsights] prompt sent to budget-insights:\n', prompt);
+
       const { data, error } = await supabase.functions.invoke('budget-insights', {
         body: { prompt, systemPrompt, householdId },
       });
