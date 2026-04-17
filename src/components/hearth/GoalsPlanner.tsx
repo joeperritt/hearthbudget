@@ -87,7 +87,10 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
 
   const { state, setState, loaded } = useToolState(householdId, 'goals-planner', {
     goals: [] as GoalData[],
+    dismissedEducationSuggestions: [] as string[],
   });
+
+  const [estimatorGoalId, setEstimatorGoalId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!householdId) return;
@@ -96,6 +99,18 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
   }, [householdId]);
 
   const goals: GoalData[] = Array.isArray(state.goals) ? state.goals : [];
+  const dismissedSuggestions: string[] = Array.isArray(state.dismissedEducationSuggestions) ? state.dismissedEducationSuggestions : [];
+
+  // Dependents from financial profile, with derived ages and year-turns-18
+  const dependentDetails: EducationDependent[] = useMemo(() => {
+    const raw: any[] = Array.isArray(financialProfile?.dependents) ? financialProfile.dependents : [];
+    const currentYear = new Date().getFullYear();
+    return raw.map((d: any) => {
+      const age = d.dob ? (ageFromDob(d.dob) ?? null) : (typeof d.age === 'number' ? d.age : null);
+      const yearTurns18 = age !== null ? currentYear + Math.max(0, 18 - age) : currentYear + 18;
+      return { name: d.name || 'Dependent', currentAge: age, yearTurns18 };
+    });
+  }, [financialProfile]);
 
   const updateGoal = useCallback((id: string, updates: Partial<GoalData>) => {
     const updated = goals.map(g => g.id === id ? { ...g, ...updates } : g);
@@ -108,6 +123,46 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
 
   const removeGoal = useCallback((id: string) => {
     setState({ goals: goals.filter(g => g.id !== id) });
+  }, [goals, setState]);
+
+  // Suggested education goals: one per dependent who doesn't already have one and hasn't been dismissed
+  const educationSuggestions = useMemo(() => {
+    return dependentDetails.filter(dep => {
+      if (dismissedSuggestions.includes(dep.name)) return false;
+      const alreadyHas = goals.some(g =>
+        g.dependentName === dep.name ||
+        (isEducationGoalName(g.name) && g.name.toLowerCase().includes(dep.name.toLowerCase()))
+      );
+      return !alreadyHas;
+    });
+  }, [dependentDetails, dismissedSuggestions, goals]);
+
+  const addEducationGoalForDependent = useCallback((dep: EducationDependent) => {
+    const targetMonth = `${dep.yearTurns18}-09`; // September of year they turn 18
+    const goal = newGoal({
+      name: `Education Fund — ${dep.name}`,
+      dependentName: dep.name,
+      useDate: true,
+      targetDate: targetMonth,
+    });
+    setState({ goals: [...goals, goal] });
+    // Open estimator immediately
+    setTimeout(() => setEstimatorGoalId(goal.id), 0);
+  }, [goals, setState]);
+
+  const dismissEducationSuggestion = useCallback((depName: string) => {
+    setState({ dismissedEducationSuggestions: [...dismissedSuggestions, depName] });
+  }, [dismissedSuggestions, setState]);
+
+  const handleEstimatorApply = useCallback((goalId: string, result: { total: number; dependentName: string | null; targetYear: number }) => {
+    const updates: Partial<GoalData> = { targetAmount: String(result.total) };
+    if (result.dependentName) {
+      updates.dependentName = result.dependentName;
+      updates.useDate = true;
+      updates.targetDate = `${result.targetYear}-09`;
+    }
+    const updated = goals.map(g => g.id === goalId ? { ...g, ...updates } : g);
+    setState({ goals: updated });
   }, [goals, setState]);
 
 
