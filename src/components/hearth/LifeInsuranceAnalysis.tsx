@@ -19,6 +19,8 @@ interface LifeInsuranceAnalysisProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: PlanToolId) => void;
 }
 
 interface Policy {
