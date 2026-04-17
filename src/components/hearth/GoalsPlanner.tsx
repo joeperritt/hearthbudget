@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Info, Flag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Info, Flag, GraduationCap, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { GoalsInsightsSection } from './GoalsInsightsSection';
 import { ProgressBar } from './ProgressBar';
+import { ageFromDob } from '@/lib/ageUtils';
+import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
