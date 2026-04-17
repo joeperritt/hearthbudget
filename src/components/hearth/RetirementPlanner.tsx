@@ -641,6 +641,27 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               <span>{currentYear + 1}</span>
               <span>{currentYear + 50}</span>
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Assumed inflation: {Number(state.inflationRate || 2.5).toFixed(1)}%/yr</p>
+          </div>
+
+          {/* Master Inflation Rate slider */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Assumed Inflation Rate: {Number(state.inflationRate || 2.5).toFixed(1)}%</Label>
+            <Slider
+              value={[Number(state.inflationRate) || 2.5]}
+              onValueChange={([v]) => setState({ inflationRate: String(v) })}
+              min={0}
+              max={6}
+              step={0.1}
+              className="mt-2"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+              <span>0%</span>
+              <span>6%</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+              This rate adjusts all dollar amounts for the rising cost of living over time. The Federal Reserve targets 2% inflation. Historical long-term average is approximately 3%. The default of 2.5% is a balanced planning assumption. Adjust based on your own expectations.
+            </p>
           </div>
         </div>
 
