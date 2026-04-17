@@ -1120,13 +1120,18 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <p className="text-sm font-semibold text-foreground">Debt-to-Income Ratio</p>
               <p className="text-xs text-muted-foreground mt-0.5">(Housing + other debt) ÷ gross income (guideline: ≤ 36%)</p>
               <div className="mt-2">
-                <Label className="text-xs text-muted-foreground">Other Monthly Debt Payments</Label>
-                <Input
-                  type="number" placeholder="0"
-                  value={state.otherDebtPayments}
-                  onChange={e => setState({ otherDebtPayments: e.target.value })}
-                  className="mt-1 max-w-[180px] h-8 text-sm"
-                />
+                <div className="flex items-baseline justify-between max-w-[260px]">
+                  <Label className="text-xs text-muted-foreground">Other Monthly Debt Payments</Label>
+                  {onNavigateToProfile && (
+                    <button onClick={() => onNavigateToProfile('debts')} className="text-[11px] font-semibold text-accent">
+                      From Financial Profile →
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1 max-w-[180px] h-8 px-3 flex items-center rounded-md border border-input bg-muted text-sm font-semibold text-foreground tabular-nums">
+                  {fmt(parseFloat(state.otherDebtPayments) || 0)}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Total non-housing debt payments from your Debts tab.</p>
               </div>
             </div>
             <span className={`text-lg font-bold ${dtiOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
