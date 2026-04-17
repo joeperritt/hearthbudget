@@ -123,6 +123,9 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     setState({ otherIncomes: otherIncomes.filter(o => o.id !== id) });
   }, [otherIncomes, setState]);
 
+  // Load financial profile, tax state, and budget totals
+  useEffect(() => {
+    if (!householdId) { setProfileLoading(false); return; }
     Promise.all([
       supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle(),
       supabase.from('tool_states' as any).select('state_json').eq('household_id', householdId).eq('tool_name', 'tax-withholding').maybeSingle(),
