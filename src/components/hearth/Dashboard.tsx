@@ -478,40 +478,24 @@ export function Dashboard({
           </button>
 
           {summaryOpen && (
-            <>
-              <div className="divide-y divide-border border-t border-border">
-                <div className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-sm text-muted-foreground">Total Spent</span>
-                  <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
-                </div>
-                <div className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-sm text-muted-foreground">Deposits & Credits</span>
-                  <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallDeposits)}</span>
-                </div>
-                <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
-                  <span className="text-sm font-semibold text-foreground">Net Total</span>
-                  <span className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
-                </div>
+            <div className="divide-y divide-border border-t border-border">
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">Total Spent</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
               </div>
-
-              <div className="border-t border-border divide-y divide-border">
-                <div className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-sm text-muted-foreground">Total Budgeted</span>
-                  <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
-                </div>
-                <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
-                  <span className="text-sm font-semibold text-foreground">
-                    {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
-                  </span>
-                  <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                    {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
-                  </span>
-                </div>
-                <div className="px-4 py-2 bg-muted/20">
-                  <span className="text-[11px] text-muted-foreground">Compared against gross Total Spent.</span>
-                </div>
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">Total Budgeted</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
               </div>
-            </>
+              <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
+                <span className="text-sm font-semibold text-foreground">
+                  {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+                </span>
+                <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                  {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+                </span>
+              </div>
+            </div>
           )}
         </div>
 
