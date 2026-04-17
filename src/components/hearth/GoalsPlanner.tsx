@@ -329,6 +329,42 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
         )}
       </div>
 
+      {/* Suggested Education Goals */}
+      {educationSuggestions.length > 0 && (
+        <div className="px-6 mt-5 space-y-2">
+          {educationSuggestions.map(dep => (
+            <div key={dep.name} className="bg-accent/10 border border-accent/30 rounded-xl p-3.5 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                <GraduationCap size={16} className="text-accent" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Have you started saving for {dep.name}'s education?
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  {dep.name}{typeof dep.currentAge === 'number' ? `, age ${dep.currentAge}` : ''} — turns 18 in {dep.yearTurns18}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => addEducationGoalForDependent(dep)}
+                  className="mt-2 text-[11px] font-semibold bg-accent text-accent-foreground px-3 py-1.5 rounded-full active:opacity-90"
+                >
+                  Add Education Fund Goal
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => dismissEducationSuggestion(dep.name)}
+                className="text-muted-foreground active:opacity-70 shrink-0"
+                aria-label="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Goal Cards */}
       <div className="px-6 mt-5 space-y-3">
         {goals.map((goal, idx) => {
@@ -362,7 +398,18 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                     {/* Target Amount & Current Savings */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs text-muted-foreground">Target Amount</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">Target Amount</Label>
+                          {(isEducationGoalName(goal.name) || goal.dependentName) && (
+                            <button
+                              type="button"
+                              onClick={() => setEstimatorGoalId(goal.id)}
+                              className="text-[10px] font-semibold text-accent active:opacity-70"
+                            >
+                              Help me estimate
+                            </button>
+                          )}
+                        </div>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
                           <Input value={goal.targetAmount} onChange={e => updateGoal(goal.id, { targetAmount: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="50,000" className="h-9 text-sm pl-7" inputMode="decimal" />
