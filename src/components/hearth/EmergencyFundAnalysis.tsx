@@ -187,6 +187,8 @@ ${stabilityLine}
 
 Generate 3 insights with nextStep actions per the system instructions.`;
 
+      console.log('[EmergencyFundInsights] prompt sent to budget-insights:\n', prompt);
+
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { prompt, systemPrompt, householdId },
       });
