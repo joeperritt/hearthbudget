@@ -136,7 +136,26 @@ export function EducationCostEstimator({
                   {t === '2-year' ? '2-Year' : '4-Year'}
                 </button>
               ))}
+          </div>
+
+          {/* Inflation Rate Slider */}
+          <div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Education Inflation Rate</Label>
+              <span className="text-xs font-semibold text-foreground tabular-nums">{inflationPct.toFixed(1)}%</span>
             </div>
+            <Slider
+              className="mt-2"
+              min={0}
+              max={8}
+              step={0.1}
+              value={[inflationPct]}
+              onValueChange={(v) => setInflationPct(v[0] ?? DEFAULT_INFLATION_PCT)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
+              Education costs have historically risen 5–6% annually, roughly double general inflation. This is driven by rising institutional costs, expanding campus services, and increased demand for higher education. Adjust this rate based on your own expectations.
+            </p>
+          </div>
           </div>
 
           {/* Dependent selector */}
