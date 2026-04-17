@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info, Plus, Trash2 } from 'lucide-react';
 import { ageFromDob } from '@/lib/ageUtils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
