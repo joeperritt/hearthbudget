@@ -96,9 +96,11 @@ interface GoalsPlannerProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: import('@/lib/aiNavigation').PlanToolId) => void;
 }
 
-export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: GoalsPlannerProps) {
+export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool }: GoalsPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state, setState, loaded } = useToolState(householdId, 'goals-planner', {
