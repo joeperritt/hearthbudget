@@ -1364,6 +1364,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
           householdId={householdId}
           retirementPicture={retirementPicture}
           financialProfile={financialProfile}
+          navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
         />
       )}
 
