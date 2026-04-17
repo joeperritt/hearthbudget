@@ -538,6 +538,42 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     projectedPreTax, projectedRoth, projectedNonQual, monthlyFromPortfolio, showSS, ssDetails.total, incomePhases,
     totalMonthlyIncome, monthlyExpenses, savingsRate, salaryMultiple, rothPct, impliedWithdrawalRate, maxPhaseWithdrawalRate, withdrawalSustainable, additionalMonthlyNeeded, lumpSumNeeded]);
 
+  // Reusable collapsible section component
+  const Section = ({ title, summary, open, onOpenChange, defaultOpen, children }: {
+    title: string;
+    summary?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (v: boolean) => void;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+  }) => {
+    const isOpen = open !== undefined ? open : defaultOpen;
+    return (
+      <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+          <CollapsibleTrigger className="w-full px-4 py-3 flex items-center gap-2 text-left active:opacity-70">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">{title}</p>
+              {summary && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{summary}</p>}
+            </div>
+            {isOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-4 pb-4 pt-1 border-t border-border">
+              {children}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    );
+  };
+
+  // Section summaries
+  const incomeSourceCount = (showSS ? ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).length : 0)
+    + resolvedOtherIncomes.length;
+  const fullSSPhase = incomePhases[incomePhases.length - 1];
+  const fullSSIncome = fullSSPhase?.totalIncome || 0;
+
   if (profileLoading || !toolStateLoaded) {
     return (
       <div className="max-w-lg mx-auto px-6 pt-16 safe-top">
