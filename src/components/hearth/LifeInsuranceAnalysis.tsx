@@ -83,8 +83,11 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
   const [dependents, setDependents] = useState<{ name: string; age: number | null; dob?: string | null }[]>([]);
   const [expandedPolicies, setExpandedPolicies] = useState<Record<string, boolean>>({});
   const [autoYearsApplied, setAutoYearsApplied] = useState(false);
+  const [expandedMember, setExpandedMember] = useState<number | null>(null);
+  const [defaultExpansionApplied, setDefaultExpansionApplied] = useState(false);
+  const [showEducationEstimator, setShowEducationEstimator] = useState(false);
 
-  const [aiInsights, setAiInsights] = useState<string[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
