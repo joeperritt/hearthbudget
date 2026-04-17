@@ -822,6 +822,79 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
             </div>
           )}
         </div>
+
+        {/* Other Retirement Income */}
+        <div>
+          <Label className="text-xs text-muted-foreground">Other Retirement Income</Label>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Pensions, rental income, part-time work, etc.</p>
+          <div className="mt-2 space-y-2">
+            {otherIncomes.map(oi => (
+              <Collapsible key={oi.id} open={oi.expanded} onOpenChange={(open) => updateOtherIncome(oi.id, { expanded: open })}>
+                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center gap-2 text-left">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
+                        {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
+                      </p>
+                    </div>
+                    {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-3 pb-3 space-y-2.5 border-t border-border pt-2.5">
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Source Name</Label>
+                        <Input value={oi.name} onChange={e => updateOtherIncome(oi.id, { name: e.target.value })} placeholder="e.g. Joe's Pension" className="h-9 text-sm mt-1" />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Monthly Amount</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                          <Input type="number" value={oi.monthlyAmount} onChange={e => updateOtherIncome(oi.id, { monthlyAmount: e.target.value })} placeholder="0" className="h-9 text-sm pl-7" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Start</Label>
+                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'retirement' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'retirement' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>At Retirement</button>
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                          </div>
+                          {oi.startMode === 'year' && (
+                            <Input type="number" value={oi.startYear} onChange={e => updateOtherIncome(oi.id, { startYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 60} />
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">End</Label>
+                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'lifetime' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'lifetime' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Lifetime</button>
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                          </div>
+                          {oi.endMode === 'year' && (
+                            <Input type="number" value={oi.endYear} onChange={e => updateOtherIncome(oi.id, { endYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 80} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
+                        <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
+                      </div>
+                      <div className="flex justify-end">
+                        <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
+                          <Trash2 size={11} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            ))}
+            <button type="button" onClick={addOtherIncome} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground hover:border-accent hover:text-accent transition-colors active:scale-[0.98]">
+              <Plus size={14} /> Add Income Source
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Output Section */}
