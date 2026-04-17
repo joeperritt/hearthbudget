@@ -139,9 +139,10 @@ function calcStateTax2026(annualGross: number, stateAbbr: string, annualPreTaxDe
 interface TaxWithholdingCalculatorProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholdingCalculatorProps) {
+export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProfile }: TaxWithholdingCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
