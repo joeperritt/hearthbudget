@@ -39,6 +39,8 @@ interface DebtPayoffCalculatorProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: import('@/lib/aiNavigation').PlanToolId) => void;
 }
 
 const BUSINESS_BUY_IN_TYPE = 'Business Buy-In / Partnership Investment';
