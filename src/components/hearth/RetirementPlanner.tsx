@@ -88,7 +88,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'retirement-planner', {
     retirementYear: String(currentYear + 25),
     expectedReturn: '7',
-    inflationRate: '3',
+    inflationRate: '2.5',
     monthlyExpenses: '',
     preTaxContrib: '',
     rothContrib: '',
