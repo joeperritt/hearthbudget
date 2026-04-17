@@ -422,7 +422,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     let monthsElapsed = 0;
     for (const phase of incomePhases) {
       const phaseDurationMonths = phase.durationYears * 12;
-      const monthlyNeedFromPortfolio = Math.max(0, monthlyExpenses - phase.ssIncome);
+      const monthlyNeedFromPortfolio = Math.max(0, monthlyExpenses - phase.ssIncome - (phase.otherIncome || 0));
       let pvAnnuity: number;
       if (monthlyRealReturn > 0.0001) {
         pvAnnuity = monthlyNeedFromPortfolio * (1 - Math.pow(1 + monthlyRealReturn, -phaseDurationMonths)) / monthlyRealReturn;
