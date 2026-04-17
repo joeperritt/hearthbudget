@@ -177,16 +177,21 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
       });
   }, [householdId]);
 
-  // Baseline (no extra, no roll)
-  const baselineOnly = useMemo(() => simulatePayoff(debts, 0, false), [debts]);
-  // With roll forward but no additional extra (current pace)
-  const currentPace = useMemo(() => simulatePayoff(debts, 0, toolState.rollForward), [debts, toolState.rollForward]);
+  // Split debts: consumer debts get optimized; business buy-ins are tracked separately
+  const consumerDebts = useMemo(() => debts.filter(d => d.type !== BUSINESS_BUY_IN_TYPE), [debts]);
+  const excludedDebts = useMemo(() => debts.filter(d => d.type === BUSINESS_BUY_IN_TYPE), [debts]);
 
+  // Baseline (no extra, no roll) — consumer debts only
+  const baselineOnly = useMemo(() => simulatePayoff(consumerDebts, 0, false, method), [consumerDebts, method]);
+  // With roll forward but no additional extra (current pace)
+  const currentPace = useMemo(() => simulatePayoff(consumerDebts, 0, toolState.rollForward, method), [consumerDebts, toolState.rollForward, method]);
+
+  // Totals INCLUDE business buy-ins for total debt + DTI
   const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
   const totalMinPayments = debts.reduce((s, d) => s + d.monthlyPayment, 0);
   const totalExtraFromProfile = debts.reduce((s, d) => s + d.extraPayment, 0);
 
-  // Slider range
+  // Slider range — based on consumer debt payoff
   const now = new Date();
   const projectedYear = now.getFullYear() + Math.ceil(currentPace.totalMonths / 12);
   const minYear = now.getFullYear() + 1;
@@ -195,19 +200,19 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
   const clampedTarget = Math.max(minYear, Math.min(maxYear, targetYear));
   const isDefault = clampedTarget >= maxYear;
 
-  // Calculate what's needed for the target year
+  // Calculate what's needed for the target year — consumer debts only
   const targetMonths = Math.max(1, (clampedTarget - now.getFullYear()) * 12 - now.getMonth());
   const extraNeeded = useMemo(() => {
     if (isDefault) return 0;
-    return findExtraForTarget(debts, targetMonths, toolState.rollForward);
-  }, [debts, targetMonths, toolState.rollForward, isDefault]);
+    return findExtraForTarget(consumerDebts, targetMonths, toolState.rollForward, method);
+  }, [consumerDebts, targetMonths, toolState.rollForward, isDefault, method]);
 
-  const withTarget = useMemo(() => simulatePayoff(debts, extraNeeded, toolState.rollForward), [debts, extraNeeded, toolState.rollForward]);
+  const withTarget = useMemo(() => simulatePayoff(consumerDebts, extraNeeded, toolState.rollForward, method), [consumerDebts, extraNeeded, toolState.rollForward, method]);
   const interestSaved = currentPace.totalInterest - withTarget.totalInterest;
   const monthsSaved = currentPace.totalMonths - withTarget.totalMonths;
 
   // For debt cards display, use current pace results
-  const displayResults = useMemo(() => simulatePayoff(debts, 0, toolState.rollForward), [debts, toolState.rollForward]);
+  const displayResults = currentPace;
 
   if (loading || !toolStateLoaded) {
     return (
