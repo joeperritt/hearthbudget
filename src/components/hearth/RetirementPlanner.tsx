@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Sparkles, Loader2, Info, Plus, Trash2 } from 'lucide-react';
 import { ageFromDob } from '@/lib/ageUtils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,32 @@ function ssClaimingNote(age: number): { text: string; color: string } {
   return { text: 'Maximum benefit — 124% of full retirement age amount', color: 'text-green-600' };
 }
 
+interface OtherIncome {
+  id: string;
+  name: string;
+  monthlyAmount: string;
+  startMode: 'retirement' | 'year'; // "At Retirement" or specific year
+  startYear: string;                 // used when startMode === 'year'
+  endMode: 'lifetime' | 'year';
+  endYear: string;
+  inflationAdjusted: boolean;
+  expanded: boolean;
+}
+
+function newOtherIncome(retirementYear: number): OtherIncome {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    monthlyAmount: '',
+    startMode: 'retirement',
+    startYear: String(retirementYear),
+    endMode: 'lifetime',
+    endYear: String(retirementYear + 20),
+    inflationAdjusted: false,
+    expanded: true,
+  };
+}
+
 interface RetirementPlannerProps {
   onBack: () => void;
   householdId: string | null;
@@ -73,7 +99,29 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     memberAges: {} as Record<string, string>,
     ssBenefits: {} as Record<string, string>,
     ssClaimingAges: {} as Record<string, string>,
+    otherIncomes: [] as OtherIncome[],
+    // Section collapse state
+    sectionAccountsOpen: true,
+    sectionExpensesOpen: true,
+    sectionIncomeOpen: true,
+    sectionDetailedOpen: false,
   });
+
+  const otherIncomes: OtherIncome[] = Array.isArray(state.otherIncomes) ? state.otherIncomes : [];
+
+  const updateOtherIncome = useCallback((id: string, updates: Partial<OtherIncome>) => {
+    const updated = otherIncomes.map(o => o.id === id ? { ...o, ...updates } : o);
+    setState({ otherIncomes: updated });
+  }, [otherIncomes, setState]);
+
+  const addOtherIncome = useCallback(() => {
+    const ry = Number(state.retirementYear) || (currentYear + 25);
+    setState({ otherIncomes: [...otherIncomes, newOtherIncome(ry)] });
+  }, [otherIncomes, state.retirementYear, currentYear, setState]);
+
+  const removeOtherIncome = useCallback((id: string) => {
+    setState({ otherIncomes: otherIncomes.filter(o => o.id !== id) });
+  }, [otherIncomes, setState]);
 
   // Load financial profile, tax state, and budget totals
   useEffect(() => {
@@ -251,81 +299,106 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   // Longevity benchmark (user-configurable)
   const longevityAge = Math.max(80, Math.min(100, Number(state.longevityAge) || 90));
 
-  // Phase-based income projection using fixed 4% safe withdrawal rate
-  // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
-  // SS is added on top per phase based on claiming ages
+  // Resolved Other Income sources (start/end years computed; inflation applied if flagged)
+  const resolvedOtherIncomes = useMemo(() => {
+    return otherIncomes
+      .filter(oi => Number(oi.monthlyAmount) > 0)
+      .map(oi => {
+        const startYr = oi.startMode === 'retirement' ? retirementYear : (Number(oi.startYear) || retirementYear);
+        const endYr = oi.endMode === 'lifetime' ? Infinity : (Number(oi.endYear) || retirementYear);
+        const baseAmount = Number(oi.monthlyAmount) || 0;
+        // If inflation-adjusted, inflate today's $ to start year. If not, stay flat (nominal).
+        const startAmount = oi.inflationAdjusted
+          ? baseAmount * Math.pow(1 + inflationRate, Math.max(0, startYr - currentYear))
+          : baseAmount;
+        return { id: oi.id, name: oi.name || 'Other Income', startYr, endYr, startAmount, inflationAdjusted: oi.inflationAdjusted };
+      });
+  }, [otherIncomes, retirementYear, inflationRate, currentYear]);
 
+  // Sum of other income active during a given calendar year (use mid-phase year)
+  const otherIncomeAt = useCallback((year: number) => {
+    return resolvedOtherIncomes
+      .filter(oi => year >= oi.startYr && year <= oi.endYr)
+      .reduce((s, oi) => {
+        // If inflation-adjusted, grow from startYr to current year
+        const amt = oi.inflationAdjusted
+          ? oi.startAmount * Math.pow(1 + inflationRate, Math.max(0, year - oi.startYr))
+          : oi.startAmount;
+        return s + amt;
+      }, 0);
+  }, [resolvedOtherIncomes, inflationRate]);
+
+  // Phase-based income projection using fixed 4% safe withdrawal rate
   const incomePhases = useMemo(() => {
     const retireAge = retirementAge;
     const totalRetirementYears = Math.max(1, longevityAge - retireAge);
+    const endYear = retirementYear + totalRetirementYears;
 
-    if (!showSS || ssDetails.perMember.length === 0) {
-      return [{
-        label: `${retirementYear}+ (Portfolio only)`,
-        startYear: retirementYear,
-        endYear: null as number | null,
-        durationYears: totalRetirementYears,
-        portfolioIncome: monthlyPortfolioDraw,
-        ssIncome: 0,
-        totalIncome: monthlyPortfolioDraw,
-        withdrawalRate: safeWithdrawalRate,
-      }];
-    }
-
-    // Build distinct transition points
-    const ssStartYears = [...new Set(
+    // Collect all transition years: retirement, SS claim years (when SS on), other income start/end years
+    const transitionsSet = new Set<number>([retirementYear]);
+    if (showSS) {
       ssDetails.perMember
         .filter(m => m.inflatedAdjusted > 0)
-        .map(m => Math.max(m.claimYear, retirementYear))
-    )].sort((a, b) => a - b);
-
-    // If all SS starts at or before retirement, single phase
-    if (ssStartYears.length === 0 || (ssStartYears.length === 1 && ssStartYears[0] <= retirementYear)) {
-      const ssIncome = ssDetails.perMember.reduce((s, m) => s + m.inflatedAdjusted, 0);
-      return [{
-        label: `${retirementYear}+`,
-        startYear: retirementYear,
-        endYear: null,
-        durationYears: totalRetirementYears,
-        portfolioIncome: monthlyPortfolioDraw,
-        ssIncome,
-        totalIncome: monthlyPortfolioDraw + ssIncome,
-        withdrawalRate: safeWithdrawalRate,
-      }];
+        .forEach(m => transitionsSet.add(Math.max(m.claimYear, retirementYear)));
     }
-
-    // Multi-phase: same portfolio draw in all phases, SS added per phase
-    const transitions = [...new Set([retirementYear, ...ssStartYears])].sort((a, b) => a - b);
-    const endYear = retirementYear + totalRetirementYears;
+    resolvedOtherIncomes.forEach(oi => {
+      if (oi.startYr >= retirementYear && oi.startYr <= endYear) transitionsSet.add(oi.startYr);
+      if (isFinite(oi.endYr) && oi.endYr + 1 >= retirementYear && oi.endYr + 1 <= endYear) {
+        transitionsSet.add(oi.endYr + 1); // phase boundary just after end
+      }
+    });
+    const transitions = [...transitionsSet].filter(y => y >= retirementYear && y <= endYear).sort((a, b) => a - b);
 
     return transitions.map((start, i) => {
       const end = i < transitions.length - 1 ? transitions[i + 1] : endYear;
-      const activeSS = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start);
+      const phaseYear = start; // SS/other income evaluated at phase start
+      const activeSS = showSS
+        ? ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start)
+        : [];
       const ssIncome = activeSS.reduce((s, m) => s + m.inflatedAdjusted, 0);
-      const allSSActive = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).every(m => m.claimYear <= start);
+      const otherIncome = otherIncomeAt(phaseYear);
+      const activeOther = resolvedOtherIncomes.filter(oi => phaseYear >= oi.startYr && phaseYear <= oi.endYr);
+      const allSSActive = !showSS || ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).every(m => m.claimYear <= start);
 
+      // Build label
       let label: string;
-      if (activeSS.length === 0) {
-        label = end < endYear ? `${start}–${end} (pre-Social Security)` : `${start}+`;
-      } else if (allSSActive) {
-        label = `${start}+ (with Social Security)`;
-      } else {
-        const activeNames = activeSS.map(m => m.name).join(' + ');
-        label = end < endYear ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
+      const isFinalPhase = i === transitions.length - 1;
+      const range = isFinalPhase ? `${start}+` : `${start}–${end - 1}`;
+      const tags: string[] = [];
+      if (showSS && ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).length > 0) {
+        if (activeSS.length === 0) tags.push('pre-Social Security');
+        else if (allSSActive) tags.push('with Social Security');
+        else tags.push(`${activeSS.map(m => m.name).join(' + ')} SS`);
       }
+      if (activeOther.length > 0) {
+        tags.push(`+ ${activeOther.map(o => o.name).join(', ')}`);
+      } else if (resolvedOtherIncomes.length > 0) {
+        tags.push('portfolio + SS only');
+      }
+      label = tags.length > 0 ? `${range} (${tags.join(', ')})` : range;
+
+      const totalIncome = monthlyPortfolioDraw + ssIncome + otherIncome;
 
       return {
         label,
         startYear: start,
-        endYear: end < endYear ? end : null,
-        durationYears: (end - start) / 1, // years
+        endYear: isFinalPhase ? null : end,
+        durationYears: end - start,
         portfolioIncome: monthlyPortfolioDraw,
         ssIncome,
-        totalIncome: monthlyPortfolioDraw + ssIncome,
+        otherIncome,
+        otherIncomeBreakdown: activeOther.map(oi => ({
+          name: oi.name,
+          amount: oi.inflationAdjusted
+            ? oi.startAmount * Math.pow(1 + inflationRate, Math.max(0, phaseYear - oi.startYr))
+            : oi.startAmount,
+        })),
+        totalIncome,
         withdrawalRate: safeWithdrawalRate,
       };
     });
-  }, [showSS, ssDetails, retirementYear, monthlyPortfolioDraw, projectedPortfolio, retirementAge, longevityAge]);
+  }, [showSS, ssDetails, retirementYear, monthlyPortfolioDraw, retirementAge, longevityAge, resolvedOtherIncomes, otherIncomeAt, inflationRate]);
+
 
   // Use worst-case phase for gap analysis (the phase with lowest income)
   const worstPhase = useMemo(() => {
@@ -349,7 +422,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     let monthsElapsed = 0;
     for (const phase of incomePhases) {
       const phaseDurationMonths = phase.durationYears * 12;
-      const monthlyNeedFromPortfolio = Math.max(0, monthlyExpenses - phase.ssIncome);
+      const monthlyNeedFromPortfolio = Math.max(0, monthlyExpenses - phase.ssIncome - (phase.otherIncome || 0));
       let pvAnnuity: number;
       if (monthlyRealReturn > 0.0001) {
         pvAnnuity = monthlyNeedFromPortfolio * (1 - Math.pow(1 + monthlyRealReturn, -phaseDurationMonths)) / monthlyRealReturn;
@@ -456,7 +529,8 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     preTaxContrib, rothContrib, nonQualContrib, monthlyContributions, annualContributions, expectedReturn, inflationRate,
     projectedPortfolio, projectedPreTax, projectedRoth, projectedNonQual, monthlyFromPortfolio,
     socialSecurityEnabled: showSS, totalSSBenefit: ssDetails.total,
-    incomePhases: incomePhases.map(p => ({ label: p.label, totalIncome: p.totalIncome, ssIncome: p.ssIncome, portfolioIncome: p.portfolioIncome, withdrawalRate: p.withdrawalRate, durationYears: p.durationYears })),
+    incomePhases: incomePhases.map(p => ({ label: p.label, totalIncome: p.totalIncome, ssIncome: p.ssIncome, otherIncome: p.otherIncome || 0, otherIncomeBreakdown: p.otherIncomeBreakdown || [], portfolioIncome: p.portfolioIncome, withdrawalRate: p.withdrawalRate, durationYears: p.durationYears })),
+    otherIncomeSources: resolvedOtherIncomes.map(oi => ({ name: oi.name, startYr: oi.startYr, endYr: isFinite(oi.endYr) ? oi.endYr : 'lifetime', startAmount: oi.startAmount, inflationAdjusted: oi.inflationAdjusted })),
     totalMonthlyIncome, monthlyExpenses, monthlyGap: totalMonthlyIncome - monthlyExpenses, savingsRate, salaryMultiple,
     rothPct, impliedWithdrawalRate, maxPhaseWithdrawalRate, withdrawalSustainable, additionalMonthlyNeeded, lumpSumNeeded,
   }), [memberRetirementInfo, members, retirementYear, retirementAge, yearsToRetirement, currentPreTax, currentRoth, currentNonQual, currentTotal,
@@ -749,6 +823,79 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
             </div>
           )}
         </div>
+
+        {/* Other Retirement Income */}
+        <div>
+          <Label className="text-xs text-muted-foreground">Other Retirement Income</Label>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Pensions, rental income, part-time work, etc.</p>
+          <div className="mt-2 space-y-2">
+            {otherIncomes.map(oi => (
+              <Collapsible key={oi.id} open={oi.expanded} onOpenChange={(open) => updateOtherIncome(oi.id, { expanded: open })}>
+                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center gap-2 text-left">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
+                        {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
+                      </p>
+                    </div>
+                    {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-3 pb-3 space-y-2.5 border-t border-border pt-2.5">
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Source Name</Label>
+                        <Input value={oi.name} onChange={e => updateOtherIncome(oi.id, { name: e.target.value })} placeholder="e.g. Joe's Pension" className="h-9 text-sm mt-1" />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Monthly Amount</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                          <Input type="number" value={oi.monthlyAmount} onChange={e => updateOtherIncome(oi.id, { monthlyAmount: e.target.value })} placeholder="0" className="h-9 text-sm pl-7" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Start</Label>
+                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'retirement' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'retirement' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>At Retirement</button>
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                          </div>
+                          {oi.startMode === 'year' && (
+                            <Input type="number" value={oi.startYear} onChange={e => updateOtherIncome(oi.id, { startYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 60} />
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">End</Label>
+                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'lifetime' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'lifetime' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Lifetime</button>
+                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                          </div>
+                          {oi.endMode === 'year' && (
+                            <Input type="number" value={oi.endYear} onChange={e => updateOtherIncome(oi.id, { endYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 80} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
+                        <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
+                      </div>
+                      <div className="flex justify-end">
+                        <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
+                          <Trash2 size={11} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            ))}
+            <button type="button" onClick={addOtherIncome} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground hover:border-accent hover:text-accent transition-colors active:scale-[0.98]">
+              <Plus size={14} /> Add Income Source
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Output Section */}
@@ -901,7 +1048,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               ({pct(safeWithdrawalRate)}/yr)
                             </span>
                             {monthlyExpenses > 0 && phaseGap < 0 && (() => {
-                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome) * 12) / projectedPortfolio : 0;
+                              const impliedRate = projectedPortfolio > 0 ? ((monthlyExpenses - phase.ssIncome - (phase.otherIncome || 0)) * 12) / projectedPortfolio : 0;
                               return (
                                 <span className="ml-1 text-[10px] text-yellow-600">
                                   — would need {pct(impliedRate)}/yr
@@ -932,6 +1079,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                             <span className="font-semibold text-foreground">{fmt(phase.ssIncome)}</span>
                           </div>
                         )}
+                        {phase.otherIncomeBreakdown && phase.otherIncomeBreakdown.map((oi, j) => (
+                          <div key={j} className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{oi.name}</span>
+                            <span className="font-semibold text-foreground">{fmt(oi.amount)}</span>
+                          </div>
+                        ))}
                         <div className="flex justify-between text-sm border-t border-border pt-1">
                           <span className="text-muted-foreground font-semibold">Total Monthly Income</span>
                           <span className="font-bold text-foreground">{fmt(phase.totalIncome)}</span>
