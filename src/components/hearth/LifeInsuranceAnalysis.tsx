@@ -709,7 +709,7 @@ Generate exactly 3 insights with nextStep actions per the system instructions.`;
           )}
           {aiInsights.length > 0 ? (
             <div className="space-y-2">
-              <AIInsightsList insights={aiInsights} />
+              <AIInsightsList insights={aiInsights} navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }} />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
