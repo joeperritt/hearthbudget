@@ -88,7 +88,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'retirement-planner', {
     retirementYear: String(currentYear + 25),
     expectedReturn: '7',
-    inflationRate: '3',
+    inflationRate: '2.5',
     monthlyExpenses: '',
     preTaxContrib: '',
     rothContrib: '',
@@ -227,7 +227,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   // Parsed values
   const retirementYear = Number(state.retirementYear) || (currentYear + 25);
   const expectedReturn = (Number(state.expectedReturn) || 7) / 100;
-  const inflationRate = (Number(state.inflationRate) || 3) / 100;
+  const inflationRate = (Number(state.inflationRate) || 2.5) / 100;
   const preTaxContrib = Number(state.preTaxContrib) || 0;
   const rothContrib = Number(state.rothContrib) || 0;
   const nonQualContrib = Number(state.nonQualContrib) || 0;
@@ -641,6 +641,27 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               <span>{currentYear + 1}</span>
               <span>{currentYear + 50}</span>
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Assumed inflation: {Number(state.inflationRate || 2.5).toFixed(1)}%/yr</p>
+          </div>
+
+          {/* Master Inflation Rate slider */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Assumed Inflation Rate: {Number(state.inflationRate || 2.5).toFixed(1)}%</Label>
+            <Slider
+              value={[Number(state.inflationRate) || 2.5]}
+              onValueChange={([v]) => setState({ inflationRate: String(v) })}
+              min={0}
+              max={6}
+              step={0.1}
+              className="mt-2"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+              <span>0%</span>
+              <span>6%</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+              This rate adjusts all dollar amounts for the rising cost of living over time. The Federal Reserve targets 2% inflation. Historical long-term average is approximately 3%. The default of 2.5% is a balanced planning assumption. Adjust based on your own expectations.
+            </p>
           </div>
         </div>
 
@@ -724,26 +745,6 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               />
             </div>
 
-            {/* Inflation rate (advanced) */}
-            <Collapsible open={state.showAdvanced} onOpenChange={v => setState({ showAdvanced: v })}>
-              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-accent font-medium">
-                {state.showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                Advanced Settings
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Inflation Rate: {state.inflationRate}%</Label>
-                  <Slider
-                    value={[Number(state.inflationRate) || 3]}
-                    onValueChange={([v]) => setState({ inflationRate: String(v) })}
-                    min={1}
-                    max={6}
-                    step={0.5}
-                    className="mt-2"
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
           </div>
         </Section>
 
@@ -861,7 +862,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               <span className="font-semibold text-foreground">
                                 {fmt(adjustedAmount * Math.pow(1 + inflationRate, Math.max(0, claimAge - (Number(state.memberAges?.[m.name]) || 0))))}/mo in {retirementYear} dollars
                               </span>
-                              {' '}(inflation-adjusted via COLA)
+                              {' '}(adjusted at {Number(state.inflationRate || 2.5).toFixed(1)}% annual inflation)
                             </p>
                           )}
                         </div>
@@ -902,7 +903,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                           <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
                           <p className="text-[10px] text-muted-foreground truncate">
                             {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
-                            {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
+                            {oi.inflationAdjusted ? " · today's $" : " · future $"}
                           </p>
                         </div>
                         {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
@@ -942,9 +943,25 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
-                            <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] text-muted-foreground">Dollars</Label>
+                              <div className="flex bg-muted rounded-full p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => updateOtherIncome(oi.id, { inflationAdjusted: true })}
+                                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${oi.inflationAdjusted ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                >Today's Dollars</button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateOtherIncome(oi.id, { inflationAdjusted: false })}
+                                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${!oi.inflationAdjusted ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                >Future Dollars</button>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                              Most people find it easier to enter amounts in today's dollars. The tool will adjust for inflation automatically.
+                            </p>
                           </div>
                           <div className="flex justify-end">
                             <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
@@ -1090,7 +1107,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           {/* Monthly Income — Phase-based */}
           <div className="bg-muted/30 rounded-xl p-4">
             <p className="text-sm font-semibold text-foreground mb-2">Projected Monthly Retirement Income</p>
-            <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
+            <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (adjusted at {Number(state.inflationRate || 2.5).toFixed(1)}% annual inflation)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
               const isCollapsed = !!collapsedPhases[i];
@@ -1428,7 +1445,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                 <span className="font-bold text-foreground">{fmt(estimatorResult.adjusted)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Inflation-adjusted in {retirementYear}</span>
+                <span className="text-muted-foreground">In {retirementYear} dollars (at {Number(state.inflationRate || 2.5).toFixed(1)}% inflation)</span>
                 <span className="font-bold text-accent">{fmt(estimatorResult.inflated)}/mo</span>
               </div>
               <p className="text-[10px] text-muted-foreground">
