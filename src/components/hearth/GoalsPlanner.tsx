@@ -3,6 +3,8 @@ import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertTri
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
@@ -28,6 +30,18 @@ interface GoalData {
   recExpanded?: boolean;
   /** When set, this goal is tied to a specific dependent (for education goals) */
   dependentName?: string;
+  /** Expected annual return %, 0-12. Auto-defaults based on horizon if not user-set */
+  expectedReturn?: string;
+  /** True once the user has manually adjusted the return slider — blocks horizon auto-default */
+  returnTouched?: boolean;
+}
+
+/** Smart default expected return based on time horizon (years). */
+function defaultReturnForYears(years: number): number {
+  if (years < 2) return 0;
+  if (years < 5) return 4;
+  if (years < 10) return 6;
+  return 7;
 }
 
 function newGoal(overrides: Partial<GoalData> = {}): GoalData {
@@ -44,6 +58,8 @@ function newGoal(overrides: Partial<GoalData> = {}): GoalData {
     targetMonths: '24',
     expanded: true,
     recExpanded: true,
+    expectedReturn: '4', // 2-year default horizon
+    returnTouched: false,
     ...overrides,
   };
 }
