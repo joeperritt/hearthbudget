@@ -69,8 +69,8 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
             className="[&_[role=slider]]:bg-accent [&_[role=slider]]:border-accent [&_[data-orientation=horizontal]>[data-orientation=horizontal]]:bg-primary"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>{minYear}</span>
-            <span>{maxYear} (current pace)</span>
+            <span>Earliest Possible ({minYear})</span>
+            <span>Current Pace ({maxYear})</span>
           </div>
         </div>
 
@@ -80,14 +80,22 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
-                <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                <p className="text-base font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Time Saved</p>
+                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">
+                  {monthsSaved > 0
+                    ? `${Math.floor(monthsSaved / 12)}y ${monthsSaved % 12}m`
+                    : '—'}
+                </p>
               </div>
             </div>
             {monthsSaved > 0 && (
