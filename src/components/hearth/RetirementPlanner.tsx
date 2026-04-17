@@ -299,81 +299,106 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   // Longevity benchmark (user-configurable)
   const longevityAge = Math.max(80, Math.min(100, Number(state.longevityAge) || 90));
 
-  // Phase-based income projection using fixed 4% safe withdrawal rate
-  // Portfolio draw = projectedPortfolio * 4% / 12, independent of expenses
-  // SS is added on top per phase based on claiming ages
+  // Resolved Other Income sources (start/end years computed; inflation applied if flagged)
+  const resolvedOtherIncomes = useMemo(() => {
+    return otherIncomes
+      .filter(oi => Number(oi.monthlyAmount) > 0)
+      .map(oi => {
+        const startYr = oi.startMode === 'retirement' ? retirementYear : (Number(oi.startYear) || retirementYear);
+        const endYr = oi.endMode === 'lifetime' ? Infinity : (Number(oi.endYear) || retirementYear);
+        const baseAmount = Number(oi.monthlyAmount) || 0;
+        // If inflation-adjusted, inflate today's $ to start year. If not, stay flat (nominal).
+        const startAmount = oi.inflationAdjusted
+          ? baseAmount * Math.pow(1 + inflationRate, Math.max(0, startYr - currentYear))
+          : baseAmount;
+        return { id: oi.id, name: oi.name || 'Other Income', startYr, endYr, startAmount, inflationAdjusted: oi.inflationAdjusted };
+      });
+  }, [otherIncomes, retirementYear, inflationRate, currentYear]);
 
+  // Sum of other income active during a given calendar year (use mid-phase year)
+  const otherIncomeAt = useCallback((year: number) => {
+    return resolvedOtherIncomes
+      .filter(oi => year >= oi.startYr && year <= oi.endYr)
+      .reduce((s, oi) => {
+        // If inflation-adjusted, grow from startYr to current year
+        const amt = oi.inflationAdjusted
+          ? oi.startAmount * Math.pow(1 + inflationRate, Math.max(0, year - oi.startYr))
+          : oi.startAmount;
+        return s + amt;
+      }, 0);
+  }, [resolvedOtherIncomes, inflationRate]);
+
+  // Phase-based income projection using fixed 4% safe withdrawal rate
   const incomePhases = useMemo(() => {
     const retireAge = retirementAge;
     const totalRetirementYears = Math.max(1, longevityAge - retireAge);
+    const endYear = retirementYear + totalRetirementYears;
 
-    if (!showSS || ssDetails.perMember.length === 0) {
-      return [{
-        label: `${retirementYear}+ (Portfolio only)`,
-        startYear: retirementYear,
-        endYear: null as number | null,
-        durationYears: totalRetirementYears,
-        portfolioIncome: monthlyPortfolioDraw,
-        ssIncome: 0,
-        totalIncome: monthlyPortfolioDraw,
-        withdrawalRate: safeWithdrawalRate,
-      }];
-    }
-
-    // Build distinct transition points
-    const ssStartYears = [...new Set(
+    // Collect all transition years: retirement, SS claim years (when SS on), other income start/end years
+    const transitionsSet = new Set<number>([retirementYear]);
+    if (showSS) {
       ssDetails.perMember
         .filter(m => m.inflatedAdjusted > 0)
-        .map(m => Math.max(m.claimYear, retirementYear))
-    )].sort((a, b) => a - b);
-
-    // If all SS starts at or before retirement, single phase
-    if (ssStartYears.length === 0 || (ssStartYears.length === 1 && ssStartYears[0] <= retirementYear)) {
-      const ssIncome = ssDetails.perMember.reduce((s, m) => s + m.inflatedAdjusted, 0);
-      return [{
-        label: `${retirementYear}+`,
-        startYear: retirementYear,
-        endYear: null,
-        durationYears: totalRetirementYears,
-        portfolioIncome: monthlyPortfolioDraw,
-        ssIncome,
-        totalIncome: monthlyPortfolioDraw + ssIncome,
-        withdrawalRate: safeWithdrawalRate,
-      }];
+        .forEach(m => transitionsSet.add(Math.max(m.claimYear, retirementYear)));
     }
-
-    // Multi-phase: same portfolio draw in all phases, SS added per phase
-    const transitions = [...new Set([retirementYear, ...ssStartYears])].sort((a, b) => a - b);
-    const endYear = retirementYear + totalRetirementYears;
+    resolvedOtherIncomes.forEach(oi => {
+      if (oi.startYr >= retirementYear && oi.startYr <= endYear) transitionsSet.add(oi.startYr);
+      if (isFinite(oi.endYr) && oi.endYr + 1 >= retirementYear && oi.endYr + 1 <= endYear) {
+        transitionsSet.add(oi.endYr + 1); // phase boundary just after end
+      }
+    });
+    const transitions = [...transitionsSet].filter(y => y >= retirementYear && y <= endYear).sort((a, b) => a - b);
 
     return transitions.map((start, i) => {
       const end = i < transitions.length - 1 ? transitions[i + 1] : endYear;
-      const activeSS = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start);
+      const phaseYear = start; // SS/other income evaluated at phase start
+      const activeSS = showSS
+        ? ssDetails.perMember.filter(m => m.inflatedAdjusted > 0 && m.claimYear <= start)
+        : [];
       const ssIncome = activeSS.reduce((s, m) => s + m.inflatedAdjusted, 0);
-      const allSSActive = ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).every(m => m.claimYear <= start);
+      const otherIncome = otherIncomeAt(phaseYear);
+      const activeOther = resolvedOtherIncomes.filter(oi => phaseYear >= oi.startYr && phaseYear <= oi.endYr);
+      const allSSActive = !showSS || ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).every(m => m.claimYear <= start);
 
+      // Build label
       let label: string;
-      if (activeSS.length === 0) {
-        label = end < endYear ? `${start}–${end} (pre-Social Security)` : `${start}+`;
-      } else if (allSSActive) {
-        label = `${start}+ (with Social Security)`;
-      } else {
-        const activeNames = activeSS.map(m => m.name).join(' + ');
-        label = end < endYear ? `${start}–${end} (${activeNames} SS only)` : `${start}+ (${activeNames} SS)`;
+      const isFinalPhase = i === transitions.length - 1;
+      const range = isFinalPhase ? `${start}+` : `${start}–${end - 1}`;
+      const tags: string[] = [];
+      if (showSS && ssDetails.perMember.filter(m => m.inflatedAdjusted > 0).length > 0) {
+        if (activeSS.length === 0) tags.push('pre-Social Security');
+        else if (allSSActive) tags.push('with Social Security');
+        else tags.push(`${activeSS.map(m => m.name).join(' + ')} SS`);
       }
+      if (activeOther.length > 0) {
+        tags.push(`+ ${activeOther.map(o => o.name).join(', ')}`);
+      } else if (resolvedOtherIncomes.length > 0) {
+        tags.push('portfolio + SS only');
+      }
+      label = tags.length > 0 ? `${range} (${tags.join(', ')})` : range;
+
+      const totalIncome = monthlyPortfolioDraw + ssIncome + otherIncome;
 
       return {
         label,
         startYear: start,
-        endYear: end < endYear ? end : null,
-        durationYears: (end - start) / 1, // years
+        endYear: isFinalPhase ? null : end,
+        durationYears: end - start,
         portfolioIncome: monthlyPortfolioDraw,
         ssIncome,
-        totalIncome: monthlyPortfolioDraw + ssIncome,
+        otherIncome,
+        otherIncomeBreakdown: activeOther.map(oi => ({
+          name: oi.name,
+          amount: oi.inflationAdjusted
+            ? oi.startAmount * Math.pow(1 + inflationRate, Math.max(0, phaseYear - oi.startYr))
+            : oi.startAmount,
+        })),
+        totalIncome,
         withdrawalRate: safeWithdrawalRate,
       };
     });
-  }, [showSS, ssDetails, retirementYear, monthlyPortfolioDraw, projectedPortfolio, retirementAge, longevityAge]);
+  }, [showSS, ssDetails, retirementYear, monthlyPortfolioDraw, retirementAge, longevityAge, resolvedOtherIncomes, otherIncomeAt, inflationRate]);
+
 
   // Use worst-case phase for gap analysis (the phase with lowest income)
   const worstPhase = useMemo(() => {
