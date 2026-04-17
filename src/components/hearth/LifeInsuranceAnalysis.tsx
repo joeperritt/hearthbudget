@@ -45,7 +45,7 @@ interface LIState {
 }
 
 const defaultState: LIState = {
-  yearsUntilIndependent: '',
+  yearsUntilIndependent: '18',
   educationPerChild: '100000',
 };
 
@@ -143,12 +143,13 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
 
   useEffect(() => {
     if (!loaded || autoYearsApplied) return;
-    if (state.yearsUntilIndependent) { setAutoYearsApplied(true); return; }
-    if (youngestDependent && youngestDependent.currentAge !== null) {
+    // Only auto-derive from dependent if user hasn't customized AND we have a dependent.
+    // Default of '18' is already set in defaultState, so leave alone otherwise.
+    if (youngestDependent && youngestDependent.currentAge !== null && state.yearsUntilIndependent === '18') {
       const years = Math.max(0, 18 - (youngestDependent.currentAge as number));
       setState({ yearsUntilIndependent: String(years) });
-      setAutoYearsApplied(true);
     }
+    setAutoYearsApplied(true);
   }, [loaded, youngestDependent, state.yearsUntilIndependent, autoYearsApplied, setState]);
 
   const dependentDetails = useMemo(() => {
@@ -194,35 +195,49 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
     setDefaultExpansionApplied(true);
   }, [memberAnalysis, defaultExpansionApplied]);
 
-  // Coverage Timeline: stepped breakdown by expiry year
+  // Coverage Timeline: stepped breakdown by expiry year, with per-member breakdown
   const coverageTimeline = useMemo(() => {
-    const allPolicies: { coverage: number; expiry: number | null }[] = [];
-    members.forEach(m => m.policies.forEach(p => {
-      allPolicies.push({ coverage: Number(p.coverage) || 0, expiry: policyExpiry(p) });
+    // Per-member policy list with expiry
+    const memberPolicies = members.map(m => ({
+      name: m.name,
+      policies: m.policies.map(p => ({ coverage: Number(p.coverage) || 0, expiry: policyExpiry(p) })),
     }));
     const today = members.reduce((s, m) => s + m.totalCoverage, 0);
-    if (today === 0) return [];
+    if (today === 0 && members.length === 0) return [];
 
-    // Collect distinct future expiry years
+    const remainingForMemberAt = (mp: typeof memberPolicies[number], year: number | null) =>
+      mp.policies
+        .filter(p => year === null || !p.expiry || p.expiry > year)
+        .reduce((s, p) => s + p.coverage, 0);
+
+    const breakdownAt = (year: number | null) =>
+      memberPolicies.map(mp => `${mp.name}: ${fmt(remainingForMemberAt(mp, year))}`).join(' · ');
+
+    const allPolicies = memberPolicies.flatMap(mp => mp.policies.map(p => ({ ...p, name: mp.name })));
     const currentYear = new Date().getFullYear();
     const expiryYears = Array.from(new Set(
       allPolicies.map(p => p.expiry).filter((y): y is number => !!y && y > currentYear)
     )).sort((a, b) => a - b);
 
-    const steps: { label: string; total: number; note?: string }[] = [
-      { label: 'Today', total: today },
+    const steps: { label: string; total: number; note?: string; breakdown: string }[] = [
+      { label: 'Today', total: today, breakdown: breakdownAt(null) },
     ];
     for (const year of expiryYears) {
       const remaining = allPolicies
         .filter(p => !p.expiry || p.expiry > year)
         .reduce((s, p) => s + p.coverage, 0);
-      const expiringThisYear = allPolicies
-        .filter(p => p.expiry === year)
-        .reduce((s, p) => s + p.coverage, 0);
+      const expiringByMember = memberPolicies
+        .map(mp => {
+          const total = mp.policies.filter(p => p.expiry === year).reduce((s, p) => s + p.coverage, 0);
+          return total > 0 ? `${mp.name}'s ${fmt(total)} policy expires` : null;
+        })
+        .filter(Boolean)
+        .join(' · ');
       steps.push({
         label: `After ${year}`,
         total: remaining,
-        note: `${fmt(expiringThisYear)} of term coverage expires`,
+        note: remaining === 0 ? 'All coverage expired' : expiringByMember || undefined,
+        breakdown: remaining === 0 ? '' : breakdownAt(year),
       });
     }
     return steps;
@@ -415,8 +430,11 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
                         style={{ width: `${Math.max(pct, isZero ? 4 : 8)}%` }}
                       />
                     </div>
+                    {step.breakdown && (
+                      <p className="text-[10px] text-muted-foreground">{step.breakdown}</p>
+                    )}
                     {step.note && (
-                      <p className="text-[10px] text-muted-foreground">{step.note}</p>
+                      <p className="text-[10px] text-muted-foreground/80 italic">{step.note}</p>
                     )}
                   </div>
                 );

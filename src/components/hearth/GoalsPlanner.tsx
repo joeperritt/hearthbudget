@@ -37,8 +37,8 @@ function newGoal(overrides: Partial<GoalData> = {}): GoalData {
     id: crypto.randomUUID(),
     name: '',
     targetAmount: '',
-    currentSavings: '',
-    monthlyContribution: '',
+    currentSavings: '0',
+    monthlyContribution: '0',
     useDate: true,
     targetDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
     targetMonths: '24',
@@ -398,7 +398,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                     {/* Target Amount & Current Savings */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between min-h-[18px]">
                           <Label className="text-xs text-muted-foreground">Target Amount</Label>
                           {(isEducationGoalName(goal.name) || goal.dependentName) && (
                             <button
@@ -416,10 +416,12 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                         </div>
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground">Current Savings</Label>
+                        <div className="flex items-center min-h-[18px]">
+                          <Label className="text-xs text-muted-foreground">Current Savings</Label>
+                        </div>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                          <Input value={goal.currentSavings} onChange={e => updateGoal(goal.id, { currentSavings: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="5,000" className="h-9 text-sm pl-7" inputMode="decimal" />
+                          <Input value={goal.currentSavings} onChange={e => updateGoal(goal.id, { currentSavings: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="0" className="h-9 text-sm pl-7" inputMode="decimal" />
                         </div>
                       </div>
                     </div>
