@@ -463,6 +463,52 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
   const withdrawalSustainable = lumpSumNeeded <= 0;
   const impliedWithdrawalRate = projectedPortfolio > 0 ? (monthlyExpenses * 12) / projectedPortfolio : 0;
 
+  // Plan status: green / amber / red based on phased deficits
+  const planStatus = useMemo(() => {
+    if (monthlyExpenses <= 0 || incomePhases.length === 0) {
+      return { level: 'green' as const, label: 'On Track for Retirement', bridgeShortfall: 0, primaryPhase: incomePhases[incomePhases.length - 1], note: '' };
+    }
+    // Primary phase = longest-duration phase (typically full-SS phase)
+    const primaryPhase = incomePhases.reduce((longest, p) => p.durationYears > longest.durationYears ? p : longest, incomePhases[0]);
+    const primaryGap = primaryPhase.totalIncome - monthlyExpenses;
+    const primaryWithdrawalRate = projectedPortfolio > 0
+      ? (Math.max(0, monthlyExpenses - primaryPhase.ssIncome - (primaryPhase.otherIncome || 0)) * 12) / projectedPortfolio
+      : 0;
+
+    // Total bridge shortfall = sum of (gap × months) across all deficit phases other than primary
+    let bridgeShortfall = 0;
+    incomePhases.forEach(p => {
+      const gap = monthlyExpenses - p.totalIncome;
+      if (gap > 0 && p !== primaryPhase) bridgeShortfall += gap * p.durationYears * 12;
+    });
+
+    // Red conditions
+    if (primaryGap < 0 || !withdrawalSustainable || primaryWithdrawalRate > 0.05) {
+      return {
+        level: 'red' as const,
+        label: 'Off Track',
+        bridgeShortfall,
+        primaryPhase,
+        note: primaryGap < 0
+          ? `Your primary retirement phase shows a monthly gap of ${fmt(Math.abs(primaryGap))}. This long-term phase needs to be sustainable.`
+          : !withdrawalSustainable
+            ? `Projected portfolio is insufficient to last through age ${longevityAge}. Additional ${fmt(lumpSumNeeded)} needed at retirement.`
+            : `Implied withdrawal rate of ${(primaryWithdrawalRate * 100).toFixed(1)}% in the primary phase exceeds the 5% threshold and risks depleting savings.`,
+      };
+    }
+    // Amber: short bridge deficits but primary phase is sound
+    if (bridgeShortfall > 0) {
+      return {
+        level: 'amber' as const,
+        label: 'Plan Needs Attention',
+        bridgeShortfall,
+        primaryPhase,
+        note: `Your plan has a brief bridge period before Social Security begins. Consider setting aside ${fmt(bridgeShortfall)} in conservative assets before retirement to cover this gap.`,
+      };
+    }
+    return { level: 'green' as const, label: 'On Track for Retirement', bridgeShortfall: 0, primaryPhase, note: '' };
+  }, [incomePhases, monthlyExpenses, projectedPortfolio, withdrawalSustainable, lumpSumNeeded, longevityAge]);
+
   // AI SS Estimate
   const fetchSSEstimate = useCallback(async (memberName: string) => {
     setAiEstimatingMember(memberName);
@@ -991,34 +1037,66 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
 
           {/* Summary Card */}
           {monthlyExpenses > 0 && (() => {
-            const finalPhase = incomePhases[incomePhases.length - 1];
-            const summaryIncome = finalPhase.totalIncome;
-            const surplus = summaryIncome - monthlyExpenses;
-            const onTrack = surplus >= 0 && lumpSumNeeded <= 0;
+            const primaryPhase = planStatus.primaryPhase || incomePhases[incomePhases.length - 1];
+            const firstPhase = incomePhases[0];
+            const showBridge = firstPhase && firstPhase !== primaryPhase;
+            const primarySurplus = primaryPhase.totalIncome - monthlyExpenses;
+            const bridgeSurplus = showBridge ? firstPhase.totalIncome - monthlyExpenses : 0;
+            const bridgeYears = showBridge ? firstPhase.durationYears : 0;
+
+            const styles = {
+              green: { border: 'border-green-500/30', bg: 'bg-green-50/50 dark:bg-green-950/20', text: 'text-green-600', icon: '✅' },
+              amber: { border: 'border-amber-500/40', bg: 'bg-amber-50/60 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-500', icon: '⚠️' },
+              red: { border: 'border-destructive/30', bg: 'bg-red-50/50 dark:bg-red-950/20', text: 'text-destructive', icon: '🚩' },
+            }[planStatus.level];
+
             return (
-              <div className={`rounded-xl shadow-sm p-4 mb-3 border-2 ${onTrack ? 'border-green-500/30 bg-green-50/50 dark:bg-green-950/20' : 'border-destructive/30 bg-red-50/50 dark:bg-red-950/20'}`}>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Projected Monthly Income</span>
-                    <span className="font-semibold text-foreground">{fmt(summaryIncome)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Estimated Monthly Expenses</span>
-                    <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                    <span className="text-muted-foreground font-semibold">Monthly {surplus >= 0 ? 'Surplus' : 'Gap'}</span>
-                    <span className={`font-bold ${surplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                      {surplus >= 0 ? '+' : '-'}{fmt(Math.abs(surplus))}/mo
-                    </span>
+              <div className={`rounded-xl shadow-sm p-4 mb-3 border-2 ${styles.border} ${styles.bg}`}>
+                <div className="space-y-2">
+                  {showBridge && (
+                    <div className="space-y-1 pb-2 border-b border-border">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pre-Social Security ({bridgeYears} {bridgeYears === 1 ? 'yr' : 'yrs'})
+                      </p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Monthly Income</span>
+                        <span className="font-semibold text-foreground">{fmt(firstPhase.totalIncome)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{bridgeSurplus >= 0 ? 'Surplus' : 'Gap'}</span>
+                        <span className={`font-bold ${bridgeSurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          {bridgeSurplus >= 0 ? '+' : '-'}{fmt(Math.abs(bridgeSurplus))}/mo
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {showBridge ? 'With Social Security (long-term)' : 'Retirement Phase'}
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Monthly Income</span>
+                      <span className="font-semibold text-foreground">{fmt(primaryPhase.totalIncome)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Estimated Monthly Expenses</span>
+                      <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                      <span className="text-muted-foreground font-semibold">Monthly {primarySurplus >= 0 ? 'Surplus' : 'Gap'}</span>
+                      <span className={`font-bold ${primarySurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                        {primarySurplus >= 0 ? '+' : '-'}{fmt(Math.abs(primarySurplus))}/mo
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className={`flex items-center gap-2 mt-3 pt-2 border-t border-border`}>
-                  <span className={`text-lg ${onTrack ? '' : ''}`}>{onTrack ? '✅' : '🚩'}</span>
-                  <p className={`text-sm font-semibold ${onTrack ? 'text-green-600' : 'text-destructive'}`}>
-                    {onTrack ? 'On Track for Retirement' : 'Retirement Gap Detected'}
-                  </p>
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border">
+                  <span className="text-lg">{styles.icon}</span>
+                  <p className={`text-sm font-semibold ${styles.text}`}>{planStatus.label}</p>
                 </div>
+                {planStatus.note && (
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{planStatus.note}</p>
+                )}
               </div>
             );
           })()}
