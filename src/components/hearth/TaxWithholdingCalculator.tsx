@@ -412,7 +412,14 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
         </div>
 
         <div>
-          <Label className="text-xs text-muted-foreground">Annual Gross Income</Label>
+          <div className="flex items-baseline justify-between">
+            <Label className="text-xs text-muted-foreground">Annual Gross Income</Label>
+            {onNavigateToProfile && (
+              <button onClick={() => onNavigateToProfile('income')} className="text-[11px] font-semibold text-accent">
+                From Financial Profile →
+              </button>
+            )}
+          </div>
           <div className="relative mt-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
             <Input
@@ -464,6 +471,14 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
             </div>
           </div>
         </div>
+
+        {(federalWithholdingPer === 0 && stateWithholdingPer === 0) && (
+          <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Enter your actual per-paycheck withholding amounts from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
+            </p>
+          </div>
+        )}
 
         {/* Pre-tax deductions */}
         <div>
