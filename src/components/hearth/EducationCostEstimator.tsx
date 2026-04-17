@@ -82,7 +82,7 @@ export function EducationCostEstimator({
   }, [selectedDep, manualYears, currentYear]);
 
   const yearsToTarget = Math.max(0, targetYear - currentYear);
-  const inflationFactor = Math.pow(1 + INFLATION_RATE, yearsToTarget);
+  const inflationFactor = Math.pow(1 + inflationPct / 100, yearsToTarget);
   const inflatedTotal = currentTotal * inflationFactor;
 
   const handleApply = () => {
