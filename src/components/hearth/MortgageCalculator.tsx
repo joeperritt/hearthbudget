@@ -855,9 +855,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   const totalMonthly = payment;
                   const analyzerHousingRatio = grossMonthlyIncome > 0 ? totalMonthly / grossMonthlyIncome : 0;
                   const analyzerHousingOk = analyzerHousingRatio <= 0.28;
+                  const debts = Array.isArray(financialProfile?.debts) ? financialProfile.debts as any[] : [];
+                  const totalDebtPayments = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+                  const totalDti = grossMonthlyIncome > 0 ? (totalMonthly + totalDebtPayments) / grossMonthlyIncome : 0;
+                  const dtiTone = totalDti <= 0.36
+                    ? { card: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800', text: 'text-green-600 dark:text-green-400' }
+                    : totalDti <= 0.43
+                      ? { card: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800', text: 'text-amber-600 dark:text-amber-400' }
+                      : { card: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800', text: 'text-red-600 dark:text-red-400' };
                   return (
                     <div className="px-6 mt-5 space-y-3">
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
+                      <p className="text-sm font-semibold text-foreground">CFP® Guideline Indicators</p>
                       <div className={`rounded-xl p-4 border ${analyzerHousingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
                         <div className="flex justify-between items-center">
                           <div>
@@ -866,6 +874,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                           </div>
                           <span className={`text-lg font-bold ${analyzerHousingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {hasProfile ? pct(analyzerHousingRatio) : '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`rounded-xl p-4 border ${dtiTone.card}`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Total Debt-to-Income Ratio</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">(Housing + all debt) ÷ gross income (guideline: ≤ 36%)</p>
+                          </div>
+                          <span className={`text-lg font-bold ${dtiTone.text}`}>
+                            {hasProfile ? pct(totalDti) : '—'}
                           </span>
                         </div>
                       </div>
