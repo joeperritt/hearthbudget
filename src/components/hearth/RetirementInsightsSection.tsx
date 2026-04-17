@@ -37,36 +37,73 @@ Return ONLY the JSON array, no markdown fences, no prose.`;
       const debts = Array.isArray(fp.debts) ? fp.debts : [];
       const debtLines = debts.map((d: any) => `  - ${d.name || d.type || 'Debt'}: balance ${fmt(Number(d.balance) || 0)}, type "${d.type || 'Other'}"`).join('\n');
 
+      const rp = retirementPicture || {};
+      const memberLines = Array.isArray(rp.members)
+        ? rp.members.map((m: any) => `  - ${m.name}: age ${m.age}, retire age ${m.retireAge}, gross income ${fmt(Number(m.gross_income) || 0)}`).join('\n')
+        : '';
+      const phaseLines = Array.isArray(rp.incomePhases)
+        ? rp.incomePhases.map((p: any) => `  - ${p.label} (${p.durationYears} yrs): total ${fmt(p.totalIncome)} (SS ${fmt(p.ssIncome)}, other ${fmt(p.otherIncome || 0)}, portfolio ${fmt(p.portfolioIncome)}, withdrawal rate ${(Number(p.withdrawalRate) * 100).toFixed(2)}%)`).join('\n')
+        : '';
+      const otherIncomeLines = Array.isArray(rp.otherIncomeSources)
+        ? rp.otherIncomeSources.map((o: any) => `  - ${o.name || 'Other'}: ${fmt(o.startAmount)}/mo, ${o.startYr}–${o.endYr}${o.inflationAdjusted ? ' (inflation-adjusted)' : ''}`).join('\n')
+        : '';
+
+      const totalBalance = Number(rp.currentTotal) || 0;
+      const totalMonthlyContrib = Number(rp.monthlyContributions) || 0;
+      const rothPctVal = Number(rp.rothPct) || 0;
+      const savingsRateVal = Number(rp.savingsRate) || 0;
+      const salaryMultipleVal = Number(rp.salaryMultiple) || 0;
+
       const prompt = `Household retirement planning snapshot:
 
-Demographics:
-- Primary age: ${retirementPicture?.primaryAge ?? 'n/a'}
-- Partner age: ${retirementPicture?.partnerAge ?? 'n/a'}
-- Target retirement year: ${retirementPicture?.targetRetirementYear ?? 'n/a'}
-- Years until retirement: ${retirementPicture?.yearsUntilRetirement ?? 'n/a'}
-- Assumed inflation rate: ${retirementPicture?.inflationRate ?? 'n/a'}%
+Members:
+${memberLines || '  (none)'}
+
+Demographics & Timeline:
+- Target retirement year: ${rp.retirementYear ?? 'n/a'}
+- Retirement age (primary): ${rp.retirementAge ?? 'n/a'}
+- Years until retirement: ${rp.yearsToRetirement ?? 'n/a'}
+- Assumed inflation rate: ${rp.inflationRate ?? 'n/a'}%
 
 Current Balances:
-- Pre-tax / 401(k) / Traditional IRA: ${fmt(retirementPicture?.preTaxBalance || 0)}
-- Roth: ${fmt(retirementPicture?.rothBalance || 0)}
-- Taxable / non-retirement investments: ${fmt(retirementPicture?.taxableBalance || 0)}
-- Total invested: ${fmt(retirementPicture?.totalBalance || 0)}
+- Pre-tax / 401(k) / Traditional IRA: ${fmt(Number(rp.currentPreTax) || 0)}
+- Roth: ${fmt(Number(rp.currentRoth) || 0)}
+- Taxable / non-qualified: ${fmt(Number(rp.currentNonQual) || 0)}
+- Total invested: ${fmt(totalBalance)}
+- Roth share of total: ${(rothPctVal * 100).toFixed(1)}%
 
 Contributions (monthly):
-- Pre-tax: ${fmt(retirementPicture?.monthlyPreTax || 0)}
-- Roth: ${fmt(retirementPicture?.monthlyRoth || 0)}
-- Taxable: ${fmt(retirementPicture?.monthlyTaxable || 0)}
-- Total monthly contributions: ${fmt(retirementPicture?.monthlyContributionsTotal || 0)}
+- Pre-tax: ${fmt(Number(rp.preTaxContrib) || 0)}
+- Roth: ${fmt(Number(rp.rothContrib) || 0)}
+- Taxable / non-qualified: ${fmt(Number(rp.nonQualContrib) || 0)}
+- Total monthly contributions: ${fmt(totalMonthlyContrib)}
+- Total annual contributions: ${fmt(Number(rp.annualContributions) || 0)}
+- Savings rate (% of gross): ${(savingsRateVal * 100).toFixed(1)}%
 
 Assumptions & Projections:
-- Expected return: ${retirementPicture?.expectedReturn ?? 'n/a'}%
-- Projected portfolio at retirement: ${fmt(retirementPicture?.projectedPortfolio || 0)}
-- Estimated monthly retirement expenses: ${fmt(retirementPicture?.monthlyExpenses || 0)}
-- 4% safe withdrawal monthly: ${fmt(retirementPicture?.swrMonthly || 0)}
-- Social Security monthly (household): ${fmt(retirementPicture?.socialSecurityMonthly || 0)}
-- Other retirement income monthly: ${fmt(retirementPicture?.otherIncomeMonthly || 0)}
-- Phased income total at retirement: ${fmt(retirementPicture?.phasedIncomeTotal || 0)}
-- Income gap vs expenses: ${fmt(retirementPicture?.incomeGap || 0)}
+- Expected return: ${rp.expectedReturn ?? 'n/a'}%
+- Projected portfolio at retirement: ${fmt(Number(rp.projectedPortfolio) || 0)}
+   (Pre-tax ${fmt(Number(rp.projectedPreTax) || 0)}, Roth ${fmt(Number(rp.projectedRoth) || 0)}, Taxable ${fmt(Number(rp.projectedNonQual) || 0)})
+- 4% safe withdrawal monthly from portfolio: ${fmt(Number(rp.monthlyFromPortfolio) || 0)}
+- Estimated monthly retirement expenses: ${fmt(Number(rp.monthlyExpenses) || 0)}
+- Social Security enabled: ${rp.socialSecurityEnabled ? 'yes' : 'no'}
+- Total Social Security monthly (household): ${fmt(Number(rp.totalSSBenefit) || 0)}
+- Total monthly retirement income at start: ${fmt(Number(rp.totalMonthlyIncome) || 0)}
+- Monthly gap (income − expenses): ${fmt(Number(rp.monthlyGap) || 0)}
+- Implied withdrawal rate: ${(Number(rp.impliedWithdrawalRate) * 100).toFixed(2)}%
+- Max phase withdrawal rate: ${(Number(rp.maxPhaseWithdrawalRate) * 100).toFixed(2)}%
+- Withdrawal sustainable (≤4%): ${rp.withdrawalSustainable ? 'yes' : 'no'}
+- Additional monthly savings needed to close gap: ${fmt(Number(rp.additionalMonthlyNeeded) || 0)}
+- Lump-sum needed today to close gap: ${fmt(Number(rp.lumpSumNeeded) || 0)}
+
+CFP guideline benchmarks:
+- Salary multiple (current portfolio / annual gross): ${salaryMultipleVal.toFixed(2)}x
+
+Phased income projection:
+${phaseLines || '  (none)'}
+
+Other income sources:
+${otherIncomeLines || '  (none)'}
 
 Household financial context:
 - Filing status: ${fp.filing_status || 'n/a'}
@@ -76,6 +113,8 @@ Household financial context:
 ${debtLines || '  (none)'}
 
 Generate exactly 4 insights with nextStep actions per the system instructions.`;
+
+      console.log('[RetirementInsights] prompt sent to budget-insights:\n', prompt);
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
         body: { prompt, systemPrompt, householdId },
