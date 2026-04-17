@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
-import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
@@ -9,10 +9,11 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | string;
+type Filter = 'all' | 'transfers-hidden' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
+  transfers?: BudgetTransfer[];
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   monthLabel: string;
@@ -38,12 +39,17 @@ interface SingleTx {
   transaction: Transaction;
 }
 
-type DisplayRow = SplitGroup | SingleTx;
+interface TransferRow {
+  type: 'transfer';
+  transfer: BudgetTransfer;
+}
+
+type DisplayRow = SplitGroup | SingleTx | TransferRow;
 
 function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
   // Group by description + date + account + notes (split transactions share these)
   const groupMap = new Map<string, Transaction[]>();
-  
+
   for (const t of transactions) {
     // Only group expense transactions (splits are always expenses)
     if (t.transactionType !== 'expense') {
@@ -79,29 +85,35 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
     }
   }
 
-  // Sort by date descending
-  rows.sort((a, b) => {
-    const dateA = a.type === 'split' ? a.date : a.transaction.date;
-    const dateB = b.type === 'split' ? b.date : b.transaction.date;
-    return dateB.localeCompare(dateA);
-  });
-
   return rows;
 }
 
 export function TransactionsView({
-  transactions, categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [],
+  transactions, transfers = [], categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [],
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [showTransfers, setShowTransfers] = useState(true);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
 
   const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
   const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
+  const nameFor = (id: string) => catMap[id]?.name || fixedMap[id]?.name || id;
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
-  const rows = groupSplitTransactions(filtered);
+  const txRows = groupSplitTransactions(filtered);
+
+  const transferRows: TransferRow[] = showTransfers
+    ? transfers.map(tr => ({ type: 'transfer' as const, transfer: tr }))
+    : [];
+
+  // Combine + sort all rows by date desc
+  const rows: DisplayRow[] = [...txRows, ...transferRows].sort((a, b) => {
+    const dateA = a.type === 'split' ? a.date : a.type === 'transfer' ? a.transfer.date : a.transaction.date;
+    const dateB = b.type === 'split' ? b.date : b.type === 'transfer' ? b.transfer.date : b.transaction.date;
+    return dateB.localeCompare(dateA);
+  });
 
   const toggleSplit = (key: string) => {
     setExpandedSplits(prev => {
@@ -116,6 +128,34 @@ export function TransactionsView({
     { id: 'all', label: 'All' },
     ...accounts.map(a => ({ id: a.id, label: a.label })),
   ];
+
+  const renderTransfer = (tr: BudgetTransfer, i: number) => (
+    <div
+      key={`tr-${tr.id}`}
+      className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+      style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
+    >
+      <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground inline-flex items-center gap-1">
+        <ArrowLeftRight size={10} strokeWidth={2.5} />
+        Transfer
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">Budget Transfer</p>
+        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+          {nameFor(tr.fromCategoryId)} → {nameFor(tr.toCategoryId)}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-medium tabular-nums text-muted-foreground">
+          {formatCurrency(tr.amount)}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {format(new Date(tr.date), 'MMM d')}
+        </p>
+      </div>
+      <div className="w-[26px] shrink-0" />
+    </div>
+  );
 
   const renderSingleTx = (t: Transaction, i: number, splitGroup?: SplitGroup) => {
     const indent = !!splitGroup;
@@ -230,7 +270,7 @@ export function TransactionsView({
         <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
       </div>
 
-      <div className="px-6 flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+      <div className="px-6 flex gap-2 mb-2 overflow-x-auto no-scrollbar">
         {filters.map(f => (
           <button
             key={f.id}
@@ -246,6 +286,20 @@ export function TransactionsView({
         ))}
       </div>
 
+      {transfers.length > 0 && (
+        <div className="px-6 mb-4">
+          <button
+            onClick={() => setShowTransfers(s => !s)}
+            className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors active:scale-95 inline-flex items-center gap-1.5 ${
+              showTransfers ? 'bg-card text-foreground' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <ArrowLeftRight size={11} strokeWidth={2.5} />
+            {showTransfers ? 'Hide budget transfers' : 'Show budget transfers'} ({transfers.length})
+          </button>
+        </div>
+      )}
+
       <div className="px-6 pb-6">
         {rows.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
@@ -260,6 +314,9 @@ export function TransactionsView({
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
             {rows.map((row, i) => {
+              if (row.type === 'transfer') {
+                return renderTransfer(row.transfer, i);
+              }
               if (row.type === 'single') {
                 return renderSingleTx(row.transaction, i);
               }
