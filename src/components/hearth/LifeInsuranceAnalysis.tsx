@@ -339,7 +339,19 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
             <ReadOnlyField label="Mortgage Balance" value={fmt(mortgageBalance)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <ReadOnlyField label="Dependents" value={String(deps)} />
+            <div>
+              <p className="text-xs text-muted-foreground">Dependents</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5 leading-tight">
+                {deps === 0 ? '0' : (
+                  <>
+                    {deps}
+                    {dependentDetails.length > 0 && (
+                      <span className="text-muted-foreground font-normal"> — {dependentDetails.map(d => `${d.name}${d.age !== null ? `, age ${d.age}` : ''}`).join(', ')}</span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
             <div>
               <Label className="text-xs text-muted-foreground">Years to Independent</Label>
               <Input
@@ -358,7 +370,16 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
             </div>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Education $/Child</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Education $/Child</Label>
+              <button
+                type="button"
+                onClick={() => setShowEducationEstimator(true)}
+                className="text-[11px] font-semibold text-accent active:opacity-70"
+              >
+                Help me estimate
+              </button>
+            </div>
             <div className="relative mt-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
               <Input type="number" className="pl-7" value={state.educationPerChild} onChange={e => setState({ educationPerChild: e.target.value })} />
