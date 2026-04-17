@@ -282,7 +282,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           <div className="px-6 mt-4">
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
               <div className="px-4 pt-3 pb-2 border-b border-border">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Debt Analysis</p>
+                <p className="text-xs text-muted-foreground font-medium tracking-wide">Debt Analysis</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Avalanche method — highest rate first</p>
               </div>
               <div className="divide-y divide-border">
@@ -311,7 +311,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
 
             return (
               <div className="px-6 mt-4 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicator</p>
+                <p className="text-xs text-muted-foreground font-medium tracking-wide">CFP® Guideline Indicator</p>
 
                 <div className={`rounded-xl p-3.5 border ${backOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
                   <div className="flex justify-between items-center">
@@ -341,7 +341,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
 
           {/* Payoff Order */}
           <div className="px-6 mt-4 space-y-1.5">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Payoff Order</p>
+            <p className="text-xs text-muted-foreground font-medium tracking-wide">Payoff Order</p>
             <p className="text-[10px] text-muted-foreground">Extra payments target the highest rate first (avalanche). Order below reflects when each debt reaches $0.</p>
             {displayResults.results.map((debt, i) => {
               const highestRate = Math.max(...debts.map(d => d.rate));
@@ -369,7 +369,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           {/* Roll Forward + Slider */}
           <div className="px-6 mt-4">
             <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Payoff Goal</p>
+              <p className="text-xs font-semibold text-foreground tracking-wide">Payoff Goal</p>
 
               {/* Roll Forward Toggle */}
               <div className="flex items-center justify-between">
@@ -419,11 +419,11 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground">Extra Payment</p>
                       <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground">Interest Saved</p>
                       <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(Math.max(0, interestSaved))}</p>
                     </div>
                   </div>

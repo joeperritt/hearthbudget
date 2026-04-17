@@ -451,7 +451,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
         {/* Pre-tax deductions */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pre-Tax Deductions / Paycheck</p>
+          <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">Pre-Tax Deductions / Paycheck</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px] text-muted-foreground">401(k) / Retirement</Label>
@@ -510,7 +510,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* Federal */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Federal</p>
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">Federal</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Estimated Tax Owed</span>
@@ -535,7 +535,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
           {/* State */}
           {state.selectedState && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">State ({state.selectedState})</p>
+              <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">State ({state.selectedState})</p>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Estimated Tax Owed</span>
@@ -555,7 +555,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* FICA */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">FICA</p>
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">FICA</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Social Security (6.2%)</span>
@@ -574,7 +574,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* Summary */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">
               {isMFJWithSpouse ? 'Household Summary' : 'Summary'}
             </p>
             <div className="space-y-1.5">
@@ -600,7 +600,7 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
 
           {/* CFP Guideline */}
           <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">
               Certified Financial Planner (CFP) Guideline
             </p>
             <div className="space-y-2">
