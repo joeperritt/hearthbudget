@@ -145,8 +145,9 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state: toolState, setState: setToolState, loaded: toolStateLoaded } = useToolState(
-    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '' }
+    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '', method: 'avalanche' as PayoffMethod, showMethodInfo: false }
   );
+  const method: PayoffMethod = (toolState.method as PayoffMethod) || 'avalanche';
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return; }
