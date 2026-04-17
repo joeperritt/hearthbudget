@@ -598,6 +598,21 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
         />
       )}
 
+      {/* Education Cost Estimator Modal */}
+      {estimatorGoalId && (() => {
+        const g = goals.find(x => x.id === estimatorGoalId);
+        return (
+          <EducationCostEstimator
+            open={!!estimatorGoalId}
+            onOpenChange={(o) => { if (!o) setEstimatorGoalId(null); }}
+            dependents={dependentDetails}
+            initialDependentName={g?.dependentName ?? null}
+            allowManualYears
+            onApply={(result) => handleEstimatorApply(estimatorGoalId, result)}
+          />
+        );
+      })()}
+
       <div className="h-8" />
     </div>
   );
