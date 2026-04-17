@@ -191,16 +191,60 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
       const contrib = Number(g.monthlyContribution) || 0;
       const remaining = Math.max(0, target - current);
       const targetMonths = g.useDate ? monthsBetween(now, g.targetDate) : (Number(g.targetMonths) || 0);
-      const monthlyNeeded = targetMonths > 0 ? remaining / targetMonths : 0;
-      const surplus = contrib - monthlyNeeded;
-      const onTrack = surplus >= -0.5; // small tolerance
-      const projectedMonths = contrib > 0 ? Math.ceil(remaining / contrib) : Infinity;
-      const projectedDate = contrib > 0 ? addMonthsToStr(projectedMonths) : '';
-      const progressPct = target > 0 ? Math.min((current / target) * 100, 100) : 0;
       const yearsToGoal = targetMonths / 12;
-      return { target, current, remaining, targetMonths, monthlyNeeded, surplus, onTrack, projectedMonths, projectedDate, progressPct, yearsToGoal, contrib };
+      const ret = Math.max(0, Math.min(12, Number(g.expectedReturn ?? defaultReturnForYears(yearsToGoal)))) / 100;
+      const monthlyRate = ret / 12;
+      // Future value of current savings at goal date
+      const fvCurrent = current * Math.pow(1 + monthlyRate, targetMonths);
+      const remainingFV = Math.max(0, target - fvCurrent);
+      // Required monthly contribution: PMT in FV-of-annuity formula
+      let monthlyNeeded = 0;
+      if (targetMonths > 0) {
+        if (monthlyRate > 0.0000001) {
+          const fvAnnuityFactor = (Math.pow(1 + monthlyRate, targetMonths) - 1) / monthlyRate;
+          monthlyNeeded = remainingFV / fvAnnuityFactor;
+        } else {
+          monthlyNeeded = remaining / targetMonths;
+        }
+      }
+      const surplus = contrib - monthlyNeeded;
+      const onTrack = surplus >= -0.5;
+
+      // Projected completion: months until current * (1+r)^n + contrib * fvAnnuity >= target
+      let projectedMonths = Infinity;
+      if (contrib > 0 || current > 0) {
+        if (monthlyRate > 0.0000001) {
+          const denom = current + (contrib / monthlyRate);
+          const numer = target + (contrib / monthlyRate);
+          if (denom > 0 && numer / denom > 0) {
+            const n = Math.log(numer / denom) / Math.log(1 + monthlyRate);
+            projectedMonths = isFinite(n) && n > 0 ? Math.ceil(n) : Infinity;
+          }
+        } else if (contrib > 0) {
+          projectedMonths = Math.ceil(remaining / contrib);
+        }
+      }
+      const projectedDate = isFinite(projectedMonths) ? addMonthsToStr(projectedMonths) : '';
+      const progressPct = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+      return { target, current, remaining, targetMonths, monthlyNeeded, surplus, onTrack, projectedMonths, projectedDate, progressPct, yearsToGoal, contrib, returnRate: ret * 100 };
     });
   }, [goals]);
+
+  // Auto-default expectedReturn based on horizon (only when user hasn't touched the slider)
+  useEffect(() => {
+    let dirty = false;
+    const updated = goals.map((g, i) => {
+      if (g.returnTouched) return g;
+      const targetDefault = String(defaultReturnForYears(computed[i]?.yearsToGoal || 0));
+      if ((g.expectedReturn ?? '') !== targetDefault) {
+        dirty = true;
+        return { ...g, expectedReturn: targetDefault };
+      }
+      return g;
+    });
+    if (dirty) setState({ goals: updated });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computed.map(c => c.yearsToGoal).join(',')]);
 
   // Summary
   const summary = useMemo(() => {
@@ -214,18 +258,21 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
 
   const savingsFootnote = 'Savings vehicle recommendations are general and educational. Consult a Certified Financial Planner (CFP®) before making investment decisions.';
 
-  function savingsVehicleRec(years: number) {
+  function savingsVehicleRec(years: number, returnRate: number) {
+    const rateNote = returnRate > 0
+      ? ` Your plan assumes a ${returnRate.toFixed(1)}% expected annual return.`
+      : ' Your plan assumes 0% return (capital preservation).';
     if (years < 2) return {
       label: 'Short-Term Goal',
-      body: `A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon. ${savingsFootnote}`,
+      body: `A high-yield savings account or money market fund is typically appropriate. Capital preservation matters more than growth at this horizon.${rateNote} ${savingsFootnote}`,
     };
     if (years < 5) return {
       label: 'Medium-Term Goal',
-      body: `A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation. ${savingsFootnote}`,
+      body: `A conservative mix of savings and low-volatility investments may be worth exploring. Consult a Certified Financial Planner (CFP®) to discuss options appropriate for your situation.${rateNote} ${savingsFootnote}`,
     };
     return {
       label: 'Long-Term Goal',
-      body: `With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy. ${savingsFootnote}`,
+      body: `With this time horizon, investing a portion of your contributions may allow your money to grow faster than a savings account. A Certified Financial Planner (CFP®) can help you build an appropriate investment strategy.${rateNote} ${savingsFootnote}`,
     };
   }
 
