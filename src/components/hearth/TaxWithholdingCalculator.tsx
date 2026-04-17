@@ -139,9 +139,10 @@ function calcStateTax2026(annualGross: number, stateAbbr: string, annualPreTaxDe
 interface TaxWithholdingCalculatorProps {
   onBack: () => void;
   householdId: string | null;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholdingCalculatorProps) {
+export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProfile }: TaxWithholdingCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -181,6 +182,15 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
     return raw.filter(m => m.name).map(m => ({ name: m.name, gross_income: Number(m.gross_income) || 0 }));
   }, [financialProfile]);
 
+  // Per-paycheck pre-tax retirement deduction from Financial Profile (pretax_<member> is monthly)
+  const profilePretaxPerPaycheck = useMemo(() => {
+    if (!financialProfile?.monthly_additions_per_key || !state.selectedMember) return 0;
+    const monthlyPretax = Number(financialProfile.monthly_additions_per_key[`pretax_${state.selectedMember}`]) || 0;
+    if (monthlyPretax <= 0) return 0;
+    const freq = PAY_FREQUENCIES.find(p => p.value === state.payFrequency) || PAY_FREQUENCIES[1];
+    return Math.round((monthlyPretax * 12) / freq.periods);
+  }, [financialProfile, state.selectedMember, state.payFrequency]);
+
   // Auto-populate from profile on first load
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
@@ -197,14 +207,20 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
     setInitialized(true);
   }, [toolStateLoaded, financialProfile, members, initialized]);
 
-  // When member changes, update income
+  // When member or pay frequency changes, sync income + retirement deduction from profile
   useEffect(() => {
     if (!state.selectedMember || !members.length) return;
     const member = members.find(m => m.name === state.selectedMember);
+    const updates: any = {};
     if (member && member.gross_income && !initialized) {
-      setState({ annualGross: String(member.gross_income) });
+      updates.annualGross = String(member.gross_income);
     }
-  }, [state.selectedMember]);
+    // Pre-fill retirement deduction from profile if user hasn't entered one
+    if ((!state.retirementDeduction || state.retirementDeduction === '0') && profilePretaxPerPaycheck > 0) {
+      updates.retirementDeduction = String(profilePretaxPerPaycheck);
+    }
+    if (Object.keys(updates).length) setState(updates);
+  }, [state.selectedMember, profilePretaxPerPaycheck]);
 
   const handleMemberChange = (name: string) => {
     const member = members.find(m => m.name === name);
@@ -396,7 +412,14 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
         </div>
 
         <div>
-          <Label className="text-xs text-muted-foreground">Annual Gross Income</Label>
+          <div className="flex items-baseline justify-between">
+            <Label className="text-xs text-muted-foreground">Annual Gross Income</Label>
+            {onNavigateToProfile && (
+              <button onClick={() => onNavigateToProfile('income')} className="text-[11px] font-semibold text-accent">
+                From Financial Profile →
+              </button>
+            )}
+          </div>
           <div className="relative mt-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
             <Input
@@ -449,12 +472,27 @@ export function TaxWithholdingCalculator({ onBack, householdId }: TaxWithholding
           </div>
         </div>
 
+        {(federalWithholdingPer === 0 && stateWithholdingPer === 0) && (
+          <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Enter your actual per-paycheck withholding amounts from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
+            </p>
+          </div>
+        )}
+
         {/* Pre-tax deductions */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">Pre-Tax Deductions / Paycheck</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[11px] text-muted-foreground">401(k) / Retirement</Label>
+              <div className="flex items-baseline justify-between">
+                <Label className="text-[11px] text-muted-foreground">401(k) / Retirement</Label>
+                {onNavigateToProfile && profilePretaxPerPaycheck > 0 && (
+                  <button onClick={() => onNavigateToProfile('accounts')} className="text-[10px] font-semibold text-accent">
+                    From Financial Profile →
+                  </button>
+                )}
+              </div>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                 <Input type="number" className="pl-7" value={state.retirementDeduction} onChange={e => setState({ retirementDeduction: e.target.value })} placeholder="0" />

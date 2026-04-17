@@ -46,9 +46,10 @@ interface CarLoanCalculatorProps {
   onBack: () => void;
   householdId: string | null;
   shoppingOnly?: boolean;
+  onNavigateToProfile?: (tab?: string) => void;
 }
 
-export function CarLoanCalculator({ onBack, householdId, shoppingOnly }: CarLoanCalculatorProps) {
+export function CarLoanCalculator({ onBack, householdId, shoppingOnly, onNavigateToProfile }: CarLoanCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -326,8 +327,15 @@ export function CarLoanCalculator({ onBack, householdId, shoppingOnly }: CarLoan
       <div className="px-6 mt-5">
         {hasProfile ? (
           <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-            <p className="text-xs text-muted-foreground">Gross Monthly Income (from Financial Profile)</p>
-            <p className="text-lg font-bold text-foreground">{fmt(grossMonthlyIncome)}</p>
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs text-muted-foreground">Gross Monthly Income</p>
+              {onNavigateToProfile && (
+                <button onClick={() => onNavigateToProfile('income')} className="text-[11px] font-semibold text-accent">
+                  From Financial Profile →
+                </button>
+              )}
+            </div>
+            <p className="text-lg font-bold text-foreground mt-0.5">{fmt(grossMonthlyIncome)}</p>
           </div>
         ) : (
           <div className="bg-destructive/5 rounded-lg p-3 border border-destructive/10">

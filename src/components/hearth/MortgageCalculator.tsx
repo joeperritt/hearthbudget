@@ -324,12 +324,13 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     if (!financialProfile || !toolStateLoaded) return;
     const updates: Record<string, string> = {};
 
-    // Shopping mode: debt payments + state
-    if (state.otherDebtPayments === '') {
-      const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
-      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (total > 0) updates.otherDebtPayments = String(total);
+    // Shopping mode: always sync debt payments total from profile (read-only)
+    const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
+    const debtTotal = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+    if (String(debtTotal) !== state.otherDebtPayments) {
+      updates.otherDebtPayments = String(debtTotal);
     }
+
     if (state.selectedState === '' && financialProfile.state) {
       const st = financialProfile.state.toUpperCase();
       if (STATE_DEFAULTS[st]) {
@@ -351,12 +352,8 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     } else if (state.exMonthlyPI === '' && financialProfile.mortgage_payment) {
       updates.exMonthlyPI = String(financialProfile.mortgage_payment);
     }
-    if (state.exOtherDebtPayments === '' && state.otherDebtPayments !== '') {
-      updates.exOtherDebtPayments = state.otherDebtPayments;
-    } else if (state.exOtherDebtPayments === '') {
-      const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
-      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (total > 0) updates.exOtherDebtPayments = String(total);
+    if (String(debtTotal) !== state.exOtherDebtPayments) {
+      updates.exOtherDebtPayments = String(debtTotal);
     }
 
     if (Object.keys(updates).length > 0) setState(updates);
@@ -939,8 +936,15 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       <div className="px-6 mt-5">
         {hasProfile ? (
           <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-            <p className="text-xs text-muted-foreground">Gross Monthly Income (from Financial Profile)</p>
-            <p className="text-lg font-bold text-foreground">{fmt(grossMonthlyIncome)}</p>
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs text-muted-foreground">Gross Monthly Income</p>
+              {onNavigateToProfile && (
+                <button onClick={() => onNavigateToProfile('income')} className="text-[11px] font-semibold text-accent">
+                  From Financial Profile →
+                </button>
+              )}
+            </div>
+            <p className="text-lg font-bold text-foreground mt-0.5">{fmt(grossMonthlyIncome)}</p>
           </div>
         ) : (
           <div className="bg-destructive/5 rounded-lg p-3 border border-destructive/10">
@@ -1113,13 +1117,18 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
               <p className="text-sm font-semibold text-foreground">Debt-to-Income Ratio</p>
               <p className="text-xs text-muted-foreground mt-0.5">(Housing + other debt) ÷ gross income (guideline: ≤ 36%)</p>
               <div className="mt-2">
-                <Label className="text-xs text-muted-foreground">Other Monthly Debt Payments</Label>
-                <Input
-                  type="number" placeholder="0"
-                  value={state.otherDebtPayments}
-                  onChange={e => setState({ otherDebtPayments: e.target.value })}
-                  className="mt-1 max-w-[180px] h-8 text-sm"
-                />
+                <div className="flex items-baseline justify-between max-w-[260px]">
+                  <Label className="text-xs text-muted-foreground">Other Monthly Debt Payments</Label>
+                  {onNavigateToProfile && (
+                    <button onClick={() => onNavigateToProfile('debts')} className="text-[11px] font-semibold text-accent">
+                      From Financial Profile →
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1 max-w-[180px] h-8 px-3 flex items-center rounded-md border border-input bg-muted text-sm font-semibold text-foreground tabular-nums">
+                  {fmt(parseFloat(state.otherDebtPayments) || 0)}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Total non-housing debt payments from your Debts tab.</p>
               </div>
             </div>
             <span className={`text-lg font-bold ${dtiOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
