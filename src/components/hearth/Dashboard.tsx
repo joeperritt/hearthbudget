@@ -321,11 +321,24 @@ export function Dashboard({
 
   const checkingNet = checkingSpent - checkingDeposits;
 
-  // Overall totals
-  // Use the same totals as the Spending tab (passed from Index.tsx)
-  const overallSpent = totalVariableSpent + totalFixedSpent;
-  const overallNet = overallSpent;
-  const budgetDifference = totalBudget - overallNet;
+  // Overall totals — gross spending across all accounts (excludes CC payments, which are internal transfers)
+  const overallSpent = useMemo(() => {
+    return monthTransactions
+      .filter(t => t.transactionType === 'expense')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions]);
+
+  // Deposits & credits — money flowing in that offsets spending
+  // (checking deposits + credit card refunds/credits + CC payments received on the credit side)
+  const overallDeposits = useMemo(() => {
+    return monthTransactions
+      .filter(t => t.transactionType === 'deposit' || t.transactionType === 'cc-payment')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions]);
+
+  const overallNet = overallSpent - overallDeposits;
+  // Budget tracks gross spending (what you spent), not net cash flow
+  const budgetDifference = totalBudget - overallSpent;
 
   // Colors — lighter blue & gold theme
   const spentColor = 'hsl(220 42% 38%)';
