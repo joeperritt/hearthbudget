@@ -862,7 +862,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                               <span className="font-semibold text-foreground">
                                 {fmt(adjustedAmount * Math.pow(1 + inflationRate, Math.max(0, claimAge - (Number(state.memberAges?.[m.name]) || 0))))}/mo in {retirementYear} dollars
                               </span>
-                              {' '}(inflation-adjusted via COLA)
+                              {' '}(adjusted at {Number(state.inflationRate || 2.5).toFixed(1)}% annual inflation)
                             </p>
                           )}
                         </div>
