@@ -903,7 +903,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                           <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
                           <p className="text-[10px] text-muted-foreground truncate">
                             {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
-                            {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
+                            {oi.inflationAdjusted ? " · today's $" : " · future $"}
                           </p>
                         </div>
                         {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
