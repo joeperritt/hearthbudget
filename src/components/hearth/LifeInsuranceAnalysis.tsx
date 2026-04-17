@@ -186,6 +186,14 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
     });
   }, [members, totalDebt, mortgageBalance, deps, yearsIndep, eduPerChild]);
 
+  // Default expansion: first member with an issue. If all adequate, both collapsed.
+  useEffect(() => {
+    if (defaultExpansionApplied || !memberAnalysis.length) return;
+    const firstIssueIdx = memberAnalysis.findIndex(m => m.verdict !== 'adequate');
+    setExpandedMember(firstIssueIdx >= 0 ? firstIssueIdx : null);
+    setDefaultExpansionApplied(true);
+  }, [memberAnalysis, defaultExpansionApplied]);
+
   // Coverage Timeline: stepped breakdown by expiry year
   const coverageTimeline = useMemo(() => {
     const allPolicies: { coverage: number; expiry: number | null }[] = [];
