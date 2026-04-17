@@ -485,7 +485,14 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
           <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">Pre-Tax Deductions / Paycheck</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[11px] text-muted-foreground">401(k) / Retirement</Label>
+              <div className="flex items-baseline justify-between">
+                <Label className="text-[11px] text-muted-foreground">401(k) / Retirement</Label>
+                {onNavigateToProfile && profilePretaxPerPaycheck > 0 && (
+                  <button onClick={() => onNavigateToProfile('accounts')} className="text-[10px] font-semibold text-accent">
+                    From Financial Profile →
+                  </button>
+                )}
+              </div>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                 <Input type="number" className="pl-7" value={state.retirementDeduction} onChange={e => setState({ retirementDeduction: e.target.value })} placeholder="0" />
