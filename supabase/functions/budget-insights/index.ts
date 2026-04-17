@@ -12,16 +12,18 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { budgetSummary, chatMessages, prompt } = body || {};
+    const { budgetSummary, chatMessages, prompt, systemPrompt: customSystemPrompt } = body || {};
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;
 
     let messages: Array<{ role: string; content: string }>;
 
     if (prompt && typeof prompt === "string") {
       // Simple prompt mode (used by tools like Emergency Fund Analysis)
       messages = [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: activeSystemPrompt },
         { role: "user", content: prompt },
       ];
     } else if (budgetSummary) {

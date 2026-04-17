@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import type { PlanToolId } from '@/lib/aiNavigation';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
 
@@ -20,6 +21,7 @@ interface EmergencyFundAnalysisProps {
   householdId: string | null;
   onNavigateToProfile?: (tab?: ProfileTab) => void;
   onNavigateToBudget?: (monthKey: string) => void;
+  onNavigateToPlanTool?: (toolId: PlanToolId) => void;
   householdMembers?: { primaryName: string; partnerName: string | null };
 }
 
@@ -62,7 +64,7 @@ function getRecommendedMonths(s: EFState, dependents: number): [number, number] 
   return [6 + extra, 9 + extra];
 }
 
-export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, householdMembers }: EmergencyFundAnalysisProps) {
+export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool, householdMembers }: EmergencyFundAnalysisProps) {
   const { state, setState, loaded } = useToolState<EFState>(householdId, 'emergency-fund', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -156,22 +158,37 @@ export function EmergencyFundAnalysis({ onBack, householdId, onNavigateToProfile
     if (!householdId) return;
     setAiLoading(true);
     try {
-      const prompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA®). Analyze this household's emergency fund:
-- Current balance: ${fmt(balance)}
-- Monthly essential expenses: ${fmt(adjustedExpenses)}
-- Coverage: ${coverageMonths.toFixed(1)} months
-- Recommended: ${recLow}–${recHigh} months
-- Status: ${status}
-- Shortfall: ${fmt(shortfall)}
-- Household type: ${state.householdType} income
-- Primary stability: ${state.primaryStability}
-${state.householdType === 'dual' ? `- Secondary stability: ${state.secondaryStability}` : ''}
-- Dependents: ${profileDependents}
+      const systemPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA®) analyzing a household's emergency fund. Provide exactly 3 warm, specific, stewardship-framed insights using the numbers provided. Reference specific dollar amounts and months of coverage.
 
-Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment, 2) Where to keep it (HYSA recommendation — educational only), 3) How it connects to overall financial stability. Be warm, stewardship-framed, and specific. Format as a JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers). Do NOT use markdown formatting.`;
+Each insight MUST include a "nextStep" object with:
+- "action": a concrete, imperative next step (e.g., "Redirect $250/mo from dining out to emergency fund").
+- "destination": EXACTLY ONE of these route strings (pick the most relevant):
+  "Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return a JSON array of 3 objects with keys: "type" (warning | encouragement | tip | savings), "title" (max 5 words), "body" (2-3 sentences with specific numbers, no markdown), and "nextStep" ({ "action", "destination" }). Do NOT use markdown formatting. Return ONLY the JSON array.`;
+
+      const stabilityLine = state.householdType === 'dual'
+        ? `- ${earnerNames.primary} stability: ${state.primaryStability}\n- ${earnerNames.secondary || 'Second earner'} stability: ${state.secondaryStability}`
+        : `- ${earnerNames.primary} stability: ${state.primaryStability}`;
+
+      const prompt = `Household emergency fund snapshot:
+- Current emergency fund balance: ${fmt(balance)}
+- Monthly essential expenses (raw budget): ${fmt(totalBudget)}
+- Non-essential backed out: ${fmt(nonEssential)}
+- Adjusted essential monthly expenses: ${fmt(adjustedExpenses)}
+- Household type: ${state.householdType}
+${stabilityLine}
+- Dependents: ${profileDependents}
+- Current monthly contribution to emergency fund: ${fmt(efContribution)}
+- CFP target range: ${recLow}-${recHigh} months (${fmt(targetLow)}–${fmt(targetHigh)})
+- Current coverage: ${coverageMonths.toFixed(1)} months
+- Shortfall to low target: ${fmt(shortfall)}
+- Status: ${status}
+
+Generate 3 insights with nextStep actions per the system instructions.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: { prompt, householdId },
+        body: { prompt, systemPrompt, householdId },
       });
       if (fnError) throw new Error(fnError.message || 'Edge function call failed');
       if (data?.error) throw new Error(data.error);
@@ -183,7 +200,7 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
       console.error('AI insights error:', e);
     }
     setAiLoading(false);
-  }, [householdId, balance, adjustedExpenses, coverageMonths, recLow, recHigh, status, shortfall, state, profileDependents]);
+  }, [householdId, balance, adjustedExpenses, coverageMonths, recLow, recHigh, status, shortfall, state, profileDependents, totalBudget, nonEssential, targetLow, targetHigh, efContribution, earnerNames]);
 
   if (!loaded || profileLoading) {
     return (
@@ -527,7 +544,14 @@ Provide exactly 3 short insights covering: 1) Emergency fund adequacy assessment
           </div>
           {aiInsights.length > 0 ? (
             <div className="space-y-3">
-              <AIInsightsList insights={aiInsights} />
+              <AIInsightsList
+                insights={aiInsights}
+                navigationHandlers={{
+                  onNavigateToProfile,
+                  onNavigateToPlanTool,
+                  onNavigateToBudget: onNavigateToBudget ? () => onNavigateToBudget(nextMonth.key) : undefined,
+                }}
+              />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
