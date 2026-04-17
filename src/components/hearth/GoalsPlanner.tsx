@@ -279,14 +279,25 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
   }
 
   // For AI insights
-  const goalsForInsights = useMemo(() => goals.map((g, i) => ({
-    id: g.id,
-    name: g.name || `Goal ${i + 1}`,
-    targetAmount: computed[i].target,
-    currentSavings: computed[i].current,
-    monthlyContribution: computed[i].contrib,
-    targetMonths: computed[i].targetMonths,
-  })), [goals, computed]);
+  const goalsForInsights = useMemo(() => goals.map((g, i) => {
+    const c = computed[i];
+    const isEdu = isEducationGoalName(g.name) || !!g.dependentName;
+    const projectedCompletion = c.contrib > 0 ? Math.ceil(Math.max(0, c.target - c.current) / c.contrib) : null;
+    return {
+      id: g.id,
+      name: g.name || `Goal ${i + 1}`,
+      targetAmount: c.target,
+      currentSavings: c.current,
+      monthlyContribution: c.contrib,
+      targetMonths: c.targetMonths,
+      targetDate: g.useDate ? g.targetDate : null,
+      expectedReturn: Number(g.expectedReturn) || 0,
+      projectedCompletionMonths: projectedCompletion ?? undefined,
+      isEducation: isEdu,
+      dependentName: g.dependentName,
+      educationInflationAdjusted: isEdu ? c.target : undefined,
+    };
+  }), [goals, computed]);
 
   // Compute non-retirement savings pool from financial profile
   const savingsPool = useMemo(() => {
