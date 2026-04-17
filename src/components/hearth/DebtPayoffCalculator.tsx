@@ -448,30 +448,11 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
             })()}
           </div>
 
-          {/* Excluded from Payoff Optimization */}
+          {/* Excluded debts note (user-toggled) */}
           {excludedDebts.length > 0 && (
-            <div className="px-6 mt-4 space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">Excluded from Payoff Optimization</p>
-              {excludedDebts.map((d, i) => (
-                <div key={i} className="bg-card rounded-lg p-3 shadow-sm border border-border">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                          {d.type}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min</p>
-                    </div>
-                    <p className="text-xs font-bold text-foreground shrink-0">{fmt(d.balance)}</p>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                This debt is classified as a Business Buy-In / Partnership Investment. It is tracked for total debt and debt-to-income calculations but excluded from the consumer debt payoff strategy.
-              </p>
-            </div>
+            <p className="px-6 mt-2 text-[11px] text-muted-foreground leading-relaxed">
+              {excludedDebts.length === 1 ? '1 debt is' : `${excludedDebts.length} debts are`} excluded from the payoff optimization above. {excludedDebts.length === 1 ? 'It is' : 'They are'} still included in your total debt and debt-to-income calculations.
+            </p>
           )}
 
           {/* Roll Forward + Slider */}
