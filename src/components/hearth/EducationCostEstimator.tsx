@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -30,7 +31,7 @@ const SCHOOL_LABELS: Record<SchoolType, string> = {
   private: 'Private',
 };
 
-const INFLATION_RATE = 0.05; // 5% annual education inflation
+const DEFAULT_INFLATION_PCT = 5; // 5% annual education inflation
 
 interface EducationCostEstimatorProps {
   open: boolean;
@@ -59,6 +60,7 @@ export function EducationCostEstimator({
   const [degreeType, setDegreeType] = useState<DegreeType>('4-year');
   const [dependentName, setDependentName] = useState<string | null>(initialDependentName);
   const [manualYears, setManualYears] = useState<string>('18');
+  const [inflationPct, setInflationPct] = useState<number>(DEFAULT_INFLATION_PCT);
 
   useEffect(() => {
     if (open) {
@@ -80,7 +82,7 @@ export function EducationCostEstimator({
   }, [selectedDep, manualYears, currentYear]);
 
   const yearsToTarget = Math.max(0, targetYear - currentYear);
-  const inflationFactor = Math.pow(1 + INFLATION_RATE, yearsToTarget);
+  const inflationFactor = Math.pow(1 + inflationPct / 100, yearsToTarget);
   const inflatedTotal = currentTotal * inflationFactor;
 
   const handleApply = () => {
@@ -134,7 +136,26 @@ export function EducationCostEstimator({
                   {t === '2-year' ? '2-Year' : '4-Year'}
                 </button>
               ))}
+          </div>
+
+          {/* Inflation Rate Slider */}
+          <div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Education Inflation Rate</Label>
+              <span className="text-xs font-semibold text-foreground tabular-nums">{inflationPct.toFixed(1)}%</span>
             </div>
+            <Slider
+              className="mt-2"
+              min={0}
+              max={8}
+              step={0.1}
+              value={[inflationPct]}
+              onValueChange={(v) => setInflationPct(v[0] ?? DEFAULT_INFLATION_PCT)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
+              Education costs have historically risen 5–6% annually, roughly double general inflation. This is driven by rising institutional costs, expanding campus services, and increased demand for higher education. Adjust this rate based on your own expectations.
+            </p>
+          </div>
           </div>
 
           {/* Dependent selector */}
@@ -187,7 +208,7 @@ export function EducationCostEstimator({
               <span className="font-bold text-accent tabular-nums">{fmt(inflatedTotal)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Using 5% annual education inflation through {targetYear}
+              Using {inflationPct.toFixed(1)}% annual education inflation through {targetYear}
               {selectedDep ? ` (when ${selectedDep.name} turns 18)` : ''}
             </p>
           </div>

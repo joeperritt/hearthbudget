@@ -458,7 +458,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                                   updateGoal(goal.id, { monthlyContribution: raw });
                                 }
                               }}
-                              placeholder="500"
+                              placeholder="0"
                               className="h-9 text-sm pl-7"
                               inputMode="decimal"
                             />
