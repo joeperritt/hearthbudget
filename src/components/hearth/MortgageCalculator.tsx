@@ -780,7 +780,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 <div className="px-6 mt-5">
                   <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+                      <p className="text-sm font-semibold text-foreground">Mortgage Analysis</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(adjustedBalance)}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
