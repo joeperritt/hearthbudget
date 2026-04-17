@@ -26,9 +26,11 @@ interface GoalData {
   targetMonths: string;
   expanded: boolean;
   recExpanded?: boolean;
+  /** When set, this goal is tied to a specific dependent (for education goals) */
+  dependentName?: string;
 }
 
-function newGoal(): GoalData {
+function newGoal(overrides: Partial<GoalData> = {}): GoalData {
   const d = new Date();
   d.setFullYear(d.getFullYear() + 2);
   return {
@@ -42,7 +44,13 @@ function newGoal(): GoalData {
     targetMonths: '24',
     expanded: true,
     recExpanded: true,
+    ...overrides,
   };
+}
+
+function isEducationGoalName(name: string): boolean {
+  const n = (name || '').toLowerCase();
+  return /education|college|529/.test(n);
 }
 
 function monthsBetween(from: Date, toStr: string): number {
