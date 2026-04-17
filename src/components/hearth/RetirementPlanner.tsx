@@ -1037,34 +1037,66 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
 
           {/* Summary Card */}
           {monthlyExpenses > 0 && (() => {
-            const finalPhase = incomePhases[incomePhases.length - 1];
-            const summaryIncome = finalPhase.totalIncome;
-            const surplus = summaryIncome - monthlyExpenses;
-            const onTrack = surplus >= 0 && lumpSumNeeded <= 0;
+            const primaryPhase = planStatus.primaryPhase || incomePhases[incomePhases.length - 1];
+            const firstPhase = incomePhases[0];
+            const showBridge = firstPhase && firstPhase !== primaryPhase;
+            const primarySurplus = primaryPhase.totalIncome - monthlyExpenses;
+            const bridgeSurplus = showBridge ? firstPhase.totalIncome - monthlyExpenses : 0;
+            const bridgeYears = showBridge ? firstPhase.durationYears : 0;
+
+            const styles = {
+              green: { border: 'border-green-500/30', bg: 'bg-green-50/50 dark:bg-green-950/20', text: 'text-green-600', icon: '✅' },
+              amber: { border: 'border-amber-500/40', bg: 'bg-amber-50/60 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-500', icon: '⚠️' },
+              red: { border: 'border-destructive/30', bg: 'bg-red-50/50 dark:bg-red-950/20', text: 'text-destructive', icon: '🚩' },
+            }[planStatus.level];
+
             return (
-              <div className={`rounded-xl shadow-sm p-4 mb-3 border-2 ${onTrack ? 'border-green-500/30 bg-green-50/50 dark:bg-green-950/20' : 'border-destructive/30 bg-red-50/50 dark:bg-red-950/20'}`}>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Projected Monthly Income</span>
-                    <span className="font-semibold text-foreground">{fmt(summaryIncome)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Estimated Monthly Expenses</span>
-                    <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                    <span className="text-muted-foreground font-semibold">Monthly {surplus >= 0 ? 'Surplus' : 'Gap'}</span>
-                    <span className={`font-bold ${surplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                      {surplus >= 0 ? '+' : '-'}{fmt(Math.abs(surplus))}/mo
-                    </span>
+              <div className={`rounded-xl shadow-sm p-4 mb-3 border-2 ${styles.border} ${styles.bg}`}>
+                <div className="space-y-2">
+                  {showBridge && (
+                    <div className="space-y-1 pb-2 border-b border-border">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pre-Social Security ({bridgeYears} {bridgeYears === 1 ? 'yr' : 'yrs'})
+                      </p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Monthly Income</span>
+                        <span className="font-semibold text-foreground">{fmt(firstPhase.totalIncome)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{bridgeSurplus >= 0 ? 'Surplus' : 'Gap'}</span>
+                        <span className={`font-bold ${bridgeSurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                          {bridgeSurplus >= 0 ? '+' : '-'}{fmt(Math.abs(bridgeSurplus))}/mo
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {showBridge ? 'With Social Security (long-term)' : 'Retirement Phase'}
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Monthly Income</span>
+                      <span className="font-semibold text-foreground">{fmt(primaryPhase.totalIncome)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Estimated Monthly Expenses</span>
+                      <span className="font-semibold text-foreground">{fmt(monthlyExpenses)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                      <span className="text-muted-foreground font-semibold">Monthly {primarySurplus >= 0 ? 'Surplus' : 'Gap'}</span>
+                      <span className={`font-bold ${primarySurplus >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                        {primarySurplus >= 0 ? '+' : '-'}{fmt(Math.abs(primarySurplus))}/mo
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className={`flex items-center gap-2 mt-3 pt-2 border-t border-border`}>
-                  <span className={`text-lg ${onTrack ? '' : ''}`}>{onTrack ? '✅' : '🚩'}</span>
-                  <p className={`text-sm font-semibold ${onTrack ? 'text-green-600' : 'text-destructive'}`}>
-                    {onTrack ? 'On Track for Retirement' : 'Retirement Gap Detected'}
-                  </p>
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border">
+                  <span className="text-lg">{styles.icon}</span>
+                  <p className={`text-sm font-semibold ${styles.text}`}>{planStatus.label}</p>
                 </div>
+                {planStatus.note && (
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{planStatus.note}</p>
+                )}
               </div>
             );
           })()}
