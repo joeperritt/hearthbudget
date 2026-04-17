@@ -82,15 +82,15 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
           <>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Extra Payment</p>
                 <p className="text-base font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Interest Saved</p>
                 <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Time Saved</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Time Saved</p>
                 <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">
                   {monthsSaved > 0
                     ? `${Math.floor(monthsSaved / 12)}y ${monthsSaved % 12}m`
@@ -1171,7 +1171,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
 function DetailCell({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] text-muted-foreground tracking-wide">{label}</p>
       <p className="text-sm font-semibold text-foreground mt-0.5">{value}</p>
     </div>
   );
