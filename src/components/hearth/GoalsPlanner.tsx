@@ -699,6 +699,9 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
           householdId={householdId}
           goals={goalsForInsights}
           financialProfile={financialProfile}
+          monthlyPoolTotal={savingsPool?.totalAvailable ?? 0}
+          allocatedMonthly={savingsPool?.allocated ?? 0}
+          navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
         />
       )}
 
