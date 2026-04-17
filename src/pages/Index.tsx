@@ -374,7 +374,7 @@ const Index = () => {
       case 'retirement':
         return <RetirementPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'mortgage-shopping':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
       case 'car-loan':
         return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly />;
       case 'financial-profile':
