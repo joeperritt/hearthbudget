@@ -910,6 +910,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   selectedState={state.selectedState}
                   financialProfile={financialProfile}
                   mortgageMode={'existing'}
+                  navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
                 />
               </>
             )}
@@ -1172,6 +1173,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
         selectedState={state.selectedState}
         financialProfile={financialProfile}
         mortgageMode={'shopping'}
+        navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
       />
     </div>
   );

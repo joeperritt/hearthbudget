@@ -360,21 +360,21 @@ const Index = () => {
   const renderTool = (toolId: string, onBack: () => void) => {
     switch (toolId) {
       case 'mortgage-analyzer':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToCalculator={navigateToCalculator} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToCalculator={navigateToCalculator} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'debt-payoff':
-        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'tax-estimator':
         return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
       case 'life-insurance':
-        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'emergency-fund':
         return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} householdMembers={householdMembers} />;
       case 'savings-goals':
-        return <GoalsPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <GoalsPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'retirement':
-        return <RetirementPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
+        return <RetirementPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'mortgage-shopping':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
+        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
       case 'car-loan':
         return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
       case 'financial-profile':
