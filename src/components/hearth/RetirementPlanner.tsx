@@ -1107,7 +1107,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           {/* Monthly Income — Phase-based */}
           <div className="bg-muted/30 rounded-xl p-4">
             <p className="text-sm font-semibold text-foreground mb-2">Projected Monthly Retirement Income</p>
-            <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
+            <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (adjusted at {Number(state.inflationRate || 2.5).toFixed(1)}% annual inflation)</p>
             {incomePhases.map((phase, i) => {
               const phaseGap = phase.totalIncome - monthlyExpenses;
               const isCollapsed = !!collapsedPhases[i];
