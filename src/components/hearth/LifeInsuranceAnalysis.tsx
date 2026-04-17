@@ -151,6 +151,16 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
     }
   }, [loaded, youngestDependent, state.yearsUntilIndependent, autoYearsApplied, setState]);
 
+  const dependentDetails = useMemo(() => {
+    return dependents.map(d => {
+      const age = d.dob ? (ageFromDob(d.dob) ?? null) : (d.age ?? null);
+      const yearTurns18 = age !== null
+        ? new Date().getFullYear() + Math.max(0, 18 - age)
+        : new Date().getFullYear() + 18;
+      return { name: d.name || 'Dependent', age, yearTurns18 };
+    });
+  }, [dependents]);
+
   const deps = dependents.length;
   const yearsIndep = state.yearsUntilIndependent === '' ? 18 : (parseInt(state.yearsUntilIndependent) || 0);
   const eduPerChild = Number(state.educationPerChild) || 0;
