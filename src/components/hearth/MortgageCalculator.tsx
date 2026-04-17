@@ -69,8 +69,8 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
             className="[&_[role=slider]]:bg-accent [&_[role=slider]]:border-accent [&_[data-orientation=horizontal]>[data-orientation=horizontal]]:bg-primary"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>{minYear}</span>
-            <span>{maxYear} (current pace)</span>
+            <span>Earliest Possible ({minYear})</span>
+            <span>Current Pace ({maxYear})</span>
           </div>
         </div>
 
@@ -80,14 +80,22 @@ function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMo
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase">Extra Payment</p>
-                <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                <p className="text-base font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase">Interest Saved</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">{fmt(interestSaved)}</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase">Time Saved</p>
+                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">
+                  {monthsSaved > 0
+                    ? `${Math.floor(monthsSaved / 12)}y ${monthsSaved % 12}m`
+                    : '—'}
+                </p>
               </div>
             </div>
             {monthsSaved > 0 && (
@@ -716,7 +724,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
           </button>
           <div>
             <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Analyze your current mortgage</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Understand your payoff timeline and equity position.</p>
           </div>
         </div>
 
@@ -772,7 +780,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 <div className="px-6 mt-5">
                   <div className="bg-card rounded-xl p-4 shadow-sm border border-border space-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mortgage Analysis</p>
+                      <p className="text-sm font-semibold text-foreground">Mortgage Analysis</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">Balance as of today: {fmt(adjustedBalance)}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -797,7 +805,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                 {homeValue > 0 ? (
                   <div className="px-6 mt-5">
                     <div className="bg-card rounded-xl shadow-sm border border-border p-4">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Equity Progress</p>
+                      <p className="text-sm font-semibold text-foreground mb-3">Equity Progress</p>
                       {(() => {
                         const equity = homeValue - adjustedBalance;
                         const equityPct = homeValue > 0 ? (equity / homeValue) * 100 : 0;
@@ -847,9 +855,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   const totalMonthly = payment;
                   const analyzerHousingRatio = grossMonthlyIncome > 0 ? totalMonthly / grossMonthlyIncome : 0;
                   const analyzerHousingOk = analyzerHousingRatio <= 0.28;
+                  const debts = Array.isArray(financialProfile?.debts) ? financialProfile.debts as any[] : [];
+                  const totalDebtPayments = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+                  const totalDti = grossMonthlyIncome > 0 ? (totalMonthly + totalDebtPayments) / grossMonthlyIncome : 0;
+                  const dtiTone = totalDti <= 0.36
+                    ? { card: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800', text: 'text-green-600 dark:text-green-400' }
+                    : totalDti <= 0.43
+                      ? { card: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800', text: 'text-amber-600 dark:text-amber-400' }
+                      : { card: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800', text: 'text-red-600 dark:text-red-400' };
                   return (
                     <div className="px-6 mt-5 space-y-3">
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">CFP® Guideline Indicators</p>
+                      <p className="text-sm font-semibold text-foreground">CFP® Guideline Indicators</p>
                       <div className={`rounded-xl p-4 border ${analyzerHousingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
                         <div className="flex justify-between items-center">
                           <div>
@@ -858,6 +874,17 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                           </div>
                           <span className={`text-lg font-bold ${analyzerHousingOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {hasProfile ? pct(analyzerHousingRatio) : '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`rounded-xl p-4 border ${dtiTone.card}`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Total Debt-to-Income Ratio</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">(Housing + all debt) ÷ gross income (guideline: ≤ 36%)</p>
+                          </div>
+                          <span className={`text-lg font-bold ${dtiTone.text}`}>
+                            {hasProfile ? pct(totalDti) : '—'}
                           </span>
                         </div>
                       </div>
