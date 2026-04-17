@@ -664,10 +664,8 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
             <p className="text-xs text-destructive mb-2">{aiError}</p>
           )}
           {aiInsights.length > 0 ? (
-            <div className="space-y-3">
-              {aiInsights.map((insight, i) => (
-                <p key={i} className="text-xs text-muted-foreground leading-relaxed">{insight}</p>
-              ))}
+            <div className="space-y-2">
+              <AIInsightsList insights={aiInsights} />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
@@ -677,6 +675,14 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
           )}
         </div>
       </div>
+
+      {/* Education Cost Estimator Modal */}
+      <EducationCostEstimator
+        open={showEducationEstimator}
+        onOpenChange={setShowEducationEstimator}
+        dependents={dependentDetails.map(d => ({ name: d.name, yearTurns18: d.yearTurns18, currentAge: d.age })) as EducationDependent[]}
+        onApply={({ total }) => setState({ educationPerChild: String(total) })}
+      />
 
       {/* Footer disclaimer */}
       <div className="px-6 mt-6 mb-8 flex gap-2">
