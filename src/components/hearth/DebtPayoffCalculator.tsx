@@ -185,9 +185,9 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
       });
   }, [householdId]);
 
-  // Split debts: consumer debts get optimized; business buy-ins are tracked separately
-  const consumerDebts = useMemo(() => debts.filter(d => d.type !== BUSINESS_BUY_IN_TYPE), [debts]);
-  const excludedDebts = useMemo(() => debts.filter(d => d.type === BUSINESS_BUY_IN_TYPE), [debts]);
+  // Split debts: included debts get optimized; user-excluded debts are tracked but skipped
+  const consumerDebts = useMemo(() => debts.filter(d => !excludedKeys.includes(debtKey(d))), [debts, excludedKeys]);
+  const excludedDebts = useMemo(() => debts.filter(d => excludedKeys.includes(debtKey(d))), [debts, excludedKeys]);
 
   // Baseline (no extra, no roll) — consumer debts only
   const baselineOnly = useMemo(() => simulatePayoff(consumerDebts, 0, false, method), [consumerDebts, method]);
