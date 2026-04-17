@@ -249,7 +249,7 @@ Household context:
 Coverage timeline (how total household coverage steps down as term policies expire):
 ${timelineSummary || 'No coverage in force.'}
 
-Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequacy per member with specific dollar gaps if any, 2) Whether the coverage timeline aligns with the family's protection window (children at home, mortgage payoff), 3) A stewardship-framed encouragement to review with a Certified Financial Planner. Reference real numbers. No markdown, no asterisks, no headings — plain prose paragraphs separated by blank lines.`;
+Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning" | "tip" | "encouragement", "title": string (3-6 words), "body": string (2-3 sentences) }. Cover: 1) Coverage adequacy per member with specific dollar gaps if any (warning if underinsured, encouragement if adequate), 2) Whether the coverage timeline aligns with the family's protection window (children at home, mortgage payoff), 3) A stewardship-framed encouragement to review with a Certified Financial Planner. Reference real numbers. Return ONLY the JSON array, no markdown fences, no prose.`;
 
       const { data, error } = await supabase.functions.invoke('budget-insights', {
         body: { prompt },
@@ -267,12 +267,7 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
         setAiLoading(false);
         return;
       }
-      // Split by blank lines into paragraphs, take first 3
-      const parsed = content
-        .split(/\n\s*\n/)
-        .map(s => s.replace(/\*\*/g, '').replace(/^\s*\d+[\.\)]\s*/, '').trim())
-        .filter(Boolean)
-        .slice(0, 3);
+      const parsed = parseAIInsights(content).slice(0, 3);
       setAiInsights(parsed);
       setAiLastUpdated(new Date());
     } catch (e) {
