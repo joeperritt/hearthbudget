@@ -182,6 +182,15 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
     return raw.filter(m => m.name).map(m => ({ name: m.name, gross_income: Number(m.gross_income) || 0 }));
   }, [financialProfile]);
 
+  // Per-paycheck pre-tax retirement deduction from Financial Profile (pretax_<member> is monthly)
+  const profilePretaxPerPaycheck = useMemo(() => {
+    if (!financialProfile?.monthly_additions_per_key || !state.selectedMember) return 0;
+    const monthlyPretax = Number(financialProfile.monthly_additions_per_key[`pretax_${state.selectedMember}`]) || 0;
+    if (monthlyPretax <= 0) return 0;
+    const freq = PAY_FREQUENCIES.find(p => p.value === state.payFrequency) || PAY_FREQUENCIES[1];
+    return Math.round((monthlyPretax * 12) / freq.periods);
+  }, [financialProfile, state.selectedMember, state.payFrequency]);
+
   // Auto-populate from profile on first load
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
@@ -198,14 +207,20 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
     setInitialized(true);
   }, [toolStateLoaded, financialProfile, members, initialized]);
 
-  // When member changes, update income
+  // When member or pay frequency changes, sync income + retirement deduction from profile
   useEffect(() => {
     if (!state.selectedMember || !members.length) return;
     const member = members.find(m => m.name === state.selectedMember);
+    const updates: any = {};
     if (member && member.gross_income && !initialized) {
-      setState({ annualGross: String(member.gross_income) });
+      updates.annualGross = String(member.gross_income);
     }
-  }, [state.selectedMember]);
+    // Pre-fill retirement deduction from profile if user hasn't entered one
+    if ((!state.retirementDeduction || state.retirementDeduction === '0') && profilePretaxPerPaycheck > 0) {
+      updates.retirementDeduction = String(profilePretaxPerPaycheck);
+    }
+    if (Object.keys(updates).length) setState(updates);
+  }, [state.selectedMember, profilePretaxPerPaycheck]);
 
   const handleMemberChange = (name: string) => {
     const member = members.find(m => m.name === name);
