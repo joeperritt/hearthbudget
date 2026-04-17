@@ -536,6 +536,43 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile }: Goals
                       );
                     })()}
 
+                    {/* Expected Annual Return */}
+                    {(() => {
+                      const ret = Number(goal.expectedReturn ?? defaultReturnForYears(c.yearsToGoal));
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5">
+                              <Label className="text-xs text-muted-foreground">Expected Annual Return</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className="text-muted-foreground active:opacity-70" aria-label="About expected return">
+                                    <Info size={11} />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" className="w-72 text-[11px] leading-relaxed">
+                                  For longer time horizons, investing your savings may help your money grow faster. Higher expected returns come with higher risk. This estimate assumes consistent monthly contributions and a steady return rate, which is simplified. Actual investment returns will vary. Consult a Certified Financial Planner (CFP®) for personalized investment guidance.
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            <span className="text-xs font-semibold text-foreground tabular-nums">{ret.toFixed(1)}%</span>
+                          </div>
+                          <Slider
+                            value={[ret]}
+                            onValueChange={([v]) => updateGoal(goal.id, { expectedReturn: String(v), returnTouched: true })}
+                            min={0}
+                            max={12}
+                            step={0.5}
+                            className="mt-1"
+                          />
+                          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                            <span>0%</span>
+                            <span>12%</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Target Date vs Months toggle */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
