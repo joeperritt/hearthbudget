@@ -1,20 +1,13 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, PiggyBank, RefreshCw } from 'lucide-react';
+import { Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import type { AINavigationHandlers } from '@/lib/aiNavigation';
 
-interface Insight {
-  type: 'warning' | 'encouragement' | 'tip' | 'savings';
-  title: string;
-  body: string;
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 }
-
-const iconMap: Record<string, { icon: typeof AlertTriangle; color: string; border: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', border: 'border-l-destructive' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500' },
-  tip: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  savings: { icon: PiggyBank, color: 'text-primary', border: 'border-l-primary' },
-};
 
 interface MortgageInsightsSectionProps {
   householdId: string | null;
@@ -34,14 +27,24 @@ interface MortgageInsightsSectionProps {
   selectedState: string;
   financialProfile: any;
   mortgageMode: 'shopping' | 'existing';
+  payoffDate?: string | null;
+  remainingTermMonths?: number;
+  totalInterestRemaining?: number;
+  homeValue?: number;
+  equity?: number;
+  loanType?: string | null;
+  extraPaymentScenarios?: { extra: number; monthsSaved: number; interestSaved: number }[];
+  navigationHandlers?: AINavigationHandlers;
 }
 
 export function MortgageInsightsSection({
   householdId, homePrice, loanAmount, downPayment, downPaymentPct,
   interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance,
   totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile, mortgageMode,
+  payoffDate, remainingTermMonths, totalInterestRemaining, homeValue, equity, loanType, extraPaymentScenarios,
+  navigationHandlers,
 }: MortgageInsightsSectionProps) {
-  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -50,59 +53,82 @@ export function MortgageInsightsSection({
     setLoading(true);
     setError(null);
     try {
-      const payload = {
-        currentMonth: new Date().toISOString().slice(0, 7),
-        context: 'mortgage_analysis',
-        mortgageMode,
-        homePrice, loanAmount, downPayment, downPaymentPct,
-        interestRate, loanTermYears,
-        piti: { principalAndInterest: monthlyPI, propertyTax: monthlyTax, insurance: monthlyInsurance, total: totalHousing },
-        housingRatio, dtiRatio, otherMonthlyDebt: otherDebt,
-        state: selectedState,
-        ...(financialProfile ? {
-          financialProfile: {
-            member_incomes: Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [],
-            filing_status: financialProfile.filing_status,
-            debts: Array.isArray(financialProfile.debts) ? financialProfile.debts : [],
-            emergency_fund_balance: Number(financialProfile.emergency_fund_balance) || 0,
-            retirement_balance: Number(financialProfile.retirement_balance) || 0,
-            non_retirement_investments: Number(financialProfile.non_retirement_investments) || 0,
-            housing_type: financialProfile.housing_type,
-            mortgage_balance: Number(financialProfile.mortgage_balance) || 0,
-            mortgage_payment: Number(financialProfile.mortgage_payment) || 0,
-          },
-        } : {}),
-      };
+      const existingPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) providing mortgage analysis within a household budgeting app called Hearth. You will receive the user's mortgage data including: current balance, interest rate, loan type, monthly payment with P&I and escrow breakdown, projected payoff date, remaining term, total interest remaining, home value, equity position, housing ratio, total debt-to-income ratio, and extra payment scenarios. Provide exactly 3 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific dollar amounts, percentages, and dates from the data provided, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Focus ONLY on mortgage and housing topics. Do not reference retirement, insurance, or non-housing debt topics. If housing ratio is well below 28%, note the financial flexibility. If DTI exceeds 36%, flag it as priority. Quantify extra payment impact in dollars and time saved. Frame homeownership as stewardship of a major asset. For next steps, point to 'Financial Profile > Housing' to update extra payment amount, or to 'Plan > Debt Payoff Analyzer' if DTI is a concern.
 
-      const shoppingPrompt = `You are a CFP (Certified Financial Planner) helping a household evaluate a potential home purchase. Speak in future tense and advisory tone — they have NOT committed yet. Help them evaluate whether this mortgage is a good fit, what to watch out for before committing, whether the down payment strategy is optimal, and what questions to ask a lender. Do NOT use phrases like "your mortgage" or "you have" — instead say "this mortgage would" or "if you proceed." Cover: whether the monthly payment is sustainable given their income and other debts, down payment optimization, PMI considerations if under 20%, interest rate context, and state-specific considerations for ${selectedState || 'their state'}. Be specific with dollar amounts and ratios from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
 
-      const existingPrompt = `You are a CFP (Certified Financial Planner) serving as an ongoing financial planner for a household that already has this mortgage. Speak as if they already own this home. Affirm good decisions they've already made, flag opportunities like refinancing if rates have changed, suggest extra principal payment strategies, and explain how this mortgage debt fits into their overall financial picture given the rest of their Financial Profile. Cover: whether payments are comfortable relative to income, refinance considerations, extra payment impact, and how this debt interacts with their other financial goals. Be specific with dollar amounts and ratios from the data. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+Return ONLY the JSON array, no markdown fences, no prose.`;
 
-      const systemOverride = mortgageMode === 'existing' ? existingPrompt : shoppingPrompt;
+      const shoppingPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) helping a household evaluate a potential home purchase within a budgeting app called Hearth. Speak in future tense — they have NOT committed yet. Provide exactly 3 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific dollar amounts and ratios, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Cover payment sustainability, down payment strategy (PMI under 20%), and state-specific considerations for ${selectedState || 'their state'}. Do not reference retirement, insurance, or non-housing debt topics.
+
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return ONLY the JSON array, no markdown fences, no prose.`;
+
+      const systemPrompt = mortgageMode === 'existing' ? existingPrompt : shoppingPrompt;
+
+      const scenarioLines = (extraPaymentScenarios || [])
+        .map(s => `  - +${fmt(s.extra)}/mo: saves ${fmt(s.interestSaved)} interest, ${s.monthsSaved} months sooner`)
+        .join('\n');
+
+      const prompt = mortgageMode === 'existing'
+        ? `Household existing mortgage snapshot:
+- Current balance: ${fmt(loanAmount)}
+- Interest rate: ${interestRate}%
+- Loan type: ${loanType || 'n/a'}
+- Original/term years: ${loanTermYears}
+- Remaining term: ${remainingTermMonths ?? 'n/a'} months
+- Monthly P&I: ${fmt(monthlyPI)}
+- Monthly tax (escrow): ${fmt(monthlyTax)}
+- Monthly insurance (escrow): ${fmt(monthlyInsurance)}
+- Total monthly housing (PITI): ${fmt(totalHousing)}
+- Projected payoff date: ${payoffDate || 'n/a'}
+- Total interest remaining: ${fmt(totalInterestRemaining || 0)}
+- Estimated home value: ${fmt(homeValue || 0)}
+- Equity: ${fmt(equity || 0)}
+- Housing ratio (front-end DTI): ${housingRatio.toFixed(1)}%
+- Total DTI (back-end): ${dtiRatio.toFixed(1)}%
+- Other monthly debt payments: ${fmt(otherDebt)}
+- State: ${selectedState}
+
+Extra payment scenarios:
+${scenarioLines || '  (none modeled)'}
+
+Generate exactly 3 insights with nextStep actions per the system instructions.`
+        : `Prospective home purchase snapshot:
+- Home price: ${fmt(homePrice)}
+- Loan amount: ${fmt(loanAmount)}
+- Down payment: ${fmt(downPayment)} (${downPaymentPct.toFixed(1)}%)
+- Interest rate: ${interestRate}%
+- Term: ${loanTermYears} years
+- Monthly P&I: ${fmt(monthlyPI)}
+- Monthly tax: ${fmt(monthlyTax)}
+- Monthly insurance: ${fmt(monthlyInsurance)}
+- Total monthly housing (PITI): ${fmt(totalHousing)}
+- Housing ratio: ${housingRatio.toFixed(1)}%
+- Total DTI: ${dtiRatio.toFixed(1)}%
+- Other monthly debt: ${fmt(otherDebt)}
+- State: ${selectedState}
+
+Generate exactly 3 insights with nextStep actions per the system instructions.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: {
-          budgetSummary: payload,
-          chatMessages: [{ role: 'system', content: systemOverride }],
-        },
+        body: { prompt, systemPrompt, householdId },
       });
-
       if (fnError) throw new Error(fnError.message);
-      const content = data?.content || '';
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Insight[];
-        setInsights(parsed);
-        setLastUpdated(new Date());
-      } else {
-        throw new Error('Could not parse insights');
-      }
+      if (data?.error) throw new Error(data.error);
+      const raw = data?.insights ?? data?.content ?? '';
+      const parsed = parseAIInsights(raw).slice(0, 3);
+      setInsights(parsed);
+      setLastUpdated(new Date());
     } catch (e: any) {
       setError(e?.message || 'Failed to generate insights');
     } finally {
       setLoading(false);
     }
-  }, [homePrice, loanAmount, downPayment, downPaymentPct, interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile, mortgageMode]);
+  }, [homePrice, loanAmount, downPayment, downPaymentPct, interestRate, loanTermYears, monthlyPI, monthlyTax, monthlyInsurance, totalHousing, housingRatio, dtiRatio, otherDebt, selectedState, financialProfile, mortgageMode, payoffDate, remainingTermMonths, totalInterestRemaining, homeValue, equity, loanType, extraPaymentScenarios, householdId]);
 
   return (
     <div className="px-6 mt-6">
@@ -143,23 +169,7 @@ export function MortgageInsightsSection({
           <p className="text-sm text-muted-foreground">Tap Generate for AI mortgage insights</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {insights.map((insight, i) => {
-            const config = iconMap[insight.type] || iconMap.tip;
-            const Icon = config.icon;
-            return (
-              <div key={i} className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}>
-                <div className="flex items-start gap-2.5">
-                  <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground font-display">{insight.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AIInsightsList insights={insights} navigationHandlers={navigationHandlers} />
       )}
 
       {lastUpdated && !error && (

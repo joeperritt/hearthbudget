@@ -39,6 +39,8 @@ interface DebtPayoffCalculatorProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: import('@/lib/aiNavigation').PlanToolId) => void;
 }
 
 const BUSINESS_BUY_IN_TYPE = 'Business Buy-In / Partnership Investment';
@@ -138,7 +140,7 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile }: DebtPayoffCalculatorProps) {
+export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool }: DebtPayoffCalculatorProps) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
@@ -543,6 +545,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
             rollForward={toolState.rollForward}
             extraPayment={extraNeeded}
             financialProfile={financialProfile}
+            navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
           />
         </>
       )}

@@ -1,34 +1,30 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, PiggyBank, RefreshCw } from 'lucide-react';
+import { Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import type { AINavigationHandlers } from '@/lib/aiNavigation';
 
-interface Insight {
-  type: 'warning' | 'encouragement' | 'tip' | 'giving' | 'savings';
-  title: string;
-  body: string;
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 }
-
-const iconMap: Record<string, { icon: typeof AlertTriangle; color: string; border: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', border: 'border-l-destructive' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500' },
-  tip: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  giving: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  savings: { icon: PiggyBank, color: 'text-primary', border: 'border-l-primary' },
-};
 
 interface DebtInsightsSectionProps {
   householdId: string | null;
-  debts: { type: string; balance: number; rate: number; monthlyPayment: number }[];
+  debts: { type: string; name?: string; balance: number; rate: number; monthlyPayment: number; excluded?: boolean }[];
   payoffResults: { results: any[]; totalMonths: number; totalInterest: number };
   baselineResults: { totalMonths: number; totalInterest: number };
   rollForward: boolean;
   extraPayment: number;
   financialProfile: any;
+  payoffMethod?: 'avalanche' | 'snowball';
+  payoffDate?: string | null;
+  snowballComparison?: { totalMonths: number; totalInterest: number } | null;
+  navigationHandlers?: AINavigationHandlers;
 }
 
-export function DebtInsightsSection({ householdId, debts, payoffResults, baselineResults, rollForward, extraPayment, financialProfile }: DebtInsightsSectionProps) {
-  const [insights, setInsights] = useState<Insight[]>([]);
+export function DebtInsightsSection({ householdId, debts, payoffResults, baselineResults, rollForward, extraPayment, financialProfile, payoffMethod = 'avalanche', payoffDate, snowballComparison, navigationHandlers }: DebtInsightsSectionProps) {
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -37,77 +33,64 @@ export function DebtInsightsSection({ householdId, debts, payoffResults, baselin
     setLoading(true);
     setError(null);
     try {
-      const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
-      const totalMonthlyDebtPayments = debts.reduce((s, d) => s + d.monthlyPayment, 0) + extraPayment;
+      const totalBalance = debts.reduce((s, d) => s + (d.excluded ? 0 : d.balance), 0);
+      const totalMonthlyDebtPayments = debts.reduce((s, d) => s + (d.excluded ? 0 : d.monthlyPayment), 0) + extraPayment;
       const grossMonthlyIncome = financialProfile ? Number(financialProfile.annual_gross_income) / 12 : 0;
       const mortgagePayment = financialProfile ? Number(financialProfile.mortgage_payment) || 0 : 0;
       const monthlyRent = financialProfile ? Number(financialProfile.monthly_rent) || 0 : 0;
       const housingPayment = financialProfile?.housing_type === 'own' ? mortgagePayment : monthlyRent;
-      const frontEndDTI = grossMonthlyIncome > 0 ? (housingPayment / grossMonthlyIncome) * 100 : 0;
       const backEndDTI = grossMonthlyIncome > 0 ? ((housingPayment + totalMonthlyDebtPayments) / grossMonthlyIncome) * 100 : 0;
 
-      const debtPayload = {
-        currentMonth: new Date().toISOString().slice(0, 7),
-        context: 'debt_payoff_analysis',
-        totalDebtBalance: totalBalance,
-        debtToIncomeRatios: {
-          grossMonthlyIncome: Math.round(grossMonthlyIncome),
-          housingPayment,
-          totalMonthlyDebtPayments,
-          frontEndDTI: Math.round(frontEndDTI * 10) / 10,
-          backEndDTI: Math.round(backEndDTI * 10) / 10,
-        },
-        debts: payoffResults.results.map(r => ({
-          type: r.type, balance: r.balance, rate: r.rate,
-          monthlyPayment: r.monthlyPayment, projectedPayoffMonths: r.payoffMonths,
-          totalInterest: r.totalInterest, payoffOrder: r.payoffOrder,
-        })),
-        payoffTimeline: { totalMonths: payoffResults.totalMonths, totalInterest: payoffResults.totalInterest },
-        baseline: { totalMonths: baselineResults.totalMonths, totalInterest: baselineResults.totalInterest },
-        interestSaved: baselineResults.totalInterest - payoffResults.totalInterest,
-        monthsSaved: baselineResults.totalMonths - payoffResults.totalMonths,
-        rollPaymentsForward: rollForward,
-        extraMonthlyPayment: extraPayment,
-        ...(financialProfile ? {
-          financialProfile: {
-            annual_gross_income: Number(financialProfile.annual_gross_income) || 0,
-            member_incomes: Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [],
-            filing_status: financialProfile.filing_status,
-            emergency_fund_balance: Number(financialProfile.emergency_fund_balance) || 0,
-            retirement_balance: Number(financialProfile.retirement_balance) || 0,
-            non_retirement_investments: Number(financialProfile.non_retirement_investments) || 0,
-            housing_type: financialProfile.housing_type,
-            mortgage_balance: Number(financialProfile.mortgage_balance) || 0,
-            mortgage_payment: Number(financialProfile.mortgage_payment) || 0,
-          },
-        } : {}),
-      };
+      const systemPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) providing debt payoff guidance within a household budgeting app called Hearth. You will receive the user's debt data including: all debts with balances, interest rates, minimum payments, and types; excluded debts; selected payoff method (avalanche or snowball); total debt amount; debt-to-income ratio; payoff order; projected debt-free date; and extra payment scenarios with interest and time saved. Provide exactly 3 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific debt names, dollar amounts, interest rates, and timelines from the data provided, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Focus ONLY on debt payoff strategy. Do not reference emergency funds, retirement, insurance, or mortgage analysis. CRITICAL: Any debt with type 'Business Buy-In / Partnership Investment' should be recognized as investment-backed debt. Do NOT recommend aggressively paying it down like consumer debt. Reference it by its name, not as 'Other' debt. Compare avalanche vs snowball outcomes if meaningful. If DTI exceeds 36%, make it a priority. Frame debt freedom as stewardship that creates margin for generosity. For next steps, point to 'Financial Profile > Debts' to add extra payments, or to 'Budget' to find discretionary spending to redirect.
 
-      const systemOverride = `You are a CFP (Certified Financial Planner) analyzing a household's debt payoff strategy. The data includes debtToIncomeRatios with frontEndDTI (housing/income) and backEndDTI (housing+debts/income). ALWAYS analyze DTI ratios: front-end should be under 28%, back-end under 36%. If back-end DTI exceeds 36%, issue a warning — above 43% is critical (FHA max). If DTI is healthy, acknowledge it as encouragement. Also cover: interest cost awareness, payoff acceleration opportunities, and overall financial health impact. Be specific with dollar amounts, percentages, and timelines. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return ONLY the JSON array, no markdown fences, no prose.`;
+
+      const activeDebtLines = (payoffResults.results || []).map((r: any, i: number) =>
+        `  ${i + 1}. ${r.name || r.type || 'Debt'} — type "${r.type || 'Other'}", balance ${fmt(r.balance)}, rate ${Number(r.rate).toFixed(2)}%, min payment ${fmt(r.monthlyPayment)}, payoff in ${r.payoffMonths} months, interest ${fmt(r.totalInterest)}`
+      ).join('\n');
+      const excludedLines = debts.filter(d => d.excluded).map(d => `  - ${d.name || d.type}: balance ${fmt(d.balance)} (excluded from plan)`).join('\n');
+
+      const prompt = `Household debt payoff snapshot:
+- Payoff method: ${payoffMethod}
+- Total active debt: ${fmt(totalBalance)}
+- Total monthly debt payments (incl. extra): ${fmt(totalMonthlyDebtPayments)}
+- Extra monthly payment applied: ${fmt(extraPayment)}
+- Roll payments forward: ${rollForward ? 'yes' : 'no'}
+- Gross monthly income: ${fmt(grossMonthlyIncome)}
+- Back-end DTI: ${backEndDTI.toFixed(1)}%
+- Projected debt-free date: ${payoffDate || 'n/a'}
+- Total interest with plan: ${fmt(payoffResults.totalInterest)}
+- Total months with plan: ${payoffResults.totalMonths}
+- Baseline (minimums only): ${fmt(baselineResults.totalInterest)} interest over ${baselineResults.totalMonths} months
+- Interest saved vs baseline: ${fmt(Math.max(0, baselineResults.totalInterest - payoffResults.totalInterest))}
+- Months saved vs baseline: ${Math.max(0, baselineResults.totalMonths - payoffResults.totalMonths)}
+${snowballComparison ? `- Snowball alternative: ${fmt(snowballComparison.totalInterest)} interest over ${snowballComparison.totalMonths} months` : ''}
+
+Active debts (in payoff order):
+${activeDebtLines || '  (none)'}
+
+${excludedLines ? `Excluded debts:\n${excludedLines}` : ''}
+
+Generate exactly 3 insights with nextStep actions per the system instructions.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: {
-          budgetSummary: debtPayload,
-          chatMessages: [{ role: 'system', content: systemOverride }],
-        },
+        body: { prompt, systemPrompt, householdId },
       });
-
       if (fnError) throw new Error(fnError.message);
-      const content = data?.content || '';
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Insight[];
-        setInsights(parsed);
-        setLastUpdated(new Date());
-      } else {
-        throw new Error('Could not parse insights');
-      }
+      if (data?.error) throw new Error(data.error);
+      const raw = data?.insights ?? data?.content ?? '';
+      const parsed = parseAIInsights(raw).slice(0, 3);
+      setInsights(parsed);
+      setLastUpdated(new Date());
     } catch (e: any) {
       setError(e?.message || 'Failed to generate insights');
     } finally {
       setLoading(false);
     }
-  }, [debts, payoffResults, baselineResults, rollForward, extraPayment, financialProfile]);
+  }, [debts, payoffResults, baselineResults, rollForward, extraPayment, financialProfile, payoffMethod, payoffDate, snowballComparison, householdId]);
 
   return (
     <div className="px-6 mt-6">
@@ -148,23 +131,7 @@ export function DebtInsightsSection({ householdId, debts, payoffResults, baselin
           <p className="text-sm text-muted-foreground">Tap Generate for AI debt insights</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {insights.map((insight, i) => {
-            const config = iconMap[insight.type] || iconMap.tip;
-            const Icon = config.icon;
-            return (
-              <div key={i} className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}>
-                <div className="flex items-start gap-2.5">
-                  <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground font-display">{insight.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AIInsightsList insights={insights} navigationHandlers={navigationHandlers} />
       )}
 
       {lastUpdated && !error && (

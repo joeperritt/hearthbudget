@@ -1,29 +1,23 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, PiggyBank, RefreshCw } from 'lucide-react';
+import { Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import type { AINavigationHandlers } from '@/lib/aiNavigation';
 
-interface Insight {
-  type: 'warning' | 'encouragement' | 'tip' | 'savings';
-  title: string;
-  body: string;
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 }
-
-const iconMap: Record<string, { icon: typeof AlertTriangle; color: string; border: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', border: 'border-l-destructive' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500' },
-  tip: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  savings: { icon: PiggyBank, color: 'text-primary', border: 'border-l-primary' },
-};
 
 interface RetirementInsightsSectionProps {
   householdId: string | null;
   retirementPicture: any;
   financialProfile: any;
+  navigationHandlers?: AINavigationHandlers;
 }
 
-export function RetirementInsightsSection({ householdId, retirementPicture, financialProfile }: RetirementInsightsSectionProps) {
-  const [insights, setInsights] = useState<Insight[]>([]);
+export function RetirementInsightsSection({ householdId, retirementPicture, financialProfile, navigationHandlers }: RetirementInsightsSectionProps) {
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -32,47 +26,72 @@ export function RetirementInsightsSection({ householdId, retirementPicture, fina
     setLoading(true);
     setError(null);
     try {
-      const payload = {
-        currentMonth: new Date().toISOString().slice(0, 7),
-        context: 'retirement_planning_analysis',
-        ...retirementPicture,
-        ...(financialProfile ? {
-          financialProfile: {
-            member_incomes: Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [],
-            filing_status: financialProfile.filing_status,
-            debts: Array.isArray(financialProfile.debts) ? financialProfile.debts : [],
-            emergency_fund_balance: Number(financialProfile.emergency_fund_balance) || 0,
-            retirement_balance: Number(financialProfile.retirement_balance) || 0,
-            roth_retirement_balance: Number(financialProfile.roth_retirement_balance) || 0,
-            non_retirement_investments: Number(financialProfile.non_retirement_investments) || 0,
-          },
-        } : {}),
-      };
+      const systemPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) providing retirement planning guidance within a household budgeting app called Hearth. You will receive the user's retirement data including: current ages, target retirement year, current retirement balances by account type, monthly contributions, expected return rate, estimated retirement expenses, Social Security estimates, other retirement income sources, projected portfolio at retirement, phased income projections, and CFP guideline metrics. Provide exactly 4 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific dollar amounts, percentages, and projections from the data provided, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Focus ONLY on retirement planning topics. Do not reference emergency funds, non-retirement savings goals, insurance, or mortgage topics. Reference the phased income projection when relevant. Discuss Roth vs pre-tax diversification based on current balance mix. Reference contribution room and limits. Treat any debt with type 'Business Buy-In / Partnership Investment' as investment-backed, not consumer debt. Frame retirement preparation as faithful stewardship. For next steps, point to 'Financial Profile > Accounts' to increase contributions, suggest specific dollar amounts, or reference the Retirement Expense Estimator if expenses seem unrefined.
 
-      const systemPrompt = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA). Analyze this household's retirement readiness and provide 2-3 specific, actionable insights. Cover: whether they are on track to retire, contribution rate vs 2026 IRS limits ($23,500 employee 401k limit, $7,500 IRA limit, $31,000 catch-up for 50+), Roth vs pre-tax optimization given their tax bracket, Social Security timing strategy if SS is toggled on, and longevity risk if expenses are high relative to portfolio. Be practical, specific with dollar amounts, and stewardship-framed — help them be faithful stewards of what they've been given. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers).`;
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return ONLY the JSON array, no markdown fences, no prose.`;
+
+      const fp = financialProfile || {};
+      const debts = Array.isArray(fp.debts) ? fp.debts : [];
+      const debtLines = debts.map((d: any) => `  - ${d.name || d.type || 'Debt'}: balance ${fmt(Number(d.balance) || 0)}, type "${d.type || 'Other'}"`).join('\n');
+
+      const prompt = `Household retirement planning snapshot:
+
+Demographics:
+- Primary age: ${retirementPicture?.primaryAge ?? 'n/a'}
+- Partner age: ${retirementPicture?.partnerAge ?? 'n/a'}
+- Target retirement year: ${retirementPicture?.targetRetirementYear ?? 'n/a'}
+- Years until retirement: ${retirementPicture?.yearsUntilRetirement ?? 'n/a'}
+- Assumed inflation rate: ${retirementPicture?.inflationRate ?? 'n/a'}%
+
+Current Balances:
+- Pre-tax / 401(k) / Traditional IRA: ${fmt(retirementPicture?.preTaxBalance || 0)}
+- Roth: ${fmt(retirementPicture?.rothBalance || 0)}
+- Taxable / non-retirement investments: ${fmt(retirementPicture?.taxableBalance || 0)}
+- Total invested: ${fmt(retirementPicture?.totalBalance || 0)}
+
+Contributions (monthly):
+- Pre-tax: ${fmt(retirementPicture?.monthlyPreTax || 0)}
+- Roth: ${fmt(retirementPicture?.monthlyRoth || 0)}
+- Taxable: ${fmt(retirementPicture?.monthlyTaxable || 0)}
+- Total monthly contributions: ${fmt(retirementPicture?.monthlyContributionsTotal || 0)}
+
+Assumptions & Projections:
+- Expected return: ${retirementPicture?.expectedReturn ?? 'n/a'}%
+- Projected portfolio at retirement: ${fmt(retirementPicture?.projectedPortfolio || 0)}
+- Estimated monthly retirement expenses: ${fmt(retirementPicture?.monthlyExpenses || 0)}
+- 4% safe withdrawal monthly: ${fmt(retirementPicture?.swrMonthly || 0)}
+- Social Security monthly (household): ${fmt(retirementPicture?.socialSecurityMonthly || 0)}
+- Other retirement income monthly: ${fmt(retirementPicture?.otherIncomeMonthly || 0)}
+- Phased income total at retirement: ${fmt(retirementPicture?.phasedIncomeTotal || 0)}
+- Income gap vs expenses: ${fmt(retirementPicture?.incomeGap || 0)}
+
+Household financial context:
+- Filing status: ${fp.filing_status || 'n/a'}
+- Annual gross income: ${fmt(Number(fp.annual_gross_income) || 0)}
+- Emergency fund: ${fmt(Number(fp.emergency_fund_balance) || 0)}
+- Debts:
+${debtLines || '  (none)'}
+
+Generate exactly 4 insights with nextStep actions per the system instructions.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: {
-          budgetSummary: payload,
-          chatMessages: [{ role: 'system', content: systemPrompt }],
-        },
+        body: { prompt, systemPrompt, householdId },
       });
-
       if (fnError) throw new Error(fnError.message);
-      const content = data?.content || '';
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        setInsights(JSON.parse(jsonMatch[0]) as Insight[]);
-        setLastUpdated(new Date());
-      } else {
-        throw new Error('Could not parse insights');
-      }
+      if (data?.error) throw new Error(data.error);
+      const raw = data?.insights ?? data?.content ?? '';
+      const parsed = parseAIInsights(raw).slice(0, 4);
+      setInsights(parsed);
+      setLastUpdated(new Date());
     } catch (e: any) {
       setError(e?.message || 'Failed to generate insights');
     } finally {
       setLoading(false);
     }
-  }, [retirementPicture, financialProfile]);
+  }, [retirementPicture, financialProfile, householdId]);
 
   return (
     <div className="px-6 mt-6">
@@ -113,23 +132,7 @@ export function RetirementInsightsSection({ householdId, retirementPicture, fina
           <p className="text-sm text-muted-foreground">Tap Generate for AI retirement planning insights</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {insights.map((insight, i) => {
-            const config = iconMap[insight.type] || iconMap.tip;
-            const Icon = config.icon;
-            return (
-              <div key={i} className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}>
-                <div className="flex items-start gap-2.5">
-                  <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground font-display">{insight.title.replace(/\*+/g, '')}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body.replace(/\*+/g, '')}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AIInsightsList insights={insights} navigationHandlers={navigationHandlers} />
       )}
 
       {lastUpdated && !error && (

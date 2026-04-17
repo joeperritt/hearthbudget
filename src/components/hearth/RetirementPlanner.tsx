@@ -69,9 +69,11 @@ interface RetirementPlannerProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: import('@/lib/aiNavigation').PlanToolId) => void;
 }
 
-export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: RetirementPlannerProps) {
+export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool }: RetirementPlannerProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxWithholdingState, setTaxWithholdingState] = useState<any>(null);
@@ -1362,6 +1364,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           householdId={householdId}
           retirementPicture={retirementPicture}
           financialProfile={financialProfile}
+          navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
         />
       )}
 

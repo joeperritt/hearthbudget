@@ -263,9 +263,11 @@ interface MortgageCalculatorProps {
   shoppingOnly?: boolean;
   onNavigateToProfile?: (tab?: string) => void;
   onNavigateToCalculator?: (id: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: import('@/lib/aiNavigation').PlanToolId) => void;
 }
 
-export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile, onNavigateToCalculator }: MortgageCalculatorProps) {
+export function MortgageCalculator({ planningData, onBack, householdId, shoppingOnly, onNavigateToProfile, onNavigateToCalculator, onNavigateToBudget, onNavigateToPlanTool }: MortgageCalculatorProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [taxEstCaption, setTaxEstCaption] = useState('');
@@ -908,6 +910,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   selectedState={state.selectedState}
                   financialProfile={financialProfile}
                   mortgageMode={'existing'}
+                  navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
                 />
               </>
             )}
@@ -1170,6 +1173,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
         selectedState={state.selectedState}
         financialProfile={financialProfile}
         mortgageMode={'shopping'}
+        navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
       />
     </div>
   );

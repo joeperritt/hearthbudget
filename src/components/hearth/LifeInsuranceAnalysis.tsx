@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ageFromDob, yearsUntilAge } from '@/lib/ageUtils';
 import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
 import { AIInsightsList, parseAIInsights, AIInsight } from './AIInsightsList';
+import type { AINavigationHandlers, PlanToolId } from '@/lib/aiNavigation';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -18,6 +19,8 @@ interface LifeInsuranceAnalysisProps {
   onBack: () => void;
   householdId: string | null;
   onNavigateToProfile?: (tab?: string) => void;
+  onNavigateToBudget?: (monthKey?: string) => void;
+  onNavigateToPlanTool?: (toolId: PlanToolId) => void;
 }
 
 interface Policy {
@@ -74,7 +77,7 @@ function hasNamedBeneficiary(p: Policy): boolean {
   return Array.isArray(list) && list.length > 0;
 }
 
-export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile }: LifeInsuranceAnalysisProps) {
+export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool }: LifeInsuranceAnalysisProps) {
   const { state, setState, loaded } = useToolState<LIState>(householdId, 'life-insurance', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [members, setMembers] = useState<MemberInsurance[]>([]);
@@ -248,34 +251,52 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
     setAiLoading(true);
     setAiError(null);
     try {
-      const memberSummary = memberAnalysis.map(m => {
-        const policyDetail = m.policies.map(p => {
+      const systemPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) providing life insurance analysis within a household budgeting app called Hearth. You will receive the user's insurance data including: per-member policies with types, coverage amounts, premiums, and expiration dates; beneficiary status; coverage timeline showing how household coverage changes as policies expire; household details including dependents, mortgage balance, and total debt; income replacement calculations (10-12x income); DIME method calculations; education funding estimates; and coverage gaps per member. Provide exactly 3 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific coverage amounts, gaps, policy details, and member names from the data provided, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Focus ONLY on life insurance topics. Do not reference emergency funds, retirement, debt payoff, or mortgage topics. If a member has no coverage, lead with that. Reference the coverage timeline and whether coverage spans the years dependents are young and the mortgage is outstanding. Note if a term policy expires before the mortgage is paid off. Distinguish between Income Replacement (practical target) and DIME (upper bound). Check beneficiary status and flag missing designations. Frame life insurance as protecting family provision. For next steps, point to 'Financial Profile > Insurance' to add or update policies, suggest specific coverage amounts, or recommend getting quotes.
+
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return ONLY the JSON array, no markdown fences, no prose.`;
+
+      const memberBlocks = memberAnalysis.map(m => {
+        const policyLines = m.policies.map(p => {
           const exp = policyExpiry(p);
-          return `${POLICY_LABELS[p.type] || p.type} ${fmt(Number(p.coverage) || 0)}${exp ? ` expires ${exp}` : ''}`;
-        }).join('; ') || 'no policies';
-        return `${m.name}: Income ${fmt(m.income)}, Coverage ${fmt(m.coverage)} [${policyDetail}], Recommended ${fmt(m.recLow)}–${fmt(m.recHigh)}, ${m.verdict}`;
-      }).join('\n');
+          const beneficiary = hasNamedBeneficiary(p) ? 'beneficiary named' : 'NO beneficiary on file';
+          return `    - ${POLICY_LABELS[p.type] || p.type} ${fmt(Number(p.coverage) || 0)}, premium ${fmt(Number(p.premium) || 0)}/yr${exp ? `, expires ${exp}` : ''} (${beneficiary})`;
+        }).join('\n') || '    (no policies)';
+        return `- ${m.name}
+    Annual income: ${fmt(m.income)}
+    Total coverage today: ${fmt(m.coverage)}
+    Income Replacement target (10-12x): ${fmt(m.irLow)}–${fmt(m.irHigh)}
+    DIME calculation: ${fmt(m.dime)}
+    Recommended coverage range: ${fmt(m.recLow)}–${fmt(m.recHigh)}
+    Gap: ${fmt(m.gap)}
+    Verdict: ${m.verdict}
+  Policies:
+${policyLines}`;
+      }).join('\n\n');
 
-      const timelineSummary = coverageTimeline.map(s => `${s.label}: ${fmt(s.total)}`).join(' → ');
+      const timelineLines = coverageTimeline.map(s => `  - ${s.label}: ${fmt(s.total)}${s.note ? ` — ${s.note}` : ''}${s.breakdown ? ` [${s.breakdown}]` : ''}`).join('\n');
 
-      const prompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA®). Analyze this household's life insurance coverage:
+      const prompt = `Household life insurance snapshot:
 
-${memberSummary}
+Members:
+${memberBlocks || '(no members)'}
 
 Household context:
-- Total non-mortgage debt: ${fmt(totalDebt)}
-- Mortgage balance: ${fmt(mortgageBalance)}
 - Dependents: ${deps}
 - Years until youngest dependent independent: ${yearsIndep}
-- Education savings target per child: ${fmt(eduPerChild)}
+- Education funding target per child: ${fmt(eduPerChild)}
+- Mortgage balance: ${fmt(mortgageBalance)}
+- Total non-mortgage debt: ${fmt(totalDebt)}
 
-Coverage timeline (how total household coverage steps down as term policies expire):
-${timelineSummary || 'No coverage in force.'}
+Coverage Timeline (household totals as term policies expire):
+${timelineLines || '  (no coverage in force)'}
 
-Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning" | "tip" | "encouragement", "title": string (3-6 words), "body": string (2-3 sentences) }. Cover: 1) Coverage adequacy per member with specific dollar gaps if any (warning if underinsured, encouragement if adequate), 2) Whether the coverage timeline aligns with the family's protection window (children at home, mortgage payoff), 3) A stewardship-framed encouragement to review with a Certified Financial Planner. Reference real numbers. Return ONLY the JSON array, no markdown fences, no prose.`;
+Generate exactly 3 insights with nextStep actions per the system instructions.`;
 
       const { data, error } = await supabase.functions.invoke('budget-insights', {
-        body: { prompt },
+        body: { prompt, systemPrompt, householdId },
       });
       if (error) {
         console.error('AI insights edge function error:', error);
@@ -283,7 +304,12 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
         setAiLoading(false);
         return;
       }
-      const content: string = data?.content || '';
+      if (data?.error) {
+        setAiError(data.error);
+        setAiLoading(false);
+        return;
+      }
+      const content: string = data?.content || data?.insights || '';
       if (!content) {
         console.error('AI insights returned no content. Response:', data);
         setAiError('No insights returned.');
@@ -683,7 +709,7 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
           )}
           {aiInsights.length > 0 ? (
             <div className="space-y-2">
-              <AIInsightsList insights={aiInsights} />
+              <AIInsightsList insights={aiInsights} navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }} />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
