@@ -145,9 +145,17 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state: toolState, setState: setToolState, loaded: toolStateLoaded } = useToolState(
-    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '', method: 'avalanche' as PayoffMethod, showMethodInfo: false }
+    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '', method: 'avalanche' as PayoffMethod, showMethodInfo: false, excludedDebtKeys: [] as string[] }
   );
   const method: PayoffMethod = (toolState.method as PayoffMethod) || 'avalanche';
+  const excludedKeys: string[] = Array.isArray(toolState.excludedDebtKeys) ? toolState.excludedDebtKeys : [];
+  const debtKey = (d: Debt) => `${d.type}|${d.name}`;
+  const isExcluded = (d: Debt) => excludedKeys.includes(debtKey(d));
+  const toggleExclude = (d: Debt) => {
+    const key = debtKey(d);
+    const next = excludedKeys.includes(key) ? excludedKeys.filter(k => k !== key) : [...excludedKeys, key];
+    setToolState({ excludedDebtKeys: next });
+  };
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return; }
@@ -177,9 +185,9 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
       });
   }, [householdId]);
 
-  // Split debts: consumer debts get optimized; business buy-ins are tracked separately
-  const consumerDebts = useMemo(() => debts.filter(d => d.type !== BUSINESS_BUY_IN_TYPE), [debts]);
-  const excludedDebts = useMemo(() => debts.filter(d => d.type === BUSINESS_BUY_IN_TYPE), [debts]);
+  // Split debts: included debts get optimized; user-excluded debts are tracked but skipped
+  const consumerDebts = useMemo(() => debts.filter(d => !excludedKeys.includes(debtKey(d))), [debts, excludedKeys]);
+  const excludedDebts = useMemo(() => debts.filter(d => excludedKeys.includes(debtKey(d))), [debts, excludedKeys]);
 
   // Baseline (no extra, no roll) — consumer debts only
   const baselineOnly = useMemo(() => simulatePayoff(consumerDebts, 0, false, method), [consumerDebts, method]);
@@ -263,16 +271,21 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
               </div>
               <div className="space-y-2">
                 {debts.map((d, i) => {
-                  const isExcluded = d.type === BUSINESS_BUY_IN_TYPE;
+                  const excluded = isExcluded(d);
                   return (
-                    <div key={i} className="bg-muted/30 rounded-lg p-3 relative">
+                    <div key={i} className={`bg-muted/30 rounded-lg p-3 relative transition-opacity ${excluded ? 'opacity-60' : ''}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-sm font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 ${isExcluded ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-muted text-muted-foreground">
                               {d.type}
                             </span>
+                            {excluded && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                Excluded
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min
@@ -286,6 +299,15 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                           )}
                         </div>
                       </div>
+                      <button
+                        onClick={() => toggleExclude(d)}
+                        className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${excluded ? 'bg-accent border-accent' : 'border-muted-foreground/40'}`}>
+                          {excluded && <span className="text-[9px] text-accent-foreground leading-none">✓</span>}
+                        </span>
+                        Exclude from payoff optimization
+                      </button>
                     </div>
                   );
                 })}
@@ -426,30 +448,11 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
             })()}
           </div>
 
-          {/* Excluded from Payoff Optimization */}
+          {/* Excluded debts note (user-toggled) */}
           {excludedDebts.length > 0 && (
-            <div className="px-6 mt-4 space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">Excluded from Payoff Optimization</p>
-              {excludedDebts.map((d, i) => (
-                <div key={i} className="bg-card rounded-lg p-3 shadow-sm border border-border">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                          {d.type}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min</p>
-                    </div>
-                    <p className="text-xs font-bold text-foreground shrink-0">{fmt(d.balance)}</p>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                This debt is classified as a Business Buy-In / Partnership Investment. It is tracked for total debt and debt-to-income calculations but excluded from the consumer debt payoff strategy.
-              </p>
-            </div>
+            <p className="px-6 mt-2 text-[11px] text-muted-foreground leading-relaxed">
+              {excludedDebts.length === 1 ? '1 debt is' : `${excludedDebts.length} debts are`} excluded from the payoff optimization above. {excludedDebts.length === 1 ? 'It is' : 'They are'} still included in your total debt and debt-to-income calculations.
+            </p>
           )}
 
           {/* Roll Forward + Slider */}
