@@ -324,12 +324,13 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     if (!financialProfile || !toolStateLoaded) return;
     const updates: Record<string, string> = {};
 
-    // Shopping mode: debt payments + state
-    if (state.otherDebtPayments === '') {
-      const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
-      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (total > 0) updates.otherDebtPayments = String(total);
+    // Shopping mode: always sync debt payments total from profile (read-only)
+    const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
+    const debtTotal = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
+    if (String(debtTotal) !== state.otherDebtPayments) {
+      updates.otherDebtPayments = String(debtTotal);
     }
+
     if (state.selectedState === '' && financialProfile.state) {
       const st = financialProfile.state.toUpperCase();
       if (STATE_DEFAULTS[st]) {
@@ -351,12 +352,8 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
     } else if (state.exMonthlyPI === '' && financialProfile.mortgage_payment) {
       updates.exMonthlyPI = String(financialProfile.mortgage_payment);
     }
-    if (state.exOtherDebtPayments === '' && state.otherDebtPayments !== '') {
-      updates.exOtherDebtPayments = state.otherDebtPayments;
-    } else if (state.exOtherDebtPayments === '') {
-      const debts = Array.isArray(financialProfile.debts) ? financialProfile.debts as any[] : [];
-      const total = debts.reduce((s: number, d: any) => s + (Number(d.monthlyPayment) || 0), 0);
-      if (total > 0) updates.exOtherDebtPayments = String(total);
+    if (String(debtTotal) !== state.exOtherDebtPayments) {
+      updates.exOtherDebtPayments = String(debtTotal);
     }
 
     if (Object.keys(updates).length > 0) setState(updates);
