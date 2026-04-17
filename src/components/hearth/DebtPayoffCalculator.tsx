@@ -262,25 +262,33 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                 )}
               </div>
               <div className="space-y-2">
-                {debts.map((d, i) => (
-                  <div key={i} className="bg-muted/30 rounded-lg p-3 relative">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min
-                          {d.extraPayment > 0 && <span className="text-accent"> · +{fmtDecimal(d.extraPayment)}/mo extra</span>}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-foreground">{fmt(d.balance)}</p>
-                        {onNavigateToProfile && (
-                          <button onClick={() => onNavigateToProfile('debts')} className="text-[10px] font-semibold text-accent mt-1">Edit →</button>
-                        )}
+                {debts.map((d, i) => {
+                  const isExcluded = d.type === BUSINESS_BUY_IN_TYPE;
+                  return (
+                    <div key={i} className="bg-muted/30 rounded-lg p-3 relative">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 ${isExcluded ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
+                              {d.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min
+                            {d.extraPayment > 0 && <span className="text-accent"> · +{fmtDecimal(d.extraPayment)}/mo extra</span>}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-foreground">{fmt(d.balance)}</p>
+                          {onNavigateToProfile && (
+                            <button onClick={() => onNavigateToProfile('debts')} className="text-[10px] font-semibold text-accent mt-1">Edit →</button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-border">
                 <p className="text-xs text-muted-foreground">Total</p>
