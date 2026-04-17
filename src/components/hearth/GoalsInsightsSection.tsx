@@ -1,20 +1,13 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, PiggyBank, RefreshCw } from 'lucide-react';
+import { Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import type { AINavigationHandlers } from '@/lib/aiNavigation';
 
-interface Insight {
-  type: 'warning' | 'encouragement' | 'tip' | 'savings';
-  title: string;
-  body: string;
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 }
-
-const iconMap: Record<string, { icon: typeof AlertTriangle; color: string; border: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', border: 'border-l-destructive' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500' },
-  tip: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  savings: { icon: PiggyBank, color: 'text-primary', border: 'border-l-primary' },
-};
 
 interface Goal {
   id: string;
@@ -23,16 +16,25 @@ interface Goal {
   currentSavings: number;
   monthlyContribution: number;
   targetMonths: number;
+  targetDate?: string | null;
+  expectedReturn?: number;
+  projectedCompletionMonths?: number;
+  isEducation?: boolean;
+  dependentName?: string;
+  educationInflationAdjusted?: number;
 }
 
 interface GoalsInsightsSectionProps {
   householdId: string | null;
   goals: Goal[];
   financialProfile: any;
+  monthlyPoolTotal?: number;
+  allocatedMonthly?: number;
+  navigationHandlers?: AINavigationHandlers;
 }
 
-export function GoalsInsightsSection({ householdId, goals, financialProfile }: GoalsInsightsSectionProps) {
-  const [insights, setInsights] = useState<Insight[]>([]);
+export function GoalsInsightsSection({ householdId, goals, financialProfile, monthlyPoolTotal = 0, allocatedMonthly = 0, navigationHandlers }: GoalsInsightsSectionProps) {
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -41,64 +43,63 @@ export function GoalsInsightsSection({ householdId, goals, financialProfile }: G
     setLoading(true);
     setError(null);
     try {
-      const goalsSummary = goals.map(g => {
+      const systemPrompt = `You are a Certified Financial Planner (CFP®) and Certified Kingdom Advisor (CKA) providing savings goal guidance within a household budgeting app called Hearth. You will receive the user's non-retirement savings data including: monthly savings pool total, allocated vs unallocated amounts, individual goals with target amounts, current savings, monthly allocations, expected return rates, target dates, and projected completion dates. Provide exactly 3 insights as a JSON array. Each insight must have: 'type' (one of 'warning', 'tip', or 'encouragement'), 'title' (5 words or less), 'body' (2-3 sentences referencing specific dollar amounts, goal names, and timelines from the data provided, be direct and practical), and 'nextStep' (an object with 'action' as a specific thing to do and 'destination' as where in the app to do it). Focus ONLY on non-retirement savings goals. Do not reference emergency fund adequacy, retirement planning, insurance, or debt topics covered by other tools. Reference specific goal names. If goals are off track, quantify the gap and suggest specific allocation changes. If the savings pool has unallocated money, suggest putting it to work. For education goals, reference the inflation-adjusted cost and time horizon. Frame saving intentionally as good stewardship. For next steps, point to 'Financial Profile > Accounts' to increase the savings pool, or to specific goals to adjust allocations. Make actions concrete with specific dollar amounts.
+
+Valid destination strings (use EXACTLY one):
+"Financial Profile > Accounts", "Financial Profile > Insurance", "Financial Profile > Housing", "Financial Profile > Debts", "Financial Profile > Profile", "Financial Profile > Income", "Budget", "Plan > Emergency Fund Analysis", "Plan > Non-Retirement Goals", "Plan > Retirement Planner", "Plan > Mortgage Analyzer", "Plan > Debt Payoff Analyzer", "Plan > Life Insurance Analysis".
+
+Return ONLY the JSON array, no markdown fences, no prose.`;
+
+      const goalLines = goals.map(g => {
         const remaining = Math.max(0, g.targetAmount - g.currentSavings);
         const monthlyNeeded = g.targetMonths > 0 ? remaining / g.targetMonths : 0;
         const surplus = g.monthlyContribution - monthlyNeeded;
-        const projectedMonths = g.monthlyContribution > 0 ? remaining / g.monthlyContribution : Infinity;
-        return {
-          name: g.name,
-          targetAmount: g.targetAmount,
-          currentSavings: g.currentSavings,
-          monthlyContribution: g.monthlyContribution,
-          targetMonths: g.targetMonths,
-          monthlyNeeded: Math.round(monthlyNeeded),
-          surplus: Math.round(surplus),
-          onTrack: surplus >= 0,
-          projectedMonths: Math.round(projectedMonths),
-        };
-      });
+        const onTrack = surplus >= 0;
+        const parts = [
+          `- ${g.name}${g.isEducation ? ' (education)' : ''}`,
+          `target ${fmt(g.targetAmount)}`,
+          `current ${fmt(g.currentSavings)}`,
+          `monthly allocation ${fmt(g.monthlyContribution)}`,
+          `monthly needed ${fmt(monthlyNeeded)}`,
+          `target in ${g.targetMonths} months`,
+          `expected return ${(g.expectedReturn ?? 0).toFixed(1)}%`,
+          onTrack ? 'on track' : `gap ${fmt(Math.abs(surplus))}/mo`,
+        ];
+        if (g.targetDate) parts.push(`target date ${g.targetDate}`);
+        if (g.projectedCompletionMonths && isFinite(g.projectedCompletionMonths)) parts.push(`projected in ${g.projectedCompletionMonths} months`);
+        if (g.isEducation && g.educationInflationAdjusted) parts.push(`inflation-adjusted cost ${fmt(g.educationInflationAdjusted)}`);
+        if (g.isEducation && g.dependentName) parts.push(`for ${g.dependentName}`);
+        return parts.join('; ');
+      }).join('\n');
 
-      const totalContributing = goals.reduce((s, g) => s + g.monthlyContribution, 0);
-      const totalNeeded = goalsSummary.reduce((s, g) => s + g.monthlyNeeded, 0);
+      const unallocated = Math.max(0, monthlyPoolTotal - allocatedMonthly);
 
-      const systemPrompt = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA). Analyze this household's non-retirement savings goals and provide 2-3 specific, actionable insights. Consider: which goal needs the most attention, whether total goal contributions ($${totalContributing}/mo toward $${totalNeeded}/mo needed) are sustainable relative to income, any goals that could be consolidated or reprioritized, and stewardship framing around intentional saving. Be practical, specific with dollar amounts, and warm — help them be faithful stewards. Format as JSON array of objects with "type" (warning/encouragement/tip/savings), "title" (5 words max), "body" (2-3 sentences with specific numbers). Do NOT use markdown formatting like **bold** or *italic*.`;
+      const prompt = `Household non-retirement savings goals:
+- Monthly savings pool total: ${fmt(monthlyPoolTotal)}
+- Allocated across goals: ${fmt(allocatedMonthly)}
+- Unallocated: ${fmt(unallocated)}
+- Number of goals: ${goals.length}
+
+Goals:
+${goalLines || '(no goals defined)'}
+
+Generate exactly 3 insights with nextStep actions per the system instructions.`;
 
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: {
-          budgetSummary: {
-            context: 'non_retirement_goals_analysis',
-            goals: goalsSummary,
-            totalContributing,
-            totalNeeded,
-            ...(financialProfile ? {
-              financialProfile: {
-                member_incomes: Array.isArray(financialProfile.member_incomes) ? financialProfile.member_incomes : [],
-                filing_status: financialProfile.filing_status,
-                annual_gross_income: Number(financialProfile.annual_gross_income) || 0,
-                emergency_fund_balance: Number(financialProfile.emergency_fund_balance) || 0,
-              },
-            } : {}),
-          },
-          chatMessages: [{ role: 'system', content: systemPrompt }],
-        },
+        body: { prompt, systemPrompt, householdId },
       });
-
       if (fnError) throw new Error(fnError.message);
-      const content = data?.content || '';
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        setInsights(JSON.parse(jsonMatch[0]) as Insight[]);
-        setLastUpdated(new Date());
-      } else {
-        throw new Error('Could not parse insights');
-      }
+      if (data?.error) throw new Error(data.error);
+      const raw = data?.insights ?? data?.content ?? '';
+      const parsed = parseAIInsights(raw).slice(0, 3);
+      setInsights(parsed);
+      setLastUpdated(new Date());
     } catch (e: any) {
       setError(e?.message || 'Failed to generate insights');
     } finally {
       setLoading(false);
     }
-  }, [goals, financialProfile]);
+  }, [goals, financialProfile, monthlyPoolTotal, allocatedMonthly, householdId]);
 
   return (
     <div className="px-6 mt-6">
@@ -139,23 +140,7 @@ export function GoalsInsightsSection({ householdId, goals, financialProfile }: G
           <p className="text-sm text-muted-foreground">Tap Generate for AI savings goal insights</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {insights.map((insight, i) => {
-            const config = iconMap[insight.type] || iconMap.tip;
-            const Icon = config.icon;
-            return (
-              <div key={i} className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}>
-                <div className="flex items-start gap-2.5">
-                  <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground font-display">{insight.title.replace(/\*+/g, '')}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body.replace(/\*+/g, '')}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <AIInsightsList insights={insights} navigationHandlers={navigationHandlers} />
       )}
 
       {lastUpdated && !error && (
