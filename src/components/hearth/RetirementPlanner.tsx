@@ -745,26 +745,6 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               />
             </div>
 
-            {/* Inflation rate (advanced) */}
-            <Collapsible open={state.showAdvanced} onOpenChange={v => setState({ showAdvanced: v })}>
-              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-accent font-medium">
-                {state.showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                Advanced Settings
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Inflation Rate: {state.inflationRate}%</Label>
-                  <Slider
-                    value={[Number(state.inflationRate) || 3]}
-                    onValueChange={([v]) => setState({ inflationRate: String(v) })}
-                    min={1}
-                    max={6}
-                    step={0.5}
-                    className="mt-2"
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
           </div>
         </Section>
 
