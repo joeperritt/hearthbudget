@@ -41,7 +41,11 @@ interface DebtPayoffCalculatorProps {
   onNavigateToProfile?: (tab?: string) => void;
 }
 
-function simulatePayoff(debts: Debt[], extraPayment: number, rollForward: boolean): { results: PayoffResult[]; totalMonths: number; totalInterest: number } {
+const BUSINESS_BUY_IN_TYPE = 'Business Buy-In / Partnership Investment';
+
+type PayoffMethod = 'avalanche' | 'snowball';
+
+function simulatePayoff(debts: Debt[], extraPayment: number, rollForward: boolean, method: PayoffMethod = 'avalanche'): { results: PayoffResult[]; totalMonths: number; totalInterest: number } {
   if (debts.length === 0) return { results: [], totalMonths: 0, totalInterest: 0 };
 
   const active = debts.map((d, i) => ({
@@ -52,7 +56,11 @@ function simulatePayoff(debts: Debt[], extraPayment: number, rollForward: boolea
   const getTarget = () => {
     const remaining = active.filter(d => !d.paidOff && d.balance > 0);
     if (remaining.length === 0) return null;
-    remaining.sort((a, b) => b.rate - a.rate);
+    if (method === 'snowball') {
+      remaining.sort((a, b) => a.balance - b.balance);
+    } else {
+      remaining.sort((a, b) => b.rate - a.rate);
+    }
     return remaining[0];
   };
 
@@ -98,13 +106,13 @@ function simulatePayoff(debts: Debt[], extraPayment: number, rollForward: boolea
 }
 
 // Binary search for extra payment needed to pay off in targetMonths
-function findExtraForTarget(debts: Debt[], targetMonths: number, rollForward: boolean): number {
+function findExtraForTarget(debts: Debt[], targetMonths: number, rollForward: boolean, method: PayoffMethod): number {
   if (debts.length === 0) return 0;
   let lo = 0;
   let hi = debts.reduce((s, d) => s + d.balance, 0); // upper bound
   for (let iter = 0; iter < 50; iter++) {
     const mid = (lo + hi) / 2;
-    const result = simulatePayoff(debts, mid, rollForward);
+    const result = simulatePayoff(debts, mid, rollForward, method);
     if (result.totalMonths <= targetMonths) {
       hi = mid;
     } else {
