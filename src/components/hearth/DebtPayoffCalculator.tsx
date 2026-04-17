@@ -388,30 +388,69 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
 
           {/* Payoff Order */}
           <div className="px-6 mt-4 space-y-1.5">
-            <p className="text-xs text-muted-foreground font-medium tracking-wide">Payoff Order</p>
-            <p className="text-[10px] text-muted-foreground">Extra payments target the highest rate first (avalanche). Order below reflects when each debt reaches $0.</p>
-            {displayResults.results.map((debt, i) => {
-              const highestRate = Math.max(...debts.map(d => d.rate));
-              const isAvalancheTarget = debt.rate === highestRate;
-              return (
-                <div key={i} className="bg-card rounded-lg p-2.5 shadow-sm border border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-accent bg-primary w-5 h-5 rounded-full flex items-center justify-center">{debt.payoffOrder}</span>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground capitalize">{debt.name.replace(/_/g, ' ')}</p>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[10px] text-muted-foreground">{debt.rate}% · {fmt(debt.balance)}</p>
-                        {isAvalancheTarget && (
-                          <span className="text-[9px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">Extra → here</span>
-                        )}
+            <p className="text-sm font-semibold text-foreground">Payoff Order</p>
+            <p className="text-[10px] text-muted-foreground">
+              {method === 'snowball'
+                ? 'Extra payments target the smallest balance first (snowball). Order below reflects when each debt reaches $0.'
+                : 'Extra payments target the highest rate first (avalanche). Order below reflects when each debt reaches $0.'}
+            </p>
+            {displayResults.results.length === 0 ? (
+              <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
+                <p className="text-xs text-muted-foreground">No consumer debts to optimize.</p>
+              </div>
+            ) : (() => {
+              const targetIdx = method === 'snowball'
+                ? consumerDebts.reduce((minI, d, i, arr) => d.balance < arr[minI].balance ? i : minI, 0)
+                : consumerDebts.reduce((maxI, d, i, arr) => d.rate > arr[maxI].rate ? i : maxI, 0);
+              const targetName = consumerDebts[targetIdx]?.name;
+              return displayResults.results.map((debt, i) => {
+                const isTarget = debt.name === targetName;
+                return (
+                  <div key={i} className="bg-card rounded-lg p-2.5 shadow-sm border border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-accent bg-primary w-5 h-5 rounded-full flex items-center justify-center">{debt.payoffOrder}</span>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground capitalize">{debt.name.replace(/_/g, ' ')}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[10px] text-muted-foreground">{debt.rate}% · {fmt(debt.balance)}</p>
+                          {isTarget && (
+                            <span className="text-[9px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">Extra → here</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <p className="text-xs font-medium text-muted-foreground">{formatMonths(debt.payoffMonths)}</p>
                   </div>
-                  <p className="text-xs font-medium text-muted-foreground">{formatMonths(debt.payoffMonths)}</p>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
+
+          {/* Excluded from Payoff Optimization */}
+          {excludedDebts.length > 0 && (
+            <div className="px-6 mt-4 space-y-1.5">
+              <p className="text-sm font-semibold text-foreground">Excluded from Payoff Optimization</p>
+              {excludedDebts.map((d, i) => (
+                <div key={i} className="bg-card rounded-lg p-3 shadow-sm border border-border">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                          {d.type}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min</p>
+                    </div>
+                    <p className="text-xs font-bold text-foreground shrink-0">{fmt(d.balance)}</p>
+                  </div>
+                </div>
+              ))}
+              <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                This debt is classified as a Business Buy-In / Partnership Investment. It is tracked for total debt and debt-to-income calculations but excluded from the consumer debt payoff strategy.
+              </p>
+            </div>
+          )}
 
           {/* Roll Forward + Slider */}
           <div className="px-6 mt-4">
