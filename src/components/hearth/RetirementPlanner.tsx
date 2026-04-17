@@ -1088,7 +1088,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
           </div>
 
           {/* Monthly Income — Phase-based */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
+          <div className="bg-muted/30 rounded-xl p-4">
             <p className="text-sm font-semibold text-foreground mb-2">Projected Monthly Retirement Income</p>
             <p className="text-[10px] text-muted-foreground mb-3">All amounts in {retirementYear} dollars (inflation-adjusted)</p>
             {incomePhases.map((phase, i) => {
