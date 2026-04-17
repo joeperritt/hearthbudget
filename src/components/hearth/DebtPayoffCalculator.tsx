@@ -503,14 +503,20 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground">Extra Payment</p>
-                      <p className="text-lg font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                      <p className="text-[11px] font-semibold text-muted-foreground">Extra Payment</p>
+                      <p className="text-base font-bold text-foreground mt-1">{fmt(extraNeeded)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground">Interest Saved</p>
-                      <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">{fmt(Math.max(0, interestSaved))}</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground">Interest Saved</p>
+                      <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">{fmt(Math.max(0, interestSaved))}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground">Time Saved</p>
+                      <p className="text-base font-bold text-green-600 dark:text-green-400 mt-1">
+                        {monthsSaved > 0 ? `${Math.floor(monthsSaved / 12)}y ${monthsSaved % 12}m` : '—'}
+                      </p>
                     </div>
                   </div>
                   {monthsSaved > 0 && (
