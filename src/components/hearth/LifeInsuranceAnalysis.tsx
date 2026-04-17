@@ -613,6 +613,8 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
                   )}
                 </div>
               )}
+              </div>
+              )}
             </div>
           </div>
         );
