@@ -600,10 +600,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
       {/* Inputs */}
       <div className="px-6 mt-4 space-y-3">
-        {/* Member ages — read-only from Financial Profile DOBs */}
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-2">Current Ages</p>
-          <div className="bg-card rounded-xl shadow-sm p-3">
+        {/* === SECTION 1: Your Situation (always visible) === */}
+        <div className="bg-card rounded-xl shadow-sm p-4 space-y-4">
+          <p className="text-sm font-semibold text-foreground">Your Situation</p>
+          {/* Member ages */}
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Current Ages</p>
             <div className={`grid gap-3 ${members.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {members.map(m => {
                 const age = state.memberAges?.[m.name];
@@ -615,326 +617,355 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                 );
               })}
             </div>
-          </div>
-          <button
-            onClick={() => onNavigateToProfile ? onNavigateToProfile('profile') : onBack()}
-            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
-          >
-            From Financial Profile →
-          </button>
-        </div>
-
-        {/* Target Retirement Year slider */}
-        <div>
-          <Label className="text-xs text-muted-foreground">Target Retirement Year</Label>
-          <p className="text-sm font-semibold text-foreground mt-1">{retirementYearLabel}</p>
-          <Slider
-            value={[retirementYear]}
-            onValueChange={([v]) => setState({ retirementYear: String(v) })}
-            min={currentYear + 1}
-            max={currentYear + 50}
-            step={1}
-            className="mt-2"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-            <span>{currentYear + 1}</span>
-            <span>{currentYear + 50}</span>
-          </div>
-        </div>
-
-        {/* Current Balances */}
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-2">Current Retirement Balances</p>
-          <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
-              <span className="font-semibold text-foreground">{fmt(currentPreTax)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Roth</span>
-              <span className="font-semibold text-foreground">{fmt(currentRoth)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Non-Qualified (Brokerage)</span>
-              <span className="font-semibold text-foreground">{fmt(currentNonQual)}</span>
-            </div>
-            <div className="flex justify-between text-sm border-t border-border pt-1.5">
-              <span className="text-muted-foreground font-semibold">Combined</span>
-              <span className="font-bold text-foreground">{fmt(currentTotal)}</span>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
-            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
-          >
-            From Financial Profile →
-          </button>
-        </div>
-
-        {/* Three contribution buckets — read-only from Financial Profile */}
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-2">Monthly Retirement Contributions</p>
-          <div className="bg-card rounded-xl shadow-sm p-3 space-y-1.5">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Pre-Tax</p>
-                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(preTaxContrib)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">Roth</p>
-                <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(rothContrib)}</p>
-              </div>
-            </div>
-            <div className="pt-1">
-              <p className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</p>
-              <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(nonQualContrib)}</p>
-            </div>
-            <div className="flex justify-between text-sm border-t border-border pt-1.5">
-              <span className="text-muted-foreground font-semibold">Combined Monthly</span>
-              <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
-            className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
-          >
-            From Financial Profile →
-          </button>
-        </div>
-
-        <div>
-          <Label className="text-xs text-muted-foreground">Expected Annual Return: {state.expectedReturn}%</Label>
-          <Slider
-            value={[Number(state.expectedReturn) || 7]}
-            onValueChange={([v]) => setState({ expectedReturn: String(v) })}
-            min={1}
-            max={12}
-            step={0.5}
-            className="mt-2"
-          />
-        </div>
-
-        {/* Monthly Expenses with estimator */}
-        <div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs text-muted-foreground">Estimated Monthly Retirement Expenses</Label>
             <button
-              onClick={() => {
-                setEstDebtFree(false);
-                setEstNoRetSavings(false);
-                setEstDebtOverride(String(totalMonthlyDebt));
-                setEstContribOverride(String(monthlyContributions));
-                setShowExpenseEstimator(true);
-              }}
-              className="text-[11px] font-semibold text-accent active:opacity-70"
+              onClick={() => onNavigateToProfile ? onNavigateToProfile('profile') : onBack()}
+              className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
             >
-              Help me estimate
+              From Financial Profile →
             </button>
           </div>
-          <div className="relative mt-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-            <Input
-              type="number"
-              className="pl-7"
-              value={state.monthlyExpenses}
-              onChange={e => setState({ monthlyExpenses: e.target.value })}
-              placeholder="0"
+
+          {/* Target Retirement Year slider */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Target Retirement Year</Label>
+            <p className="text-sm font-semibold text-foreground mt-1">{retirementYearLabel}</p>
+            <Slider
+              value={[retirementYear]}
+              onValueChange={([v]) => setState({ retirementYear: String(v) })}
+              min={currentYear + 1}
+              max={currentYear + 50}
+              step={1}
+              className="mt-2"
             />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+              <span>{currentYear + 1}</span>
+              <span>{currentYear + 50}</span>
+            </div>
           </div>
         </div>
 
-        {/* Advanced */}
-        <Collapsible open={state.showAdvanced} onOpenChange={v => setState({ showAdvanced: v })}>
-          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-accent font-medium">
-            {state.showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            Advanced Settings
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2 space-y-3">
+        {/* === SECTION 2: Retirement Accounts === */}
+        <Section
+          title="Retirement Accounts"
+          summary={`${fmt(currentTotal)} balance · ${fmt(monthlyContributions)}/mo`}
+          open={!!state.sectionAccountsOpen}
+          onOpenChange={v => setState({ sectionAccountsOpen: v })}
+        >
+          <div className="space-y-4 pt-3">
+            {/* Current Balances */}
             <div>
-              <Label className="text-xs text-muted-foreground">Inflation Rate: {state.inflationRate}%</Label>
+              <p className="text-[11px] text-muted-foreground mb-1.5">Current Retirement Balances</p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pre-Tax (401k/IRA)</span>
+                  <span className="font-semibold text-foreground">{fmt(currentPreTax)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Roth</span>
+                  <span className="font-semibold text-foreground">{fmt(currentRoth)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Non-Qualified (Brokerage)</span>
+                  <span className="font-semibold text-foreground">{fmt(currentNonQual)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                  <span className="text-muted-foreground font-semibold">Combined</span>
+                  <span className="font-bold text-foreground">{fmt(currentTotal)}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+                className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+              >
+                From Financial Profile →
+              </button>
+            </div>
+
+            {/* Monthly contributions */}
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1.5">Monthly Retirement Contributions</p>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Pre-Tax</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(preTaxContrib)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Roth</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(rothContrib)}</p>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <p className="text-[11px] text-muted-foreground">Non-Qualified (Brokerage/Taxable)</p>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">{fmt(nonQualContrib)}</p>
+                </div>
+                <div className="flex justify-between text-sm border-t border-border pt-1.5">
+                  <span className="text-muted-foreground font-semibold">Combined Monthly</span>
+                  <span className="font-bold text-foreground">{fmt(monthlyContributions)}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigateToProfile ? onNavigateToProfile('accounts') : onBack()}
+                className="text-[11px] text-accent font-semibold mt-1.5 active:opacity-70"
+              >
+                From Financial Profile →
+              </button>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Expected Annual Return: {state.expectedReturn}%</Label>
               <Slider
-                value={[Number(state.inflationRate) || 3]}
-                onValueChange={([v]) => setState({ inflationRate: String(v) })}
+                value={[Number(state.expectedReturn) || 7]}
+                onValueChange={([v]) => setState({ expectedReturn: String(v) })}
                 min={1}
-                max={6}
+                max={12}
                 step={0.5}
                 className="mt-2"
               />
             </div>
-          </CollapsibleContent>
-        </Collapsible>
 
-        {/* Social Security */}
-        <div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs text-muted-foreground">Social Security</Label>
-            <div className="flex bg-muted rounded-full p-0.5">
-              <button
-                onClick={() => setState({ showSocialSecurity: false })}
-                className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
-                  !state.showSocialSecurity ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
-                }`}
-              >Off</button>
-              <button
-                onClick={() => setState({ showSocialSecurity: true })}
-                className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
-                  state.showSocialSecurity ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
-                }`}
-              >On</button>
-            </div>
-          </div>
-
-          {state.showSocialSecurity && (
-            <div className="mt-3 space-y-3">
-              {members.map(m => {
-                const claimAge = Number(state.ssClaimingAges?.[m.name]) || 67;
-                const note = ssClaimingNote(claimAge);
-                const fraAmount = Number(state.ssBenefits?.[m.name]) || 0;
-                const adjustedAmount = fraAmount * ssaAdjustment(claimAge);
-                return (
-                  <div key={m.name} className="bg-card rounded-xl shadow-sm p-3 space-y-2">
-                    {members.length > 1 && (
-                      <p className="text-xs font-semibold text-foreground">{m.name}</p>
-                    )}
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[11px] text-muted-foreground">Estimated Monthly SS Benefit (at FRA)</Label>
-                        <button
-                          onClick={() => fetchSSEstimate(m.name)}
-                          disabled={aiEstimatingMember === m.name}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-accent active:opacity-70 disabled:opacity-50"
-                        >
-                          {aiEstimatingMember === m.name ? (
-                            <><Loader2 size={10} className="animate-spin" /> Estimating…</>
-                          ) : (
-                            <><Sparkles size={10} /> AI Estimate</>
-                          )}
-                        </button>
-                      </div>
-                      <div className="relative mt-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                        <Input
-                          type="number"
-                          className="pl-7"
-                          value={state.ssBenefits?.[m.name] || ''}
-                          onChange={e => setState({ ssBenefits: { ...state.ssBenefits, [m.name]: e.target.value } })}
-                          placeholder="0"
-                        />
-                      </div>
-                      {aiEstimatingMember === null && fraAmount > 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          AI estimate in today's dollars — for a precise figure, visit <span className="text-accent">ssa.gov/myaccount</span>
-                        </p>
-                      )}
-                      {fraAmount > 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {claimAge !== 67 ? `Adjusted for claiming at ${claimAge}: ${fmt(adjustedAmount)}/mo today → ` : ''}
-                          <span className="font-semibold text-foreground">
-                            {fmt(adjustedAmount * Math.pow(1 + inflationRate, Math.max(0, claimAge - (Number(state.memberAges?.[m.name]) || 0))))}/mo in {retirementYear} dollars
-                          </span>
-                          {' '}(inflation-adjusted via COLA)
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-[11px] text-muted-foreground">Claiming Age: {claimAge}</Label>
-                      <Slider
-                        value={[claimAge]}
-                        onValueChange={([v]) => setState({ ssClaimingAges: { ...state.ssClaimingAges, [m.name]: String(v) } })}
-                        min={62}
-                        max={70}
-                        step={1}
-                        className="mt-2"
-                      />
-                      <div className="relative text-[10px] text-muted-foreground mt-0.5 h-3">
-                        <span className="absolute left-0">62</span>
-                        <span className="absolute" style={{ left: `${((67 - 62) / (70 - 62)) * 100}%`, transform: 'translateX(-50%)' }}>67</span>
-                        <span className="absolute right-0">70</span>
-                      </div>
-                      <p className={`text-[10px] mt-0.5 ${note.color}`}>{note.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Other Retirement Income */}
-        <div>
-          <Label className="text-xs text-muted-foreground">Other Retirement Income</Label>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Pensions, rental income, part-time work, etc.</p>
-          <div className="mt-2 space-y-2">
-            {otherIncomes.map(oi => (
-              <Collapsible key={oi.id} open={oi.expanded} onOpenChange={(open) => updateOtherIncome(oi.id, { expanded: open })}>
-                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-                  <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center gap-2 text-left">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
-                        {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
-                      </p>
-                    </div>
-                    {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="px-3 pb-3 space-y-2.5 border-t border-border pt-2.5">
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">Source Name</Label>
-                        <Input value={oi.name} onChange={e => updateOtherIncome(oi.id, { name: e.target.value })} placeholder="e.g. Joe's Pension" className="h-9 text-sm mt-1" />
-                      </div>
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">Monthly Amount</Label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                          <Input type="number" value={oi.monthlyAmount} onChange={e => updateOtherIncome(oi.id, { monthlyAmount: e.target.value })} placeholder="0" className="h-9 text-sm pl-7" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Start</Label>
-                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
-                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'retirement' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'retirement' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>At Retirement</button>
-                            <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
-                          </div>
-                          {oi.startMode === 'year' && (
-                            <Input type="number" value={oi.startYear} onChange={e => updateOtherIncome(oi.id, { startYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 60} />
-                          )}
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">End</Label>
-                          <div className="flex bg-muted rounded-full p-0.5 mt-1">
-                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'lifetime' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'lifetime' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Lifetime</button>
-                            <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
-                          </div>
-                          {oi.endMode === 'year' && (
-                            <Input type="number" value={oi.endYear} onChange={e => updateOtherIncome(oi.id, { endYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 80} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
-                        <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
-                      </div>
-                      <div className="flex justify-end">
-                        <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
-                          <Trash2 size={11} /> Remove
-                        </button>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
+            {/* Inflation rate (advanced) */}
+            <Collapsible open={state.showAdvanced} onOpenChange={v => setState({ showAdvanced: v })}>
+              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-accent font-medium">
+                {state.showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                Advanced Settings
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Inflation Rate: {state.inflationRate}%</Label>
+                  <Slider
+                    value={[Number(state.inflationRate) || 3]}
+                    onValueChange={([v]) => setState({ inflationRate: String(v) })}
+                    min={1}
+                    max={6}
+                    step={0.5}
+                    className="mt-2"
+                  />
                 </div>
-              </Collapsible>
-            ))}
-            <button type="button" onClick={addOtherIncome} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground hover:border-accent hover:text-accent transition-colors active:scale-[0.98]">
-              <Plus size={14} /> Add Income Source
-            </button>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
-        </div>
+        </Section>
+
+        {/* === SECTION 3: Retirement Expenses === */}
+        <Section
+          title="Retirement Expenses"
+          summary={monthlyExpenses > 0 ? `${fmt(monthlyExpenses)}/mo (in ${retirementYear} dollars)` : 'Not set'}
+          open={!!state.sectionExpensesOpen}
+          onOpenChange={v => setState({ sectionExpensesOpen: v })}
+        >
+          <div className="pt-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Estimated Monthly Retirement Expenses</Label>
+              <button
+                onClick={() => {
+                  setEstDebtFree(false);
+                  setEstNoRetSavings(false);
+                  setEstDebtOverride(String(totalMonthlyDebt));
+                  setEstContribOverride(String(monthlyContributions));
+                  setShowExpenseEstimator(true);
+                }}
+                className="text-[11px] font-semibold text-accent active:opacity-70"
+              >
+                Help me estimate
+              </button>
+            </div>
+            <div className="relative mt-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <Input
+                type="number"
+                className="pl-7"
+                value={state.monthlyExpenses}
+                onChange={e => setState({ monthlyExpenses: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* === SECTION 4: Retirement Income === */}
+        <Section
+          title="Retirement Income"
+          summary={incomeSourceCount > 0
+            ? `${incomeSourceCount} source${incomeSourceCount === 1 ? '' : 's'} · ${fmt(fullSSIncome)}/mo at full SS`
+            : 'No additional income sources'}
+          open={!!state.sectionIncomeOpen}
+          onOpenChange={v => setState({ sectionIncomeOpen: v })}
+        >
+          <div className="space-y-4 pt-3">
+            {/* Social Security */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Social Security</Label>
+                <div className="flex bg-muted rounded-full p-0.5">
+                  <button
+                    onClick={() => setState({ showSocialSecurity: false })}
+                    className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                      !state.showSocialSecurity ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                    }`}
+                  >Off</button>
+                  <button
+                    onClick={() => setState({ showSocialSecurity: true })}
+                    className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                      state.showSocialSecurity ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                    }`}
+                  >On</button>
+                </div>
+              </div>
+
+              {state.showSocialSecurity && (
+                <div className="mt-3 space-y-3">
+                  {members.map(m => {
+                    const claimAge = Number(state.ssClaimingAges?.[m.name]) || 67;
+                    const note = ssClaimingNote(claimAge);
+                    const fraAmount = Number(state.ssBenefits?.[m.name]) || 0;
+                    const adjustedAmount = fraAmount * ssaAdjustment(claimAge);
+                    return (
+                      <div key={m.name} className="bg-muted/40 rounded-xl p-3 space-y-2">
+                        {members.length > 1 && (
+                          <p className="text-xs font-semibold text-foreground">{m.name}</p>
+                        )}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[11px] text-muted-foreground">Estimated Monthly SS Benefit (at FRA)</Label>
+                            <button
+                              onClick={() => fetchSSEstimate(m.name)}
+                              disabled={aiEstimatingMember === m.name}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-accent active:opacity-70 disabled:opacity-50"
+                            >
+                              {aiEstimatingMember === m.name ? (
+                                <><Loader2 size={10} className="animate-spin" /> Estimating…</>
+                              ) : (
+                                <><Sparkles size={10} /> AI Estimate</>
+                              )}
+                            </button>
+                          </div>
+                          <div className="relative mt-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                            <Input
+                              type="number"
+                              className="pl-7"
+                              value={state.ssBenefits?.[m.name] || ''}
+                              onChange={e => setState({ ssBenefits: { ...state.ssBenefits, [m.name]: e.target.value } })}
+                              placeholder="0"
+                            />
+                          </div>
+                          {aiEstimatingMember === null && fraAmount > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              AI estimate in today's dollars — for a precise figure, visit <span className="text-accent">ssa.gov/myaccount</span>
+                            </p>
+                          )}
+                          {fraAmount > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {claimAge !== 67 ? `Adjusted for claiming at ${claimAge}: ${fmt(adjustedAmount)}/mo today → ` : ''}
+                              <span className="font-semibold text-foreground">
+                                {fmt(adjustedAmount * Math.pow(1 + inflationRate, Math.max(0, claimAge - (Number(state.memberAges?.[m.name]) || 0))))}/mo in {retirementYear} dollars
+                              </span>
+                              {' '}(inflation-adjusted via COLA)
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Claiming Age: {claimAge}</Label>
+                          <Slider
+                            value={[claimAge]}
+                            onValueChange={([v]) => setState({ ssClaimingAges: { ...state.ssClaimingAges, [m.name]: String(v) } })}
+                            min={62}
+                            max={70}
+                            step={1}
+                            className="mt-2"
+                          />
+                          <div className="relative text-[10px] text-muted-foreground mt-0.5 h-3">
+                            <span className="absolute left-0">62</span>
+                            <span className="absolute" style={{ left: `${((67 - 62) / (70 - 62)) * 100}%`, transform: 'translateX(-50%)' }}>67</span>
+                            <span className="absolute right-0">70</span>
+                          </div>
+                          <p className={`text-[10px] mt-0.5 ${note.color}`}>{note.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Other Retirement Income */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Other Retirement Income</Label>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Pensions, rental income, part-time work, etc.</p>
+              <div className="mt-2 space-y-2">
+                {otherIncomes.map(oi => (
+                  <Collapsible key={oi.id} open={oi.expanded} onOpenChange={(open) => updateOtherIncome(oi.id, { expanded: open })}>
+                    <div className="bg-muted/40 rounded-xl overflow-hidden">
+                      <CollapsibleTrigger className="w-full px-3 py-2.5 flex items-center gap-2 text-left">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground truncate">{oi.name || 'Other Income'}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {fmt(Number(oi.monthlyAmount) || 0)}/mo · {oi.startMode === 'retirement' ? 'At retirement' : oi.startYear}–{oi.endMode === 'lifetime' ? 'Lifetime' : oi.endYear}
+                            {oi.inflationAdjusted ? ' · inflation-adjusted' : ''}
+                          </p>
+                        </div>
+                        {oi.expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 space-y-2.5 border-t border-border pt-2.5">
+                          <div>
+                            <Label className="text-[11px] text-muted-foreground">Source Name</Label>
+                            <Input value={oi.name} onChange={e => updateOtherIncome(oi.id, { name: e.target.value })} placeholder="e.g. Joe's Pension" className="h-9 text-sm mt-1" />
+                          </div>
+                          <div>
+                            <Label className="text-[11px] text-muted-foreground">Monthly Amount</Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                              <Input type="number" value={oi.monthlyAmount} onChange={e => updateOtherIncome(oi.id, { monthlyAmount: e.target.value })} placeholder="0" className="h-9 text-sm pl-7" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-[11px] text-muted-foreground">Start</Label>
+                              <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                                <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'retirement' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'retirement' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>At Retirement</button>
+                                <button type="button" onClick={() => updateOtherIncome(oi.id, { startMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.startMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                              </div>
+                              {oi.startMode === 'year' && (
+                                <Input type="number" value={oi.startYear} onChange={e => updateOtherIncome(oi.id, { startYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 60} />
+                              )}
+                            </div>
+                            <div>
+                              <Label className="text-[11px] text-muted-foreground">End</Label>
+                              <div className="flex bg-muted rounded-full p-0.5 mt-1">
+                                <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'lifetime' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'lifetime' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Lifetime</button>
+                                <button type="button" onClick={() => updateOtherIncome(oi.id, { endMode: 'year' })} className={`flex-1 text-[10px] font-medium px-2 py-1 rounded-full ${oi.endMode === 'year' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Year</button>
+                              </div>
+                              {oi.endMode === 'year' && (
+                                <Input type="number" value={oi.endYear} onChange={e => updateOtherIncome(oi.id, { endYear: e.target.value })} className="h-8 text-xs mt-1" min={currentYear} max={currentYear + 80} />
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[11px] text-muted-foreground">Inflation-Adjusted (3%/yr)</Label>
+                            <Switch checked={oi.inflationAdjusted} onCheckedChange={(v) => updateOtherIncome(oi.id, { inflationAdjusted: v })} />
+                          </div>
+                          <div className="flex justify-end">
+                            <button type="button" onClick={() => removeOtherIncome(oi.id)} className="flex items-center gap-1 text-[11px] text-destructive active:opacity-70">
+                              <Trash2 size={11} /> Remove
+                            </button>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                ))}
+                <button type="button" onClick={addOtherIncome} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-border text-xs font-semibold text-muted-foreground hover:border-accent hover:text-accent transition-colors active:scale-[0.98]">
+                  <Plus size={14} /> Add Income Source
+                </button>
+              </div>
+            </div>
+          </div>
+        </Section>
       </div>
 
-      {/* Output Section */}
+      {/* === SECTION 5: Your Retirement Picture (always visible) === */}
       {currentAge > 0 && (
         <div className="px-6 mt-6">
           <h2 className="font-display text-base font-bold text-foreground mb-3">Your Retirement Picture</h2>
