@@ -337,8 +337,7 @@ export function Dashboard({
   }, [monthTransactions]);
 
   const overallNet = overallSpent - overallDeposits;
-  // Budget tracks gross spending (what you spent), not net cash flow
-  const budgetDifference = totalBudget - overallSpent;
+  const budgetDifference = totalBudget - overallNet;
 
   // Colors — lighter blue & gold theme
   const spentColor = 'hsl(220 42% 38%)';
