@@ -484,6 +484,14 @@ export function Dashboard({
                 <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
               </div>
               <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">Deposits & Credits</span>
+                <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(overallDeposits)}</span>
+              </div>
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">Net Total</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
+              </div>
+              <div className="flex justify-between items-center px-4 py-2.5">
                 <span className="text-sm text-muted-foreground">Total Budgeted</span>
                 <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
               </div>
