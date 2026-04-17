@@ -463,6 +463,52 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
   const withdrawalSustainable = lumpSumNeeded <= 0;
   const impliedWithdrawalRate = projectedPortfolio > 0 ? (monthlyExpenses * 12) / projectedPortfolio : 0;
 
+  // Plan status: green / amber / red based on phased deficits
+  const planStatus = useMemo(() => {
+    if (monthlyExpenses <= 0 || incomePhases.length === 0) {
+      return { level: 'green' as const, label: 'On Track for Retirement', bridgeShortfall: 0, primaryPhase: incomePhases[incomePhases.length - 1], note: '' };
+    }
+    // Primary phase = longest-duration phase (typically full-SS phase)
+    const primaryPhase = incomePhases.reduce((longest, p) => p.durationYears > longest.durationYears ? p : longest, incomePhases[0]);
+    const primaryGap = primaryPhase.totalIncome - monthlyExpenses;
+    const primaryWithdrawalRate = projectedPortfolio > 0
+      ? (Math.max(0, monthlyExpenses - primaryPhase.ssIncome - (primaryPhase.otherIncome || 0)) * 12) / projectedPortfolio
+      : 0;
+
+    // Total bridge shortfall = sum of (gap × months) across all deficit phases other than primary
+    let bridgeShortfall = 0;
+    incomePhases.forEach(p => {
+      const gap = monthlyExpenses - p.totalIncome;
+      if (gap > 0 && p !== primaryPhase) bridgeShortfall += gap * p.durationYears * 12;
+    });
+
+    // Red conditions
+    if (primaryGap < 0 || !withdrawalSustainable || primaryWithdrawalRate > 0.05) {
+      return {
+        level: 'red' as const,
+        label: 'Off Track',
+        bridgeShortfall,
+        primaryPhase,
+        note: primaryGap < 0
+          ? `Your primary retirement phase shows a monthly gap of ${fmt(Math.abs(primaryGap))}. This long-term phase needs to be sustainable.`
+          : !withdrawalSustainable
+            ? `Projected portfolio is insufficient to last through age ${longevityAge}. Additional ${fmt(lumpSumNeeded)} needed at retirement.`
+            : `Implied withdrawal rate of ${(primaryWithdrawalRate * 100).toFixed(1)}% in the primary phase exceeds the 5% threshold and risks depleting savings.`,
+      };
+    }
+    // Amber: short bridge deficits but primary phase is sound
+    if (bridgeShortfall > 0) {
+      return {
+        level: 'amber' as const,
+        label: 'Plan Needs Attention',
+        bridgeShortfall,
+        primaryPhase,
+        note: `Your plan has a brief bridge period before Social Security begins. Consider setting aside ${fmt(bridgeShortfall)} in conservative assets before retirement to cover this gap.`,
+      };
+    }
+    return { level: 'green' as const, label: 'On Track for Retirement', bridgeShortfall: 0, primaryPhase, note: '' };
+  }, [incomePhases, monthlyExpenses, projectedPortfolio, withdrawalSustainable, lumpSumNeeded, longevityAge]);
+
   // AI SS Estimate
   const fetchSSEstimate = useCallback(async (memberName: string) => {
     setAiEstimatingMember(memberName);
