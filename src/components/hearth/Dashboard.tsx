@@ -321,11 +321,24 @@ export function Dashboard({
 
   const checkingNet = checkingSpent - checkingDeposits;
 
-  // Overall totals
-  // Use the same totals as the Spending tab (passed from Index.tsx)
-  const overallSpent = totalVariableSpent + totalFixedSpent;
-  const overallNet = overallSpent;
-  const budgetDifference = totalBudget - overallNet;
+  // Overall totals — gross spending across all accounts (excludes CC payments, which are internal transfers)
+  const overallSpent = useMemo(() => {
+    return monthTransactions
+      .filter(t => t.transactionType === 'expense')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions]);
+
+  // Deposits & credits — money flowing in that offsets spending
+  // (checking deposits + credit card refunds/credits + CC payments received on the credit side)
+  const overallDeposits = useMemo(() => {
+    return monthTransactions
+      .filter(t => t.transactionType === 'deposit' || t.transactionType === 'cc-payment')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [monthTransactions]);
+
+  const overallNet = overallSpent - overallDeposits;
+  // Budget tracks gross spending (what you spent), not net cash flow
+  const budgetDifference = totalBudget - overallSpent;
 
   // Colors — lighter blue & gold theme
   const spentColor = 'hsl(220 42% 38%)';
@@ -471,6 +484,10 @@ export function Dashboard({
                   <span className="text-sm text-muted-foreground">Total Spent</span>
                   <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
                 </div>
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">Deposits & Credits</span>
+                  <span className="text-sm font-medium tabular-nums text-accent">−{formatCurrency(overallDeposits)}</span>
+                </div>
                 <div className="flex justify-between items-center px-4 py-3 bg-accent/5">
                   <span className="text-sm font-semibold text-foreground">Net Total</span>
                   <span className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
@@ -489,6 +506,9 @@ export function Dashboard({
                   <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
                     {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
                   </span>
+                </div>
+                <div className="px-4 py-2 bg-muted/20">
+                  <span className="text-[11px] text-muted-foreground">Compared against gross Total Spent.</span>
                 </div>
               </div>
             </>
