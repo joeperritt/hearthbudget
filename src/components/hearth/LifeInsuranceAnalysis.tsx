@@ -433,25 +433,32 @@ Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning"
       {memberAnalysis.map((member, i) => {
         const policyCount = member.policies.length;
         const missingBeneficiaries = member.policies.filter(p => !hasNamedBeneficiary(p)).length;
+        const isOpen = expandedMember === i;
+        const statusLabel = member.coverage === 0 ? 'No Coverage' :
+          member.verdict === 'adequate' ? 'Adequately Covered' :
+          member.verdict === 'underinsured' ? 'Underinsured' : 'N/A';
+        const statusClass = member.coverage === 0 ? 'bg-destructive/15 text-destructive' :
+          member.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
+          member.verdict === 'underinsured' ? 'bg-destructive/15 text-destructive' :
+          'bg-muted text-muted-foreground';
         return (
           <div key={i} className="px-6 mt-4">
-            <div className="bg-card rounded-xl p-4 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-primary" />
-                  <p className="text-sm font-semibold text-foreground">{member.name}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  member.coverage === 0 ? 'bg-destructive/15 text-destructive' :
-                  member.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
-                  member.verdict === 'underinsured' ? 'bg-destructive/15 text-destructive' :
-                  'bg-muted text-muted-foreground'
-                }`}>
-                  {member.coverage === 0 ? 'No Coverage' :
-                   member.verdict === 'adequate' ? 'Adequately Covered' :
-                   member.verdict === 'underinsured' ? 'Underinsured' : 'N/A'}
+            <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandedMember(isOpen ? null : i)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-muted/30"
+              >
+                <Users size={16} className="text-primary shrink-0" />
+                <p className="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">{member.name}</p>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${statusClass}`}>
+                  {statusLabel}
                 </span>
-              </div>
+                <span className="text-xs font-semibold text-foreground tabular-nums shrink-0">{fmt(member.totalCoverage)}</span>
+                <ChevronDown size={16} className={`text-muted-foreground transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isOpen && (
+              <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
 
               <div className="grid grid-cols-2 gap-3">
                 <ReadOnlyField label="Annual Income" value={fmt(member.annualIncome)} />
