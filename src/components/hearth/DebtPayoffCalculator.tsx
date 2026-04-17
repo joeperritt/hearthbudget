@@ -271,16 +271,21 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
               </div>
               <div className="space-y-2">
                 {debts.map((d, i) => {
-                  const isExcluded = d.type === BUSINESS_BUY_IN_TYPE;
+                  const excluded = isExcluded(d);
                   return (
-                    <div key={i} className="bg-muted/30 rounded-lg p-3 relative">
+                    <div key={i} className={`bg-muted/30 rounded-lg p-3 relative transition-opacity ${excluded ? 'opacity-60' : ''}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-sm font-semibold text-foreground capitalize">{d.name.replace(/_/g, ' ')}</p>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 ${isExcluded ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-muted text-muted-foreground">
                               {d.type}
                             </span>
+                            {excluded && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold tracking-wider shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                Excluded
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {d.rate}% APR · {fmtDecimal(d.monthlyPayment)}/mo min
@@ -294,6 +299,15 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
                           )}
                         </div>
                       </div>
+                      <button
+                        onClick={() => toggleExclude(d)}
+                        className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${excluded ? 'bg-accent border-accent' : 'border-muted-foreground/40'}`}>
+                          {excluded && <span className="text-[9px] text-accent-foreground leading-none">✓</span>}
+                        </span>
+                        Exclude from payoff optimization
+                      </button>
                     </div>
                   );
                 })}
