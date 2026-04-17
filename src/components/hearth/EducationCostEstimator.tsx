@@ -31,7 +31,7 @@ const SCHOOL_LABELS: Record<SchoolType, string> = {
   private: 'Private',
 };
 
-const INFLATION_RATE = 0.05; // 5% annual education inflation
+const DEFAULT_INFLATION_PCT = 5; // 5% annual education inflation
 
 interface EducationCostEstimatorProps {
   open: boolean;
