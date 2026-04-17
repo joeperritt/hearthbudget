@@ -208,7 +208,7 @@ export function EducationCostEstimator({
               <span className="font-bold text-accent tabular-nums">{fmt(inflatedTotal)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Using 5% annual education inflation through {targetYear}
+              Using {inflationPct.toFixed(1)}% annual education inflation through {targetYear}
               {selectedDep ? ` (when ${selectedDep.name} turns 18)` : ''}
             </p>
           </div>
