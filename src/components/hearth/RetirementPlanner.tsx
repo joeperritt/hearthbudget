@@ -39,6 +39,32 @@ function ssClaimingNote(age: number): { text: string; color: string } {
   return { text: 'Maximum benefit — 124% of full retirement age amount', color: 'text-green-600' };
 }
 
+interface OtherIncome {
+  id: string;
+  name: string;
+  monthlyAmount: string;
+  startMode: 'retirement' | 'year'; // "At Retirement" or specific year
+  startYear: string;                 // used when startMode === 'year'
+  endMode: 'lifetime' | 'year';
+  endYear: string;
+  inflationAdjusted: boolean;
+  expanded: boolean;
+}
+
+function newOtherIncome(retirementYear: number): OtherIncome {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    monthlyAmount: '',
+    startMode: 'retirement',
+    startYear: String(retirementYear),
+    endMode: 'lifetime',
+    endYear: String(retirementYear + 20),
+    inflationAdjusted: false,
+    expanded: true,
+  };
+}
+
 interface RetirementPlannerProps {
   onBack: () => void;
   householdId: string | null;
@@ -73,11 +99,30 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     memberAges: {} as Record<string, string>,
     ssBenefits: {} as Record<string, string>,
     ssClaimingAges: {} as Record<string, string>,
+    otherIncomes: [] as OtherIncome[],
+    // Section collapse state
+    sectionAccountsOpen: true,
+    sectionExpensesOpen: true,
+    sectionIncomeOpen: true,
+    sectionDetailedOpen: false,
   });
 
-  // Load financial profile, tax state, and budget totals
-  useEffect(() => {
-    if (!householdId) { setProfileLoading(false); return; }
+  const otherIncomes: OtherIncome[] = Array.isArray(state.otherIncomes) ? state.otherIncomes : [];
+
+  const updateOtherIncome = useCallback((id: string, updates: Partial<OtherIncome>) => {
+    const updated = otherIncomes.map(o => o.id === id ? { ...o, ...updates } : o);
+    setState({ otherIncomes: updated });
+  }, [otherIncomes, setState]);
+
+  const addOtherIncome = useCallback(() => {
+    const ry = Number(state.retirementYear) || (currentYear + 25);
+    setState({ otherIncomes: [...otherIncomes, newOtherIncome(ry)] });
+  }, [otherIncomes, state.retirementYear, currentYear, setState]);
+
+  const removeOtherIncome = useCallback((id: string) => {
+    setState({ otherIncomes: otherIncomes.filter(o => o.id !== id) });
+  }, [otherIncomes, setState]);
+
     Promise.all([
       supabase.from('financial_profiles').select('*').eq('household_id', householdId).maybeSingle(),
       supabase.from('tool_states' as any).select('state_json').eq('household_id', householdId).eq('tool_name', 'tax-withholding').maybeSingle(),
