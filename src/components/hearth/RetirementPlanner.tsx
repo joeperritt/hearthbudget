@@ -1185,8 +1185,11 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
               </p>
             )}
           </div>
+          </div>
+          </Section>
+          </div>
 
-          {/* Gap / Surplus summary */}
+
           {monthlyExpenses > 0 && lumpSumNeeded > 0 && (
             <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
               <p className="text-sm font-semibold text-foreground mb-2">Closing the Income Gap</p>
