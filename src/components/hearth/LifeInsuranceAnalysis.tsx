@@ -2,10 +2,13 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Sparkles, Loader2, Info, RefreshCw, Users, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
 import { ageFromDob, yearsUntilAge } from '@/lib/ageUtils';
+import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
+import { AIInsightsList, parseAIInsights, AIInsight } from './AIInsightsList';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
