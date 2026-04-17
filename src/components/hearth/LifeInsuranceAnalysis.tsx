@@ -2,10 +2,13 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Sparkles, Loader2, Info, RefreshCw, Users, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
 import { ageFromDob, yearsUntilAge } from '@/lib/ageUtils';
+import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
+import { AIInsightsList, parseAIInsights, AIInsight } from './AIInsightsList';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -80,8 +83,11 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
   const [dependents, setDependents] = useState<{ name: string; age: number | null; dob?: string | null }[]>([]);
   const [expandedPolicies, setExpandedPolicies] = useState<Record<string, boolean>>({});
   const [autoYearsApplied, setAutoYearsApplied] = useState(false);
+  const [expandedMember, setExpandedMember] = useState<number | null>(null);
+  const [defaultExpansionApplied, setDefaultExpansionApplied] = useState(false);
+  const [showEducationEstimator, setShowEducationEstimator] = useState(false);
 
-  const [aiInsights, setAiInsights] = useState<string[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiLastUpdated, setAiLastUpdated] = useState<Date | null>(null);
@@ -145,6 +151,16 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
     }
   }, [loaded, youngestDependent, state.yearsUntilIndependent, autoYearsApplied, setState]);
 
+  const dependentDetails = useMemo(() => {
+    return dependents.map(d => {
+      const age = d.dob ? (ageFromDob(d.dob) ?? null) : (d.age ?? null);
+      const yearTurns18 = age !== null
+        ? new Date().getFullYear() + Math.max(0, 18 - age)
+        : new Date().getFullYear() + 18;
+      return { name: d.name || 'Dependent', age, yearTurns18 };
+    });
+  }, [dependents]);
+
   const deps = dependents.length;
   const yearsIndep = state.yearsUntilIndependent === '' ? 18 : (parseInt(state.yearsUntilIndependent) || 0);
   const eduPerChild = Number(state.educationPerChild) || 0;
@@ -169,6 +185,14 @@ export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile
       return { ...m, income, coverage, irLow, irHigh, dime, recLow, recHigh, gap, surplus, verdict };
     });
   }, [members, totalDebt, mortgageBalance, deps, yearsIndep, eduPerChild]);
+
+  // Default expansion: first member with an issue. If all adequate, both collapsed.
+  useEffect(() => {
+    if (defaultExpansionApplied || !memberAnalysis.length) return;
+    const firstIssueIdx = memberAnalysis.findIndex(m => m.verdict !== 'adequate');
+    setExpandedMember(firstIssueIdx >= 0 ? firstIssueIdx : null);
+    setDefaultExpansionApplied(true);
+  }, [memberAnalysis, defaultExpansionApplied]);
 
   // Coverage Timeline: stepped breakdown by expiry year
   const coverageTimeline = useMemo(() => {
@@ -233,7 +257,7 @@ Household context:
 Coverage timeline (how total household coverage steps down as term policies expire):
 ${timelineSummary || 'No coverage in force.'}
 
-Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequacy per member with specific dollar gaps if any, 2) Whether the coverage timeline aligns with the family's protection window (children at home, mortgage payoff), 3) A stewardship-framed encouragement to review with a Certified Financial Planner. Reference real numbers. No markdown, no asterisks, no headings — plain prose paragraphs separated by blank lines.`;
+Provide exactly 3 short insights as a JSON array. Each item: { "type": "warning" | "tip" | "encouragement", "title": string (3-6 words), "body": string (2-3 sentences) }. Cover: 1) Coverage adequacy per member with specific dollar gaps if any (warning if underinsured, encouragement if adequate), 2) Whether the coverage timeline aligns with the family's protection window (children at home, mortgage payoff), 3) A stewardship-framed encouragement to review with a Certified Financial Planner. Reference real numbers. Return ONLY the JSON array, no markdown fences, no prose.`;
 
       const { data, error } = await supabase.functions.invoke('budget-insights', {
         body: { prompt },
@@ -251,12 +275,7 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
         setAiLoading(false);
         return;
       }
-      // Split by blank lines into paragraphs, take first 3
-      const parsed = content
-        .split(/\n\s*\n/)
-        .map(s => s.replace(/\*\*/g, '').replace(/^\s*\d+[\.\)]\s*/, '').trim())
-        .filter(Boolean)
-        .slice(0, 3);
+      const parsed = parseAIInsights(content).slice(0, 3);
       setAiInsights(parsed);
       setAiLastUpdated(new Date());
     } catch (e) {
@@ -320,7 +339,19 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
             <ReadOnlyField label="Mortgage Balance" value={fmt(mortgageBalance)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <ReadOnlyField label="Dependents" value={String(deps)} />
+            <div>
+              <p className="text-xs text-muted-foreground">Dependents</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5 leading-tight">
+                {deps === 0 ? '0' : (
+                  <>
+                    {deps}
+                    {dependentDetails.length > 0 && (
+                      <span className="text-muted-foreground font-normal"> — {dependentDetails.map(d => `${d.name}${d.age !== null ? `, age ${d.age}` : ''}`).join(', ')}</span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
             <div>
               <Label className="text-xs text-muted-foreground">Years to Independent</Label>
               <Input
@@ -339,7 +370,16 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
             </div>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Education $/Child</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Education $/Child</Label>
+              <button
+                type="button"
+                onClick={() => setShowEducationEstimator(true)}
+                className="text-[11px] font-semibold text-accent active:opacity-70"
+              >
+                Help me estimate
+              </button>
+            </div>
             <div className="relative mt-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
               <Input type="number" className="pl-7" value={state.educationPerChild} onChange={e => setState({ educationPerChild: e.target.value })} />
@@ -393,25 +433,32 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
       {memberAnalysis.map((member, i) => {
         const policyCount = member.policies.length;
         const missingBeneficiaries = member.policies.filter(p => !hasNamedBeneficiary(p)).length;
+        const isOpen = expandedMember === i;
+        const statusLabel = member.coverage === 0 ? 'No Coverage' :
+          member.verdict === 'adequate' ? 'Adequately Covered' :
+          member.verdict === 'underinsured' ? 'Underinsured' : 'N/A';
+        const statusClass = member.coverage === 0 ? 'bg-destructive/15 text-destructive' :
+          member.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
+          member.verdict === 'underinsured' ? 'bg-destructive/15 text-destructive' :
+          'bg-muted text-muted-foreground';
         return (
           <div key={i} className="px-6 mt-4">
-            <div className="bg-card rounded-xl p-4 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-primary" />
-                  <p className="text-sm font-semibold text-foreground">{member.name}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  member.coverage === 0 ? 'bg-destructive/15 text-destructive' :
-                  member.verdict === 'adequate' ? 'bg-green-100 text-green-700' :
-                  member.verdict === 'underinsured' ? 'bg-destructive/15 text-destructive' :
-                  'bg-muted text-muted-foreground'
-                }`}>
-                  {member.coverage === 0 ? 'No Coverage' :
-                   member.verdict === 'adequate' ? 'Adequately Covered' :
-                   member.verdict === 'underinsured' ? 'Underinsured' : 'N/A'}
+            <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandedMember(isOpen ? null : i)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-muted/30"
+              >
+                <Users size={16} className="text-primary shrink-0" />
+                <p className="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">{member.name}</p>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${statusClass}`}>
+                  {statusLabel}
                 </span>
-              </div>
+                <span className="text-xs font-semibold text-foreground tabular-nums shrink-0">{fmt(member.totalCoverage)}</span>
+                <ChevronDown size={16} className={`text-muted-foreground transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isOpen && (
+              <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
 
               <div className="grid grid-cols-2 gap-3">
                 <ReadOnlyField label="Annual Income" value={fmt(member.annualIncome)} />
@@ -519,7 +566,21 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
                       <p className="text-sm font-bold text-primary mt-1 tabular-nums">{fmt(member.irLow)}–{fmt(member.irHigh)}</p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-[11px] font-semibold text-foreground">DIME Method</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-[11px] font-semibold text-foreground">DIME Method</p>
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="text-muted-foreground active:opacity-70">
+                                <Info size={11} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px] text-[11px] leading-relaxed">
+                              The DIME method can produce very large numbers for younger households because the Income component multiplies annual income by many years. DIME is best used as an upper bound. The Income Replacement method (10–12× income) is typically the more practical planning target.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <p className="text-[10px] text-muted-foreground">Debt + Income + Mortgage + Education</p>
                       <p className="text-sm font-bold text-primary mt-1 tabular-nums">{fmt(member.dime)}</p>
                     </div>
@@ -566,6 +627,8 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
                   )}
                 </div>
               )}
+              </div>
+              )}
             </div>
           </div>
         );
@@ -601,10 +664,8 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
             <p className="text-xs text-destructive mb-2">{aiError}</p>
           )}
           {aiInsights.length > 0 ? (
-            <div className="space-y-3">
-              {aiInsights.map((insight, i) => (
-                <p key={i} className="text-xs text-muted-foreground leading-relaxed">{insight}</p>
-              ))}
+            <div className="space-y-2">
+              <AIInsightsList insights={aiInsights} />
               {aiLastUpdated && (
                 <p className="text-[10px] text-muted-foreground/50">Updated {formatDistanceToNow(aiLastUpdated, { addSuffix: true })}</p>
               )}
@@ -614,6 +675,14 @@ Provide exactly 3 short insights (2-3 sentences each). Cover: 1) Coverage adequa
           )}
         </div>
       </div>
+
+      {/* Education Cost Estimator Modal */}
+      <EducationCostEstimator
+        open={showEducationEstimator}
+        onOpenChange={setShowEducationEstimator}
+        dependents={dependentDetails.map(d => ({ name: d.name, yearTurns18: d.yearTurns18, currentAge: d.age })) as EducationDependent[]}
+        onApply={({ total }) => setState({ educationPerChild: String(total) })}
+      />
 
       {/* Footer disclaimer */}
       <div className="px-6 mt-6 mb-8 flex gap-2">
