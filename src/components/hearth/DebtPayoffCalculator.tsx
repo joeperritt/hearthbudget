@@ -303,9 +303,34 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
           {/* Debt Analysis */}
           <div className="px-6 mt-4">
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="px-4 pt-3 pb-2 border-b border-border">
-                <p className="text-xs text-muted-foreground font-medium tracking-wide">Debt Analysis</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Avalanche method — highest rate first</p>
+              <div className="px-4 pt-3 pb-3 border-b border-border space-y-2">
+                <p className="text-sm font-semibold text-foreground">Debt Analysis</p>
+                {/* Method toggle */}
+                <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+                  <button
+                    onClick={() => setToolState({ method: 'avalanche' })}
+                    className={`flex-1 px-2 py-1.5 rounded text-[11px] font-semibold transition-colors ${method === 'avalanche' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                    Avalanche (highest rate)
+                  </button>
+                  <button
+                    onClick={() => setToolState({ method: 'snowball' })}
+                    className={`flex-1 px-2 py-1.5 rounded text-[11px] font-semibold transition-colors ${method === 'snowball' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                    Snowball (smallest balance)
+                  </button>
+                </div>
+                <button
+                  onClick={() => setToolState({ showMethodInfo: !toolState.showMethodInfo })}
+                  className="text-[11px] font-semibold text-accent flex items-center gap-1"
+                >
+                  {toolState.showMethodInfo ? '▾' : '▸'} Why these methods?
+                </button>
+                {toolState.showMethodInfo && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed bg-muted/40 rounded-lg p-2.5">
+                    Avalanche targets the highest interest rate first, saving the most money over time. Snowball targets the smallest balance first, giving you quicker wins to build momentum. Both work — choose the approach that fits your personality.
+                  </p>
+                )}
               </div>
               <div className="divide-y divide-border">
                 <SummaryRow label="Projected Debt-Free" value={(() => {
