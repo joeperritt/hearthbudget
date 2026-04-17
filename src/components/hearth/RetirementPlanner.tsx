@@ -227,7 +227,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   // Parsed values
   const retirementYear = Number(state.retirementYear) || (currentYear + 25);
   const expectedReturn = (Number(state.expectedReturn) || 7) / 100;
-  const inflationRate = (Number(state.inflationRate) || 3) / 100;
+  const inflationRate = (Number(state.inflationRate) || 2.5) / 100;
   const preTaxContrib = Number(state.preTaxContrib) || 0;
   const rothContrib = Number(state.rothContrib) || 0;
   const nonQualContrib = Number(state.nonQualContrib) || 0;
