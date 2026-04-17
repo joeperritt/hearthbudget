@@ -1445,7 +1445,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
                 <span className="font-bold text-foreground">{fmt(estimatorResult.adjusted)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Inflation-adjusted in {retirementYear}</span>
+                <span className="text-muted-foreground">In {retirementYear} dollars (at {Number(state.inflationRate || 2.5).toFixed(1)}% inflation)</span>
                 <span className="font-bold text-accent">{fmt(estimatorResult.inflated)}/mo</span>
               </div>
               <p className="text-[10px] text-muted-foreground">
