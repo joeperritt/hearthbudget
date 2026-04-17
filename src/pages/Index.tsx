@@ -441,6 +441,7 @@ const Index = () => {
         {activeTab === 'transactions' && (
           <TransactionsView
             transactions={monthTransactions}
+            transfers={monthTransfers}
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
             monthLabel={monthLabel}
@@ -547,6 +548,7 @@ const Index = () => {
         onAdd={handleAddTransactions}
         monthTransactions={monthTransactions}
         accounts={accounts}
+        transferAdjustments={transferAdjustments}
       />
 
       <EditTransactionSheet
@@ -560,6 +562,7 @@ const Index = () => {
         splitSiblings={editingSplitSiblings}
         accounts={accounts}
         allTransactions={transactions}
+        transferAdjustments={transferAdjustments}
       />
 
       {moveFundsCategoryId && (
