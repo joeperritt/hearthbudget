@@ -1064,7 +1064,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       <div className="px-6 mt-6">
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <div className="p-4 border-b border-border">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Monthly Payment Breakdown</p>
+            <p className="text-xs text-muted-foreground font-medium tracking-wide">Monthly Payment Breakdown</p>
           </div>
           <div className="divide-y divide-border">
             <Row label="Loan Amount" value={fmt(shoppingCalc.loanAmount)} />
@@ -1093,7 +1093,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
 
       {/* CFP Indicators */}
       <div className="px-6 mt-5 space-y-3">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Certified Financial Planner (CFP) Guideline Indicators</p>
+        <p className="text-xs text-muted-foreground font-medium tracking-wide">Certified Financial Planner (CFP) Guideline Indicators</p>
 
         <div className={`rounded-xl p-4 border ${housingOk ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'}`}>
           <div className="flex justify-between items-center">
@@ -1232,7 +1232,7 @@ function ExtraPaymentSection({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-card rounded-lg shadow-sm p-3 border border-border">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Standard</p>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wide mb-2">Standard</p>
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Term</span>
@@ -1246,7 +1246,7 @@ function ExtraPaymentSection({
               </div>
 
               <div className={`bg-card rounded-lg shadow-sm p-3 border ${extra > 0 ? 'border-green-300 dark:border-green-700' : 'border-border'}`}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">With Extra</p>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wide mb-2">With Extra</p>
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Term</span>
