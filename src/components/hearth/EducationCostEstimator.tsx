@@ -60,6 +60,7 @@ export function EducationCostEstimator({
   const [degreeType, setDegreeType] = useState<DegreeType>('4-year');
   const [dependentName, setDependentName] = useState<string | null>(initialDependentName);
   const [manualYears, setManualYears] = useState<string>('18');
+  const [inflationPct, setInflationPct] = useState<number>(DEFAULT_INFLATION_PCT);
 
   useEffect(() => {
     if (open) {
