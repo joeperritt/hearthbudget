@@ -145,9 +145,17 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile 
   const [financialProfile, setFinancialProfile] = useState<any>(null);
 
   const { state: toolState, setState: setToolState, loaded: toolStateLoaded } = useToolState(
-    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '', method: 'avalanche' as PayoffMethod, showMethodInfo: false }
+    householdId, 'debt-payoff', { rollForward: true, targetPayoffYear: '', method: 'avalanche' as PayoffMethod, showMethodInfo: false, excludedDebtKeys: [] as string[] }
   );
   const method: PayoffMethod = (toolState.method as PayoffMethod) || 'avalanche';
+  const excludedKeys: string[] = Array.isArray(toolState.excludedDebtKeys) ? toolState.excludedDebtKeys : [];
+  const debtKey = (d: Debt) => `${d.type}|${d.name}`;
+  const isExcluded = (d: Debt) => excludedKeys.includes(debtKey(d));
+  const toggleExclude = (d: Debt) => {
+    const key = debtKey(d);
+    const next = excludedKeys.includes(key) ? excludedKeys.filter(k => k !== key) : [...excludedKeys, key];
+    setToolState({ excludedDebtKeys: next });
+  };
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return; }
