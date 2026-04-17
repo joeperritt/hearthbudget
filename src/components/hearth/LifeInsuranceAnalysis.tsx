@@ -77,7 +77,7 @@ function hasNamedBeneficiary(p: Policy): boolean {
   return Array.isArray(list) && list.length > 0;
 }
 
-export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile }: LifeInsuranceAnalysisProps) {
+export function LifeInsuranceAnalysis({ onBack, householdId, onNavigateToProfile, onNavigateToBudget, onNavigateToPlanTool }: LifeInsuranceAnalysisProps) {
   const { state, setState, loaded } = useToolState<LIState>(householdId, 'life-insurance', defaultState);
   const [profileLoading, setProfileLoading] = useState(true);
   const [members, setMembers] = useState<MemberInsurance[]>([]);
