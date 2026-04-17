@@ -724,7 +724,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
           </button>
           <div>
             <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Analyze your current mortgage</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Understand your payoff timeline and equity position.</p>
           </div>
         </div>
 
