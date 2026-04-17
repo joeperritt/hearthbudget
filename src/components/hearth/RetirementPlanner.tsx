@@ -1055,8 +1055,17 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
             </div>
           </div>
 
+          {/* === SECTION 6: Detailed Projections === */}
+          <div className="mb-3">
+          <Section
+            title="Detailed Projections"
+            summary={`${fmt(projectedPortfolio)} portfolio · ${incomePhases.length} phase${incomePhases.length === 1 ? '' : 's'}`}
+            open={!!state.sectionDetailedOpen}
+            onOpenChange={v => setState({ sectionDetailedOpen: v })}
+          >
+          <div className="pt-3 space-y-3">
           {/* Projections */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
+          <div className="bg-muted/30 rounded-xl p-4">
             <p className="text-sm font-semibold text-foreground mb-2">Projected Portfolio at Retirement</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-sm">
