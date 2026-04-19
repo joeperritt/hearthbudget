@@ -573,6 +573,8 @@ const Index = () => {
           fixedExpenses={activeMonthFixedExpenses}
           fromCategoryId={moveFundsCategoryId}
           onMove={addTransfer}
+          monthTransactions={monthTransactions}
+          transferAdjustments={transferAdjustments}
         />
       )}
 
@@ -584,6 +586,8 @@ const Index = () => {
           fixedExpenses={activeMonthFixedExpenses}
           fromCategoryId={moveFundsFixedId}
           onMove={addTransfer}
+          monthTransactions={monthTransactions}
+          transferAdjustments={transferAdjustments}
         />
       )}
     </div>
