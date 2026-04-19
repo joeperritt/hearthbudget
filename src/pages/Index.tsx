@@ -7,6 +7,7 @@ import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/hearth/BottomNav';
+import { SideNav } from '@/components/hearth/SideNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
 import { TransactionsView } from '@/components/hearth/TransactionsView';
@@ -386,7 +387,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 overflow-y-auto pb-24">
+      <SideNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <div className="flex-1 overflow-y-auto pb-24 md:pb-10 md:pt-10 md:pl-[220px]">
+        <div className="md:max-w-[680px] md:mx-auto md:px-8">
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
@@ -536,6 +539,7 @@ const Index = () => {
         {activeTab === 'more' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(moreSubView) && (
           renderTool(moreSubView, () => setMoreSubView('calculators'))
         )}
+        </div>
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />

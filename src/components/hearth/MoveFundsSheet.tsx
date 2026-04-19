@@ -185,7 +185,7 @@ export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses =
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-w-lg mx-auto bg-background">
+      <SheetContent side="bottom" className="rounded-t-2xl max-w-[560px] mx-auto bg-background">
         <SheetHeader>
           <SheetTitle className="font-display text-lg">Move Funds</SheetTitle>
         </SheetHeader>

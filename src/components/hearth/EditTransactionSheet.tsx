@@ -288,7 +288,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-w-lg mx-auto bg-background max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl max-w-[560px] mx-auto bg-background max-h-[90vh] overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="font-display text-lg">Edit Transaction</SheetTitle>
         </SheetHeader>
