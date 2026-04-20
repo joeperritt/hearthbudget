@@ -396,6 +396,11 @@ export function TransactionsView({
                     }`}>
                       {accountLabels[row.account] || row.account}
                     </span>
+                    {row.transactions.every(t => t.source === 'manual') && (
+                      <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
+                        Manual
+                      </span>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
