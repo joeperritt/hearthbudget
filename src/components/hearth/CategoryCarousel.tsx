@@ -270,7 +270,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
         </div>
       </div>
       {/* Desktop: responsive grid */}
-      <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3 px-6">
+      <div className="hidden lg:grid lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 px-6">
         {shuffled.map((item) => {
           const s = getCardStyles(item);
           return (
