@@ -26,7 +26,7 @@ export function CalculatorsList({ onBack, onSelectCalculator }: CalculatorsListP
         </div>
       </div>
 
-      <div className="px-6 mt-4 space-y-2">
+      <div className="px-6 mt-4 space-y-2 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
         {calculators.map(calc => (
           <button
             key={calc.id}

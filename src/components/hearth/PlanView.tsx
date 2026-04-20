@@ -180,7 +180,7 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
       {/* Financial Insights — inline list */}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Financial Insights</h2>
-        <div className="space-y-2">
+        <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
           {insightTools.map(tool => {
             const disabled = isToolDisabled(tool.id);
             const disabledReason = getDisabledReason(tool.id);
