@@ -17,12 +17,12 @@ function CategoryCard({
   const remaining = adjustedBudget - spent;
   return (
     <div
-      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
+      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3 lg:border lg:border-border/60 lg:shadow-sm"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <button onClick={onSelect} className="flex-1 min-w-0 text-left">
-        <div className="flex justify-between items-baseline mb-1">
-          <span className="font-medium text-sm text-foreground truncate">{category.name}</span>
+        <div className="flex justify-between items-baseline mb-1 lg:mb-2">
+          <span className="font-medium lg:font-semibold text-sm lg:text-base text-foreground truncate">{category.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
             {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>
@@ -47,12 +47,12 @@ function FixedExpenseCard({ expense, spent, transferAdj, onSelect, onMoveFunds, 
   const remaining = adjustedBudget - spent;
   return (
     <div
-      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
+      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3 lg:border lg:border-border/60 lg:shadow-sm"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <button onClick={onSelect} className="flex-1 min-w-0 text-left">
-        <div className="flex justify-between items-baseline mb-1">
-          <span className="font-medium text-sm text-foreground truncate">{expense.name}</span>
+        <div className="flex justify-between items-baseline mb-1 lg:mb-2">
+          <span className="font-medium lg:font-semibold text-sm lg:text-base text-foreground truncate">{expense.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
             {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>

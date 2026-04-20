@@ -7,7 +7,7 @@ import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/hearth/BottomNav';
-import { SideNav } from '@/components/hearth/SideNav';
+import { SideNav, MoreSidebarItem } from '@/components/hearth/SideNav';
 import { Dashboard } from '@/components/hearth/Dashboard';
 import { SpendingView } from '@/components/hearth/SpendingView';
 import { TransactionsView } from '@/components/hearth/TransactionsView';
@@ -387,7 +387,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <SideNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <SideNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        activeMoreItem={activeTab === 'more' && moreSubView !== 'menu' ? (moreSubView as MoreSidebarItem) : null}
+        onSelectMoreItem={(item) => { setActiveTab('more'); setMoreSubView(item as MoreSubView); }}
+      />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'dashboard' && (
