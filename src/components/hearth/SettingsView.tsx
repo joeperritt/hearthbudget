@@ -847,7 +847,7 @@ export function SettingsView({
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
                   <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                     {cats.map((c, idx) => (
-                      <div key={c.id} className="px-3 py-2.5">
+                      <div key={c.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col gap-0.5 shrink-0">
                             <button onClick={() => moveNextCat(c.id, 'up', group)} disabled={idx === 0}
@@ -920,7 +920,7 @@ export function SettingsView({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                 {fixedBills.map((e, idx) => (
-                  <div key={e.id} className="px-3 py-2.5">
+                  <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button onClick={() => moveNextFixed(e.id, 'up', 'bills')} disabled={idx === 0}
@@ -991,7 +991,7 @@ export function SettingsView({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Savings</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                 {savingsBuckets.map((e) => (
-                  <div key={e.id} className="px-3 py-2.5">
+                  <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         {renamingId === e.id ? (
@@ -1043,7 +1043,7 @@ export function SettingsView({
                   </div>
                 ))}
                 {savingsVarCats.map((c) => (
-                  <div key={c.id} className="px-3 py-2.5">
+                  <div key={c.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         {renamingId === c.id ? (
@@ -1112,7 +1112,7 @@ export function SettingsView({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tithe/Giving</h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                 {titheItems.map((e) => (
-                  <div key={e.id} className="px-3 py-2.5">
+                  <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         {renamingId === e.id ? (
@@ -1164,7 +1164,7 @@ export function SettingsView({
                   </div>
                 ))}
                 {givingVarCats.map((c) => (
-                  <div key={c.id} className="px-3 py-2.5">
+                  <div key={c.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         {renamingId === c.id ? (
