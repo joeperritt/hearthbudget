@@ -415,8 +415,9 @@ export function Dashboard({
       )}
 
       {/* 3. Account Snapshot — By Bank */}
-      <div className="px-6 mt-6 space-y-4 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account Snapshot</h3>
+      <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Account Snapshot</h3>
+        <div className="space-y-4 xl:grid xl:grid-cols-2 xl:gap-4 xl:space-y-0">
 
         {/* AMEX Section */}
         {creditAccounts.length > 0 && (
@@ -477,7 +478,7 @@ export function Dashboard({
           </button>
 
           {summaryOpen && (
-            <div className="divide-y divide-border border-t border-border">
+            <div className="divide-y divide-border border-t border-border max-w-3xl">
               <div className="flex justify-between items-center px-4 py-2.5">
                 <span className="text-sm text-muted-foreground">Total Spent</span>
                 <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
@@ -506,6 +507,7 @@ export function Dashboard({
           )}
         </div>
 
+        </div>
       </div>
 
       {/* 4. AI Insights */}
