@@ -237,7 +237,7 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Accounts & Connections</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Accounts & Connections</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage users & linked bank accounts</p>
       </div>
 

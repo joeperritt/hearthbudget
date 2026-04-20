@@ -408,7 +408,7 @@ export function FinancialHealthScore({ onBack, householdId }: FinancialHealthSco
       <div className="max-w-lg mx-auto px-6 pt-12 safe-top">
         <div className="flex items-center gap-3 mb-8">
           <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted"><ArrowLeft size={20} /></button>
-          <h1 className="font-display text-xl font-bold text-foreground">Financial Health Score</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Health Score</h1>
         </div>
         <div className="flex justify-center"><div className="w-32 h-32 rounded-full bg-muted animate-pulse" /></div>
       </div>
@@ -427,7 +427,7 @@ export function FinancialHealthScore({ onBack, householdId }: FinancialHealthSco
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Financial Health Score</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Health Score</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Based on your Financial Profile and tool data</p>
         </div>
       </div>

@@ -21,7 +21,7 @@ export function CalculatorsList({ onBack, onSelectCalculator }: CalculatorsListP
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Calculators</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Calculators</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Generic financial calculators</p>
         </div>
       </div>

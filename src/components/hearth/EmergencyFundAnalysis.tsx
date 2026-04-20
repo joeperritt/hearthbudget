@@ -250,7 +250,7 @@ Generate 3 insights with nextStep actions per the system instructions.`;
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Emergency Fund Analysis</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Emergency Fund Analysis</h1>
           <p className="text-sm text-muted-foreground mt-0.5">How long could your household cover expenses without income?</p>
         </div>
       </div>

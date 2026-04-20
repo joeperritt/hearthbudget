@@ -91,7 +91,7 @@ export function BudgetTabView({
   return (
     <div className="max-w-lg mx-auto pb-8">
       <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-xl font-bold text-foreground">Budget</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
       </div>
 
       {/* Take-Home, Budget Total & Surplus/Deficit */}

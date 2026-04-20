@@ -32,7 +32,7 @@ export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreIt
         <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
           <span className="text-primary-foreground font-display text-lg font-bold">H</span>
         </div>
-        <span className="font-display text-xl font-bold text-foreground">Hearth</span>
+        <span className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Hearth</span>
       </div>
 
       <nav className="flex-1 px-3 py-2">

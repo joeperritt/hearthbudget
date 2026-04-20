@@ -202,7 +202,7 @@ export function FinancialToolsView({ onBack, onSelectTool, householdId }: Financ
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Financial Insights & Calculators</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Insights & Calculators</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Your complete financial picture</p>
         </div>
       </div>

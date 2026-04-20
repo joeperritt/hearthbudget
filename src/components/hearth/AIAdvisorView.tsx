@@ -47,7 +47,7 @@ export function AIAdvisorView({ insights, loading, chatMessages, chatLoading, on
           </button>
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-accent" />
-            <h1 className="font-display text-xl font-bold text-foreground">AI Advisor</h1>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">AI Advisor</h1>
           </div>
           <button
             onClick={onRefresh}

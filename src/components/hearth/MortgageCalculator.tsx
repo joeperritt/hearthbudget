@@ -578,7 +578,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
       <div className="max-w-lg mx-auto pb-32">
         <div className="px-6 pt-12 safe-top flex items-center gap-3">
           <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted"><ArrowLeft size={20} className="text-foreground" /></button>
-          <h1 className="font-display text-xl font-bold text-foreground">{isAnalyzer ? 'Mortgage Analyzer' : 'Mortgage Calculator'}</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{isAnalyzer ? 'Mortgage Analyzer' : 'Mortgage Calculator'}</h1>
         </div>
         <div className="px-6 mt-8 text-center text-muted-foreground text-sm">Loading…</div>
       </div>
@@ -662,7 +662,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
             <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted">
               <ArrowLeft size={20} className="text-foreground" />
             </button>
-            <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Mortgage Analyzer</h1>
           </div>
           <div className="flex flex-col items-center justify-center px-6 pt-24 text-center">
             <Calculator size={40} className="text-muted-foreground/30 mb-4" />
@@ -696,7 +696,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
             <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted">
               <ArrowLeft size={20} className="text-foreground" />
             </button>
-            <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Mortgage Analyzer</h1>
           </div>
           <div className="flex flex-col items-center justify-center px-6 pt-24 text-center">
             <AlertTriangle size={40} className="text-accent mb-4" />
@@ -722,7 +722,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
             <ArrowLeft size={20} className="text-foreground" />
           </button>
           <div>
-            <h1 className="font-display text-xl font-bold text-foreground">Mortgage Analyzer</h1>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Mortgage Analyzer</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Understand your payoff timeline and equity position.</p>
           </div>
         </div>
@@ -930,7 +930,7 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Mortgage Calculator</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Mortgage Calculator</h1>
           <p className="text-sm text-muted-foreground mt-0.5">How much home can you afford?</p>
         </div>
       </div>

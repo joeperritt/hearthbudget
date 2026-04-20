@@ -229,7 +229,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile,
       <div className="max-w-lg mx-auto pb-32">
         <div className="px-6 pt-12 safe-top flex items-center gap-3">
           <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted"><ArrowLeft size={20} className="text-foreground" /></button>
-          <h1 className="font-display text-xl font-bold text-foreground">Debt Payoff Analyzer</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Debt Payoff Analyzer</h1>
         </div>
         <div className="px-6 mt-8 text-center text-muted-foreground text-sm">Loading…</div>
       </div>
@@ -241,7 +241,7 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile,
       <div className="px-6 pt-12 safe-top flex items-center gap-3">
         <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted"><ArrowLeft size={20} className="text-foreground" /></button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Debt Payoff Analyzer</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Debt Payoff Analyzer</h1>
           <p className="text-sm text-muted-foreground mt-0.5">See your path to debt freedom</p>
         </div>
       </div>

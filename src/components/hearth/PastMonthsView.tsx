@@ -97,7 +97,7 @@ export function PastMonthsView({ onBack }: PastMonthsViewProps) {
           >
             <ChevronLeft size={16} /> Past Months
           </button>
-          <h1 className="font-display text-xl font-bold text-foreground">{formatMonth(detail.month)}</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{formatMonth(detail.month)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {detail.transactions_summary?.totalTransactions || 0} transactions · {fmt(detail.transactions_summary?.totalSpent || 0)} total
           </p>
@@ -181,7 +181,7 @@ export function PastMonthsView({ onBack }: PastMonthsViewProps) {
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-xl font-bold text-foreground">Past Months</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Past Months</h1>
         <p className="text-sm text-muted-foreground mt-1">Budget & spending history</p>
       </div>
 
