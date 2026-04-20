@@ -224,7 +224,8 @@ export function useBudgetData() {
   }, [householdId, user, activeMonth]);
 
   const deleteTransaction = useCallback(async (id: string) => {
-    await supabase.from('transactions').delete().eq('id', id);
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) throw error;
   }, []);
 
   const addTransfer = useCallback(async (t: Omit<BudgetTransfer, 'id'>) => {
