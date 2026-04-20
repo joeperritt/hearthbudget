@@ -36,7 +36,7 @@ export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreIt
       </div>
 
       <nav className="flex-1 px-3 py-2">
-        <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1">Main</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-3">Main</p>
         <div className="space-y-1">
           {tabs.map(({ id, label, icon: Icon }) => {
             const active = activeTab === id && !activeMoreItem;
@@ -57,7 +57,7 @@ export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreIt
           })}
         </div>
 
-        <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mt-5 mb-1">More</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mt-5 mb-3">More</p>
         <div className="space-y-1">
           {moreItems.map(({ id, label, icon: Icon }) => {
             const active = activeMoreItem === id;
