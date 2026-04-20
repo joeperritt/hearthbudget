@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle, X } from 'lucide-react';
@@ -7,6 +7,99 @@ import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
+import { usePlaidLink } from 'react-plaid-link';
+import { toast } from 'sonner';
+
+type ReconnectItem = { id: string; institution_name: string };
+
+function ReconnectBanner({
+  items,
+  onDismiss,
+  onReconnected,
+}: {
+  items: ReconnectItem[];
+  onDismiss: () => void;
+  onReconnected: (itemId: string) => void;
+}) {
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [pendingItem, setPendingItem] = useState<ReconnectItem | null>(null);
+
+  const onSuccess = useCallback(
+    async (publicToken: string, metadata: any) => {
+      try {
+        const institution = metadata.institution as Record<string, string> | undefined;
+        const accounts = metadata.accounts as Array<Record<string, string>> | undefined;
+        await supabase.functions.invoke('plaid-exchange-token', {
+          body: { public_token: publicToken, institution_name: institution?.name || pendingItem?.institution_name || '', accounts: accounts || [] },
+        });
+        if (pendingItem) {
+          await supabase
+            .from('plaid_items')
+            .update({ requires_reconnect: false, last_sync_error: null, sync_failure_count: 0 })
+            .eq('id', pendingItem.id);
+          onReconnected(pendingItem.id);
+        }
+        toast.success('Bank reconnected!');
+      } catch {
+        toast.error('Failed to reconnect bank');
+      } finally {
+        setLinkToken(null);
+        setPendingItem(null);
+      }
+    },
+    [pendingItem, onReconnected]
+  );
+
+  const { open: openPlaid, ready: plaidReady } = usePlaidLink({
+    token: linkToken,
+    onSuccess,
+    onExit: () => { setLinkToken(null); setPendingItem(null); },
+  });
+
+  useEffect(() => {
+    if (linkToken && plaidReady) openPlaid();
+  }, [linkToken, plaidReady, openPlaid]);
+
+  const handleClick = async () => {
+    if (items.length > 1) {
+      window.dispatchEvent(new CustomEvent('open-bank-connections'));
+      return;
+    }
+    const item = items[0];
+    setPendingItem(item);
+    try {
+      const { data, error } = await supabase.functions.invoke('plaid-create-link-token');
+      if (error) throw error;
+      setLinkToken(data.link_token);
+    } catch {
+      toast.error('Failed to initialize reconnection');
+      setPendingItem(null);
+    }
+  };
+
+  return (
+    <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
+      <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground">
+          {items.length === 1
+            ? `${items[0].institution_name} needs to be reconnected to continue syncing.`
+            : `${items.length} accounts need reconnection: ${items.map(i => i.institution_name).join(', ')}.`}
+        </p>
+        <button
+          onClick={handleClick}
+          className="text-sm font-medium text-accent mt-1 active:scale-95"
+        >
+          Reconnect →
+        </button>
+      </div>
+      <button onClick={onDismiss} className="text-muted-foreground/60 hover:text-foreground" aria-label="Dismiss">
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -402,25 +495,13 @@ export function Dashboard({
 
       {/* Reconnect banner */}
       {!reconnectDismissed && reconnectItems.length > 0 && (
-        <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
-          <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">
-              {reconnectItems.length === 1
-                ? `${reconnectItems[0].institution_name} needs to be reconnected to continue syncing.`
-                : `${reconnectItems.length} accounts need reconnection: ${reconnectItems.map(i => i.institution_name).join(', ')}.`}
-            </p>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-bank-connections'))}
-              className="text-sm font-medium text-accent mt-1 active:scale-95"
-            >
-              Reconnect →
-            </button>
-          </div>
-          <button onClick={() => setReconnectDismissed(true)} className="text-muted-foreground/60 hover:text-foreground" aria-label="Dismiss">
-            <X size={16} />
-          </button>
-        </div>
+        <ReconnectBanner
+          items={reconnectItems}
+          onDismiss={() => setReconnectDismissed(true)}
+          onReconnected={(itemId) => {
+            setReconnectItems(prev => prev.filter(i => i.id !== itemId));
+          }}
+        />
       )}
 
       {/* End-of-month unassigned warning */}
