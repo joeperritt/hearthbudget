@@ -78,6 +78,35 @@ const Index = () => {
       });
   }, [householdId, user]);
 
+  // On-open fallback sync: if the most recent successful sync for this household
+  // is more than 4 hours old (or never), kick off a background sync. We don't
+  // block the UI — realtime subscriptions reflect new transactions automatically.
+  useEffect(() => {
+    if (!householdId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('plaid_items')
+        .select('last_successful_sync_at')
+        .eq('household_id', householdId)
+        .order('last_successful_sync_at', { ascending: false, nullsFirst: false })
+        .limit(1);
+      if (cancelled) return;
+      const last = data?.[0]?.last_successful_sync_at as string | null | undefined;
+      const fourHoursMs = 4 * 60 * 60 * 1000;
+      const stale = !last || (Date.now() - new Date(last).getTime()) > fourHoursMs;
+      if (!stale) return;
+      try {
+        await supabase.functions.invoke('auto-sync-all-households', {
+          body: { household_id: householdId },
+        });
+      } catch (e) {
+        console.warn('On-open background sync failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [householdId]);
+
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
