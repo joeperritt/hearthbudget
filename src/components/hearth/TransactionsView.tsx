@@ -132,24 +132,24 @@ export function TransactionsView({
   const renderTransfer = (tr: BudgetTransfer, i: number) => (
     <div
       key={`tr-${tr.id}`}
-      className="flex items-center gap-3 px-4 py-3 animate-fade-up"
+      className="flex items-center gap-3 px-4 py-3 animate-fade-up lg:border-b lg:border-border/60 lg:last:border-0"
       style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
     >
-      <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground inline-flex items-center gap-1">
+      <span className="text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground inline-flex items-center gap-1 lg:w-32 lg:justify-center">
         <ArrowLeftRight size={10} strokeWidth={2.5} />
         Transfer
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">Budget Transfer</p>
-        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+      <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
+        <p className="text-sm lg:text-base lg:font-semibold font-medium text-foreground truncate">Budget Transfer</p>
+        <p className="text-[11px] lg:text-sm text-muted-foreground truncate mt-0.5 lg:mt-0">
           {nameFor(tr.fromCategoryId)} → {nameFor(tr.toCategoryId)}
         </p>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-sm font-medium tabular-nums text-muted-foreground">
+      <div className="text-right shrink-0 lg:flex lg:items-center lg:gap-6">
+        <p className="text-sm lg:text-base font-medium lg:font-semibold tabular-nums text-muted-foreground">
           {formatCurrency(tr.amount)}
         </p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">
+        <p className="text-[11px] lg:text-sm text-muted-foreground mt-0.5 lg:mt-0 lg:w-16 lg:text-right">
           {format(new Date(tr.date), 'MMM d')}
         </p>
       </div>
@@ -181,10 +181,10 @@ export function TransactionsView({
         key={t.id}
         id={`tx-${t.id}`}
         onClick={handleClick}
-        className={`flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
+        className={`flex items-center gap-3 px-4 py-3 lg:py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all lg:border-b lg:border-border/60 lg:last:border-0 ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
-        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
+        <span className={`text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap lg:w-32 lg:text-center ${
           accounts.findIndex(a => a.id === t.account) === 0
             ? 'bg-primary text-primary-foreground'
             : accounts.findIndex(a => a.id === t.account) === 1
@@ -194,8 +194,8 @@ export function TransactionsView({
           {accountLabels[t.account] || t.account}
         </span>
 
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
+        <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
+          <p className="text-sm lg:text-base lg:font-semibold font-medium text-foreground truncate">
             {isCcPayment ? (
               <span className="text-muted-foreground italic">
                 CC Payment
@@ -229,24 +229,24 @@ export function TransactionsView({
             )}
           </p>
           {indent && t.description ? null : t.description ? (
-            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t.description}</p>
+            <p className="text-[11px] lg:text-sm text-muted-foreground truncate mt-0.5 lg:mt-0 lg:font-normal">{t.description}</p>
           ) : null}
           {t.notes ? (
-            <p className="text-[10px] text-muted-foreground/70 italic truncate mt-0.5">📝 {t.notes}</p>
+            <p className="text-[10px] lg:text-xs text-muted-foreground/70 italic truncate mt-0.5 lg:mt-0">📝 {t.notes}</p>
           ) : null}
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="text-right shrink-0 lg:flex lg:items-center lg:gap-6">
           {(() => {
             const { colorClassName, prefix, value } = getTransactionAmountPresentation(t, { isExcluded });
             return (
-              <p className={`text-sm font-medium tabular-nums ${colorClassName}`}>
+              <p className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ${colorClassName}`}>
                 {prefix}{formatCurrency(value)}
               </p>
             );
           })()}
           {!indent && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-[11px] lg:text-sm text-muted-foreground mt-0.5 lg:mt-0 lg:w-16 lg:text-right">
               {format(new Date(t.date), 'MMM d')}
             </p>
           )}
