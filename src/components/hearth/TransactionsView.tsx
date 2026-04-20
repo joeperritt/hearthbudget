@@ -331,6 +331,28 @@ export function TransactionsView({
           </div>
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {/* Desktop sortable header */}
+            <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {(() => {
+                const SortBtn = ({ k, label, className = '' }: { k: typeof sortKey; label: string; className?: string }) => (
+                  <button onClick={() => toggleSort(k)} className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${className}`}>
+                    {label}
+                    {sortKey === k && (sortDir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                  </button>
+                );
+                return (
+                  <>
+                    <div className="lg:w-32 lg:text-center"><SortBtn k="account" label="Account" /></div>
+                    <div className="flex-1 min-w-0"><SortBtn k="category" label="Category / Merchant" /></div>
+                    <div className="lg:flex lg:items-center lg:gap-6">
+                      <SortBtn k="amount" label="Amount" />
+                      <div className="lg:w-16 lg:text-right"><SortBtn k="date" label="Date" /></div>
+                    </div>
+                    <div className="w-[26px] shrink-0" />
+                  </>
+                );
+              })()}
+            </div>
             {rows.map((row, i) => {
               if (row.type === 'transfer') {
                 return renderTransfer(row.transfer, i);
