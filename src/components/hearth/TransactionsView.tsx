@@ -310,8 +310,9 @@ export function TransactionsView({
 
         {!indent && (
           <button
-            onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t.id); }}
-            className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
+            onClick={(e) => { e.stopPropagation(); setPendingDeleteId(t.id); }}
+            aria-label="Delete transaction"
+            className="p-1.5 text-muted-foreground/60 hover:text-destructive active:scale-95 transition-all"
           >
             <Trash2 size={14} />
           </button>
