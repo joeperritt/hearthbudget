@@ -389,7 +389,7 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <SideNav activeTab={activeTab} onTabChange={handleTabChange} />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
-        <div className="lg:px-12 xl:px-16">
+        <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
