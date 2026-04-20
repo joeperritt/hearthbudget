@@ -139,7 +139,7 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     <div className="max-w-lg mx-auto pb-32">
       {/* Header */}
       <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-xl font-bold text-foreground">Financial Plan</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Plan</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Your complete financial picture</p>
       </div>
 

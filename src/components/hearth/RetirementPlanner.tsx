@@ -641,7 +641,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Retirement Planner</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Retirement Planner</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Will your savings sustain your lifestyle in retirement?</p>
         </div>
       </div>

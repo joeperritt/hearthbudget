@@ -14,7 +14,7 @@ export function MoreView({ onSelect, householdId }: MoreViewProps) {
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-xl font-bold text-foreground">More</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">More</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Tools & settings</p>
       </div>
 

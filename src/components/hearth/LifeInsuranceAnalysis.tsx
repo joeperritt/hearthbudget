@@ -349,7 +349,7 @@ Generate exactly 3 insights with nextStep actions per the system instructions.`;
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Life Insurance Analysis</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Life Insurance Analysis</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Is your family protected?</p>
         </div>
       </div>

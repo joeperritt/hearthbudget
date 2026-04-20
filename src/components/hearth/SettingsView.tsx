@@ -1341,7 +1341,7 @@ export function SettingsView({
           <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
             <ArrowLeft size={16} /> Back
           </button>
-          <h1 className="font-display text-xl font-bold text-foreground">Budget Planning</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget Planning</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
           </p>

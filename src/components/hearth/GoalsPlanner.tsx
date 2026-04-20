@@ -335,7 +335,7 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Non-Retirement Goals</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Non-Retirement Goals</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Plan and track your non-retirement savings goals</p>
         </div>
       </div>

@@ -638,7 +638,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div className="flex-1">
-          <h1 className="font-display text-xl font-bold text-foreground">Financial Profile</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Profile</h1>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[120px]">
               <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${completeness.pct}%` }} />

@@ -4,6 +4,17 @@ import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDow
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
@@ -18,7 +29,7 @@ interface TransactionsViewProps {
   fixedExpenses: FixedExpense[];
   monthLabel: string;
   onAddTransaction: () => void;
-  onDeleteTransaction: (id: string) => void;
+  onDeleteTransaction: (id: string) => void | Promise<void>;
   onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
   accounts?: AppAccount[];
 }
@@ -100,6 +111,23 @@ export function TransactionsView({
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir(key === 'date' ? 'desc' : 'asc'); }
+  };
+
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    setDeleting(true);
+    try {
+      await onDeleteTransaction(pendingDeleteId);
+      toast.success('Transaction deleted');
+      setPendingDeleteId(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete transaction');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
@@ -282,8 +310,9 @@ export function TransactionsView({
 
         {!indent && (
           <button
-            onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t.id); }}
-            className="p-1.5 text-muted-foreground/40 hover:text-destructive active:scale-95 transition-all"
+            onClick={(e) => { e.stopPropagation(); setPendingDeleteId(t.id); }}
+            aria-label="Delete transaction"
+            className="p-1.5 text-muted-foreground/60 hover:text-destructive active:scale-95 transition-all"
           >
             <Trash2 size={14} />
           </button>
@@ -295,7 +324,7 @@ export function TransactionsView({
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 pb-4 safe-top flex items-center justify-between gap-3">
-        <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
         <button
           onClick={onAddTransaction}
           className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
@@ -446,6 +475,27 @@ export function TransactionsView({
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>
+
+      <AlertDialog open={!!pendingDeleteId} onOpenChange={(o) => !o && setPendingDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the transaction and update your budget totals. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -358,7 +358,7 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Federal Tax Estimator</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Federal Tax Estimator</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Estimate your federal tax liability</p>
         </div>
       </div>

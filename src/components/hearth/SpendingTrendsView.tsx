@@ -187,7 +187,7 @@ export function SpendingTrendsView({
           <ArrowLeft size={20} className="text-foreground" />
         </button>
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Spending Trends</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Spending Trends</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Month over month comparison</p>
         </div>
       </div>
