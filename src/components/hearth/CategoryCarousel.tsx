@@ -150,11 +150,94 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
 
   if (shuffled.length === 0) return null;
 
+  const renderCardInner = (item: typeof computed[number], cardBg: string, labelColor: string, amountColor: string, subColor: string, isOver: boolean, isPerfect: boolean) => (
+    compact ? (
+      <>
+        <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+          {item.name}
+        </p>
+        {isPerfect ? (
+          <Check size={14} className="text-accent shrink-0" strokeWidth={3} />
+        ) : (
+          <p className={`text-xs font-display font-bold tabular-nums shrink-0 ${amountColor}`}>
+            {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+          </p>
+        )}
+      </>
+    ) : (
+      <>
+        <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
+          {item.name}
+        </p>
+        <div>
+          {isPerfect ? (
+            <div>
+              <div className="flex items-center gap-1">
+                <Check size={14} className="text-accent" strokeWidth={3} />
+                <p className={`text-xs font-display font-bold ${amountColor}`}>Done</p>
+              </div>
+              <p className={`text-[10px] mt-0.5 ${subColor}`}>$0 left</p>
+            </div>
+          ) : (
+            <>
+              <p className={`text-lg font-display font-bold tabular-nums leading-none ${amountColor}`}>
+                {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+              </p>
+              <p className={`text-[10px] mt-0.5 ${subColor}`}>
+                {isOver ? 'over' : 'left'}
+              </p>
+            </>
+          )}
+        </div>
+        {!isOver && !isPerfect && (
+          <div className="h-1 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all bg-accent"
+              style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
+            />
+          </div>
+        )}
+        {isOver && (
+          <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
+            <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
+          </div>
+        )}
+        {isPerfect && (
+          <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
+            <div className="h-full rounded-full bg-accent w-full" />
+          </div>
+        )}
+      </>
+    )
+  );
+
+  const getCardStyles = (item: typeof computed[number]) => {
+    const isOver = item.remaining < 0;
+    const isPerfect = item.budgeted > 0 && item.remaining === 0;
+    let cardBg = 'bg-card';
+    let labelColor = 'text-muted-foreground';
+    let amountColor = 'text-foreground';
+    let subColor = 'text-muted-foreground';
+    if (isOver) {
+      cardBg = 'bg-destructive';
+      labelColor = 'text-destructive-foreground';
+      amountColor = 'text-destructive-foreground';
+      subColor = 'text-destructive-foreground/80';
+    } else if (isPerfect) {
+      cardBg = 'bg-accent/20';
+      labelColor = 'text-accent-foreground';
+      amountColor = 'text-accent';
+      subColor = 'text-accent';
+    }
+    return { isOver, isPerfect, cardBg, labelColor, amountColor, subColor };
+  };
+
   return (
     <div className="mt-4 animate-fade-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
       <h3 className="px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
+      {/* Mobile/Tablet: horizontal carousel */}
       <div
-        className="overflow-hidden pl-6"
+        className="overflow-hidden pl-6 lg:hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -169,27 +252,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
           style={{ width: `${tickerItems.length * (cardW + GAP)}px` }}
         >
           {tickerItems.map((item, idx) => {
-            const isOver = item.remaining < 0;
-            const isPerfect = item.budgeted > 0 && item.remaining === 0;
-
-            // Card style based on state
-            let cardBg = 'bg-card';
-            let labelColor = 'text-muted-foreground';
-            let amountColor = 'text-foreground';
-            let subColor = 'text-muted-foreground';
-
-            if (isOver) {
-              cardBg = 'bg-destructive';
-              labelColor = 'text-destructive-foreground';
-              amountColor = 'text-destructive-foreground';
-              subColor = 'text-destructive-foreground/80';
-            } else if (isPerfect) {
-              cardBg = 'bg-accent/20';
-              labelColor = 'text-accent-foreground';
-              amountColor = 'text-accent';
-              subColor = 'text-accent';
-            }
-
+            const s = getCardStyles(item);
             return (
               <div
                 key={`${item.id}-${idx}`}
@@ -197,71 +260,30 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                   const dx = Math.abs((e as unknown as MouseEvent).clientX - dragStartX.current);
                   if (dx < 8) onSelectCategory?.(item.id);
                 }}
-                className={`shrink-0 ${cardBg} rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2' : 'p-3 flex flex-col justify-between'}`}
+                className={`shrink-0 ${s.cardBg} rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2' : 'p-3 flex flex-col justify-between'}`}
                 style={{ width: `${cardW}px`, height: `${cardH}px` }}
               >
-                {compact ? (
-                  <>
-                    <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 ${labelColor}`} style={{ wordBreak: 'break-word' }}>
-                      {item.name}
-                    </p>
-                    {isPerfect ? (
-                      <Check size={14} className="text-accent shrink-0" strokeWidth={3} />
-                    ) : (
-                      <p className={`text-xs font-display font-bold tabular-nums shrink-0 ${amountColor}`}>
-                        {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight ${labelColor}`} style={{ wordBreak: 'break-word' }}>
-                      {item.name}
-                    </p>
-                    <div>
-                    {isPerfect ? (
-                        <div>
-                          <div className="flex items-center gap-1">
-                            <Check size={14} className="text-accent" strokeWidth={3} />
-                            <p className={`text-xs font-display font-bold ${amountColor}`}>Done</p>
-                          </div>
-                          <p className={`text-[10px] mt-0.5 ${subColor}`}>$0 left</p>
-                        </div>
-                      ) : (
-                        <>
-                          <p className={`text-lg font-display font-bold tabular-nums leading-none ${amountColor}`}>
-                            {isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
-                          </p>
-                          <p className={`text-[10px] mt-0.5 ${subColor}`}>
-                            {isOver ? 'over' : 'left'}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    {!isOver && !isPerfect && (
-                      <div className="h-1 rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all bg-accent"
-                          style={{ width: `${Math.min(item.pct * 100, 100)}%` }}
-                        />
-                      </div>
-                    )}
-                    {isOver && (
-                      <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
-                        <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
-                      </div>
-                    )}
-                    {isPerfect && (
-                      <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
-                        <div className="h-full rounded-full bg-accent w-full" />
-                      </div>
-                    )}
-                  </>
-                )}
+                {renderCardInner(item, s.cardBg, s.labelColor, s.amountColor, s.subColor, s.isOver, s.isPerfect)}
               </div>
             );
           })}
         </div>
+      </div>
+      {/* Desktop: responsive grid */}
+      <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3 px-6">
+        {shuffled.map((item) => {
+          const s = getCardStyles(item);
+          return (
+            <div
+              key={item.id}
+              onClick={() => onSelectCategory?.(item.id)}
+              className={`${s.cardBg} rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2' : 'p-3 flex flex-col justify-between'}`}
+              style={{ height: `${cardH}px` }}
+            >
+              {renderCardInner(item, s.cardBg, s.labelColor, s.amountColor, s.subColor, s.isOver, s.isPerfect)}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
