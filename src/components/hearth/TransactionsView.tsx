@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
@@ -94,6 +94,13 @@ export function TransactionsView({
   const [filter, setFilter] = useState<Filter>('all');
   const [showTransfers, setShowTransfers] = useState(true);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
+  type SortKey = 'date' | 'amount' | 'account' | 'category';
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir(key === 'date' ? 'desc' : 'asc'); }
+  };
 
   const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
