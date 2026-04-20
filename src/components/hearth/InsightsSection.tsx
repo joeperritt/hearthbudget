@@ -79,7 +79,7 @@ export function InsightsSection({ insights, loading, error, lastUpdated, onSeeAl
             return (
               <div
                 key={i}
-                className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] max-w-3xl ${config.border}`}
+                className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}
               >
                 <div className="flex items-start gap-2.5">
                   <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />

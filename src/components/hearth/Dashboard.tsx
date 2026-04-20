@@ -414,104 +414,111 @@ export function Dashboard({
         />
       )}
 
-      {/* 3. Account Snapshot — By Bank */}
-      <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Account Snapshot</h3>
-        <div className="space-y-4 xl:grid xl:grid-cols-2 xl:gap-4 xl:space-y-0">
+      {/* Bottom section: two-column layout on desktop */}
+      <div className="lg:grid lg:grid-cols-5 lg:gap-6 lg:px-6 lg:mt-6">
+        {/* Left column: Account Snapshot + Monthly Summary */}
+        <div className="lg:col-span-3">
+          <div className="px-6 mt-6 lg:px-0 lg:mt-0 animate-fade-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Account Snapshot</h3>
+            <div className="space-y-4">
 
-        {/* AMEX Section */}
-        {creditAccounts.length > 0 && (
-          <BankSection
-            icon={<CreditCard size={16} className="text-accent" />}
-            title="American Express"
-            rows={[
-              ...creditRows.map(r => ({ label: r.label, value: r.value })),
-              { label: 'Payoffs toward budget', value: -creditPayoffs, color: 'text-accent' },
-            ]}
-            netLabel="Net Credit This Month"
-            netValue={creditNet}
-            barSegments={[
-              ...creditRows.map((r, i) => ({
-                value: r.value,
-                color: i === 0 ? spentColor : spentColorAlt,
-                label: r.label,
-              })),
-              { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
-            ]}
-          />
-        )}
+            {/* AMEX Section */}
+            {creditAccounts.length > 0 && (
+              <BankSection
+                icon={<CreditCard size={16} className="text-accent" />}
+                title="American Express"
+                rows={[
+                  ...creditRows.map(r => ({ label: r.label, value: r.value })),
+                  { label: 'Payoffs toward budget', value: -creditPayoffs, color: 'text-accent' },
+                ]}
+                netLabel="Net Credit This Month"
+                netValue={creditNet}
+                barSegments={[
+                  ...creditRows.map((r, i) => ({
+                    value: r.value,
+                    color: i === 0 ? spentColor : spentColorAlt,
+                    label: r.label,
+                  })),
+                  { value: creditPayoffs, color: payoffColor, label: 'Payoffs' },
+                ]}
+              />
+            )}
 
-        {/* Checking Section */}
-        {checkingAccounts.length > 0 && (
-          <BankSection
-            icon={<Building2 size={16} className="text-accent" />}
-            title={checkingAccounts.length === 1 ? checkingAccounts[0].label : 'Checking'}
-            rows={[
-              { label: 'Total Spent', value: checkingSpent },
-              { label: 'Deposits toward budget', value: -checkingDeposits, color: 'text-accent' },
-            ]}
-            netLabel="Net Checking This Month"
-            netValue={checkingNet}
-            barSegments={[
-              { value: checkingSpent, color: spentColor, label: 'Spent' },
-              { value: checkingDeposits, color: depositColor, label: 'Deposits' },
-            ]}
-          />
-        )}
+            {/* Checking Section */}
+            {checkingAccounts.length > 0 && (
+              <BankSection
+                icon={<Building2 size={16} className="text-accent" />}
+                title={checkingAccounts.length === 1 ? checkingAccounts[0].label : 'Checking'}
+                rows={[
+                  { label: 'Total Spent', value: checkingSpent },
+                  { label: 'Deposits toward budget', value: -checkingDeposits, color: 'text-accent' },
+                ]}
+                netLabel="Net Checking This Month"
+                netValue={checkingNet}
+                barSegments={[
+                  { value: checkingSpent, color: spentColor, label: 'Spent' },
+                  { value: checkingDeposits, color: depositColor, label: 'Deposits' },
+                ]}
+              />
+            )}
 
-        {/* Overall Summary */}
-        <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-          <button
-            onClick={() => setSummaryOpen(!summaryOpen)}
-            className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/30 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <BarChart3 size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
+            {/* Overall Summary */}
+            <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+              <button
+                onClick={() => setSummaryOpen(!summaryOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={16} className="text-accent" />
+                  <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                    {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
+                  </span>
+                  {summaryOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                </div>
+              </button>
+
+              {summaryOpen && (
+                <div className="divide-y divide-border border-t border-border">
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground">Total Spent</span>
+                    <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground">Deposits & Credits</span>
+                    <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(overallDeposits)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground">Net Total</span>
+                    <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground">Total Budgeted</span>
+                    <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
+                    <span className="text-sm font-semibold text-foreground">
+                      {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+                    </span>
+                    <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                      {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
-              </span>
-              {summaryOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-            </div>
-          </button>
 
-          {summaryOpen && (
-            <div className="divide-y divide-border border-t border-border max-w-3xl">
-              <div className="flex justify-between items-center px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">Total Spent</span>
-                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallSpent)}</span>
-              </div>
-              <div className="flex justify-between items-center px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">Deposits & Credits</span>
-                <span className="text-sm font-medium tabular-nums text-muted-foreground">−{formatCurrency(overallDeposits)}</span>
-              </div>
-              <div className="flex justify-between items-center px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">Net Total</span>
-                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(overallNet)}</span>
-              </div>
-              <div className="flex justify-between items-center px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">Total Budgeted</span>
-                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(totalBudget)}</span>
-              </div>
-              <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
-                <span className="text-sm font-semibold text-foreground">
-                  {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
-                </span>
-                <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                  {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
-                </span>
-              </div>
             </div>
-          )}
+          </div>
         </div>
 
+        {/* Right column: AI Insights */}
+        <div className="lg:col-span-2 lg:[&>*]:px-0 lg:[&>*]:mt-0">
+          {insightsSection}
         </div>
       </div>
-
-      {/* 4. AI Insights */}
-      {insightsSection}
 
       <div className="mb-6" />
 

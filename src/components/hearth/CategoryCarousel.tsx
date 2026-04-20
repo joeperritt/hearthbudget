@@ -269,18 +269,68 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
           })}
         </div>
       </div>
-      {/* Desktop: responsive grid */}
-      <div className="hidden lg:grid lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 px-6">
+      {/* Desktop: dense responsive grid */}
+      <div className="hidden lg:grid lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-9 gap-2 px-6">
         {shuffled.map((item) => {
           const s = getCardStyles(item);
           return (
             <div
               key={item.id}
               onClick={() => onSelectCategory?.(item.id)}
-              className={`${s.cardBg} rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2' : 'p-3 flex flex-col justify-between'}`}
-              style={{ height: `${cardH}px` }}
+              className={`${s.cardBg} rounded-lg shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2 min-h-[44px]' : 'p-3 flex flex-col justify-between min-h-[84px]'}`}
             >
-              {renderCardInner(item, s.cardBg, s.labelColor, s.amountColor, s.subColor, s.isOver, s.isPerfect)}
+              {compact ? (
+                <>
+                  <p className={`text-xs font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 ${s.labelColor}`} style={{ wordBreak: 'break-word' }}>
+                    {item.name}
+                  </p>
+                  {s.isPerfect ? (
+                    <Check size={14} className="text-accent shrink-0" strokeWidth={3} />
+                  ) : (
+                    <p className={`text-xs font-display font-bold tabular-nums shrink-0 ${s.amountColor}`}>
+                      {s.isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className={`text-xs font-semibold uppercase tracking-wide leading-tight ${s.labelColor}`} style={{ wordBreak: 'break-word' }}>
+                    {item.name}
+                  </p>
+                  <div>
+                    {s.isPerfect ? (
+                      <div className="flex items-center gap-1">
+                        <Check size={14} className="text-accent" strokeWidth={3} />
+                        <p className={`text-xs font-display font-bold ${s.amountColor}`}>Done</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className={`text-xl font-display font-semibold tabular-nums leading-none ${s.amountColor}`}>
+                          {s.isOver ? '-' : ''}{formatCurrency(Math.abs(item.remaining))}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${s.subColor}`}>
+                          {s.isOver ? 'over' : 'left'}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  {!s.isOver && !s.isPerfect && (
+                    <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full rounded-full transition-all bg-accent" style={{ width: `${Math.min(item.pct * 100, 100)}%` }} />
+                    </div>
+                  )}
+                  {s.isOver && (
+                    <div className="h-1 rounded-full bg-destructive-foreground/20 overflow-hidden">
+                      <div className="h-full rounded-full bg-destructive-foreground/40 w-full" />
+                    </div>
+                  )}
+                  {s.isPerfect && (
+                    <div className="h-1 rounded-full bg-accent/30 overflow-hidden">
+                      <div className="h-full rounded-full bg-accent w-full" />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           );
         })}
