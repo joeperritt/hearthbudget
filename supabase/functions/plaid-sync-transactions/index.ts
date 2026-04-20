@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { runHouseholdSync } from "./sync-helper.ts";
+import { runHouseholdSync } from "../_shared/plaid-sync-helper.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
