@@ -427,7 +427,7 @@ export function TransactionsView({
 
       <button
         onClick={onAddTransaction}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
+        className="lg:hidden fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>
