@@ -324,7 +324,7 @@ export function TransactionsView({
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 pb-4 safe-top flex items-center justify-between gap-3">
-        <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
         <button
           onClick={onAddTransaction}
           className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
