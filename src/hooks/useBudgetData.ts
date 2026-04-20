@@ -206,7 +206,9 @@ export function useBudgetData() {
   // --- Mutations ---
 
   const addTransactions = useCallback(async (txns: Omit<Transaction, 'id'>[]) => {
-    if (!householdId || !user) return;
+    if (!householdId || !user) {
+      throw new Error('You must be signed in to add a transaction.');
+    }
     const rows = txns.map(t => ({
       household_id: householdId,
       category_slug: t.categoryId,
@@ -220,12 +222,33 @@ export function useBudgetData() {
       entered_by: user.id,
       budget_month: activeMonth,
     }));
-    await supabase.from('transactions').insert(rows as any);
+    const { data, error } = await supabase.from('transactions').insert(rows as any).select();
+    if (error) throw error;
+    // Optimistic local merge so new rows appear immediately even if realtime is delayed
+    if (data && data.length) {
+      const inserted = data.map(r => dbToTx(r as unknown as Record<string, unknown>));
+      setTransactions(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const additions = inserted.filter(t => !existingIds.has(t.id));
+        return [...additions, ...prev];
+      });
+    }
   }, [householdId, user, activeMonth]);
 
   const deleteTransaction = useCallback(async (id: string) => {
+    // Optimistic removal so the UI reflects the deletion immediately,
+    // independent of realtime delivery.
+    let snapshot: Transaction[] = [];
+    setTransactions(prev => {
+      snapshot = prev;
+      return prev.filter(t => t.id !== id);
+    });
     const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (error) throw error;
+    if (error) {
+      // Revert on failure
+      setTransactions(snapshot);
+      throw error;
+    }
   }, []);
 
   const addTransfer = useCallback(async (t: Omit<BudgetTransfer, 'id'>) => {

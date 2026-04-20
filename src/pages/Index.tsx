@@ -226,9 +226,16 @@ const Index = () => {
   }, [activeMonth, activeMonthCategories.length]);
 
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
-    await addTransactions(txns);
-    setShowAddTransaction(false);
-    setTimeout(() => fetchInsights(true), 1000);
+    try {
+      await addTransactions(txns);
+      const { toast } = await import('sonner');
+      toast.success(txns.length > 1 ? `${txns.length} transactions added` : 'Transaction added');
+      setShowAddTransaction(false);
+      setTimeout(() => fetchInsights(true), 1000);
+    } catch (err: any) {
+      const { toast } = await import('sonner');
+      toast.error(err?.message || 'Failed to save transaction. Please try again.');
+    }
   };
 
   const handleTabChange = (tab: TabId) => {
