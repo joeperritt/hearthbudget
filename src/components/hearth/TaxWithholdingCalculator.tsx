@@ -443,39 +443,24 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">Federal Withholding / Check</Label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={state.federalWithholding}
-                onChange={e => setState({ federalWithholding: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">State Withholding / Check</Label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={state.stateWithholding}
-                onChange={e => setState({ stateWithholding: e.target.value })}
-                placeholder="0"
-              />
-            </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Federal Withholding / Check</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+            <Input
+              type="number"
+              className="pl-7"
+              value={state.federalWithholding}
+              onChange={e => setState({ federalWithholding: e.target.value })}
+              placeholder="0"
+            />
           </div>
         </div>
 
-        {(federalWithholdingPer === 0 && stateWithholdingPer === 0) && (
+        {federalWithholdingPer === 0 && (
           <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Enter your actual per-paycheck withholding amounts from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
+              Enter your actual per-paycheck federal withholding from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
             </p>
           </div>
         )}
@@ -562,78 +547,16 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
                 <span className="text-muted-foreground">{federalDelta >= 0 ? 'Surplus' : 'Shortfall'}</span>
                 <span className={`font-bold ${deltaColor(federalDelta)}`}>{deltaLabel(federalDelta)}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Federal Marginal Tax Rate</span>
+                <span className="font-semibold text-foreground">{pct(marginalRate)}</span>
+              </div>
             </div>
             {showIncomeStackingDisclaimer && (
               <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
                 Because you file Married Filing Jointly with a higher-earning spouse, your income is taxed at a higher marginal rate than it would be if calculated independently. This calculator accounts for income stacking.
               </p>
             )}
-          </div>
-
-          {/* State */}
-          {state.selectedState && (
-            <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">State ({state.selectedState})</p>
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Estimated Tax Owed</span>
-                  <span className="font-semibold text-foreground">{fmtRound(estimatedStateTax)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Annual Withheld</span>
-                  <span className="font-semibold text-foreground">{fmtRound(annualStateWithheld)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                  <span className="text-muted-foreground">{stateDelta >= 0 ? 'Surplus' : 'Shortfall'}</span>
-                  <span className={`font-bold ${deltaColor(stateDelta)}`}>{deltaLabel(stateDelta)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* FICA */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">FICA</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Social Security (6.2%)</span>
-                <span className="font-semibold text-foreground">{fmtRound(ficaSS)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Medicare (1.45%{annualGross > medicareThreshold ? ' + 0.9%' : ''})</span>
-                <span className="font-semibold text-foreground">{fmtRound(ficaMedicare)}</span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                <span className="text-muted-foreground">Total FICA</span>
-                <span className="font-bold text-foreground">{fmtRound(totalFICA)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div className="bg-card rounded-xl shadow-sm p-4 mb-3">
-            <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">
-              {isMFJWithSpouse ? 'Household Summary' : 'Summary'}
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Effective Tax Rate' : 'Effective Tax Rate'}</span>
-                <span className="font-semibold text-foreground">{pct(effectiveRate)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{isMFJWithSpouse ? 'Household Marginal Tax Rate' : 'Marginal Tax Rate'}</span>
-                <span className="font-semibold text-foreground">{pct(marginalRate)}</span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-border pt-1.5">
-                <span className="text-muted-foreground">Est. Annual Take-Home</span>
-                <span className="font-bold text-green-600">{fmtRound(takeHomePay)}</span>
-              </div>
-              {isMFJWithSpouse && (
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Married Filing Jointly is one tax return — effective and marginal rates are the same for both spouses.
-                </p>
-              )}
-            </div>
           </div>
 
           {/* CFP Guideline */}

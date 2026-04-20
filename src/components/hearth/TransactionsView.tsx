@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
@@ -94,6 +94,13 @@ export function TransactionsView({
   const [filter, setFilter] = useState<Filter>('all');
   const [showTransfers, setShowTransfers] = useState(true);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
+  type SortKey = 'date' | 'amount' | 'account' | 'category';
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir(key === 'date' ? 'desc' : 'asc'); }
+  };
 
   const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
@@ -108,11 +115,22 @@ export function TransactionsView({
     ? transfers.map(tr => ({ type: 'transfer' as const, transfer: tr }))
     : [];
 
-  // Combine + sort all rows by date desc
+  // Combine + sort all rows
+  const rowAccount = (r: DisplayRow) => r.type === 'split' ? r.account : r.type === 'transfer' ? '' : r.transaction.account;
+  const rowDate = (r: DisplayRow) => r.type === 'split' ? r.date : r.type === 'transfer' ? r.transfer.date : r.transaction.date;
+  const rowAmount = (r: DisplayRow) => r.type === 'split' ? r.totalAmount : r.type === 'transfer' ? r.transfer.amount : r.transaction.amount;
+  const rowCategory = (r: DisplayRow) => {
+    if (r.type === 'transfer') return 'Transfer';
+    const t = r.type === 'split' ? r.transactions[0] : r.transaction;
+    return catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || t.categoryId;
+  };
   const rows: DisplayRow[] = [...txRows, ...transferRows].sort((a, b) => {
-    const dateA = a.type === 'split' ? a.date : a.type === 'transfer' ? a.transfer.date : a.transaction.date;
-    const dateB = b.type === 'split' ? b.date : b.type === 'transfer' ? b.transfer.date : b.transaction.date;
-    return dateB.localeCompare(dateA);
+    let cmp = 0;
+    if (sortKey === 'date') cmp = rowDate(a).localeCompare(rowDate(b));
+    else if (sortKey === 'amount') cmp = rowAmount(a) - rowAmount(b);
+    else if (sortKey === 'account') cmp = (accountLabels[rowAccount(a)] || rowAccount(a)).localeCompare(accountLabels[rowAccount(b)] || rowAccount(b));
+    else if (sortKey === 'category') cmp = rowCategory(a).localeCompare(rowCategory(b));
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const toggleSplit = (key: string) => {
@@ -313,6 +331,28 @@ export function TransactionsView({
           </div>
         ) : (
           <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {/* Desktop sortable header */}
+            <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {(() => {
+                const SortBtn = ({ k, label, className = '' }: { k: typeof sortKey; label: string; className?: string }) => (
+                  <button onClick={() => toggleSort(k)} className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${className}`}>
+                    {label}
+                    {sortKey === k && (sortDir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                  </button>
+                );
+                return (
+                  <>
+                    <div className="lg:w-32 lg:text-center"><SortBtn k="account" label="Account" /></div>
+                    <div className="flex-1 min-w-0"><SortBtn k="category" label="Category / Merchant" /></div>
+                    <div className="lg:flex lg:items-center lg:gap-6">
+                      <SortBtn k="amount" label="Amount" />
+                      <div className="lg:w-16 lg:text-right"><SortBtn k="date" label="Date" /></div>
+                    </div>
+                    <div className="w-[26px] shrink-0" />
+                  </>
+                );
+              })()}
+            </div>
             {rows.map((row, i) => {
               if (row.type === 'transfer') {
                 return renderTransfer(row.transfer, i);
