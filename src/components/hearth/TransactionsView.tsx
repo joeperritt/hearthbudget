@@ -115,11 +115,22 @@ export function TransactionsView({
     ? transfers.map(tr => ({ type: 'transfer' as const, transfer: tr }))
     : [];
 
-  // Combine + sort all rows by date desc
+  // Combine + sort all rows
+  const rowAccount = (r: DisplayRow) => r.type === 'split' ? r.account : r.type === 'transfer' ? '' : r.transaction.account;
+  const rowDate = (r: DisplayRow) => r.type === 'split' ? r.date : r.type === 'transfer' ? r.transfer.date : r.transaction.date;
+  const rowAmount = (r: DisplayRow) => r.type === 'split' ? r.totalAmount : r.type === 'transfer' ? r.transfer.amount : r.transaction.amount;
+  const rowCategory = (r: DisplayRow) => {
+    if (r.type === 'transfer') return 'Transfer';
+    const t = r.type === 'split' ? r.transactions[0] : r.transaction;
+    return catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || t.categoryId;
+  };
   const rows: DisplayRow[] = [...txRows, ...transferRows].sort((a, b) => {
-    const dateA = a.type === 'split' ? a.date : a.type === 'transfer' ? a.transfer.date : a.transaction.date;
-    const dateB = b.type === 'split' ? b.date : b.type === 'transfer' ? b.transfer.date : b.transaction.date;
-    return dateB.localeCompare(dateA);
+    let cmp = 0;
+    if (sortKey === 'date') cmp = rowDate(a).localeCompare(rowDate(b));
+    else if (sortKey === 'amount') cmp = rowAmount(a) - rowAmount(b);
+    else if (sortKey === 'account') cmp = (accountLabels[rowAccount(a)] || rowAccount(a)).localeCompare(accountLabels[rowAccount(b)] || rowAccount(b));
+    else if (sortKey === 'category') cmp = rowCategory(a).localeCompare(rowCategory(b));
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const toggleSplit = (key: string) => {
