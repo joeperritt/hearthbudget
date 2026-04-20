@@ -315,6 +315,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 {accounts.find(a => a.id === transaction.account)?.label || transaction.account}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-muted-foreground uppercase">Source</span>
+              <span className="text-sm text-muted-foreground">
+                {transaction.source === 'manual'
+                  ? 'Manually added'
+                  : `${accounts.find(a => a.id === transaction.account)?.label || transaction.account} (synced)`}
+              </span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground uppercase">Budget Month</span>
               <select

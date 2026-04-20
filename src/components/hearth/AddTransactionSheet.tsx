@@ -121,6 +121,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
           isTransferToSavings: false,
           transactionType: 'expense' as Transaction['transactionType'],
           budgetMonth: '',
+          source: 'manual',
         }));
       onAdd(txns);
       resetForm();
@@ -163,6 +164,7 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
       isTransferToSavings: false,
       transactionType: txType as Transaction['transactionType'],
       budgetMonth: '',
+      source: 'manual',
     }]);
 
     resetForm();

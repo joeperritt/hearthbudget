@@ -9,6 +9,8 @@ export const TRANSFER_CATEGORY = 'ignore-transfer';
 export const CC_PAYMENT_CATEGORY = 'cc-payment';
 export const PRIOR_MONTH_CATEGORY = 'ignore-prior-month';
 
+export type TransactionSource = 'plaid' | 'manual';
+
 export interface Transaction {
   id: string;
   date: string;
@@ -21,6 +23,7 @@ export interface Transaction {
   transactionType: TransactionType;
   enteredBy?: string | null;
   budgetMonth: string;
+  source: TransactionSource;
 }
 
 // A split transaction creates multiple TransactionSplit entries under one parent
