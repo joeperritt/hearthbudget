@@ -245,21 +245,27 @@ export function Dashboard({
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedLabel, setLastSyncedLabel] = useState<string | null>(null);
   const [flashLabel, setFlashLabel] = useState<string | null>(null);
+  const [reconnectItems, setReconnectItems] = useState<{ id: string; institution_name: string }[]>([]);
+  const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
-  // Fetch last sync time from plaid_items
+  // Fetch last sync time + items needing reconnect
   useEffect(() => {
-    const fetchLastSync = async () => {
-      const { data } = await supabase
+    const fetchSyncState = async () => {
+      const { data: synced } = await supabase
         .from('plaid_items')
-        .select('last_synced_at')
-        .not('last_synced_at', 'is', null)
-        .order('last_synced_at', { ascending: false })
+        .select('last_successful_sync_at, last_synced_at')
+        .order('last_successful_sync_at', { ascending: false, nullsFirst: false })
         .limit(1);
-      if (data && data.length > 0 && data[0].last_synced_at) {
-        setLastSyncedLabel(formatDistanceToNow(new Date(data[0].last_synced_at), { addSuffix: true }));
-      }
+      const ts = synced?.[0]?.last_successful_sync_at || synced?.[0]?.last_synced_at;
+      if (ts) setLastSyncedLabel(formatDistanceToNow(new Date(ts), { addSuffix: true }));
+
+      const { data: reconnect } = await supabase
+        .from('plaid_items')
+        .select('id, institution_name')
+        .eq('requires_reconnect', true);
+      setReconnectItems((reconnect || []) as { id: string; institution_name: string }[]);
     };
-    fetchLastSync();
+    fetchSyncState();
   }, []);
 
   const handleSync = async () => {
