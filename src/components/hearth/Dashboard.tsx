@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle, X } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
@@ -399,6 +399,29 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Reconnect banner */}
+      {!reconnectDismissed && reconnectItems.length > 0 && (
+        <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
+          <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {reconnectItems.length === 1
+                ? `${reconnectItems[0].institution_name} needs to be reconnected to continue syncing.`
+                : `${reconnectItems.length} accounts need reconnection: ${reconnectItems.map(i => i.institution_name).join(', ')}.`}
+            </p>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-bank-connections'))}
+              className="text-sm font-medium text-accent mt-1 active:scale-95"
+            >
+              Reconnect →
+            </button>
+          </div>
+          <button onClick={() => setReconnectDismissed(true)} className="text-muted-foreground/60 hover:text-foreground" aria-label="Dismiss">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* End-of-month unassigned warning */}
       <EndOfMonthBanner count={unassignedTransactions.length} />
