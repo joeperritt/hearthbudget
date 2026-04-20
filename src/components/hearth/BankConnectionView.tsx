@@ -57,6 +57,110 @@ interface BankConnectionViewProps {
   onBack: () => void;
 }
 
+function ItemSyncStatus({ item, onReconnected }: { item: PlaidItem; onReconnected: () => void }) {
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
+
+  const onSuccess = useCallback(
+    async (publicToken: string, metadata: any) => {
+      try {
+        const institution = metadata.institution as Record<string, string> | undefined;
+        const accounts = metadata.accounts as Array<Record<string, string>> | undefined;
+        await supabase.functions.invoke('plaid-exchange-token', {
+          body: { public_token: publicToken, institution_name: institution?.name || item.institution_name || '', accounts: accounts || [] },
+        });
+        await supabase
+          .from('plaid_items')
+          .update({ requires_reconnect: false, last_sync_error: null, sync_failure_count: 0 })
+          .eq('id', item.id);
+        toast.success('Bank reconnected!');
+        onReconnected();
+      } catch {
+        toast.error('Failed to reconnect bank');
+      } finally {
+        setLinkToken(null);
+        setReconnecting(false);
+      }
+    },
+    [item.id, item.institution_name, onReconnected]
+  );
+
+  const { open: openPlaid, ready: plaidReady } = usePlaidLink({
+    token: linkToken,
+    onSuccess,
+    onExit: () => { setLinkToken(null); setReconnecting(false); },
+  });
+
+  useEffect(() => {
+    if (linkToken && plaidReady) openPlaid();
+  }, [linkToken, plaidReady, openPlaid]);
+
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('plaid-create-link-token');
+      if (error) throw error;
+      setLinkToken(data.link_token);
+    } catch {
+      toast.error('Failed to initialize reconnection');
+      setReconnecting(false);
+    }
+  };
+
+  const lastSync = item.last_successful_sync_at || item.last_synced_at;
+  const relative = lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : 'Never';
+  const absolute = lastSync ? new Date(lastSync).toLocaleString() : 'No successful sync yet';
+
+  if (item.requires_reconnect) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+          <AlertCircle size={10} /> Reconnect required
+        </span>
+        <button
+          onClick={handleReconnect}
+          disabled={reconnecting}
+          className="text-[11px] font-medium text-accent active:scale-95 disabled:opacity-50"
+        >
+          {reconnecting ? 'Opening…' : 'Reconnect'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 cursor-default">
+            {item.last_sync_error ? (
+              <AlertTriangle size={12} className="text-amber-500" />
+            ) : lastSync ? (
+              <CheckCircle2 size={12} className="text-emerald-500" />
+            ) : null}
+            <span className="text-[10px] text-muted-foreground">
+              {lastSync ? `Last synced: ${relative}` : 'Not synced yet'}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {item.last_sync_error ? (
+            <div className="max-w-xs space-y-1">
+              <p className="text-xs font-semibold">Sync issue</p>
+              <p className="text-xs">{item.last_sync_error}</p>
+              {lastSync && <p className="text-[10px] opacity-70">Last success: {absolute}</p>}
+            </div>
+          ) : (
+            <p className="text-xs">{absolute}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+
+
 export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   const { isAdmin } = useAuth();
   const [linkToken, setLinkToken] = useState<string | null>(null);
