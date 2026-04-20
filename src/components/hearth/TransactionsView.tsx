@@ -113,6 +113,23 @@ export function TransactionsView({
     else { setSortKey(key); setSortDir(key === 'date' ? 'desc' : 'asc'); }
   };
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    setDeleting(true);
+    try {
+      await onDeleteTransaction(pendingDeleteId);
+      toast.success('Transaction deleted');
+      setPendingDeleteId(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete transaction');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const accountLabels: Record<string, string> = Object.fromEntries(accounts.map(a => [a.id, a.label]));
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
