@@ -443,39 +443,24 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">Federal Withholding / Check</Label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={state.federalWithholding}
-                onChange={e => setState({ federalWithholding: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">State Withholding / Check</Label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-              <Input
-                type="number"
-                className="pl-7"
-                value={state.stateWithholding}
-                onChange={e => setState({ stateWithholding: e.target.value })}
-                placeholder="0"
-              />
-            </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Federal Withholding / Check</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+            <Input
+              type="number"
+              className="pl-7"
+              value={state.federalWithholding}
+              onChange={e => setState({ federalWithholding: e.target.value })}
+              placeholder="0"
+            />
           </div>
         </div>
 
-        {(federalWithholdingPer === 0 && stateWithholdingPer === 0) && (
+        {federalWithholdingPer === 0 && (
           <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Enter your actual per-paycheck withholding amounts from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
+              Enter your actual per-paycheck federal withholding from your pay stub. Without this information, the shortfall calculation assumes no taxes are being withheld.
             </p>
           </div>
         )}
