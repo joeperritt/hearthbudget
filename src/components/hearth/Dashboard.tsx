@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
-import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle, X } from 'lucide-react';
 import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,21 +245,27 @@ export function Dashboard({
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedLabel, setLastSyncedLabel] = useState<string | null>(null);
   const [flashLabel, setFlashLabel] = useState<string | null>(null);
+  const [reconnectItems, setReconnectItems] = useState<{ id: string; institution_name: string }[]>([]);
+  const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
-  // Fetch last sync time from plaid_items
+  // Fetch last sync time + items needing reconnect
   useEffect(() => {
-    const fetchLastSync = async () => {
-      const { data } = await supabase
+    const fetchSyncState = async () => {
+      const { data: synced } = await supabase
         .from('plaid_items')
-        .select('last_synced_at')
-        .not('last_synced_at', 'is', null)
-        .order('last_synced_at', { ascending: false })
+        .select('last_successful_sync_at, last_synced_at')
+        .order('last_successful_sync_at', { ascending: false, nullsFirst: false })
         .limit(1);
-      if (data && data.length > 0 && data[0].last_synced_at) {
-        setLastSyncedLabel(formatDistanceToNow(new Date(data[0].last_synced_at), { addSuffix: true }));
-      }
+      const ts = synced?.[0]?.last_successful_sync_at || synced?.[0]?.last_synced_at;
+      if (ts) setLastSyncedLabel(formatDistanceToNow(new Date(ts), { addSuffix: true }));
+
+      const { data: reconnect } = await supabase
+        .from('plaid_items')
+        .select('id, institution_name')
+        .eq('requires_reconnect', true);
+      setReconnectItems((reconnect || []) as { id: string; institution_name: string }[]);
     };
-    fetchLastSync();
+    fetchSyncState();
   }, []);
 
   const handleSync = async () => {
@@ -393,6 +399,29 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Reconnect banner */}
+      {!reconnectDismissed && reconnectItems.length > 0 && (
+        <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3.5 flex gap-3 items-start animate-fade-up">
+          <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {reconnectItems.length === 1
+                ? `${reconnectItems[0].institution_name} needs to be reconnected to continue syncing.`
+                : `${reconnectItems.length} accounts need reconnection: ${reconnectItems.map(i => i.institution_name).join(', ')}.`}
+            </p>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-bank-connections'))}
+              className="text-sm font-medium text-accent mt-1 active:scale-95"
+            >
+              Reconnect →
+            </button>
+          </div>
+          <button onClick={() => setReconnectDismissed(true)} className="text-muted-foreground/60 hover:text-foreground" aria-label="Dismiss">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* End-of-month unassigned warning */}
       <EndOfMonthBanner count={unassignedTransactions.length} />

@@ -30,6 +30,9 @@ interface PlaidItem {
   id: string;
   institution_name: string;
   last_synced_at: string | null;
+  last_successful_sync_at: string | null;
+  last_sync_error: string | null;
+  requires_reconnect: boolean;
   plaid_accounts: PlaidAccount[];
 }
 
@@ -72,7 +75,7 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
   const fetchLinkedItems = useCallback(async () => {
     const { data, error } = await supabase
       .from('plaid_items')
-      .select('id, institution_name, last_synced_at, plaid_accounts(id, plaid_account_id, name, official_name, type, subtype, mask, nickname, account_category)');
+      .select('id, institution_name, last_synced_at, last_successful_sync_at, last_sync_error, requires_reconnect, plaid_accounts(id, plaid_account_id, name, official_name, type, subtype, mask, nickname, account_category)');
 
     if (!error && data) {
       setLinkedItems(data as unknown as PlaidItem[]);

@@ -457,7 +457,12 @@ export type Database = {
           id: string
           institution_name: string
           item_id: string
+          last_successful_sync_at: string | null
+          last_sync_attempt_at: string | null
+          last_sync_error: string | null
           last_synced_at: string | null
+          requires_reconnect: boolean
+          sync_failure_count: number
         }
         Insert: {
           access_token: string
@@ -467,7 +472,12 @@ export type Database = {
           id?: string
           institution_name?: string
           item_id: string
+          last_successful_sync_at?: string | null
+          last_sync_attempt_at?: string | null
+          last_sync_error?: string | null
           last_synced_at?: string | null
+          requires_reconnect?: boolean
+          sync_failure_count?: number
         }
         Update: {
           access_token?: string
@@ -477,7 +487,12 @@ export type Database = {
           id?: string
           institution_name?: string
           item_id?: string
+          last_successful_sync_at?: string | null
+          last_sync_attempt_at?: string | null
+          last_sync_error?: string | null
           last_synced_at?: string | null
+          requires_reconnect?: boolean
+          sync_failure_count?: number
         }
         Relationships: [
           {
