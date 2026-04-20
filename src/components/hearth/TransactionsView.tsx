@@ -216,6 +216,11 @@ export function TransactionsView({
         }`}>
           {accountLabels[t.account] || t.account}
         </span>
+        {t.source === 'manual' && !indent && (
+          <span className="text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
+            Manual
+          </span>
+        )}
 
         <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
           <p className="text-sm lg:text-base lg:font-semibold font-medium text-foreground truncate">
