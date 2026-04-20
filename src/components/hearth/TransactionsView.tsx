@@ -9,7 +9,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | 'transfers-hidden' | string;
+type Filter = 'all' | 'manual' | 'transfers-hidden' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -108,7 +108,11 @@ export function TransactionsView({
   const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
   const nameFor = (id: string) => catMap[id]?.name || fixedMap[id]?.name || id;
 
-  const filtered = filter === 'all' ? transactions : transactions.filter(t => t.account === filter);
+  const filtered = filter === 'all'
+    ? transactions
+    : filter === 'manual'
+      ? transactions.filter(t => t.source === 'manual')
+      : transactions.filter(t => t.account === filter);
   const txRows = groupSplitTransactions(filtered);
 
   const transferRows: TransferRow[] = showTransfers
@@ -145,6 +149,7 @@ export function TransactionsView({
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
     ...accounts.map(a => ({ id: a.id, label: a.label })),
+    { id: 'manual', label: 'Manual' },
   ];
 
   const renderTransfer = (tr: BudgetTransfer, i: number) => (
