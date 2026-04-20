@@ -1856,7 +1856,9 @@ function IncomeTab({ members, onUpdateMember }: { members: MemberIncome[]; onUpd
                   </button>
                 </div>
                 {members.map((member, i) => (
-                  <CurrencyInput key={member.profile_id} value={getSourceAmount(member, t.value)} onChange={v => setSourceAmount(i, t.value, v)} />
+                  <div key={member.profile_id} className="flex-1 min-w-0">
+                    <CurrencyInput value={getSourceAmount(member, t.value)} onChange={v => setSourceAmount(i, t.value, v)} />
+                  </div>
                 ))}
               </div>
               {tooltipOpen === tipKey && (

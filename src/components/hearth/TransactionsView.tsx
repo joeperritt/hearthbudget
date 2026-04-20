@@ -284,8 +284,15 @@ export function TransactionsView({
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-6 pt-12 pb-4 safe-top">
+      <div className="px-6 pt-12 pb-4 safe-top flex items-center justify-between gap-3">
         <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
+        <button
+          onClick={onAddTransaction}
+          className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          Add Transaction
+        </button>
       </div>
 
       <div className="px-6 flex gap-2 mb-2 overflow-x-auto no-scrollbar">
@@ -420,7 +427,7 @@ export function TransactionsView({
 
       <button
         onClick={onAddTransaction}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
+        className="lg:hidden fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>

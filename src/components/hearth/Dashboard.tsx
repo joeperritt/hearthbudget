@@ -368,20 +368,29 @@ export function Dashboard({
             );
           })()}
         </div>
-        <div className="flex flex-col items-center gap-1 mt-1">
+        <div className="flex items-start gap-2 mt-1">
           <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all"
-            title="Sync accounts"
+            onClick={onAddTransaction}
+            className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
           >
-            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            <Plus size={16} strokeWidth={2.5} />
+            Add Transaction
           </button>
-          {(flashLabel || lastSyncedLabel) && (
-            <span className="text-[10px] text-muted-foreground leading-none">
-              {flashLabel || `Synced ${lastSyncedLabel}`}
-            </span>
-          )}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center active:scale-95 transition-all"
+              title="Sync accounts"
+            >
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            </button>
+            {(flashLabel || lastSyncedLabel) && (
+              <span className="text-[10px] text-muted-foreground leading-none">
+                {flashLabel || `Synced ${lastSyncedLabel}`}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -524,7 +533,7 @@ export function Dashboard({
 
       <button
         onClick={onAddTransaction}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
+        className="lg:hidden fixed bottom-24 right-6 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>
