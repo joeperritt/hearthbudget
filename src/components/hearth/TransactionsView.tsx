@@ -29,7 +29,7 @@ interface TransactionsViewProps {
   fixedExpenses: FixedExpense[];
   monthLabel: string;
   onAddTransaction: () => void;
-  onDeleteTransaction: (id: string) => void;
+  onDeleteTransaction: (id: string) => void | Promise<void>;
   onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
   accounts?: AppAccount[];
 }
