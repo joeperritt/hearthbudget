@@ -564,9 +564,9 @@ export function SettingsView({
       const hasSpending = isCurrentMonth || isPastMonth;
 
       return (
-        <div key={item.id} className="px-4 py-3">
-          <div className="flex justify-between items-baseline mb-1">
-            <span className="text-sm font-medium text-foreground">{item.name}</span>
+        <div key={item.id} className="px-4 py-3 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
+          <div className="flex justify-between items-baseline mb-1 lg:mb-2">
+            <span className="text-sm lg:text-base font-medium lg:font-semibold text-foreground">{item.name}</span>
             <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(amount)}</span>
           </div>
           {hasSpending && (
