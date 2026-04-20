@@ -12,7 +12,7 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
 
 export function BottomNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (t: TabId) => void }) {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border safe-bottom z-50">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border safe-bottom z-50">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-1">
         {tabs.map(({ id, label, icon: Icon }) => {
           const active = activeTab === id;
