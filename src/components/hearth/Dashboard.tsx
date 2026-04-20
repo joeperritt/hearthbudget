@@ -356,7 +356,7 @@ export function Dashboard({
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 pb-2 safe-top flex items-start justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">{monthLabel} Budget</h1>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
           {(() => {
             const today = new Date();
             const nextMonth = startOfMonth(addMonths(today, 1));
