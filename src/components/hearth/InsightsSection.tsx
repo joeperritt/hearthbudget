@@ -2,12 +2,12 @@ import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank, Che
 import { Insight } from '@/hooks/useBudgetInsights';
 import { formatDistanceToNow } from 'date-fns';
 
-const iconMap: Record<Insight['type'], { icon: typeof AlertTriangle; color: string; border: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-yellow-600', border: 'border-l-destructive' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500' },
-  tip: { icon: Lightbulb, color: 'text-accent', border: 'border-l-accent' },
-  giving: { icon: Heart, color: 'text-accent', border: 'border-l-accent' },
-  savings: { icon: PiggyBank, color: 'text-primary', border: 'border-l-primary' },
+const iconMap: Record<Insight['type'], { icon: typeof AlertTriangle; color: string; border: string; bg: string }> = {
+  warning: { icon: AlertTriangle, color: 'text-destructive', border: 'border-l-destructive', bg: 'lg:bg-destructive/5' },
+  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
+  tip: { icon: Lightbulb, color: 'text-yellow-600', border: 'border-l-yellow-500', bg: 'lg:bg-yellow-500/5' },
+  giving: { icon: Heart, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
+  savings: { icon: PiggyBank, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
 };
 
 interface InsightsSectionProps {
@@ -79,7 +79,7 @@ export function InsightsSection({ insights, loading, error, lastUpdated, onSeeAl
             return (
               <div
                 key={i}
-                className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border}`}
+                className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border} ${config.bg}`}
               >
                 <div className="flex items-start gap-2.5">
                   <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
