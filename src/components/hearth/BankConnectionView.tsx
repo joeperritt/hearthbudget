@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, PiggyBank, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePlaidLink } from 'react-plaid-link';
 import { useAuth } from '@/hooks/useAuth';
 import { AccountManagement } from './AccountManagement';
+import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PlaidAccount {
   id: string;
