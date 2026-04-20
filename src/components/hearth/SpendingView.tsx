@@ -17,12 +17,12 @@ function CategoryCard({
   const remaining = adjustedBudget - spent;
   return (
     <div
-      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
+      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3 lg:border lg:border-border/60 lg:shadow-sm"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <button onClick={onSelect} className="flex-1 min-w-0 text-left">
-        <div className="flex justify-between items-baseline mb-1">
-          <span className="font-medium text-sm text-foreground truncate">{category.name}</span>
+        <div className="flex justify-between items-baseline mb-1 lg:mb-2">
+          <span className="font-medium lg:font-semibold text-sm lg:text-base text-foreground truncate">{category.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
             {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>
@@ -47,12 +47,12 @@ function FixedExpenseCard({ expense, spent, transferAdj, onSelect, onMoveFunds, 
   const remaining = adjustedBudget - spent;
   return (
     <div
-      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3"
+      className="w-full bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform animate-fade-up flex items-center gap-3 lg:border lg:border-border/60 lg:shadow-sm"
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <button onClick={onSelect} className="flex-1 min-w-0 text-left">
-        <div className="flex justify-between items-baseline mb-1">
-          <span className="font-medium text-sm text-foreground truncate">{expense.name}</span>
+        <div className="flex justify-between items-baseline mb-1 lg:mb-2">
+          <span className="font-medium lg:font-semibold text-sm lg:text-base text-foreground truncate">{expense.name}</span>
           <span className={`text-xs font-medium tabular-nums ${remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
             {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
           </span>
@@ -201,38 +201,38 @@ export function SpendingView({
 
       {mode === 'variable' ? (
         <div className="px-6 pb-6 space-y-1">
-          <SectionLabel label="Shared" delay={delay++} />
-          {shared.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
-              onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
-          ))}
-          <SectionLabel label="Joe" delay={(delay++) * 40} />
-          {joe.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
-              onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
-          ))}
-          <SectionLabel label="Katie" delay={(delay++) * 40} />
-          {katie.map(c => (
-            <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
-              onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
+          {([
+            { label: 'Shared', items: shared },
+            { label: 'Joe', items: joe },
+            { label: 'Katie', items: katie },
+          ] as const).map(({ label, items }) => items.length > 0 && (
+            <div key={label}>
+              <SectionLabel label={label} delay={(delay++) * 40} />
+              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                {items.map(c => (
+                  <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
+                    onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (
         <div className="px-6 pb-6 space-y-1">
-          <SectionLabel label="Fixed" delay={0} />
-          {bills.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
-              onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />
-          ))}
-          <SectionLabel label="Savings Buckets" delay={(bills.length + 1) * 40} />
-          {savings.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
-              onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(bills.length + i + 2) * 40} />
-          ))}
-          <SectionLabel label="Tithe / Giving" delay={(bills.length + savings.length + 2) * 40} />
-          {tithe.map((e, i) => (
-            <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
-              onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(bills.length + savings.length + i + 3) * 40} />
+          {([
+            { label: 'Fixed', items: bills },
+            { label: 'Savings Buckets', items: savings },
+            { label: 'Tithe / Giving', items: tithe },
+          ] as const).map(({ label, items }) => items.length > 0 && (
+            <div key={label}>
+              <SectionLabel label={label} delay={(delay++) * 40} />
+              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                {items.map((e, i) => (
+                  <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
+                    onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

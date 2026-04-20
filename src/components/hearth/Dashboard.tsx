@@ -32,12 +32,12 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
     <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
-        <div className="flex gap-1">
+        <div className="flex gap-1 lg:gap-2">
           {accountFilters.map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors active:scale-95 ${
+              className={`px-2 py-0.5 lg:px-4 lg:py-2 rounded-full text-[10px] lg:text-sm font-medium transition-colors active:scale-95 ${
                 filter === f.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-muted-foreground'
@@ -59,15 +59,15 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
       ) : (
         <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
           {filtered.slice(0, 10).map(tx => (
-            <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 cursor-pointer active:bg-muted/50 transition-colors">
+            <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 lg:py-4 cursor-pointer active:bg-muted/50 transition-colors">
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
-                <span className="text-[11px] text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
+                <span className="text-sm lg:text-base text-foreground truncate">{tx.description || 'No description'}</span>
+                <span className="text-[11px] lg:text-sm text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
               </div>
               {(() => {
                 const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
                 return (
-                  <span className={`text-sm font-medium tabular-nums ml-3 ${colorClassName}`}>
+                  <span className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ml-3 ${colorClassName}`}>
                     {prefix}{formatCurrency(value)}
                   </span>
                 );
