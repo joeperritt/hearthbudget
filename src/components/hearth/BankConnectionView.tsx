@@ -275,15 +275,15 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
         ) : (
           linkedItems.map(item => (
             <div key={item.id}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{item.institution_name || 'Bank'}</h3>
-                <button onClick={() => disconnectBank(item.id)} className="text-destructive/60 hover:text-destructive active:scale-90 transition-all" title="Disconnect bank">
-                  <Trash2 size={14} />
-                </button>
+              <div className="flex items-start justify-between mb-2 gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-0.5">{item.institution_name || 'Bank'}</h3>
+                <div className="flex items-center gap-2">
+                  <ItemSyncStatus item={item} onReconnected={fetchLinkedItems} />
+                  <button onClick={() => disconnectBank(item.id)} className="text-destructive/60 hover:text-destructive active:scale-90 transition-all" title="Disconnect bank">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              {item.last_synced_at && (
-                <p className="text-[10px] text-muted-foreground mb-2">Last synced: {new Date(item.last_synced_at).toLocaleString()}</p>
-              )}
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
                 {item.plaid_accounts.map(acc => {
                   const accCardholders = cardholders.filter(c => c.plaid_account_id === acc.id);
