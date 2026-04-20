@@ -108,6 +108,17 @@ const Index = () => {
   }, [householdId]);
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+
+  // Allow other components (e.g. Dashboard reconnect banner) to navigate to
+  // the Bank Connections screen via a global event.
+  useEffect(() => {
+    const handler = () => {
+      setActiveTab('more');
+      setMoreSubView('bank-connections');
+    };
+    window.addEventListener('open-bank-connections', handler);
+    return () => window.removeEventListener('open-bank-connections', handler);
+  }, []);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingSplitSiblings, setEditingSplitSiblings] = useState<Transaction[]>([]);
