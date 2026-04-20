@@ -1295,7 +1295,7 @@ export function SettingsView({
       <>
         <div className="px-6 pb-6">
           {/* Profiles */}
-          <div className="mb-6">
+          <div className="mb-6 lg:hidden">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">
@@ -1349,7 +1349,7 @@ export function SettingsView({
 
         <div className="px-6 mt-6 pb-6">
           {/* Profiles */}
-          <div className="mb-6">
+          <div className="mb-6 lg:hidden">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">

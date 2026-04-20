@@ -153,33 +153,35 @@ export function SpendingView({
         <h1 className="font-display text-xl font-bold text-foreground">{monthLabel} Budget</h1>
       </div>
 
-      {/* Total Monthly Budget */}
-      <div className="px-6 mt-4 mb-4 animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
-        <div className="bg-primary rounded-xl p-5 shadow-lg">
-          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
-          <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
-              <span>{formatCurrency(totalSpent)} committed</span>
-              {totalSpent > totalBudget ? (
-                <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
-              ) : (
-                <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
-              )}
-            </div>
-            <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500"
-                style={{ width: `${Math.min((totalSpent / totalBudget) * 100, 100)}%` }}
-              />
+      {/* Header row: Total Monthly Budget + Variable/Fixed summaries */}
+      <div className="px-6 mt-4 mb-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-stretch">
+        <div className="animate-fade-up mb-4 lg:mb-0" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+          <div className="bg-primary rounded-xl p-5 shadow-lg h-full">
+            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
+            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
+                <span>{formatCurrency(totalSpent)} committed</span>
+                {totalSpent > totalBudget ? (
+                  <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+                ) : (
+                  <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
+                )}
+              </div>
+              <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-500"
+                  style={{ width: `${Math.min((totalSpent / totalBudget) * 100, 100)}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="px-6 grid grid-cols-2 gap-3 mb-4">
-        <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
-        <SummaryCard label="Fixed" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
+          <SummaryCard label="Fixed" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
+        </div>
       </div>
 
       {/* Segmented Toggle */}
