@@ -547,6 +547,10 @@ export function TaxWithholdingCalculator({ onBack, householdId, onNavigateToProf
                 <span className="text-muted-foreground">{federalDelta >= 0 ? 'Surplus' : 'Shortfall'}</span>
                 <span className={`font-bold ${deltaColor(federalDelta)}`}>{deltaLabel(federalDelta)}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Federal Marginal Tax Rate</span>
+                <span className="font-semibold text-foreground">{pct(marginalRate)}</span>
+              </div>
             </div>
             {showIncomeStackingDisclaimer && (
               <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
