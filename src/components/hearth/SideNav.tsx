@@ -30,9 +30,9 @@ export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreIt
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-[220px] bg-card/60 border-r border-border flex-col z-40 safe-top overflow-y-auto">
       <div className="px-6 pt-8 pb-6 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-          <span className="text-primary-foreground font-display text-lg font-bold">H</span>
+          <span className="text-primary-foreground font-display text-lg font-bold">K</span>
         </div>
-        <span className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Hearth</span>
+        <span className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Keeper</span>
       </div>
 
       <nav className="flex-1 px-3 py-2">
