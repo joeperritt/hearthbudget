@@ -450,7 +450,7 @@ export type Database = {
       }
       plaid_items: {
         Row: {
-          access_token: string
+          access_token: string | null
           created_at: string
           cursor: string | null
           household_id: string
@@ -465,7 +465,7 @@ export type Database = {
           sync_failure_count: number
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           created_at?: string
           cursor?: string | null
           household_id: string
@@ -480,7 +480,7 @@ export type Database = {
           sync_failure_count?: number
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           created_at?: string
           cursor?: string | null
           household_id?: string
@@ -500,6 +500,38 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plaid_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          id: string
+          plaid_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          id?: string
+          plaid_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          id?: string
+          plaid_item_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaid_tokens_plaid_item_id_fkey"
+            columns: ["plaid_item_id"]
+            isOneToOne: true
+            referencedRelation: "plaid_items"
             referencedColumns: ["id"]
           },
         ]
