@@ -77,6 +77,22 @@ Deno.serve(async (req) => {
       .select("*, plaid_accounts(*)")
       .eq("household_id", profile.household_id);
 
+    // Hydrate access tokens from secure plaid_tokens table
+    if (plaidItems && plaidItems.length > 0) {
+      const itemIds = plaidItems.map((it: Record<string, unknown>) => it.id as string);
+      const { data: tokenRows } = await serviceClient
+        .from("plaid_tokens")
+        .select("plaid_item_id, access_token")
+        .in("plaid_item_id", itemIds);
+      const tokenMap: Record<string, string> = {};
+      for (const t of tokenRows || []) {
+        tokenMap[(t as Record<string, string>).plaid_item_id] = (t as Record<string, string>).access_token;
+      }
+      for (const it of plaidItems) {
+        (it as Record<string, unknown>).access_token = tokenMap[(it as Record<string, string>).id] || null;
+      }
+    }
+
     if (!plaidItems || plaidItems.length === 0) {
       return new Response(JSON.stringify({ balances: [] }), {
         status: 200,
