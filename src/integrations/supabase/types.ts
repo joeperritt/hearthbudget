@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          id: number
+          signup_mode: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          signup_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          signup_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       budget_categories: {
         Row: {
           budgeted: number
@@ -337,6 +358,45 @@ export type Database = {
           id?: string
           name?: string
           planning_data?: Json
+        }
+        Relationships: []
+      }
+      invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          email: string | null
+          expires_at: string
+          household_id: string | null
+          id: string
+          revoked_at: string | null
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          email?: string | null
+          expires_at?: string
+          household_id?: string | null
+          id?: string
+          revoked_at?: string | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          expires_at?: string
+          household_id?: string | null
+          id?: string
+          revoked_at?: string | null
+          used_at?: string | null
+          used_by?: string | null
         }
         Relationships: []
       }
@@ -690,6 +750,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      validate_invite_code: {
+        Args: { _code: string; _email?: string }
+        Returns: Json
       }
     }
     Enums: {
