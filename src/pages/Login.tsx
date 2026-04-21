@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Login() {
@@ -71,10 +72,15 @@ export default function Login() {
           >
             {loading ? 'Signing in…' : 'Log In'}
           </button>
+
+          <div className="flex items-center justify-between text-xs pt-1">
+            <Link to="/forgot-password" className="text-accent">Forgot password?</Link>
+            <Link to="/signup" className="text-accent">Create account</Link>
+          </div>
         </form>
 
         <p className="text-center text-[11px] text-muted-foreground/50 mt-8">
-          Accounts managed by household admin
+          Keeper · Budgeting together.
         </p>
       </div>
     </div>
