@@ -156,7 +156,25 @@ export async function runHouseholdSync(
     return result;
   }
 
+  // Hydrate access_tokens from secure plaid_tokens table (service-role only)
+  const itemIds = plaidItems.map((it: any) => it.id);
+  const { data: tokenRows } = await serviceClient
+    .from("plaid_tokens")
+    .select("plaid_item_id, access_token")
+    .in("plaid_item_id", itemIds);
+  const tokenByItemId: Record<string, string> = {};
+  for (const t of tokenRows || []) {
+    tokenByItemId[(t as any).plaid_item_id] = (t as any).access_token;
+  }
+  for (const it of plaidItems) {
+    (it as any).access_token = tokenByItemId[(it as any).id] || null;
+  }
+
   for (const item of plaidItems) {
+    if (!(item as any).access_token) {
+      console.warn("Skipping plaid_item with no token in plaid_tokens", item.id);
+      continue;
+    }
     result.itemsAttempted += 1;
     const previousFailureCount = (item as any).sync_failure_count || 0;
     const institution = (item as any).institution_name || "Bank";

@@ -105,12 +105,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Store the Plaid item
+    // Store the Plaid item (without access_token — that goes to plaid_tokens)
     const { data: plaidItem, error: insertError } = await serviceClient
       .from("plaid_items")
       .insert({
         household_id: profile.household_id,
-        access_token,
         item_id,
         institution_name: institution_name || "",
       })
@@ -120,6 +119,24 @@ Deno.serve(async (req) => {
     if (insertError) {
       console.error("Insert plaid_items error:", insertError);
       return new Response(JSON.stringify({ error: "Failed to save bank connection" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Store access token in secure plaid_tokens table (service-role only access)
+    const { error: tokenInsertError } = await serviceClient
+      .from("plaid_tokens")
+      .insert({
+        plaid_item_id: plaidItem.id,
+        access_token,
+      });
+
+    if (tokenInsertError) {
+      console.error("Insert plaid_tokens error:", tokenInsertError);
+      // Roll back the plaid_items row to avoid an orphan
+      await serviceClient.from("plaid_items").delete().eq("id", plaidItem.id);
+      return new Response(JSON.stringify({ error: "Failed to save bank connection token" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

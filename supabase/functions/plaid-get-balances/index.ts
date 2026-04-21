@@ -77,6 +77,22 @@ Deno.serve(async (req) => {
       .select("*, plaid_accounts(*)")
       .eq("household_id", profile.household_id);
 
+    // Hydrate access tokens from secure plaid_tokens table
+    if (plaidItems && plaidItems.length > 0) {
+      const itemIds = plaidItems.map((it: Record<string, unknown>) => it.id as string);
+      const { data: tokenRows } = await serviceClient
+        .from("plaid_tokens")
+        .select("plaid_item_id, access_token")
+        .in("plaid_item_id", itemIds);
+      const tokenMap: Record<string, string> = {};
+      for (const t of tokenRows || []) {
+        tokenMap[(t as Record<string, string>).plaid_item_id] = (t as Record<string, string>).access_token;
+      }
+      for (const it of plaidItems) {
+        (it as Record<string, unknown>).access_token = tokenMap[(it as Record<string, string>).id] || null;
+      }
+    }
+
     if (!plaidItems || plaidItems.length === 0) {
       return new Response(JSON.stringify({ balances: [] }), {
         status: 200,
@@ -95,6 +111,10 @@ Deno.serve(async (req) => {
     }> = [];
 
     for (const item of plaidItems) {
+      if (!item.access_token) {
+        console.warn("Skipping balance fetch — no token in plaid_tokens", item.id);
+        continue;
+      }
       // Skip items where all accounts are checking/savings — avoids Plaid balance errors on some banks
       const mappedAccounts = (item.plaid_accounts || []).filter((a: { app_account: string | null; account_category?: string }) => a.app_account || a.account_category);
       const allDepository = mappedAccounts.length > 0 && mappedAccounts.every((a: { account_category?: string; app_account?: string | null }) => 
