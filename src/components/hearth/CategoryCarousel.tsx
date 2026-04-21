@@ -62,6 +62,12 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
     return order.map(id => byId.get(id)).filter(Boolean) as typeof computed;
   }, [computed]);
 
+  // Desktop: stable alphabetical order
+  const sortedAlpha = useMemo(
+    () => [...computed].sort((a, b) => a.name.localeCompare(b.name)),
+    [computed]
+  );
+
   // Duplicate for seamless loop
   const tickerItems = useMemo(() => [...shuffled, ...shuffled], [shuffled]);
   const setWidth = shuffled.length * (cardW + GAP);
@@ -271,17 +277,17 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
       </div>
       {/* Desktop: dense responsive grid */}
       <div className="hidden lg:grid lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-9 gap-2 px-6">
-        {shuffled.map((item) => {
+        {sortedAlpha.map((item) => {
           const s = getCardStyles(item);
           return (
             <div
               key={item.id}
               onClick={() => onSelectCategory?.(item.id)}
-              className={`${s.cardBg} rounded-lg shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2 min-h-[44px]' : 'p-3 flex flex-col justify-between min-h-[84px]'}`}
+              className={`${s.cardBg} rounded-lg shadow-sm cursor-pointer active:scale-95 transition-transform ${compact ? 'p-2 flex items-center gap-2 h-[54px]' : 'p-3 flex flex-col justify-between h-[110px]'}`}
             >
               {compact ? (
                 <>
-                  <p className={`text-xs font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 ${s.labelColor}`} style={{ wordBreak: 'break-word' }}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide leading-tight flex-1 min-w-0 truncate ${s.labelColor}`}>
                     {item.name}
                   </p>
                   {s.isPerfect ? (
@@ -294,7 +300,7 @@ export function CategoryCarousel({ title, items, spentByCategory, transferAdjust
                 </>
               ) : (
                 <>
-                  <p className={`text-xs font-semibold uppercase tracking-wide leading-tight ${s.labelColor}`} style={{ wordBreak: 'break-word' }}>
+                  <p className={`${getFontSize(item.name)} font-semibold uppercase tracking-wide leading-tight line-clamp-2 ${s.labelColor}`} style={{ wordBreak: 'break-word' }}>
                     {item.name}
                   </p>
                   <div>
