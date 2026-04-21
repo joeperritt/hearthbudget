@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { InvitesManagement } from '@/components/auth/InvitesManagement';
 
 interface HouseholdUser {
   user_id: string;
@@ -221,6 +222,11 @@ export function AccountManagement() {
           <Plus size={16} /> Add User
         </button>
       )}
+
+      <div className="mt-10">
+        <h2 className="font-display text-base font-semibold text-foreground mb-3">Invites</h2>
+        <InvitesManagement />
+      </div>
     </div>
   );
 }

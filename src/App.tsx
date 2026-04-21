@@ -6,7 +6,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
+import Signup from "./pages/Signup.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { VerifyEmailBanner } from "@/components/auth/VerifyEmailBanner";
 
 const queryClient = new QueryClient();
 
@@ -23,14 +27,25 @@ function AuthGate() {
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
+  // Public auth routes (always available)
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="*" element={<NotFound />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      {user ? (
+        <>
+          <Route path="/" element={
+            <>
+              <VerifyEmailBanner />
+              <Index />
+            </>
+          } />
+          <Route path="*" element={<NotFound />} />
+        </>
+      ) : (
+        <Route path="*" element={<Login />} />
+      )}
     </Routes>
   );
 }
