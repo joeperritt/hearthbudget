@@ -163,13 +163,13 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
                 <div key={t.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
                   style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
                   <ArrowLeftRight size={12} className="text-muted-foreground/50 shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-sm text-foreground">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">
                       {isFrom ? `→ ${otherName}` : `← ${otherName}`}
-                    </span>
+                    </p>
                     <p className="text-[11px] text-muted-foreground">{format(new Date(t.date), 'MMM d')}</p>
                   </div>
-                  <span className={`text-sm font-medium tabular-nums ${isFrom ? 'text-destructive' : 'text-accent'}`}>
+                  <span className={`text-sm font-medium tabular-nums shrink-0 ${isFrom ? 'text-destructive' : 'text-accent'}`}>
                     {isFrom ? '-' : '+'}{formatCurrency(t.amount)}
                   </span>
                 </div>
@@ -188,10 +188,10 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
                 style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
                 <ArrowDownLeft size={12} className="text-accent shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm text-foreground truncate">{d.description || 'Deposit'}</span>
+                  <p className="text-sm text-foreground truncate">{d.description || 'Deposit'}</p>
                   <p className="text-[11px] text-muted-foreground">{format(new Date(d.date), 'MMM d')}</p>
                 </div>
-                <span className="text-sm font-medium tabular-nums text-accent">+{formatCurrency(Math.abs(d.amount))}</span>
+                <span className="text-sm font-medium tabular-nums text-accent shrink-0">+{formatCurrency(Math.abs(d.amount))}</span>
               </div>
             ))}
           </div>
