@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
         client_id: PLAID_CLIENT_ID,
         secret: PLAID_SECRET,
         user: { client_user_id: userId },
-        client_name: "Hearth Budget",
+        client_name: "Keeper Budget",
         products: ["transactions"],
         country_codes: ["US"],
         language: "en",
