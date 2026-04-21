@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a transaction categorization assistant for a household budgeting app called Hearth. Your job is to suggest the most likely category for an unassigned transaction based on the merchant name, amount, and the user's past categorization history.
+const SYSTEM_PROMPT = `You are a transaction categorization assistant for a household budgeting app called Keeper. Your job is to suggest the most likely category for an unassigned transaction based on the merchant name, amount, and the user's past categorization history.
 
 You will receive:
 - The transaction to categorize (merchant name, amount, date, account)

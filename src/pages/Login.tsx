@@ -23,9 +23,9 @@ export default function Login() {
         {/* Logo / Brand */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-primary-foreground font-display text-2xl font-bold">H</span>
+            <span className="text-primary-foreground font-display text-2xl font-bold">K</span>
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Hearth</h1>
+          <h1 className="font-display text-3xl font-bold text-foreground">Keeper</h1>
           <p className="text-muted-foreground text-sm mt-1.5">Family budget, simplified.</p>
         </div>
 
