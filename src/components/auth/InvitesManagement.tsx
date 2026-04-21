@@ -72,8 +72,17 @@ export function InvitesManagement() {
     fetchInvites();
   };
 
+  const publicOrigin = (() => {
+    const host = window.location.hostname;
+    // Preview/editor hosts require Lovable login — always use the public published URL.
+    if (host.endsWith("lovableproject.com") || host.includes("id-preview--")) {
+      return "https://hearthbudget.lovable.app";
+    }
+    return window.location.origin;
+  })();
+
   const copyLink = (code: string) => {
-    const url = `${window.location.origin}/signup?invite=${code}`;
+    const url = `${publicOrigin}/signup?invite=${code}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Invite link copied", description: url });
   };
