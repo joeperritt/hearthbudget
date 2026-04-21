@@ -111,6 +111,10 @@ Deno.serve(async (req) => {
     }> = [];
 
     for (const item of plaidItems) {
+      if (!item.access_token) {
+        console.warn("Skipping balance fetch — no token in plaid_tokens", item.id);
+        continue;
+      }
       // Skip items where all accounts are checking/savings — avoids Plaid balance errors on some banks
       const mappedAccounts = (item.plaid_accounts || []).filter((a: { app_account: string | null; account_category?: string }) => a.app_account || a.account_category);
       const allDepository = mappedAccounts.length > 0 && mappedAccounts.every((a: { account_category?: string; app_account?: string | null }) => 
