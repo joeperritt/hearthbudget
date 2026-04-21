@@ -110,6 +110,10 @@ Deno.serve(async (req) => {
     let totalUpdated = 0;
 
     for (const item of plaidItems) {
+      if (!(item as Record<string, unknown>).access_token) {
+        console.warn("Skipping remap — no token in plaid_tokens", item.id);
+        continue;
+      }
       // Find credit card accounts with cardholders
       const creditAccounts = (item.plaid_accounts || []).filter(
         (acc: Record<string, unknown>) => (acc.account_category as string) === "credit_card"
