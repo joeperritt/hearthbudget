@@ -1,5 +1,6 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal, Sparkles, Calculator, BarChart3, Building2 } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal, Sparkles, Calculator, BarChart3, Building2, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
@@ -26,6 +27,7 @@ interface SideNavProps {
 }
 
 export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreItem }: SideNavProps) {
+  const { signOut } = useAuth();
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-[220px] bg-card/60 border-r border-border flex-col z-40 safe-top overflow-y-auto">
       <div className="px-6 pt-8 pb-6 flex items-center gap-3">
@@ -78,6 +80,16 @@ export function SideNav({ activeTab, onTabChange, activeMoreItem, onSelectMoreIt
           })}
         </div>
       </nav>
+
+      <div className="px-3 py-3 border-t border-border">
+        <button
+          onClick={signOut}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left font-body text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut size={18} strokeWidth={1.8} />
+          <span>Log Out</span>
+        </button>
+      </div>
     </aside>
   );
 }
