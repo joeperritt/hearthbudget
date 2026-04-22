@@ -76,11 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const checkAdmin = async (userId: string) => {
+    // isAdmin drives admin UI (invites, account management). True for either
+    // household_admin (of any of their households) or system_admin (operator).
     const { data } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
-    setIsAdmin(data?.some(r => r.role === 'admin') ?? false);
+    setIsAdmin(
+      data?.some(r => r.role === 'household_admin' || r.role === 'system_admin') ?? false
+    );
   };
 
   const signIn = async (email: string, password: string) => {

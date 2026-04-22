@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id);
-    const isAdmin = roles?.some((r: { role: string }) => r.role === "admin");
+    const isAdmin = roles?.some(
+      (r: { role: string }) => r.role === "household_admin" || r.role === "system_admin"
+    );
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden: admin only" }), {
         status: 403,

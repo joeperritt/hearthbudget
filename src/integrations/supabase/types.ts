@@ -833,21 +833,32 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          household_id: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          household_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          household_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -870,6 +881,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_current_household_admin: { Args: never; Returns: boolean }
+      is_household_admin: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_system_admin: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -893,7 +910,12 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "member"
+      app_role:
+        | "admin"
+        | "member"
+        | "system_admin"
+        | "household_admin"
+        | "household_member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1021,7 +1043,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "member"],
+      app_role: [
+        "admin",
+        "member",
+        "system_admin",
+        "household_admin",
+        "household_member",
+      ],
     },
   },
 } as const

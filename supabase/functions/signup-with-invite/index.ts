@@ -152,39 +152,77 @@ Deno.serve(async (req) => {
     const display_name = `${first_name}${last_name ? " " + last_name : ""}`.trim();
     const avatar_initial = (first_name?.[0] ?? "U").toUpperCase();
 
-    // Resolve household: join existing or create new
+    // Resolve household: join existing or create new.
+    // Track everything we create so we can roll back if any step fails.
     let householdId = targetHouseholdId;
-    let role: "admin" | "member" = "member";
-    if (!householdId) {
-      const { data: hh, error: hhErr } = await admin
-        .from("households")
-        .insert({ name: `${first_name}'s Household` })
-        .select()
-        .single();
-      if (hhErr || !hh) {
-        return new Response(JSON.stringify({ error: "Could not create household" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    let role: "household_admin" | "household_member" =
+      targetHouseholdId ? "household_member" : "household_admin";
+    let createdHouseholdId: string | null = null;
+    let createdProfile = false;
+    let createdRole = false;
+
+    const rollback = async () => {
+      try {
+        if (createdRole) {
+          await admin.from("user_roles").delete().eq("user_id", userId);
+        }
+        if (createdProfile) {
+          await admin.from("profiles").delete().eq("user_id", userId);
+        }
+        if (createdHouseholdId) {
+          await admin.from("budget_categories").delete().eq("household_id", createdHouseholdId);
+          await admin.from("fixed_expenses").delete().eq("household_id", createdHouseholdId);
+          await admin.from("households").delete().eq("id", createdHouseholdId);
+        }
+        await admin.auth.admin.deleteUser(userId);
+      } catch (e) {
+        console.error("rollback failed", e);
       }
-      householdId = hh.id;
-      role = "admin";
-      await seedHouseholdDefaults(admin, householdId);
-    }
+    };
 
-    await admin.from("profiles").insert({
-      user_id: userId,
-      household_id: householdId,
-      display_name,
-      avatar_initial,
-    });
-    await admin.from("user_roles").insert({ user_id: userId, role });
+    try {
+      if (!householdId) {
+        const { data: hh, error: hhErr } = await admin
+          .from("households")
+          .insert({ name: `${first_name}'s Household` })
+          .select()
+          .single();
+        if (hhErr || !hh) throw new Error(hhErr?.message ?? "Could not create household");
+        householdId = hh.id;
+        createdHouseholdId = hh.id;
+        await seedHouseholdDefaults(admin, householdId);
+      }
 
-    // Mark invite used
-    if (inviteRow) {
-      await admin.from("invites").update({
-        used_at: new Date().toISOString(),
-        used_by: userId,
-      }).eq("id", inviteRow.id);
+      const { error: profErr } = await admin.from("profiles").insert({
+        user_id: userId,
+        household_id: householdId,
+        display_name,
+        avatar_initial,
+      });
+      if (profErr) throw new Error(`Profile insert failed: ${profErr.message}`);
+      createdProfile = true;
+
+      const { error: roleErr } = await admin.from("user_roles").insert({
+        user_id: userId,
+        role,
+        household_id: householdId,
+      });
+      if (roleErr) throw new Error(`Role insert failed: ${roleErr.message}`);
+      createdRole = true;
+
+      if (inviteRow) {
+        const { error: invErr } = await admin.from("invites").update({
+          used_at: new Date().toISOString(),
+          used_by: userId,
+        }).eq("id", inviteRow.id);
+        if (invErr) throw new Error(`Invite update failed: ${invErr.message}`);
+      }
+    } catch (txErr) {
+      console.error("signup transaction failed, rolling back", txErr);
+      await rollback();
+      return new Response(JSON.stringify({ error: String(txErr) }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { error: resendErr } = await publicClient.auth.resend({
