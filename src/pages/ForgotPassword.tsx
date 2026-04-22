@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicOrigin } from "@/lib/publicOrigin";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ export default function ForgotPassword() {
     setLoading(true);
     // Always succeed silently to prevent enumeration
     await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${getPublicOrigin()}/reset-password`,
     });
     setLoading(false);
     setDone(true);
