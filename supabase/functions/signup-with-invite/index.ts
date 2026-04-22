@@ -67,7 +67,21 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const publishableKey =
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      Deno.env.get("SUPABASE_ANON_KEY");
     const admin = createClient(supabaseUrl, serviceKey);
+
+    if (!publishableKey) {
+      throw new Error("Missing Supabase publishable key");
+    }
+
+    const publicClient = createClient(supabaseUrl, publishableKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
     const body: SignupBody = await req.json();
     const { email, password, first_name, last_name, invite_code } = body;
@@ -77,6 +91,9 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const emailAddress = email.trim().toLowerCase();
+    const siteUrl = req.headers.get("origin") ?? "https://keeperbudget.com";
 
     // Check signup mode
     const { data: cfg } = await admin.from("app_config").select("signup_mode").eq("id", 1).single();
@@ -110,7 +127,7 @@ Deno.serve(async (req) => {
       if (new Date(inv.expires_at) < new Date()) return new Response(JSON.stringify({ error: "This invite has expired." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      if (inv.email && inv.email.toLowerCase() !== email.toLowerCase()) {
+      if (inv.email && inv.email.toLowerCase() !== emailAddress) {
         return new Response(JSON.stringify({ error: "This invite is locked to a different email address." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -119,9 +136,9 @@ Deno.serve(async (req) => {
       targetHouseholdId = inv.household_id; // null = create their own
     }
 
-    // Create the user (email-confirmed via SMTP or auto-confirmed false; Supabase will email)
+    // Admin user creation does not send a confirmation email, so we trigger it explicitly below.
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
+      email: emailAddress,
       password,
       email_confirm: false,
       user_metadata: { first_name, last_name },
@@ -170,8 +187,26 @@ Deno.serve(async (req) => {
       }).eq("id", inviteRow.id);
     }
 
-    // Send welcome email (verification email is sent automatically by Supabase Auth via SMTP)
-    await sendWelcomeEmail(email, first_name);
+    const { error: resendErr } = await publicClient.auth.resend({
+      type: "signup",
+      email: emailAddress,
+      options: {
+        emailRedirectTo: siteUrl,
+      },
+    });
+
+    if (resendErr) {
+      console.error("signup confirmation resend failed", resendErr);
+      return new Response(JSON.stringify({
+        error: resendErr.message ?? "Could not send confirmation email",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Send welcome email after the confirmation email is queued.
+    await sendWelcomeEmail(emailAddress, first_name);
 
     return new Response(JSON.stringify({
       success: true,
