@@ -93,7 +93,9 @@ Deno.serve(async (req) => {
     }
 
     const emailAddress = email.trim().toLowerCase();
-    const siteUrl = req.headers.get("origin") ?? "https://keeperbudget.com";
+    // Always route confirmation links to the public production domain — preview/lovable hosts
+    // require Lovable login and break end-user verification flows.
+    const siteUrl = "https://keeperbudget.com";
 
     // Check signup mode
     const { data: cfg } = await admin.from("app_config").select("signup_mode").eq("id", 1).single();
