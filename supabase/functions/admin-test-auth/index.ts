@@ -10,6 +10,16 @@
 // reveal that it exists or that test mode is off. (1) returns 401 because
 // it can only be hit by an authenticated client at all.
 //
+// PRODUCTION_HOSTS maintenance:
+//   This list MUST contain ONLY real production domains. NEVER add preview/dev
+//   domains (e.g. `hearthbudget.lovable.app`, any `*-preview--*.lovable.app`)
+//   or admins will be locked out of the test tool everywhere usable.
+//   Current production domains:
+//     - keeperbudget.com
+//     - www.keeperbudget.com
+//   When adding a new production domain (apex or subdomain), add it here in
+//   the SAME commit that wires it up.
+//
 // Every action logs a structured audit line to the function logs.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,7 +31,6 @@ const corsHeaders = {
 };
 
 const PRODUCTION_HOSTS = new Set([
-  "hearthbudget.lovable.app",
   "keeperbudget.com",
   "www.keeperbudget.com",
 ]);
