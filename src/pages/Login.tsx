@@ -1,6 +1,9 @@
-import { useState, FormEvent } from 'react';
+import { useRef, useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
 import { useAuth } from '@/hooks/useAuth';
+
+const TURNSTILE_SITE_KEY = '0x4AAAAAADB5OO8QdBIkaJ9K';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -8,13 +11,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!captchaToken) {
+      setError('Please complete the security check.');
+      return;
+    }
     setLoading(true);
-    const { error } = await signIn(email, password);
-    if (error) setError(error);
+    const { error } = await signIn(email, password, captchaToken);
+    if (error) {
+      setError(error);
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
+    }
     setLoading(false);
   };
 
