@@ -38,6 +38,13 @@ If we ever see credential-stuffing or reset-spam patterns in logs, the answer is
 
 If we ever add a new production domain, update this list in the same commit that wires it up. `TEST_MODE_ENABLED=true` is global across environments, so the hostname block is the ONLY thing keeping test fixtures out of production.
 
+**Two lists must stay in sync (April 23, 2026):** There are TWO hardcoded hostname lists that gate `/admin/test-auth`, and BOTH must be updated whenever a production domain is added or changed:
+
+1. `supabase/functions/admin-test-auth/index.ts` → `PRODUCTION_HOSTS` — the real security boundary (edge function rejects the request).
+2. `src/pages/AdminTestAuth.tsx` → `PROD_HOSTS` — frontend UX pre-check that short-circuits to NotFound before calling the edge function.
+
+If only the edge function list is updated, the frontend will still render NotFound on the new domain (or fail to render on a domain you removed). This bit us today — the edge function was fixed but the frontend pre-check kept blocking `hearthbudget.lovable.app`.
+
 **Known gotcha (April 23, 2026):** This list must contain ONLY real production domains. NEVER add preview/dev domains like `hearthbudget.lovable.app` or any `*-preview--*.lovable.app` URL — doing so locks system_admins out of the test tool everywhere usable (preview iframe URLs aren't navigable directly). The published `hearthbudget.lovable.app` URL was briefly in the block list and had to be removed.
 
 ## Phase 4 remaining
