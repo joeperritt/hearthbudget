@@ -24,6 +24,8 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   useEffect(() => {
     supabase.from("app_config").select("signup_mode").eq("id", 1).single()
