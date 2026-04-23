@@ -40,6 +40,7 @@ export default function Signup() {
 
     if (!passwordCheck.ok) { setError(passwordCheck.issues[0]); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
+    if (!captchaToken) { setError("Please complete the security check."); return; }
 
     setLoading(true);
     const pwned = await isPasswordPwned(password);
@@ -56,11 +57,14 @@ export default function Signup() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         invite_code: inviteCode.trim() || undefined,
+        captcha_token: captchaToken,
       },
     });
     setLoading(false);
     if (invokeErr || (data as any)?.error) {
       setError((data as any)?.error ?? invokeErr?.message ?? "Signup failed");
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       return;
     }
     setDone(true);
