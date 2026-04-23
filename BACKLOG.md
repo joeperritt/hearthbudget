@@ -57,6 +57,10 @@ If only the edge function list is updated, the frontend will still render NotFou
 
 Next major auth block after 4B is complete. Knocks out one of the remaining Plaid compliance items.
 
+**Known gap — MFA rate limiting is app-layer (April 23, 2026):** The 5-strikes / 15-min lockout on `mfa-verify-totp` and `mfa-verify-recovery-code` is enforced in the edge function via a Postgres count over `public.mfa_attempt_log`. Real distributed rate limiting belongs at Cloudflare WAF — see "Cloudflare WAF in front of keeperbudget.com" above. The app-layer version is a stopgap until WAF is in place; both should run in parallel post-launch (defense in depth).
+
+**Follow-up — `mfa_attempt_log` cleanup job:** Table grows unbounded (one row per failed attempt). At household scale this is negligible (KBs per year), but before broader use add a `pg_cron` job that runs `DELETE FROM mfa_attempt_log WHERE created_at < now() - interval '30 days'` nightly. Cron schedules embed project-specific URLs/keys so they go through the data-insert path, not migrations. Same applies to `mfa_audit_log` if we ever want to age out old audit rows (probably keep audit forever — it's tiny).
+
 ### Phase 5 — Onboarding flow
 
 First-run experience for new users. Includes Stewardship Mode vs Standard Mode toggle for secular users. Should walk user through Plaid connection, category setup, initial budget creation.
