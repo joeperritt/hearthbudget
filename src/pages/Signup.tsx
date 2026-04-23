@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { supabase } from "@/integrations/supabase/client";
 import { isPasswordPwned, validatePassword } from "@/lib/passwordSecurity";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+
+const TURNSTILE_SITE_KEY = "0x4AAAAAADB5OO8QdBIkaJ9K";
 
 type SignupMode = "admin_only" | "invite_only" | "open";
 
