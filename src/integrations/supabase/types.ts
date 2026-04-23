@@ -489,7 +489,7 @@ export type Database = {
       }
       mfa_attempt_log: {
         Row: {
-          attempt_type: string
+          attempt_type: Database["public"]["Enums"]["mfa_attempt_type"]
           created_at: string
           id: string
           ip_address: string | null
@@ -497,7 +497,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          attempt_type: string
+          attempt_type: Database["public"]["Enums"]["mfa_attempt_type"]
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -505,7 +505,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          attempt_type?: string
+          attempt_type?: Database["public"]["Enums"]["mfa_attempt_type"]
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -1001,6 +1001,7 @@ export type Database = {
         | "system_admin"
         | "household_admin"
         | "household_member"
+      mfa_attempt_type: "totp" | "recovery_code"
       mfa_audit_event:
         | "enroll_started"
         | "enroll_verified"
@@ -1144,6 +1145,7 @@ export const Constants = {
         "household_admin",
         "household_member",
       ],
+      mfa_attempt_type: ["totp", "recovery_code"],
       mfa_audit_event: [
         "enroll_started",
         "enroll_verified",
