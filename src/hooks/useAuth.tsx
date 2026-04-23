@@ -87,8 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     return { error: error?.message ?? null };
   };
 
