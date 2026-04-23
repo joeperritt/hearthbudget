@@ -487,6 +487,63 @@ export type Database = {
         }
         Relationships: []
       }
+      mfa_attempt_log: {
+        Row: {
+          attempt_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          attempt_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mfa_audit_log: {
+        Row: {
+          created_at: string
+          event: Database["public"]["Enums"]["mfa_audit_event"]
+          id: string
+          ip_address: string | null
+          metadata: Json
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: Database["public"]["Enums"]["mfa_audit_event"]
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: Database["public"]["Enums"]["mfa_audit_event"]
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       plaid_accounts: {
         Row: {
           account_category: string
@@ -831,6 +888,30 @@ export type Database = {
           },
         ]
       }
+      user_mfa_recovery_codes: {
+        Row: {
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           household_id: string | null
@@ -904,6 +985,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recent_failed_mfa_attempts: {
+        Args: { _user_id: string; _window_minutes?: number }
+        Returns: number
+      }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
         Returns: Json
@@ -916,6 +1001,15 @@ export type Database = {
         | "system_admin"
         | "household_admin"
         | "household_member"
+      mfa_audit_event:
+        | "enroll_started"
+        | "enroll_verified"
+        | "enroll_failed"
+        | "verify_success"
+        | "verify_failed"
+        | "disabled"
+        | "recovery_code_used"
+        | "recovery_codes_regenerated"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1049,6 +1143,16 @@ export const Constants = {
         "system_admin",
         "household_admin",
         "household_member",
+      ],
+      mfa_audit_event: [
+        "enroll_started",
+        "enroll_verified",
+        "enroll_failed",
+        "verify_success",
+        "verify_failed",
+        "disabled",
+        "recovery_code_used",
+        "recovery_codes_regenerated",
       ],
     },
   },
