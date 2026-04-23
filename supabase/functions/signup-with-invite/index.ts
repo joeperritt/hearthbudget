@@ -15,51 +15,7 @@ interface SignupBody {
   invite_code?: string;
 }
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const FROM = "Keeper <hello@keeperbudget.com>";
-
-async function sendWelcomeEmail(to: string, firstName: string) {
-  if (!RESEND_API_KEY) {
-    console.warn("RESEND_API_KEY not set, skipping welcome email");
-    return;
-  }
-  const html = `
-<!doctype html><html><body style="margin:0;padding:0;background:#F5F1EA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F1EA;padding:40px 20px;">
-    <tr><td align="center">
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:560px;">
-        <tr><td style="background:#1A2332;padding:32px;text-align:center;">
-          <div style="display:inline-block;width:48px;height:48px;border-radius:10px;background:#fff;line-height:48px;color:#1A2332;font-family:Georgia,serif;font-weight:700;font-size:24px;">K</div>
-        </td></tr>
-        <tr><td style="padding:40px 32px;color:#1A2332;">
-          <h1 style="font-family:Georgia,serif;font-size:26px;margin:0 0 16px;">Welcome to Keeper, ${firstName}.</h1>
-          <p style="font-size:15px;line-height:1.6;color:#3a4759;margin:0 0 16px;">Your household is ready. We've seeded a starter budget — categories, fixed expenses, savings buckets, and giving items — so you can dive in immediately.</p>
-          <p style="font-size:15px;line-height:1.6;color:#3a4759;margin:0 0 24px;">Open Keeper, head to the Budget tab, and tailor it to your family's life. We're glad you're here.</p>
-          <a href="https://keeperbudget.com" style="display:inline-block;background:#C9A84C;color:#1A2332;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;font-size:14px;">Open Keeper</a>
-        </td></tr>
-        <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;font-size:12px;color:#8a93a3;">
-          Keeper · Budgeting together.
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`;
-  try {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: FROM,
-        to: [to],
-        subject: "Welcome to Keeper",
-        html,
-        text: `Welcome to Keeper, ${firstName}. Your household is ready with a starter budget. Open https://keeperbudget.com to get started.\n\nKeeper · Budgeting together.`,
-      }),
-    });
-  } catch (e) {
-    console.error("welcome email failed", e);
-  }
-}
+// Welcome email is sent by send-welcome-email after email verification.
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
