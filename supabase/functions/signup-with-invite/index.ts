@@ -245,8 +245,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send welcome email after the confirmation email is queued.
-    await sendWelcomeEmail(emailAddress, first_name);
+    // Welcome email is sent later, after the user verifies their email
+    // (via the on_auth_user_email_confirmed trigger -> send-welcome-email function).
 
     return new Response(JSON.stringify({
       success: true,
