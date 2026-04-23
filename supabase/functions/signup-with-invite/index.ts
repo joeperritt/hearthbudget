@@ -64,12 +64,28 @@ Deno.serve(async (req) => {
     });
 
     const body: SignupBody = await req.json();
-    const { email, password, first_name, last_name, invite_code } = body;
+    const { email, password, first_name, last_name, invite_code, captcha_token } = body;
 
     if (!email || !password || !first_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Verify Turnstile CAPTCHA only if a secret is configured (allows staged rollout).
+    if (Deno.env.get("TURNSTILE_SECRET_KEY")) {
+      if (!captcha_token) {
+        return new Response(JSON.stringify({ error: "Please complete the security check." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+      const ok = await verifyTurnstile(captcha_token, ip);
+      if (!ok) {
+        return new Response(JSON.stringify({ error: "Security check failed. Please try again." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const emailAddress = email.trim().toLowerCase();
