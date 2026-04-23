@@ -13,6 +13,30 @@ interface SignupBody {
   first_name: string;
   last_name: string;
   invite_code?: string;
+  captcha_token?: string;
+}
+
+async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secret) {
+    console.error("TURNSTILE_SECRET_KEY not configured");
+    return false;
+  }
+  try {
+    const form = new FormData();
+    form.append("secret", secret);
+    form.append("response", token);
+    if (ip) form.append("remoteip", ip);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    return Boolean(data?.success);
+  } catch (e) {
+    console.error("Turnstile verify failed", e);
+    return false;
+  }
 }
 
 // Welcome email is sent by send-welcome-email after email verification.
