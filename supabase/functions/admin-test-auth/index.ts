@@ -76,17 +76,20 @@ Deno.serve(async (req) => {
 
   // ---- Layer 3 (production hostname block) ----
   const originHeader = req.headers.get("Origin") || req.headers.get("Referer") || "";
+  console.log("DEBUG admin-test-auth: originHeader =", originHeader);
   try {
     if (originHeader) {
       const u = new URL(originHeader);
+      console.log("DEBUG admin-test-auth: parsed hostname =", u.hostname, "blocked?", PRODUCTION_HOSTS.has(u.hostname));
       if (PRODUCTION_HOSTS.has(u.hostname)) {
-        // Do not even hint that this exists on production.
+        console.log("DEBUG admin-test-auth: REJECTED at Layer 3 (hostname block)");
         return notFound();
       }
     }
-  } catch {
-    // Invalid origin — fall through; other layers will gate.
+  } catch (e) {
+    console.log("DEBUG admin-test-auth: origin parse failed", e);
   }
+  console.log("DEBUG admin-test-auth: TEST_MODE_ENABLED raw =", JSON.stringify(Deno.env.get("TEST_MODE_ENABLED")));
 
   // ---- Layer 1 (JWT presence) ----
   const authHeader = req.headers.get("Authorization");
