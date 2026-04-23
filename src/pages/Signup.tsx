@@ -123,7 +123,18 @@ export default function Signup() {
 
         {error && <p className="text-xs text-destructive text-center">{error}</p>}
 
-        <button type="submit" disabled={loading}
+        <div className="flex justify-center">
+          <Turnstile
+            ref={turnstileRef}
+            siteKey={TURNSTILE_SITE_KEY}
+            onSuccess={setCaptchaToken}
+            onError={() => setCaptchaToken("")}
+            onExpire={() => setCaptchaToken("")}
+            options={{ theme: "light", size: "flexible" }}
+          />
+        </div>
+
+        <button type="submit" disabled={loading || !captchaToken}
           className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50">
           {loading ? "Creating account…" : "Create account"}
         </button>
