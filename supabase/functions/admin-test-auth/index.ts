@@ -79,66 +79,79 @@ function generateInviteCode(): string {
 }
 
 Deno.serve(async (req) => {
+  console.log("DEBUG admin-test-auth: handler entered, method=", req.method, "url=", req.url);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   // ---- Layer 4 (production hostname block) ----
-  // Reject before any other check so test fixtures cannot run on prod even if
-  // TEST_MODE_ENABLED were flipped on. Returns 404 to hide existence.
   const originHeader = req.headers.get("Origin") || req.headers.get("Referer") || "";
+  console.log("DEBUG admin-test-auth: Origin=", req.headers.get("Origin"), "Referer=", req.headers.get("Referer"));
+  console.log("DEBUG admin-test-auth: PRODUCTION_HOSTS=", JSON.stringify(Array.from(PRODUCTION_HOSTS)));
   try {
     if (originHeader) {
       const u = new URL(originHeader);
+      console.log("DEBUG admin-test-auth: parsed hostname=", u.hostname, "blocked?", PRODUCTION_HOSTS.has(u.hostname));
       if (PRODUCTION_HOSTS.has(u.hostname)) {
+        console.log("DEBUG admin-test-auth: REJECTED Layer 4 (hostname)");
         return notFound();
       }
     }
-  } catch {
-    // Invalid origin header — fall through; remaining layers will gate.
+  } catch (e) {
+    console.log("DEBUG admin-test-auth: origin parse failed", e);
   }
+  console.log("DEBUG admin-test-auth: passed Layer 4");
 
   // ---- Layer 1 (JWT presence) ----
-  // Must have an Authorization header at all to proceed.
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
+    console.log("DEBUG admin-test-auth: REJECTED Layer 1 (no auth header)");
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
+  console.log("DEBUG admin-test-auth: passed Layer 1, authHeader length=", authHeader.length);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const testModeRaw = Deno.env.get("TEST_MODE_ENABLED") ?? "";
   const testModeEnabled = testModeRaw.trim().toLowerCase() === "true";
+  console.log("DEBUG admin-test-auth: TEST_MODE_ENABLED raw=", JSON.stringify(testModeRaw), "enabled?", testModeEnabled);
+  console.log("DEBUG admin-test-auth: env SUPABASE_URL set?", !!supabaseUrl, "SERVICE_KEY set?", !!supabaseServiceKey, "ANON_KEY set?", !!supabaseAnonKey);
 
   const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: { user: caller } } = await callerClient.auth.getUser();
+  const { data: { user: caller }, error: callerErr } = await callerClient.auth.getUser();
+  console.log("DEBUG admin-test-auth: getUser caller=", caller?.id, "email=", caller?.email, "err=", callerErr?.message);
   if (!caller) {
+    console.log("DEBUG admin-test-auth: REJECTED Layer 1 (getUser returned no user)");
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   // ---- Layer 2 (system_admin check) ----
-  // Use service role here so the check itself can't be defeated by RLS edge cases.
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-  const { data: roles } = await adminClient
+  const { data: roles, error: rolesErr } = await adminClient
     .from("user_roles")
     .select("role")
     .eq("user_id", caller.id);
+  console.log("DEBUG admin-test-auth: roles query result=", JSON.stringify(roles), "err=", rolesErr?.message);
   const isSystemAdmin = roles?.some((r: { role: string }) => r.role === "system_admin") ?? false;
+  console.log("DEBUG admin-test-auth: isSystemAdmin=", isSystemAdmin);
 
   if (!isSystemAdmin) {
+    console.log("DEBUG admin-test-auth: REJECTED Layer 2 (not system_admin)");
     audit(caller.id, "denied:not_system_admin");
     return notFound();
   }
 
   // ---- Layer 3 (TEST_MODE_ENABLED) ----
-  // Secret must be the literal string "true" to enable test fixtures.
   if (!testModeEnabled) {
+    console.log("DEBUG admin-test-auth: REJECTED Layer 3 (test mode disabled)");
     audit(caller.id, "denied:test_mode_disabled");
     return notFound();
   }
+  console.log("DEBUG admin-test-auth: ALL LAYERS PASSED");
+
 
   // ---- Routing ----
   let body: any = {};
