@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { supabase } from "@/integrations/supabase/client";
 import { isPasswordPwned, validatePassword } from "@/lib/passwordSecurity";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+
+const TURNSTILE_SITE_KEY = "0x4AAAAAADB5OO8QdBIkaJ9K";
 
 type SignupMode = "admin_only" | "invite_only" | "open";
 
@@ -21,6 +24,8 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   useEffect(() => {
     supabase.from("app_config").select("signup_mode").eq("id", 1).single()
@@ -35,6 +40,7 @@ export default function Signup() {
 
     if (!passwordCheck.ok) { setError(passwordCheck.issues[0]); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
+    if (!captchaToken) { setError("Please complete the security check."); return; }
 
     setLoading(true);
     const pwned = await isPasswordPwned(password);
@@ -51,11 +57,14 @@ export default function Signup() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         invite_code: inviteCode.trim() || undefined,
+        captcha_token: captchaToken,
       },
     });
     setLoading(false);
     if (invokeErr || (data as any)?.error) {
       setError((data as any)?.error ?? invokeErr?.message ?? "Signup failed");
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       return;
     }
     setDone(true);
@@ -114,7 +123,18 @@ export default function Signup() {
 
         {error && <p className="text-xs text-destructive text-center">{error}</p>}
 
-        <button type="submit" disabled={loading}
+        <div className="flex justify-center">
+          <Turnstile
+            ref={turnstileRef}
+            siteKey={TURNSTILE_SITE_KEY}
+            onSuccess={setCaptchaToken}
+            onError={() => setCaptchaToken("")}
+            onExpire={() => setCaptchaToken("")}
+            options={{ theme: "light", size: "flexible" }}
+          />
+        </div>
+
+        <button type="submit" disabled={loading || !captchaToken}
           className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50">
           {loading ? "Creating account…" : "Create account"}
         </button>

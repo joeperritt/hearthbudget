@@ -13,6 +13,30 @@ interface SignupBody {
   first_name: string;
   last_name: string;
   invite_code?: string;
+  captcha_token?: string;
+}
+
+async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secret) {
+    console.error("TURNSTILE_SECRET_KEY not configured");
+    return false;
+  }
+  try {
+    const form = new FormData();
+    form.append("secret", secret);
+    form.append("response", token);
+    if (ip) form.append("remoteip", ip);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    return Boolean(data?.success);
+  } catch (e) {
+    console.error("Turnstile verify failed", e);
+    return false;
+  }
 }
 
 // Welcome email is sent by send-welcome-email after email verification.
@@ -40,12 +64,28 @@ Deno.serve(async (req) => {
     });
 
     const body: SignupBody = await req.json();
-    const { email, password, first_name, last_name, invite_code } = body;
+    const { email, password, first_name, last_name, invite_code, captcha_token } = body;
 
     if (!email || !password || !first_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Verify Turnstile CAPTCHA only if a secret is configured (allows staged rollout).
+    if (Deno.env.get("TURNSTILE_SECRET_KEY")) {
+      if (!captcha_token) {
+        return new Response(JSON.stringify({ error: "Please complete the security check." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+      const ok = await verifyTurnstile(captcha_token, ip);
+      if (!ok) {
+        return new Response(JSON.stringify({ error: "Security check failed. Please try again." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const emailAddress = email.trim().toLowerCase();

@@ -1,19 +1,31 @@
-import { useState, FormEvent } from "react";
+import { useRef, useState, FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { Turnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicOrigin } from "@/lib/publicOrigin";
+
+const TURNSTILE_SITE_KEY = "0x4AAAAAADB5OO8QdBIkaJ9K";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError("");
+    if (!captchaToken) {
+      setError("Please complete the security check.");
+      return;
+    }
     setLoading(true);
     // Always succeed silently to prevent enumeration
     await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${getPublicOrigin()}/reset-password`,
+      captchaToken,
     });
     setLoading(false);
     setDone(true);
@@ -41,7 +53,21 @@ export default function ForgotPassword() {
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
                   className="auth-input mt-1" placeholder="you@example.com" />
               </div>
-              <button type="submit" disabled={loading}
+
+              {error && <p className="text-xs text-destructive text-center">{error}</p>}
+
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={setCaptchaToken}
+                  onError={() => setCaptchaToken("")}
+                  onExpire={() => setCaptchaToken("")}
+                  options={{ theme: "light", size: "flexible" }}
+                />
+              </div>
+
+              <button type="submit" disabled={loading || !captchaToken}
                 className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50">
                 {loading ? "Sending…" : "Send reset link"}
               </button>
