@@ -865,12 +865,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _tmp_list_vault_secrets: {
-        Args: never
-        Returns: {
-          name: string
-        }[]
-      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
