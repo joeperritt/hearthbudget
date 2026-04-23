@@ -1,7 +1,7 @@
-import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Calculator } from 'lucide-react';
+import { LogOut, Building2, Sparkles, BarChart3, ChevronRight, Calculator, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'calculators';
+type MoreTab = 'settings' | 'bank-connections' | 'ai-advisor' | 'trends' | 'calculators' | 'security';
 
 interface MoreViewProps {
   onSelect: (tab: MoreTab) => void;
@@ -68,6 +68,19 @@ export function MoreView({ onSelect, householdId }: MoreViewProps) {
           <div>
             <p className="text-sm font-semibold text-foreground">Accounts & Connections</p>
             <p className="text-xs text-muted-foreground">Manage users & linked bank accounts</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('security')}
+          className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck size={20} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Security</p>
+            <p className="text-xs text-muted-foreground">Sign out of other devices</p>
           </div>
         </button>
       </div>
