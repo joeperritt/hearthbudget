@@ -10,6 +10,16 @@
 // reveal that it exists or that test mode is off. (1) returns 401 because
 // it can only be hit by an authenticated client at all.
 //
+// PRODUCTION_HOSTS maintenance:
+//   This list MUST contain ONLY real production domains. NEVER add preview/dev
+//   domains (e.g. `hearthbudget.lovable.app`, any `*-preview--*.lovable.app`)
+//   or admins will be locked out of the test tool everywhere usable.
+//   Current production domains:
+//     - keeperbudget.com
+//     - www.keeperbudget.com
+//   When adding a new production domain (apex or subdomain), add it here in
+//   the SAME commit that wires it up.
+//
 // Every action logs a structured audit line to the function logs.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,7 +31,6 @@ const corsHeaders = {
 };
 
 const PRODUCTION_HOSTS = new Set([
-  "hearthbudget.lovable.app",
   "keeperbudget.com",
   "www.keeperbudget.com",
 ]);
@@ -74,24 +83,23 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // ---- Layer 3 (production hostname block) ----
+  // ---- Layer 4 (production hostname block) ----
+  // Reject before any other check so test fixtures cannot run on prod even if
+  // TEST_MODE_ENABLED were flipped on. Returns 404 to hide existence.
   const originHeader = req.headers.get("Origin") || req.headers.get("Referer") || "";
-  console.log("DEBUG admin-test-auth: originHeader =", originHeader);
   try {
     if (originHeader) {
       const u = new URL(originHeader);
-      console.log("DEBUG admin-test-auth: parsed hostname =", u.hostname, "blocked?", PRODUCTION_HOSTS.has(u.hostname));
       if (PRODUCTION_HOSTS.has(u.hostname)) {
-        console.log("DEBUG admin-test-auth: REJECTED at Layer 3 (hostname block)");
         return notFound();
       }
     }
-  } catch (e) {
-    console.log("DEBUG admin-test-auth: origin parse failed", e);
+  } catch {
+    // Invalid origin header — fall through; remaining layers will gate.
   }
-  console.log("DEBUG admin-test-auth: TEST_MODE_ENABLED raw =", JSON.stringify(Deno.env.get("TEST_MODE_ENABLED")));
 
   // ---- Layer 1 (JWT presence) ----
+  // Must have an Authorization header at all to proceed.
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return jsonResponse({ error: "Unauthorized" }, 401);
@@ -125,7 +133,8 @@ Deno.serve(async (req) => {
     return notFound();
   }
 
-  // ---- Layer 4 (TEST_MODE_ENABLED) ----
+  // ---- Layer 3 (TEST_MODE_ENABLED) ----
+  // Secret must be the literal string "true" to enable test fixtures.
   if (!testModeEnabled) {
     audit(caller.id, "denied:test_mode_disabled");
     return notFound();
