@@ -1,5 +1,5 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal, Sparkles, Calculator, BarChart3, Building2, LogOut } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal, Sparkles, Calculator, BarChart3, Building2, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
@@ -10,13 +10,14 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'plan', label: 'Plan', icon: Compass },
 ];
 
-export type MoreSidebarItem = 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections';
+export type MoreSidebarItem = 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections' | 'security';
 
 const moreItems: { id: MoreSidebarItem; label: string; icon: typeof Home }[] = [
   { id: 'ai-advisor', label: 'AI Advisor', icon: Sparkles },
   { id: 'calculators', label: 'Calculators', icon: Calculator },
   { id: 'trends', label: 'Trends', icon: BarChart3 },
   { id: 'bank-connections', label: 'Accounts', icon: Building2 },
+  { id: 'security', label: 'Security', icon: ShieldCheck },
 ];
 
 interface SideNavProps {

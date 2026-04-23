@@ -21,6 +21,7 @@ import { SettingsView } from '@/components/hearth/SettingsView';
 import { InsightsSection } from '@/components/hearth/InsightsSection';
 import { AIAdvisorView } from '@/components/hearth/AIAdvisorView';
 import { BankConnectionView } from '@/components/hearth/BankConnectionView';
+import { SecurityView } from '@/components/hearth/SecurityView';
 import { SpendingTrendsView } from '@/components/hearth/SpendingTrendsView';
 import { BudgetTabView } from '@/components/hearth/BudgetTabView';
 import { PlanView } from '@/components/hearth/PlanView';
@@ -44,7 +45,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'mortgage-shopping' | 'car-loan';
 
 type MoreSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
-  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator';
+  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
 
 const Index = () => {
   const {
