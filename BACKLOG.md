@@ -47,6 +47,8 @@ If only the edge function list is updated, the frontend will still render NotFou
 
 **Known gotcha (April 23, 2026):** This list must contain ONLY real production domains. NEVER add preview/dev domains like `hearthbudget.lovable.app` or any `*-preview--*.lovable.app` URL — doing so locks system_admins out of the test tool everywhere usable (preview iframe URLs aren't navigable directly). The published `hearthbudget.lovable.app` URL was briefly in the block list and had to be removed.
 
+**Correct preview URL for testing (April 23, 2026):** Use `https://id-preview--8f47a9fe-0fa7-4ba2-a252-02aee25c702d.lovable.app` for testing the admin tool and any auth/admin flow that must bypass production guards. Do NOT use `hearthbudget.lovable.app` — Lovable auto-redirects the published `.lovable.app` URL to the primary custom domain (`keeperbudget.com`) at the platform level, and that redirect is not route-scoped, so `/admin/test-auth` is unreachable there. The `id-preview--<project-id>.lovable.app` URL does not redirect and is the right place to test anything gated by production hostname checks.
+
 ## Phase 4 remaining
 
 ### Phase 4C — MFA / 2FA via TOTP
