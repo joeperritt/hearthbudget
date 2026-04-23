@@ -83,26 +83,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // ---- Layer 3 (production hostname block) ----
-  const originHeader = req.headers.get("Origin") || req.headers.get("Referer") || "";
-  console.log("DEBUG admin-test-auth: originHeader =", originHeader);
-  try {
-    if (originHeader) {
-      const u = new URL(originHeader);
-      console.log("DEBUG admin-test-auth: parsed hostname =", u.hostname, "blocked?", PRODUCTION_HOSTS.has(u.hostname));
-      if (PRODUCTION_HOSTS.has(u.hostname)) {
-        console.log("DEBUG admin-test-auth: REJECTED at Layer 3 (hostname block)");
-        return notFound();
-      }
-    }
-  } catch (e) {
-    console.log("DEBUG admin-test-auth: origin parse failed", e);
-  }
-  console.log("DEBUG admin-test-auth: TEST_MODE_ENABLED raw =", JSON.stringify(Deno.env.get("TEST_MODE_ENABLED")));
-
-  // ---- Layer 1 (JWT presence) ----
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
   // ---- Layer 4 (production hostname block) ----
   // Reject before any other check so test fixtures cannot run on prod even if
   // TEST_MODE_ENABLED were flipped on. Returns 404 to hide existence.
@@ -125,6 +105,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const testModeRaw = Deno.env.get("TEST_MODE_ENABLED") ?? "";
