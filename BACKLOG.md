@@ -31,13 +31,14 @@ If we ever see credential-stuffing or reset-spam patterns in logs, the answer is
 
 ### Production hostname block maintenance
 
-`/admin/test-auth` relies on a hardcoded hostname block in the edge function to prevent production access. The blocked list currently includes:
+`/admin/test-auth` relies on a hardcoded hostname block in the edge function (`supabase/functions/admin-test-auth/index.ts`, `PRODUCTION_HOSTS`) to prevent production access. The blocked list currently includes:
 
-- `hearthbudget.lovable.app`
 - `keeperbudget.com`
 - `www.keeperbudget.com`
 
-If we ever add a new production domain, update this list immediately. `TEST_MODE_ENABLED=true` is global across environments, so the hostname block is the ONLY thing keeping test fixtures out of production.
+If we ever add a new production domain, update this list in the same commit that wires it up. `TEST_MODE_ENABLED=true` is global across environments, so the hostname block is the ONLY thing keeping test fixtures out of production.
+
+**Known gotcha (April 23, 2026):** This list must contain ONLY real production domains. NEVER add preview/dev domains like `hearthbudget.lovable.app` or any `*-preview--*.lovable.app` URL — doing so locks system_admins out of the test tool everywhere usable (preview iframe URLs aren't navigable directly). The published `hearthbudget.lovable.app` URL was briefly in the block list and had to be removed.
 
 ## Phase 4 remaining
 
