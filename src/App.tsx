@@ -10,6 +10,7 @@ import Signup from "./pages/Signup.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import AdminTestAuth from "./pages/AdminTestAuth.tsx";
 import { VerifyEmailBanner } from "@/components/auth/VerifyEmailBanner";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ function AuthGate() {
       <Route path="/reset-password" element={<ResetPassword />} />
       {user ? (
         <>
+          <Route path="/admin/test-auth" element={<AdminTestAuth />} />
           <Route path="/" element={
             <>
               <VerifyEmailBanner />
