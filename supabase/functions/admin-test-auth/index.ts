@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
     return notFound();
   }
 
-  // ---- Layer 4 (TEST_MODE_ENABLED) ----
+  // ---- Layer 3 (TEST_MODE_ENABLED) ----
+  // Secret must be the literal string "true" to enable test fixtures.
   if (!testModeEnabled) {
     audit(caller.id, "denied:test_mode_disabled");
     return notFound();
