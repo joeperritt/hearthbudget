@@ -51,8 +51,12 @@ type ConfirmState =
   | { kind: 'delete-orphan-households' }
   | { kind: 'hibp-test' };
 
+// MUST stay in sync with PRODUCTION_HOSTS in
+// supabase/functions/admin-test-auth/index.ts. Real enforcement happens
+// server-side; this is just a UX optimization to skip the network round trip.
+// NEVER include preview/dev hosts (e.g. `hearthbudget.lovable.app`) — doing so
+// locks system_admins out of the test tool everywhere usable.
 const PROD_HOSTS = new Set([
-  'hearthbudget.lovable.app',
   'keeperbudget.com',
   'www.keeperbudget.com',
 ]);
