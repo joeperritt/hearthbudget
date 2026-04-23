@@ -59,7 +59,13 @@ Next major auth block after 4B is complete. Knocks out one of the remaining Plai
 
 **Known gap — MFA rate limiting is app-layer (April 23, 2026):** The 5-strikes / 15-min lockout on `mfa-verify-totp` and `mfa-verify-recovery-code` is enforced in the edge function via a Postgres count over `public.mfa_attempt_log`. Real distributed rate limiting belongs at Cloudflare WAF — see "Cloudflare WAF in front of keeperbudget.com" above. The app-layer version is a stopgap until WAF is in place; both should run in parallel post-launch (defense in depth).
 
-**Follow-up — `mfa_attempt_log` cleanup job:** Table grows unbounded (one row per failed attempt). At household scale this is negligible (KBs per year), but before broader use add a `pg_cron` job that runs `DELETE FROM mfa_attempt_log WHERE created_at < now() - interval '30 days'` nightly. Cron schedules embed project-specific URLs/keys so they go through the data-insert path, not migrations. Same applies to `mfa_audit_log` if we ever want to age out old audit rows (probably keep audit forever — it's tiny).
+**Follow-up — `mfa_attempt_log` cleanup job (Supabase/platform-dependent):** Table grows unbounded (one row per attempt, success or failure). Negligible at household scale (KBs per year), but before broader use add a `pg_cron` + `pg_net` scheduled job that runs nightly:
+
+```sql
+DELETE FROM public.mfa_attempt_log WHERE created_at < now() - interval '30 days';
+```
+
+Setup steps when ready: enable `pg_cron` and `pg_net` extensions, then use the Supabase data-insert path (NOT the migration tool — cron schedules embed project-specific URLs/keys and shouldn't ship in migrations). Batch this with other platform-dependent items (Cloudflare WAF setup above, any future scheduled jobs). `mfa_audit_log` does not need cleanup — keep audit history indefinitely; it's tiny and forensically valuable.
 
 ### Phase 5 — Onboarding flow
 
