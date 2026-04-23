@@ -592,6 +592,9 @@ const Index = () => {
         {activeTab === 'more' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(moreSubView) && (
           renderTool(moreSubView, () => setMoreSubView('calculators'))
         )}
+        {activeTab === 'more' && moreSubView === 'security' && (
+          <SecurityView onBack={() => setMoreSubView('menu')} />
+        )}
         </div>
       </div>
 
