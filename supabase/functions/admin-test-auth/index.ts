@@ -103,10 +103,28 @@ Deno.serve(async (req) => {
   // ---- Layer 1 (JWT presence) ----
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
+  // ---- Layer 4 (production hostname block) ----
+  // Reject before any other check so test fixtures cannot run on prod even if
+  // TEST_MODE_ENABLED were flipped on. Returns 404 to hide existence.
+  const originHeader = req.headers.get("Origin") || req.headers.get("Referer") || "";
+  try {
+    if (originHeader) {
+      const u = new URL(originHeader);
+      if (PRODUCTION_HOSTS.has(u.hostname)) {
+        return notFound();
+      }
+    }
+  } catch {
+    // Invalid origin header — fall through; remaining layers will gate.
+  }
+
+  // ---- Layer 1 (JWT presence) ----
+  // Must have an Authorization header at all to proceed.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const testModeRaw = Deno.env.get("TEST_MODE_ENABLED") ?? "";
