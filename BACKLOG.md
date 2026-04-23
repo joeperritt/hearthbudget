@@ -17,6 +17,8 @@ Put the domain behind Cloudflare (free tier is fine) before any real marketing o
 
 This is the proper fix for the login/password-reset CAPTCHA enforcement gap below. Required before we scale.
 
+**Also covers MFA rate limiting (April 23, 2026):** The MFA verify lockout (5 failed attempts → 15 min, in `mfa-verify-totp` and `mfa-verify-recovery-code` edge functions, backed by `public.mfa_attempt_log`) is implemented in application code on top of Postgres. It works for casual abuse but has known race-condition gaps under parallel load and is per-user, not per-IP. Cloudflare WAF is the proper distributed rate-limit layer for MFA verify endpoints — once it's in front of the project, layer IP-based rate limits on the `/functions/v1/mfa-verify-*` paths and the app-layer counter becomes a defense-in-depth backup rather than the primary control. **Linked: see "Phase 4C — MFA / 2FA via TOTP" below.**
+
 ### GoTrue CAPTCHA enforcement limitation
 
 Lovable Cloud does NOT expose GoTrue env vars. This means native server-side CAPTCHA validation on login and password reset is NOT enforced — only on signup (via our custom edge function).
