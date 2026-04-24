@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { getPublicOrigin } from "@/lib/publicOrigin";
 
 interface InviteRow {
   id: string;
