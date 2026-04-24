@@ -415,7 +415,7 @@ function EnrollPanel(props: {
       <div>
         <p className="text-sm font-semibold text-foreground">Step 1 — Scan the QR code</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Open your authenticator app and scan. Hearth will appear as a new account.
+          Open your authenticator app and scan. Keeper will appear as a new account.
         </p>
       </div>
 
