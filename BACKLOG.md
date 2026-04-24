@@ -127,6 +127,7 @@ Link mortgage, student loans.
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
 - Activity tab: increase category text weight vs merchant subtext
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
+- Rename `src/components/hearth/` folder paths to `src/components/keeper/` for internal consistency. Not user-visible but creates drift between codebase naming and product branding. Do as a dedicated refactor pass to avoid mixing with feature work.
 
 ## Post-launch UX polish
 
