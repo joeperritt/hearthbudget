@@ -429,6 +429,16 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DisableMfaDialog
+        open={disableOpen}
+        onOpenChange={setDisableOpen}
+        onDisabled={() => {
+          setHasVerifiedFactor(false);
+          setEnroll({ status: 'idle' });
+          void refreshFactors();
+        }}
+      />
     </div>
   );
 }
