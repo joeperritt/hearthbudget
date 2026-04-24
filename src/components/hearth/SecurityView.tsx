@@ -87,7 +87,11 @@ export function SecurityView({ onBack }: SecurityViewProps) {
       }
     }
 
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'Keeper',
+      friendlyName: `Keeper (${user?.email ?? profile?.display_name ?? 'account'})`,
+    });
     if (error || !data) {
       setEnroll({ status: 'idle' });
       toast({ title: 'Could not start enrollment', description: error?.message ?? 'Unknown error', variant: 'destructive' });
