@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { DisableMfaDialog } from '@/components/auth/DisableMfaDialog';
+import { useAdminMfaGraceState } from '@/components/auth/AdminMfaBanner';
 
 interface SecurityViewProps {
   onBack: () => void;
@@ -47,6 +49,8 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const [regenOpen, setRegenOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [disableOpen, setDisableOpen] = useState(false);
+  const grace = useAdminMfaGraceState();
 
   useEffect(() => {
     void refreshFactors();
@@ -235,6 +239,20 @@ export function SecurityView({ onBack }: SecurityViewProps) {
             We'll also generate one-time recovery codes in case you lose access to your device.
           </p>
 
+          {grace.needsMfa && grace.inGrace && !hasVerifiedFactor && enroll.status === 'idle' && (
+            <div className="mb-4 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle size={16} className="text-accent shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed text-foreground">
+                <p className="font-semibold">Two-factor will be required for admin accounts.</p>
+                <p className="opacity-80 mt-0.5">
+                  {grace.daysRemaining !== null
+                    ? `You have ${grace.daysRemaining} day${grace.daysRemaining === 1 ? '' : 's'} left to set it up.`
+                    : 'Set it up soon to keep access uninterrupted.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {mfaLoading ? (
             <div className="bg-card rounded-lg p-5 shadow-sm border border-border flex items-center gap-3">
               <Loader2 size={18} className="animate-spin text-muted-foreground" />
@@ -293,6 +311,26 @@ export function SecurityView({ onBack }: SecurityViewProps) {
                   </p>
                 </div>
               </button>
+
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                  Disabling 2FA lowers the security of your account. You'll only need your password to sign in.
+                </p>
+                <button
+                  onClick={() => setDisableOpen(true)}
+                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border"
+                >
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                    <ShieldOff size={20} className="text-destructive" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-destructive">Disable two-factor authentication</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Requires your password and a current 6-digit code.
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
           ) : (
             <button
@@ -391,6 +429,16 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DisableMfaDialog
+        open={disableOpen}
+        onOpenChange={setDisableOpen}
+        onDisabled={() => {
+          setHasVerifiedFactor(false);
+          setEnroll({ status: 'idle' });
+          void refreshFactors();
+        }}
+      />
     </div>
   );
 }

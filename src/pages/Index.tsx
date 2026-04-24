@@ -36,6 +36,7 @@ import { CFPProfileView } from '@/components/hearth/CFPProfileView';
 import { GoalsPlanner } from '@/components/hearth/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/hearth/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/hearth/LifeInsuranceAnalysis';
+import { AdminMfaBanner } from '@/components/auth/AdminMfaBanner';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
 
@@ -442,6 +443,10 @@ const Index = () => {
         onSelectMoreItem={(item) => { setActiveTab('more'); setMoreSubView(item as MoreSubView); }}
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
+        <AdminMfaBanner
+          hidden={activeTab === 'more' && moreSubView === 'security'}
+          onOpenSecurity={() => { setActiveTab('more'); setMoreSubView('security'); }}
+        />
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'dashboard' && (
           <Dashboard
