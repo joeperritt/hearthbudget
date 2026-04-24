@@ -134,8 +134,6 @@ Link mortgage, student loans.
 
 ## Polish / quick fixes
 
-- Loading page still shows "H" not "K"
-- Browser tab icon has white border
 - Split transactions showing "Manual" label when parent is synced (bug — only actual manual splits should show label)
 - Non-retirement goals mobile view (Education Fund) display is off
 - Unassigned transactions on Home desktop — apply Activity-tab-style single-row formatting
@@ -143,7 +141,6 @@ Link mortgage, student loans.
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
 - Activity tab: increase category text weight vs merchant subtext
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
-- Rename `src/components/hearth/` folder paths to `src/components/keeper/` for internal consistency. Not user-visible but creates drift between codebase naming and product branding. Do as a dedicated refactor pass to avoid mixing with feature work.
 
 ## Post-launch UX polish
 
