@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_insights_cache: {
+        Row: {
+          created_at: string
+          generated_at: string
+          household_id: string
+          id: string
+          insights: Json
+          kind: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          household_id: string
+          id?: string
+          insights?: Json
+          kind: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          household_id?: string
+          id?: string
+          insights?: Json
+          kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_cache_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_config: {
         Row: {
           id: number
