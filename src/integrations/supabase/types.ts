@@ -985,10 +985,19 @@ export type Database = {
           read_ct: number
         }[]
       }
-      recent_failed_mfa_attempts: {
-        Args: { _user_id: string; _window_minutes?: number }
-        Returns: number
-      }
+      recent_failed_mfa_attempts:
+        | {
+            Args: { _user_id: string; _window_minutes?: number }
+            Returns: number
+          }
+        | {
+            Args: {
+              _attempt_type?: Database["public"]["Enums"]["mfa_attempt_type"]
+              _user_id: string
+              _window_minutes?: number
+            }
+            Returns: number
+          }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
         Returns: Json
