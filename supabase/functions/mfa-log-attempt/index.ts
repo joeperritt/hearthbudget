@@ -75,18 +75,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: rateData } = await admin.rpc("recent_failed_mfa_attempts", {
+    // Total failures (any type) - drives the unified lock
+    const { data: totalData } = await admin.rpc("recent_failed_mfa_attempts", {
       _user_id: userId,
       _window_minutes: RATE_LIMIT_WINDOW_MIN,
     });
-    const recentFails = (rateData as number) ?? 0;
+    // Recovery-only failures - if this is below the limit, the recovery escape
+    // hatch is still available even when the unified lock has tripped.
+    const { data: recoveryData } = await admin.rpc("recent_failed_mfa_attempts", {
+      _user_id: userId,
+      _window_minutes: RATE_LIMIT_WINDOW_MIN,
+      _attempt_type: "recovery_code",
+    });
+    const recentFails = (totalData as number) ?? 0;
+    const recoveryFails = (recoveryData as number) ?? 0;
     const locked = recentFails >= RATE_LIMIT_MAX_FAILURES;
+    const recoveryLocked = recoveryFails >= RATE_LIMIT_MAX_FAILURES;
 
     return new Response(
       JSON.stringify({
         ok: true,
         recent_failures: recentFails,
+        recovery_failures: recoveryFails,
         locked,
+        recovery_locked: recoveryLocked,
         retry_after_minutes: locked ? RATE_LIMIT_WINDOW_MIN : 0,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
