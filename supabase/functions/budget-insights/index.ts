@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callGemini } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,8 +14,8 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { budgetSummary, chatMessages, prompt, systemPrompt: customSystemPrompt } = body || {};
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;
 
@@ -46,39 +47,25 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: false,
-      }),
+    const result = await callGemini({
+      model: "gemini-2.5-flash",
+      messages,
+      apiKey: GEMINI_API_KEY,
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!result.ok) {
+      if (result.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Add funds in workspace settings." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Gemini API error:", result.status, result.errorBody);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    const content = result.content || "";
 
     return new Response(JSON.stringify({ content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
