@@ -146,13 +146,22 @@ export function SecurityView({ onBack }: SecurityViewProps) {
       { body: {} },
     );
     if (regenErr || !regenData?.codes) {
-      // Factor is verified but codes failed — surface error but keep enrollment.
+      // CRITICAL: Recovery codes failed. Roll back the TOTP factor so the user
+      // is NOT left with 2FA enabled and no recovery codes (lockout risk).
+      const { error: unenrollErr } = await supabase.auth.mfa.unenroll({ factorId: enroll.factorId });
+      void logAudit('enroll_failed', {
+        reason: 'recovery_codes_failed',
+        regen_error: regenErr?.message ?? null,
+        unenroll_error: unenrollErr?.message ?? null,
+      });
       toast({
-        title: 'Two-factor enabled, but recovery codes failed',
-        description: regenErr?.message ?? 'Try regenerating from this screen.',
+        title: 'Could not enable two-factor',
+        description:
+          'Recovery codes failed to generate, so we rolled back the setup. Please try again.' +
+          (unenrollErr ? ' If your authenticator app still shows a Keeper entry, please remove it.' : ''),
         variant: 'destructive',
       });
-      setHasVerifiedFactor(true);
+      setHasVerifiedFactor(false);
       setEnroll({ status: 'idle' });
       return;
     }
