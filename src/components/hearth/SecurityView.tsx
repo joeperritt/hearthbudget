@@ -239,6 +239,20 @@ export function SecurityView({ onBack }: SecurityViewProps) {
             We'll also generate one-time recovery codes in case you lose access to your device.
           </p>
 
+          {grace.needsMfa && grace.inGrace && !hasVerifiedFactor && enroll.status === 'idle' && (
+            <div className="mb-4 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle size={16} className="text-accent shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed text-foreground">
+                <p className="font-semibold">Two-factor will be required for admin accounts.</p>
+                <p className="opacity-80 mt-0.5">
+                  {grace.daysRemaining !== null
+                    ? `You have ${grace.daysRemaining} day${grace.daysRemaining === 1 ? '' : 's'} left to set it up.`
+                    : 'Set it up soon to keep access uninterrupted.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {mfaLoading ? (
             <div className="bg-card rounded-lg p-5 shadow-sm border border-border flex items-center gap-3">
               <Loader2 size={18} className="animate-spin text-muted-foreground" />
