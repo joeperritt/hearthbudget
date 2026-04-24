@@ -233,7 +233,7 @@ export default function LoginMfaChallenge() {
                 Too many attempts. Try again in {lockMinutesLeft}{' '}
                 {lockMinutesLeft === 1 ? 'minute' : 'minutes'}.
               </p>
-              {mode === 'totp' && (
+              {mode === 'totp' && !recoveryLocked && (
                 <button
                   type="button"
                   onClick={() => {
