@@ -88,6 +88,8 @@ Guided tour showing benefits when profile is incomplete. Currently just shows em
 
 **SMS-based MFA — explicitly rejected.** Considered and ruled out due to SIM swap attack vulnerability, NIST SP 800-63B deprecation of SMS as an authenticator, and per-message carrier cost. Do not revisit without strong justification (e.g., a specific user segment that genuinely cannot use TOTP, email OTP, or passkeys, AND a mitigation for SIM swap risk).
 
+**AI transport — direct Gemini, not Lovable AI Gateway.** App AI features (`budget-insights`, `categorize-transaction`) route directly to Gemini via a Google Cloud API key (`GEMINI_API_KEY`), not through Lovable's AI Gateway. This decouples production AI availability from Lovable platform billing and usage. Shared helper at `supabase/functions/_shared/gemini.ts`.
+
 ## Feature backlog
 
 ### "Remember this device for 30 days" at MFA prompt
