@@ -84,7 +84,23 @@ Guided tour showing benefits when profile is incomplete. Currently just shows em
 - MFA on consumer app (covered by Phase 4C above)
 - Remaining enterprise security attestations
 
+## Security caveats
+
+**SMS-based MFA — explicitly rejected.** Considered and ruled out due to SIM swap attack vulnerability, NIST SP 800-63B deprecation of SMS as an authenticator, and per-message carrier cost. Do not revisit without strong justification (e.g., a specific user segment that genuinely cannot use TOTP, email OTP, or passkeys, AND a mitigation for SIM swap risk).
+
 ## Feature backlog
+
+### "Remember this device for 30 days" at MFA prompt
+
+UX improvement on the login MFA challenge — lets users trust a specific browser/device to skip the MFA step for 30 days. Password change or explicit "revoke trusted devices" action kills all trust tokens immediately. Nice-to-have post-launch; not a launch blocker.
+
+### Passkeys (WebAuthn) support
+
+Long-term upgrade path from TOTP. Better UX (Face ID / Touch ID / Windows Hello), cryptographically stronger (phishing-resistant), no shared secret to leak. Supabase supports WebAuthn factors. Consider for the 2027 roadmap once TOTP + recovery codes are stable in production.
+
+### Email-based OTP as MFA fallback
+
+Send a 6-digit code to the email on file as an alternative second factor when the user doesn't have access to their authenticator app (and recovery codes are exhausted or unavailable). Weaker than TOTP but materially better than SMS, and serves users without smartphones. Post-launch.
 
 ### Floating "Ask Keeper" AI button (post-launch)
 
