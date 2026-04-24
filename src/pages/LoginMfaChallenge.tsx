@@ -107,6 +107,7 @@ export default function LoginMfaChallenge() {
           body: { action: 'preflight' },
         });
         if (data?.locked) setLock(data.retry_after_minutes ?? 15);
+        if (data?.recovery_locked) setRecoveryLock(15);
       } else {
         await callLogAttempt(true);
         // Clear any per-session recovery banner — user successfully used TOTP
