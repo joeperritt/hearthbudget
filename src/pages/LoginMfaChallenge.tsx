@@ -131,6 +131,9 @@ export default function LoginMfaChallenge() {
       );
       if (fnErr) throw fnErr;
       if (data?.locked) {
+        // Recovery path locked-out (5 recovery failures in 15min).
+        // Recovery failures also count toward the unified lock, so block TOTP too.
+        setRecoveryLock(data.retry_after_minutes ?? 15);
         setLock(data.retry_after_minutes ?? 15);
         setError(data.error ?? 'Too many attempts.');
       } else if (data?.ok) {
