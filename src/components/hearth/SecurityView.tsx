@@ -241,7 +241,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
               onCodeChange={(v) => enroll.status === 'pending' && setEnroll({ ...enroll, code: v })}
               onVerify={verifyEnroll}
               onCancel={cancelEnroll}
-              accountLabel={user?.email ?? profile?.display_name ?? 'Hearth'}
+              accountLabel={user?.email ?? profile?.display_name ?? 'Keeper'}
             />
           ) : enroll.status === 'codes' ? (
             <RecoveryCodesPanel
