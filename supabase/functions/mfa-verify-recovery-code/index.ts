@@ -72,10 +72,15 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Rate limit check
+    // Rate limit check - HYBRID POLICY:
+    // The recovery-code path only locks on recovery-code failures, so a user
+    // whose authenticator is broken (and who fat-fingered TOTP into the
+    // unified lock) can still escape via recovery codes. Recovery-code
+    // failures, however, DO contribute to the unified lock for the TOTP path.
     const { data: rateData, error: rateErr } = await admin.rpc("recent_failed_mfa_attempts", {
       _user_id: userId,
       _window_minutes: RATE_LIMIT_WINDOW_MIN,
+      _attempt_type: "recovery_code",
     });
     if (rateErr) throw rateErr;
     const recentFails = (rateData as number) ?? 0;

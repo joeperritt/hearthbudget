@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.recent_failed_mfa_attempts(uuid, integer);

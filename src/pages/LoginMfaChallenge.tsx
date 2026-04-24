@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 const LOCK_KEY = 'keeper.mfa.lockedUntil';
+const RECOVERY_LOCK_KEY = 'keeper.mfa.recoveryLockedUntil';
 const RECOVERY_FLAG_KEY = 'keeper.lastAuthMethod';
 
 type Mode = 'totp' | 'recovery';
@@ -13,8 +14,14 @@ export default function LoginMfaChallenge() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Unified lock — any failures (TOTP or recovery) hitting the limit. Blocks TOTP path.
   const [lockedUntil, setLockedUntil] = useState<number | null>(() => {
     const v = localStorage.getItem(LOCK_KEY);
+    return v ? Number(v) : null;
+  });
+  // Recovery-only lock — only recovery failures count. Blocks recovery path.
+  const [recoveryLockedUntil, setRecoveryLockedUntil] = useState<number | null>(() => {
+    const v = localStorage.getItem(RECOVERY_LOCK_KEY);
     return v ? Number(v) : null;
   });
   const [now, setNow] = useState(Date.now());
@@ -22,26 +29,35 @@ export default function LoginMfaChallenge() {
 
   // Tick for countdown
   useEffect(() => {
-    if (!lockedUntil) return;
+    if (!lockedUntil && !recoveryLockedUntil) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [lockedUntil]);
+  }, [lockedUntil, recoveryLockedUntil]);
 
-  // Clear lock when expired
+  // Clear locks when expired
   useEffect(() => {
     if (lockedUntil && now >= lockedUntil) {
       localStorage.removeItem(LOCK_KEY);
       setLockedUntil(null);
     }
-  }, [now, lockedUntil]);
+    if (recoveryLockedUntil && now >= recoveryLockedUntil) {
+      localStorage.removeItem(RECOVERY_LOCK_KEY);
+      setRecoveryLockedUntil(null);
+    }
+  }, [now, lockedUntil, recoveryLockedUntil]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [mode]);
 
-  const isLocked = !!(lockedUntil && now < lockedUntil);
+  // TOTP path is blocked by the unified lock.
+  // Recovery path is blocked ONLY by the recovery-specific lock (hybrid policy).
+  const totpLocked = !!(lockedUntil && now < lockedUntil);
+  const recoveryLocked = !!(recoveryLockedUntil && now < recoveryLockedUntil);
+  const isLocked = mode === 'totp' ? totpLocked : recoveryLocked;
+  const activeLockUntil = mode === 'totp' ? lockedUntil : recoveryLockedUntil;
   const lockMinutesLeft = isLocked
-    ? Math.max(1, Math.ceil((lockedUntil! - now) / 60000))
+    ? Math.max(1, Math.ceil((activeLockUntil! - now) / 60000))
     : 0;
 
   const setLock = (minutes: number) => {
@@ -50,12 +66,19 @@ export default function LoginMfaChallenge() {
     setLockedUntil(until);
   };
 
+  const setRecoveryLock = (minutes: number) => {
+    const until = Date.now() + minutes * 60 * 1000;
+    localStorage.setItem(RECOVERY_LOCK_KEY, String(until));
+    setRecoveryLockedUntil(until);
+  };
+
   const callLogAttempt = async (success: boolean) => {
     try {
       const { data } = await supabase.functions.invoke('mfa-log-attempt', {
         body: { success, action: 'log' },
       });
       if (data?.locked) setLock(data.retry_after_minutes ?? 15);
+      if (data?.recovery_locked) setRecoveryLock(15);
     } catch (e) {
       console.error('mfa-log-attempt failed', e);
     }
@@ -84,6 +107,7 @@ export default function LoginMfaChallenge() {
           body: { action: 'preflight' },
         });
         if (data?.locked) setLock(data.retry_after_minutes ?? 15);
+        if (data?.recovery_locked) setRecoveryLock(15);
       } else {
         await callLogAttempt(true);
         // Clear any per-session recovery banner — user successfully used TOTP
@@ -107,6 +131,9 @@ export default function LoginMfaChallenge() {
       );
       if (fnErr) throw fnErr;
       if (data?.locked) {
+        // Recovery path locked-out (5 recovery failures in 15min).
+        // Recovery failures also count toward the unified lock, so block TOTP too.
+        setRecoveryLock(data.retry_after_minutes ?? 15);
         setLock(data.retry_after_minutes ?? 15);
         setError(data.error ?? 'Too many attempts.');
       } else if (data?.ok) {
@@ -206,7 +233,7 @@ export default function LoginMfaChallenge() {
                 Too many attempts. Try again in {lockMinutesLeft}{' '}
                 {lockMinutesLeft === 1 ? 'minute' : 'minutes'}.
               </p>
-              {mode === 'totp' && (
+              {mode === 'totp' && !recoveryLocked && (
                 <button
                   type="button"
                   onClick={() => {
