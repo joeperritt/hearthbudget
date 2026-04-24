@@ -87,7 +87,11 @@ export function SecurityView({ onBack }: SecurityViewProps) {
       }
     }
 
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'Keeper',
+      friendlyName: `Keeper (${user?.email ?? profile?.display_name ?? 'account'})`,
+    });
     if (error || !data) {
       setEnroll({ status: 'idle' });
       toast({ title: 'Could not start enrollment', description: error?.message ?? 'Unknown error', variant: 'destructive' });
@@ -182,7 +186,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const downloadCodes = (codes: string[]) => {
     const blob = new Blob(
       [
-        `Hearth recovery codes for ${user?.email ?? 'your account'}\n`,
+        `Keeper recovery codes for ${user?.email ?? 'your account'}\n`,
         `Generated: ${new Date().toISOString()}\n\n`,
         ...codes.map((c) => `${c}\n`),
         `\nEach code can be used once. Store them somewhere safe.\n`,
@@ -192,7 +196,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'hearth-recovery-codes.txt';
+    a.download = 'keeper-recovery-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -237,7 +241,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
               onCodeChange={(v) => enroll.status === 'pending' && setEnroll({ ...enroll, code: v })}
               onVerify={verifyEnroll}
               onCancel={cancelEnroll}
-              accountLabel={user?.email ?? profile?.display_name ?? 'Hearth'}
+              accountLabel={user?.email ?? profile?.display_name ?? 'Keeper'}
             />
           ) : enroll.status === 'codes' ? (
             <RecoveryCodesPanel
@@ -411,7 +415,7 @@ function EnrollPanel(props: {
       <div>
         <p className="text-sm font-semibold text-foreground">Step 1 — Scan the QR code</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Open your authenticator app and scan. Hearth will appear as a new account.
+          Open your authenticator app and scan. Keeper will appear as a new account.
         </p>
       </div>
 
