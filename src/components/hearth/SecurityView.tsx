@@ -186,7 +186,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const downloadCodes = (codes: string[]) => {
     const blob = new Blob(
       [
-        `Hearth recovery codes for ${user?.email ?? 'your account'}\n`,
+        `Keeper recovery codes for ${user?.email ?? 'your account'}\n`,
         `Generated: ${new Date().toISOString()}\n\n`,
         ...codes.map((c) => `${c}\n`),
         `\nEach code can be used once. Store them somewhere safe.\n`,
@@ -196,7 +196,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'hearth-recovery-codes.txt';
+    a.download = 'keeper-recovery-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   };
