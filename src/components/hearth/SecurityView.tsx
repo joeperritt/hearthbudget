@@ -311,6 +311,26 @@ export function SecurityView({ onBack }: SecurityViewProps) {
                   </p>
                 </div>
               </button>
+
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                  Disabling 2FA lowers the security of your account. You'll only need your password to sign in.
+                </p>
+                <button
+                  onClick={() => setDisableOpen(true)}
+                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border"
+                >
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                    <ShieldOff size={20} className="text-destructive" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-destructive">Disable two-factor authentication</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Requires your password and a current 6-digit code.
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
           ) : (
             <button
