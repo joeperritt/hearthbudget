@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -10,17 +10,44 @@ interface Profile {
   avatar_initial: string;
 }
 
+interface PendingMfa {
+  factorId: string;
+  email: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
+  pendingMfa: PendingMfa | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  cancelMfaChallenge: () => Promise<void>;
+  completeMfaChallenge: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function detectMfaChallenge(): Promise<PendingMfa | null> {
+  // If session AAL is aal1 but the user has a verified TOTP factor, they must
+  // complete the MFA challenge before any authenticated route renders.
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (!aalData) return null;
+  const { currentLevel, nextLevel } = aalData;
+  if (currentLevel === 'aal2' || nextLevel !== 'aal2') return null;
+
+  const { data: factorsData } = await supabase.auth.mfa.listFactors();
+  const verifiedTotp = factorsData?.totp?.find(f => f.status === 'verified');
+  if (!verifiedTotp) return null;
+
+  const { data: userData } = await supabase.auth.getUser();
+  return {
+    factorId: verifiedTotp.id,
+    email: userData.user?.email ?? '',
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -28,42 +55,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingMfa, setPendingMfa] = useState<PendingMfa | null>(null);
+  // recoveryCodeUsed bypass: when the user authenticates via recovery code we
+  // do NOT promote the GoTrue session to aal2 (no AAL upgrade is possible
+  // without a TOTP code), but we still treat the MFA gate as passed for this
+  // browser session. This flag is reset on signOut.
+  const [recoveryBypass, setRecoveryBypass] = useState(false);
+
+  const refreshMfaState = useCallback(async () => {
+    if (recoveryBypass) {
+      setPendingMfa(null);
+      return;
+    }
+    const challenge = await detectMfaChallenge();
+    setPendingMfa(challenge);
+  }, [recoveryBypass]);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          // Defer profile fetch to avoid Supabase deadlock
+          // Defer profile + MFA detection to avoid Supabase deadlock
           setTimeout(async () => {
             await fetchProfile(session.user.id);
             await checkAdmin(session.user.id);
-            // Update last_seen_at
-            supabase.from('profiles').update({ last_seen_at: new Date().toISOString() } as any).eq('user_id', session.user.id).then(() => {});
+            await refreshMfaState();
+            supabase
+              .from('profiles')
+              .update({ last_seen_at: new Date().toISOString() } as any)
+              .eq('user_id', session.user.id)
+              .then(() => {});
           }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setPendingMfa(null);
+          setRecoveryBypass(false);
         }
         setLoading(false);
       }
     );
 
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
-        checkAdmin(session.user.id);
+        await Promise.all([
+          fetchProfile(session.user.id),
+          checkAdmin(session.user.id),
+        ]);
+        await refreshMfaState();
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -76,8 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const checkAdmin = async (userId: string) => {
-    // isAdmin drives admin UI (invites, account management). True for either
-    // household_admin (of any of their households) or system_admin (operator).
     const { data } = await supabase
       .from('user_roles')
       .select('role')
@@ -93,17 +141,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: captchaToken ? { captchaToken } : undefined,
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    // onAuthStateChange will fire and refreshMfaState will detect the challenge.
+    return { error: null };
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
     setIsAdmin(false);
+    setPendingMfa(null);
+    setRecoveryBypass(false);
+  };
+
+  const cancelMfaChallenge = async () => {
+    // User backed out of the MFA prompt — sign them out, they need to start over.
+    await signOut();
+  };
+
+  const completeMfaChallenge = async () => {
+    // Called by LoginMfaChallenge after a successful TOTP verify (which natively
+    // upgrades AAL) or successful recovery-code redemption. Refresh state.
+    await supabase.auth.refreshSession().catch(() => {});
+    await refreshMfaState();
+  };
+
+  // Special path: caller (LoginMfaChallenge) tells us recovery code succeeded.
+  // We trust the existing aal1 session for this browser session only.
+  const completeWithRecoveryBypass = async () => {
+    setRecoveryBypass(true);
+    setPendingMfa(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, isAdmin, loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        isAdmin,
+        loading,
+        pendingMfa,
+        signIn,
+        signOut,
+        cancelMfaChallenge,
+        completeMfaChallenge: async () => {
+          // If recovery flag was set on window, take that path.
+          if ((window as any).__keeperRecoveryBypass === true) {
+            (window as any).__keeperRecoveryBypass = false;
+            await completeWithRecoveryBypass();
+            return;
+          }
+          await completeMfaChallenge();
+        },
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
