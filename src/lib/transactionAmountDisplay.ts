@@ -30,8 +30,9 @@ export function getTransactionAmountPresentation(
 
     if (transaction.amount > 0) {
       // Routine outflow — render in neutral text like credit card charges.
+      // No minus prefix: account label already conveys it's a debit.
       // Red is reserved for actual problems (over-budget, etc.), not normal spending.
-      return { colorClassName: 'text-foreground', prefix: '-', value };
+      return { colorClassName: 'text-foreground', prefix: '', value };
     }
   }
 
