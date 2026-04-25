@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { differenceInDays, startOfMonth, addMonths, format } from 'date-fns';
@@ -135,7 +135,6 @@ async function buildBudgetSummary(
     ...givingCats.map(c => ({ name: c.name, budgeted: c.budgeted, spent: spentByCategory[c.id] || 0, type: 'variable' as const })),
   ];
 
-  // Fetch prior month snapshot
   let priorMonth: PriorMonthData | undefined;
   let categoryChanges: CategoryChange[] | undefined;
 
@@ -188,7 +187,6 @@ async function buildBudgetSummary(
     }
   }
 
-  // Build income data from planning fields
   const incomeMode = planningData.incomeMode || 'net';
   const netIncome = parseFloat(planningData.netIncome || '0') || 0;
   const incomeTypeVal = planningData.incomeType || 'w2';
@@ -204,7 +202,6 @@ async function buildBudgetSummary(
   const primaryPeriods = freqPeriods[primaryFreq] || 12;
   const partnerPeriods = freqPeriods[partnerFreq] || 12;
 
-  // Primary earner - grossPay is annual
   const primaryAnnualGross = parseFloat(planningData.grossPay || '0') || 0;
   const primaryMonthlyGross = primaryAnnualGross / 12;
   const primaryPerPaycheckGross = primaryAnnualGross / primaryPeriods;
@@ -217,7 +214,6 @@ async function buildBudgetSummary(
   const primaryStateTax = (parseFloat(planningData.stateTaxAmt || '0') || 0) * primaryMult;
   const primaryNetPay = primaryMonthlyGross - primaryFedTax - primarySsTax - primaryMedicare - primaryStateTax - primaryRetirement - primarySavingsDed - primaryOtherDed;
 
-  // Partner earner - partnerGrossPay is annual
   const partnerEnabled = planningData.partnerEnabled === 'true';
   const partnerAnnualGross = parseFloat(planningData.partnerGrossPay || '0') || 0;
   const partnerMonthlyGross = partnerAnnualGross / 12;
@@ -260,7 +256,6 @@ async function buildBudgetSummary(
     }
   }
 
-  // Fetch financial profile for AI context
   let financialProfile: BudgetSummary['financialProfile'] | undefined;
   if (householdId) {
     const { data: fpData } = await supabase
@@ -315,6 +310,19 @@ async function buildBudgetSummary(
   };
 }
 
+function parseInsights(content: unknown): Insight[] {
+  if (Array.isArray(content)) return content as Insight[];
+  if (typeof content !== 'string') return [];
+  const cleaned = content.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  const match = cleaned.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+  try {
+    return JSON.parse(match[0]) as Insight[];
+  } catch {
+    return [];
+  }
+}
+
 export function useBudgetInsights(
   activeMonth: string,
   categories: BudgetCategory[],
@@ -332,57 +340,67 @@ export function useBudgetInsights(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [hasCached, setHasCached] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const cacheKey = useRef<string>('');
   const insightsRef = useRef<Insight[]>([]);
+
+  // Load cached insights on mount / household change. NO auto-generation.
+  useEffect(() => {
+    if (!householdId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('ai_insights_cache')
+        .select('insights, generated_at')
+        .eq('household_id', householdId)
+        .eq('kind', 'home')
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        const parsed = parseInsights((data as any).insights);
+        setInsights(parsed);
+        insightsRef.current = parsed;
+        setLastUpdated(new Date((data as any).generated_at));
+        setHasCached(true);
+      } else {
+        setHasCached(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [householdId]);
 
   const getSummary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData,
   ), [activeMonth, categories, fixedExpenses, monthTransactions, spentByCategory, transferAdjustments, accountSpending, unassignedCount, totalBudget, householdId, planningData]);
 
-  const fetchInsights = useCallback(async (force = false) => {
-    const spentTotal = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
-    const key = JSON.stringify({ activeMonth, txCount: monthTransactions.length, spentTotal });
-    if (!force && key === cacheKey.current && insightsRef.current.length > 0) return;
-    cacheKey.current = key;
-
+  // Always an explicit user-triggered call now.
+  const generateInsights = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('[Insights] Calling budget-insights edge function...');
       const summaryData = await getSummary();
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: { budgetSummary: summaryData },
+        body: {
+          budgetSummary: summaryData,
+          mode: 'home',
+          stewardshipMode: true,
+          forceRefresh: true,
+        },
       });
-      
-      if (fnError) {
-        console.error('[Insights] Function error:', fnError);
-        throw new Error(fnError.message || 'Edge function returned an error');
-      }
-      
-      if (!data) {
-        throw new Error('No data returned from edge function');
-      }
 
-      console.log('[Insights] Response received:', typeof data, data);
-      
+      if (fnError) throw new Error(fnError.message || 'Edge function error');
+      if (!data) throw new Error('No data returned from edge function');
+
       const content = data?.content || '';
-      if (!content) {
-        throw new Error('Empty content in response');
-      }
+      const parsed = parseInsights(content);
+      if (parsed.length === 0) throw new Error('Could not parse insights from response');
 
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Insight[];
-        setInsights(parsed);
-        insightsRef.current = parsed;
-        setLastUpdated(new Date());
-        console.log('[Insights] Parsed', parsed.length, 'insights');
-      } else {
-        throw new Error('Could not parse insights JSON from response');
-      }
+      setInsights(parsed);
+      insightsRef.current = parsed;
+      setLastUpdated(data?.generatedAt ? new Date(data.generatedAt) : new Date());
+      setHasCached(true);
     } catch (e: any) {
       const msg = e?.message || 'Unknown error generating insights';
       console.error('[Insights] Failed:', msg, e);
@@ -390,7 +408,7 @@ export function useBudgetInsights(
     } finally {
       setLoading(false);
     }
-  }, [getSummary, activeMonth, monthTransactions.length]);
+  }, [getSummary]);
 
   const sendChatMessage = useCallback(async (message: string) => {
     const userMsg = { role: 'user' as const, content: message };
@@ -401,7 +419,7 @@ export function useBudgetInsights(
     try {
       const summaryData = await getSummary();
       const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
-        body: { budgetSummary: summaryData, chatMessages: newMessages },
+        body: { budgetSummary: summaryData, chatMessages: newMessages, stewardshipMode: true },
       });
       if (fnError) throw fnError;
       const content = data?.content || 'Sorry, I couldn\'t generate a response.';
@@ -419,7 +437,8 @@ export function useBudgetInsights(
     loading,
     error,
     lastUpdated,
-    fetchInsights,
+    hasCached,
+    generateInsights,
     chatMessages,
     chatLoading,
     sendChatMessage,
