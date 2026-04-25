@@ -119,16 +119,16 @@ function UnassignedSection({
   onViewAll?: () => void;
 }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
-  const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
-
-  // Hide entire section when no unassigned transactions exist (across any filter)
-  if (unassignedTransactions.length === 0) return null;
-
   const labelMap = useMemo(() => {
     const m: Record<string, string> = {};
     accounts.forEach(a => { m[a.id] = a.label; });
     return m;
   }, [accounts]);
+
+  const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+
+  // Hide entire section when no unassigned transactions exist (across any filter)
+  if (unassignedTransactions.length === 0) return null;
 
   const accountFilters: { id: AccountFilter; label: string }[] = [
     { id: 'all', label: 'All' },
