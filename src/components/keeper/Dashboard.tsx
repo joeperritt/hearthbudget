@@ -107,19 +107,38 @@ function formatCurrency(n: number) {
 
 type AccountFilter = 'all' | string;
 
-function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts = [] }: { unassignedTransactions: Transaction[]; onEditTransaction: (tx: Transaction) => void; accounts?: AppAccount[] }) {
+function UnassignedSection({
+  unassignedTransactions,
+  onEditTransaction,
+  accounts = [],
+  onViewAll,
+}: {
+  unassignedTransactions: Transaction[];
+  onEditTransaction: (tx: Transaction) => void;
+  accounts?: AppAccount[];
+  onViewAll?: () => void;
+}) {
   const [filter, setFilter] = useState<AccountFilter>('all');
-  const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
   const labelMap = useMemo(() => {
     const m: Record<string, string> = {};
     accounts.forEach(a => { m[a.id] = a.label; });
     return m;
   }, [accounts]);
 
+  const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
+
+  // Hide entire section when no unassigned transactions exist (across any filter)
+  if (unassignedTransactions.length === 0) return null;
+
   const accountFilters: { id: AccountFilter; label: string }[] = [
     { id: 'all', label: 'All' },
     ...accounts.map(a => ({ id: a.id, label: a.label })),
   ];
+
+  // Newest-first within current filter; show up to 5
+  const sorted = [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const visible = sorted.slice(0, 5);
+  const total = filtered.length;
 
   return (
     <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
@@ -145,34 +164,49 @@ function UnassignedSection({ unassignedTransactions, onEditTransaction, accounts
         <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
           <Inbox size={24} className="text-muted-foreground/30 mb-2" />
           <p className="text-sm text-muted-foreground">No unassigned transactions</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-            {filter === 'all' ? 'Imported transactions will appear here' : 'No unassigned transactions for this account'}
-          </p>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">No unassigned transactions for this account</p>
         </div>
       ) : (
-        <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-          {filtered.slice(0, 10).map(tx => (
-            <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 lg:py-4 cursor-pointer active:bg-muted/50 transition-colors">
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm lg:text-base text-foreground truncate">{tx.description || 'No description'}</span>
-                <span className="text-[11px] lg:text-sm text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
+        <>
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
+            {visible.map(tx => (
+              <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 lg:py-4 cursor-pointer active:bg-muted/50 transition-colors">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-sm lg:text-base text-foreground truncate">{tx.description || 'No description'}</span>
+                  <span className="text-[11px] lg:text-sm text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
+                </div>
+                {(() => {
+                  const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
+                  return (
+                    <span className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ml-3 ${colorClassName}`}>
+                      {prefix}{formatCurrency(value)}
+                    </span>
+                  );
+                })()}
               </div>
-              {(() => {
-                const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
-                return (
-                  <span className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ml-3 ${colorClassName}`}>
-                    {prefix}{formatCurrency(value)}
-                  </span>
-                );
-              })()}
-            </div>
-          ))}
-          {filtered.length > 10 && (
-            <div className="px-4 py-2 text-center">
-              <span className="text-xs text-muted-foreground">+{filtered.length - 10} more</span>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+          <div className="px-1 pt-2 text-[11px] lg:text-xs text-muted-foreground">
+            {total > 5 ? (
+              <>
+                Showing 5 of {total} unassigned
+                {onViewAll && (
+                  <>
+                    {' — '}
+                    <button
+                      onClick={onViewAll}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      view all in Activity →
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>Showing {total} unassigned</>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -320,6 +354,7 @@ interface DashboardProps {
   totalVariableSpent?: number;
   totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
+  onViewAllUnassigned?: () => void;
 }
 
 export function Dashboard({
@@ -333,6 +368,7 @@ export function Dashboard({
   totalVariableSpent = 0,
   totalFixedSpent = 0,
   insightsSection,
+  onViewAllUnassigned,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -508,7 +544,7 @@ export function Dashboard({
       <EndOfMonthBanner count={unassignedTransactions.length} />
 
       {/* 1. Unassigned */}
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} onViewAll={onViewAllUnassigned} />
 
       {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
