@@ -354,6 +354,7 @@ interface DashboardProps {
   totalVariableSpent?: number;
   totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
+  onViewAllUnassigned?: () => void;
 }
 
 export function Dashboard({
@@ -367,6 +368,7 @@ export function Dashboard({
   totalVariableSpent = 0,
   totalFixedSpent = 0,
   insightsSection,
+  onViewAllUnassigned,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -542,7 +544,7 @@ export function Dashboard({
       <EndOfMonthBanner count={unassignedTransactions.length} />
 
       {/* 1. Unassigned */}
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} />
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} onViewAll={onViewAllUnassigned} />
 
       {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
