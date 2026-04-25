@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
@@ -104,6 +104,8 @@ export function TransactionsView({
   transactions, transfers = [], categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [], initialFilter,
 }: TransactionsViewProps) {
   const [filter, setFilter] = useState<Filter>(initialFilter ?? 'all');
+  // Re-apply when navigating in with a new initialFilter (e.g., from Home → Unassigned link)
+  useEffect(() => { if (initialFilter) setFilter(initialFilter); }, [initialFilter]);
   const [showTransfers, setShowTransfers] = useState(true);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
   type SortKey = 'date' | 'amount' | 'account' | 'category';
