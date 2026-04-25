@@ -29,7 +29,9 @@ export function getTransactionAmountPresentation(
     }
 
     if (transaction.amount > 0) {
-      return { colorClassName: 'text-destructive', prefix: '-', value };
+      // Routine outflow — render in neutral text like credit card charges.
+      // Red is reserved for actual problems (over-budget, etc.), not normal spending.
+      return { colorClassName: 'text-foreground', prefix: '-', value };
     }
   }
 
