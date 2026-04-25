@@ -160,3 +160,9 @@ Still operating as sole proprietor (Joseph Perritt). Plan to have Chad spin up "
 ### App Store submission prep
 
 Screenshots, privacy policy, Capacitor iOS testing, TestFlight.
+
+## Business / pricing
+
+### Build comprehensive Keeper unit economics model
+
+Inputs: Gemini API cost per generation call (~$0.0013), Plaid per-item monthly cost, Supabase tier thresholds, Resend email volume, projected hosting. Revenue side: pricing model TBD (subscription tier, freemium, per-household). Need to model gross margin per subscriber at 1K, 10K, 50K subscribers, identify cost cliffs (when does a tier upgrade hit), and determine break-even pricing. This is a strategic exercise to do as a dedicated Excel pro forma session, not piecemeal.
