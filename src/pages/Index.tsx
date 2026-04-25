@@ -110,6 +110,7 @@ const Index = () => {
   }, [householdId]);
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
 
   // Allow other components (e.g. Dashboard reconnect banner) to navigate to
   // the Bank Connections screen via a global event.
@@ -461,6 +462,10 @@ const Index = () => {
             totalVariableSpent={totalVariableSpent}
             totalFixedSpent={allFixedSpent}
             onSyncComplete={() => {}}
+            onViewAllUnassigned={() => {
+              setActivityInitialFilter('unassigned');
+              setActiveTab('transactions');
+            }}
             insightsSection={
               <InsightsSection
                 insights={insights}
@@ -507,6 +512,7 @@ const Index = () => {
               setEditingSplitSiblings(splitSiblings || []);
             }}
             accounts={accounts}
+            initialFilter={activityInitialFilter}
           />
         )}
 
