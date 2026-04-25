@@ -198,11 +198,10 @@ function UnassignedSection({
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap w-32 text-center ${chipClass}`}>
                       {labelMap[tx.account] || tx.account}
                     </span>
-                    <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                      <p className="text-base font-semibold text-foreground truncate">Unassigned</p>
-                      {tx.description && (
-                        <p className="text-sm text-muted-foreground truncate">{tx.description}</p>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold text-foreground truncate">
+                        {tx.description || 'No description'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-6 shrink-0">
                       <p className={`text-base font-semibold tabular-nums ${colorClassName}`}>
