@@ -168,23 +168,54 @@ function UnassignedSection({
         </div>
       ) : (
         <>
-          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-            {visible.map(tx => (
-              <div key={tx.id} onClick={() => onEditTransaction(tx)} className="flex justify-between items-center px-4 py-3 lg:py-4 cursor-pointer active:bg-muted/50 transition-colors">
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-sm lg:text-base text-foreground truncate">{tx.description || 'No description'}</span>
-                  <span className="text-[11px] lg:text-sm text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
-                </div>
-                {(() => {
-                  const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
-                  return (
-                    <span className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ml-3 ${colorClassName}`}>
+          <div className="bg-card rounded-lg shadow-sm divide-y divide-border lg:divide-y-0 overflow-hidden">
+            {visible.map(tx => {
+              const accountIdx = accounts.findIndex(a => a.id === tx.account);
+              const chipClass = accountIdx === 0
+                ? 'bg-primary text-primary-foreground'
+                : accountIdx === 1
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-muted text-muted-foreground';
+              const { colorClassName, prefix, value } = getTransactionAmountPresentation(tx);
+              return (
+                <div
+                  key={tx.id}
+                  onClick={() => onEditTransaction(tx)}
+                  className="cursor-pointer active:bg-muted/50 transition-colors lg:border-b lg:border-border/60 lg:last:border-0"
+                >
+                  {/* Mobile layout (unchanged) */}
+                  <div className="flex justify-between items-center px-4 py-3 lg:hidden">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-sm text-foreground truncate">{tx.description || 'No description'}</span>
+                      <span className="text-[11px] text-muted-foreground">{tx.date} · {labelMap[tx.account] || tx.account}</span>
+                    </div>
+                    <span className={`text-sm font-medium tabular-nums ml-3 ${colorClassName}`}>
                       {prefix}{formatCurrency(value)}
                     </span>
-                  );
-                })()}
-              </div>
-            ))}
+                  </div>
+                  {/* Desktop layout — matches Activity tab rows */}
+                  <div className="hidden lg:flex items-center gap-3 px-4 py-3">
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap w-32 text-center ${chipClass}`}>
+                      {labelMap[tx.account] || tx.account}
+                    </span>
+                    <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                      <p className="text-base font-semibold text-foreground truncate">Unassigned</p>
+                      {tx.description && (
+                        <p className="text-sm text-muted-foreground truncate">{tx.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-6 shrink-0">
+                      <p className={`text-base font-semibold tabular-nums ${colorClassName}`}>
+                        {prefix}{formatCurrency(value)}
+                      </p>
+                      <p className="text-sm text-muted-foreground w-16 text-right">
+                        {format(new Date(tx.date), 'MMM d')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="px-1 pt-2 text-[11px] lg:text-xs text-muted-foreground">
             {total > 5 ? (
