@@ -254,18 +254,12 @@ const Index = () => {
 
   const {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
-    fetchInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
+    hasCached: insightsHasCached, generateInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
   } = useBudgetInsights(
     activeMonth, activeMonthCategories, activeMonthFixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
     householdId, planningData,
   );
-
-  useEffect(() => {
-    if (activeMonth && activeMonthCategories.length > 0) {
-      fetchInsights();
-    }
-  }, [activeMonth, activeMonthCategories.length]);
 
   const handleAddTransactions = async (txns: Omit<Transaction, 'id'>[]) => {
     try {
@@ -273,7 +267,6 @@ const Index = () => {
       const { toast } = await import('sonner');
       toast.success(txns.length > 1 ? `${txns.length} transactions added` : 'Transaction added');
       setShowAddTransaction(false);
-      setTimeout(() => fetchInsights(true), 1000);
     } catch (err: any) {
       const { toast } = await import('sonner');
       toast.error(err?.message || 'Failed to save transaction. Please try again.');
@@ -467,15 +460,16 @@ const Index = () => {
             totalBudget={totalBudget}
             totalVariableSpent={totalVariableSpent}
             totalFixedSpent={allFixedSpent}
-            onSyncComplete={() => fetchInsights(true)}
+            onSyncComplete={() => {}}
             insightsSection={
               <InsightsSection
                 insights={insights}
                 loading={insightsLoading}
                 error={insightsError}
                 lastUpdated={insightsLastUpdated}
+                hasCached={insightsHasCached}
                 onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
-                onRefresh={() => fetchInsights(true)}
+                onGenerate={generateInsights}
               />
             }
           />
@@ -576,7 +570,7 @@ const Index = () => {
             chatLoading={chatLoading}
             onSendMessage={sendChatMessage}
             onBack={() => setMoreSubView('menu')}
-            onRefresh={() => fetchInsights(true)}
+            onRefresh={generateInsights}
           />
         )}
         {activeTab === 'more' && moreSubView === 'trends' && (
