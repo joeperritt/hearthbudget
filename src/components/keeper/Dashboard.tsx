@@ -112,11 +112,13 @@ function UnassignedSection({
   onEditTransaction,
   accounts = [],
   onViewAll,
+  onViewAllActivity,
 }: {
   unassignedTransactions: Transaction[];
   onEditTransaction: (tx: Transaction) => void;
   accounts?: AppAccount[];
   onViewAll?: () => void;
+  onViewAllActivity?: () => void;
 }) {
   const [filter, setFilter] = useState<AccountFilter>('all');
   const labelMap = useMemo(() => {
@@ -127,8 +129,28 @@ function UnassignedSection({
 
   const filtered = filter === 'all' ? unassignedTransactions : unassignedTransactions.filter(t => t.account === filter);
 
-  // Hide entire section when no unassigned transactions exist (across any filter)
-  if (unassignedTransactions.length === 0) return null;
+  // Positive empty state when nothing is unassigned — keeps the section as a consistent visual anchor
+  if (unassignedTransactions.length === 0) {
+    return (
+      <div className="px-6 mt-6 mb-6 animate-fade-up" style={{ animationDelay: '350ms', animationFillMode: 'both' }}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
+        </div>
+        <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
+          <CheckCircle2 size={28} className="text-emerald-600 mb-2" />
+          <p className="text-sm text-foreground">All caught up — no unassigned transactions</p>
+          {onViewAllActivity && (
+            <button
+              onClick={onViewAllActivity}
+              className="mt-2 text-[11px] lg:text-xs text-primary hover:underline font-medium"
+            >
+              View all activity →
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const accountFilters: { id: AccountFilter; label: string }[] = [
     { id: 'all', label: 'All' },
