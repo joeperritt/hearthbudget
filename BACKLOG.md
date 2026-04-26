@@ -136,7 +136,6 @@ Link mortgage, student loans.
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
 - Activity tab: increase category text weight vs merchant subtext
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
-- Empty state for unassigned transactions section on Home: When unassigned count = 0, instead of hiding the section entirely, show a positive empty state with a checkmark icon and "All caught up — no unassigned transactions" copy plus a subtle link to "View all activity →" going to the Activity tab. Reasoning: hiding the section makes the page feel inconsistent (sometimes there, sometimes not). Showing a positive empty state reinforces the good behavior of staying on top of transactions and gives users a consistent visual anchor on Home regardless of state.
 
 ## Post-launch UX polish
 
