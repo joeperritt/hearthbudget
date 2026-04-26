@@ -257,7 +257,7 @@ export function TransactionsView({
         )}
 
         <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
-          <p className="text-sm lg:text-base lg:font-semibold font-medium text-foreground truncate">
+          <p className="text-sm lg:text-base font-semibold text-foreground truncate">
             {isCcPayment ? (
               <span className="text-muted-foreground italic">
                 CC Payment
@@ -291,7 +291,7 @@ export function TransactionsView({
             )}
           </p>
           {indent && t.description ? null : t.description ? (
-            <p className="text-[11px] lg:text-sm text-muted-foreground truncate mt-0.5 lg:mt-0 lg:font-normal">{t.description}</p>
+            <p className="text-[11px] lg:text-xs text-muted-foreground/70 truncate mt-0.5 lg:mt-0 font-normal">{t.description}</p>
           ) : null}
           {t.notes ? (
             <p className="text-[10px] lg:text-xs text-muted-foreground/70 italic truncate mt-0.5 lg:mt-0">📝 {t.notes}</p>
