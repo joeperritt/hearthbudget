@@ -572,13 +572,16 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'ai-advisor' && (
           <AIAdvisorView
-            insights={insights}
-            loading={insightsLoading}
+            bigPictureInsights={bigPictureInsights}
+            bigPictureLoading={bigPictureLoading}
+            bigPictureError={bigPictureError}
+            bigPictureLastUpdated={bigPictureLastUpdated}
+            bigPictureHasCached={bigPictureHasCached}
+            onGenerateBigPicture={generateBigPicture}
             chatMessages={chatMessages}
             chatLoading={chatLoading}
             onSendMessage={sendChatMessage}
             onBack={() => setMoreSubView('menu')}
-            onRefresh={generateInsights}
           />
         )}
         {activeTab === 'more' && moreSubView === 'trends' && (
