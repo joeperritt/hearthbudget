@@ -2,22 +2,13 @@
 
 Running list of things to get to, known limitations, and stuff to remember about this project. When working with Lovable, you can point it at this file: "check BACKLOG.md."
 
-Last updated: April 23, 2026
+Last updated: April 26, 2026
 
 ## Security — pre-launch
 
-### Cloudflare WAF in front of keeperbudget.com
+### Revisit Cloudflare auth rate limit thresholds before public launch
 
-Put the domain behind Cloudflare (free tier is fine) before any real marketing or public launch. Gives us:
-
-- Real IP-based rate limiting at the edge (covers the gap left by Lovable Cloud not exposing GoTrue CAPTCHA config)
-- DDoS protection
-- Bot detection
-- Additional layer in front of Supabase auth
-
-This is the proper fix for the login/password-reset CAPTCHA enforcement gap below. Required before we scale.
-
-**Also covers MFA rate limiting (April 23, 2026):** The MFA verify lockout (5 failed attempts → 15 min, in `mfa-verify-totp` and `mfa-verify-recovery-code` edge functions, backed by `public.mfa_attempt_log`) is implemented in application code on top of Postgres. It works for casual abuse but has known race-condition gaps under parallel load and is per-user, not per-IP. Cloudflare WAF is the proper distributed rate-limit layer for MFA verify endpoints — once it's in front of the project, layer IP-based rate limits on the `/functions/v1/mfa-verify-*` paths and the app-layer counter becomes a defense-in-depth backup rather than the primary control. **Linked: see "Phase 4C — MFA / 2FA via TOTP" below.**
+Currently 4 req/10sec per IP is appropriate for low traffic. May need adjustment if false positives appear in real usage (e.g., shared office IPs with multiple users logging in simultaneously). Revisit thresholds before opening signups beyond the current allowlist.
 
 ### GoTrue CAPTCHA enforcement limitation
 
