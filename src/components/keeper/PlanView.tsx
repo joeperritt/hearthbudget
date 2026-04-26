@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info } from 'lucide-react';
+import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
