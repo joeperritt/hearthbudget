@@ -341,6 +341,13 @@ export function useBudgetInsights(
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hasCached, setHasCached] = useState(false);
+
+  const [bigPictureInsights, setBigPictureInsights] = useState<Insight[]>([]);
+  const [bigPictureLoading, setBigPictureLoading] = useState(false);
+  const [bigPictureError, setBigPictureError] = useState<string | null>(null);
+  const [bigPictureLastUpdated, setBigPictureLastUpdated] = useState<Date | null>(null);
+  const [bigPictureHasCached, setBigPictureHasCached] = useState(false);
+
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const insightsRef = useRef<Insight[]>([]);
@@ -352,19 +359,29 @@ export function useBudgetInsights(
     (async () => {
       const { data } = await supabase
         .from('ai_insights_cache')
-        .select('insights, generated_at')
+        .select('insights, generated_at, kind')
         .eq('household_id', householdId)
-        .eq('kind', 'home')
-        .maybeSingle();
+        .in('kind', ['home', 'big_picture']);
       if (cancelled) return;
-      if (data) {
-        const parsed = parseInsights((data as any).insights);
+      const rows = (data || []) as { insights: unknown; generated_at: string; kind: string }[];
+      const homeRow = rows.find(r => r.kind === 'home');
+      const bpRow = rows.find(r => r.kind === 'big_picture');
+      if (homeRow) {
+        const parsed = parseInsights(homeRow.insights);
         setInsights(parsed);
         insightsRef.current = parsed;
-        setLastUpdated(new Date((data as any).generated_at));
+        setLastUpdated(new Date(homeRow.generated_at));
         setHasCached(true);
       } else {
         setHasCached(false);
+      }
+      if (bpRow) {
+        const parsed = parseInsights(bpRow.insights);
+        setBigPictureInsights(parsed);
+        setBigPictureLastUpdated(new Date(bpRow.generated_at));
+        setBigPictureHasCached(true);
+      } else {
+        setBigPictureHasCached(false);
       }
     })();
     return () => { cancelled = true; };
