@@ -79,19 +79,44 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     return formatLastVisited(lv);
   };
 
+  const hasIncome = (() => {
+    const fp = financialProfile;
+    if (!fp) return false;
+    const incomes = Array.isArray(fp.member_incomes) ? fp.member_incomes : [];
+    return incomes.some((m: any) => (Number(m.gross_income) || 0) > 0);
+  })();
+
   const isToolDisabled = (toolId: InsightToolId): boolean => {
     const fp = financialProfile;
+    if (!fp) return true;
     if (toolId === 'debt-payoff') {
-      if (!fp) return false;
       const debts = Array.isArray(fp.debts) ? fp.debts : [];
       return debts.length === 0;
+    }
+    if (toolId === 'retirement') {
+      // Needs income to model contributions and replacement targets
+      return !hasIncome;
+    }
+    if (toolId === 'mortgage-analyzer') {
+      // Only meaningful if the household owns and has mortgage data populated
+      if (fp.housing_type !== 'own') return true;
+      return !(Number(fp.mortgage_balance) > 0 && Number(fp.mortgage_payment) > 0);
+    }
+    if (toolId === 'life-insurance') {
+      // Income Replacement / DIME both need income
+      return !hasIncome;
+    }
+    if (toolId === 'emergency-fund') {
+      // Target months are derived from income + housing
+      return !hasIncome || !fp.housing_type;
     }
     return false;
   };
 
   const getDisabledReason = (toolId: InsightToolId): string | null => {
-    if (toolId === 'debt-payoff' && isToolDisabled(toolId)) return 'N/A';
-    return null;
+    if (!isToolDisabled(toolId)) return null;
+    if (toolId === 'debt-payoff') return 'N/A';
+    return 'Locked';
   };
 
   const insightTools: { id: InsightToolId; name: string; subtitle: string; icon: typeof Shield }[] = [
