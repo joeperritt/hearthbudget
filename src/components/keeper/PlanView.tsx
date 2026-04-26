@@ -210,13 +210,14 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
             const disabled = isToolDisabled(tool.id);
             const disabledReason = getDisabledReason(tool.id);
             const lastVisited = getLastVisited(tool.id);
+            const isLocked = disabled && disabledReason === 'Locked';
             return (
               <button
                 key={tool.id}
                 onClick={() => handleToolNavigate(tool.id)}
                 disabled={disabled}
                 className={`w-full flex items-center gap-3 bg-card rounded-xl p-3.5 shadow-sm text-left transition-transform ${
-                  disabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
+                  disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'active:scale-[0.98]'
                 }`}
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -224,9 +225,13 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground leading-tight">{tool.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">{tool.subtitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">
+                    {isLocked ? 'Complete profile to unlock' : tool.subtitle}
+                  </p>
                 </div>
-                {disabled && disabledReason ? (
+                {isLocked ? (
+                  <Lock size={14} className="text-muted-foreground shrink-0" />
+                ) : disabled && disabledReason ? (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-muted text-muted-foreground">
                     {disabledReason}
                   </span>
