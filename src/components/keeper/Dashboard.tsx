@@ -407,6 +407,7 @@ interface DashboardProps {
   totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
   onViewAllUnassigned?: () => void;
+  onViewAllActivity?: () => void;
 }
 
 export function Dashboard({
