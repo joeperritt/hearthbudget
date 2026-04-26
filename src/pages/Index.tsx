@@ -469,6 +469,10 @@ const Index = () => {
               setActivityInitialFilter('unassigned');
               setActiveTab('transactions');
             }}
+            onViewAllActivity={() => {
+              setActivityInitialFilter(undefined);
+              setActiveTab('transactions');
+            }}
             insightsSection={
               <InsightsSection
                 insights={insights}
