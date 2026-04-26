@@ -16,11 +16,10 @@ interface InsightsSectionProps {
   error: string | null;
   lastUpdated: Date | null;
   hasCached: boolean;
-  onSeeAll: () => void;
   onGenerate: () => void;
 }
 
-export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onSeeAll, onGenerate }: InsightsSectionProps) {
+export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate }: InsightsSectionProps) {
   const displayInsights = insights.slice(0, 3);
   const ageDays = lastUpdated ? differenceInDays(new Date(), lastUpdated) : 0;
   const isStale = lastUpdated && ageDays >= 7;
@@ -33,23 +32,16 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
           <Sparkles size={14} className="text-accent" />
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Insights</h3>
         </div>
-        <div className="flex items-center gap-3">
-          {(hasCached || displayInsights.length > 0) && (
-            <button
-              onClick={onGenerate}
-              disabled={loading}
-              className="flex items-center gap-1 text-xs text-accent font-medium active:opacity-70 disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Analyzing…' : 'Refresh'}
-            </button>
-          )}
-          {displayInsights.length > 0 && !loading && (
-            <button onClick={onSeeAll} className="flex items-center gap-0.5 text-xs text-accent font-medium active:opacity-70">
-              See all <ChevronRight size={12} />
-            </button>
-          )}
-        </div>
+        {(hasCached || displayInsights.length > 0) && (
+          <button
+            onClick={onGenerate}
+            disabled={loading}
+            className="flex items-center gap-1 text-xs text-accent font-medium active:opacity-70 disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Analyzing…' : 'Refresh'}
+          </button>
+        )}
       </div>
 
       {/* Empty state — button-only invitation */}
