@@ -598,7 +598,7 @@ export function Dashboard({
       <EndOfMonthBanner count={unassignedTransactions.length} />
 
       {/* 1. Unassigned */}
-      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} onViewAll={onViewAllUnassigned} />
+      <UnassignedSection unassignedTransactions={unassignedTransactions} onEditTransaction={onEditTransaction} accounts={accounts} onViewAll={onViewAllUnassigned} onViewAllActivity={onViewAllActivity} />
 
       {/* 2. Variable Categories */}
       {varCategories && spentByCategory && transferAdjustments && (
