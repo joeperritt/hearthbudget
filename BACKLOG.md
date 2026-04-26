@@ -129,12 +129,9 @@ Link mortgage, student loans.
 
 ## Polish / quick fixes
 
-- Split transactions showing "Manual" label when parent is synced (bug — only actual manual splits should show label)
 - Non-retirement goals mobile view (Education Fund) display is off
 - Unassigned transactions on Home desktop — apply Activity-tab-style single-row formatting
-- Plan tab tools: gray out / lock tools requiring profile sections that aren't complete
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
-- Activity tab: increase category text weight vs merchant subtext
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
 
 ## Post-launch UX polish
