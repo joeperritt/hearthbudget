@@ -20,7 +20,7 @@ Mitigations currently in place:
 - HIBP password check on
 - Supabase default per-IP rate limits (30 per 5 min on sign-in attempts)
 
-If we ever see credential-stuffing or reset-spam patterns in logs, the answer is Cloudflare WAF (above), not migrating to self-hosted Supabase. Confirmed by Lovable support April 23, 2026.
+If we ever see credential-stuffing or reset-spam patterns in logs, the answer is a real distributed rate-limiting layer (see "Decide on real rate-limiting strategy" above and the deferred Cloudflare entry under Security caveats), not migrating to self-hosted Supabase. Confirmed by Lovable support April 23, 2026.
 
 ### Production hostname block maintenance
 
