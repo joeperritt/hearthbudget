@@ -255,7 +255,10 @@ const Index = () => {
 
   const {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
-    hasCached: insightsHasCached, generateInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
+    hasCached: insightsHasCached, generateInsights,
+    bigPictureInsights, bigPictureLoading, bigPictureError, bigPictureLastUpdated,
+    bigPictureHasCached, generateBigPicture,
+    chatMessages, chatLoading, sendChatMessage, clearChat,
   } = useBudgetInsights(
     activeMonth, activeMonthCategories, activeMonthFixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
