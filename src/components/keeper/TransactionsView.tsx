@@ -257,7 +257,7 @@ export function TransactionsView({
         )}
 
         <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
-          <p className="text-sm lg:text-base lg:font-semibold font-medium text-foreground truncate">
+          <p className="text-sm lg:text-base font-semibold text-foreground truncate">
             {isCcPayment ? (
               <span className="text-muted-foreground italic">
                 CC Payment
@@ -291,7 +291,7 @@ export function TransactionsView({
             )}
           </p>
           {indent && t.description ? null : t.description ? (
-            <p className="text-[11px] lg:text-sm text-muted-foreground truncate mt-0.5 lg:mt-0 lg:font-normal">{t.description}</p>
+            <p className="text-[11px] lg:text-xs text-muted-foreground/70 truncate mt-0.5 lg:mt-0 font-normal">{t.description}</p>
           ) : null}
           {t.notes ? (
             <p className="text-[10px] lg:text-xs text-muted-foreground/70 italic truncate mt-0.5 lg:mt-0">📝 {t.notes}</p>
@@ -431,11 +431,8 @@ export function TransactionsView({
                     }`}>
                       {accountLabels[row.account] || row.account}
                     </span>
-                    {row.transactions.every(t => t.source === 'manual') && (
-                      <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
-                        Manual
-                      </span>
-                    )}
+                    {/* Note: split children always lose plaid_transaction_id on insert, so source==='manual' for all of them.
+                        We can't reliably tell a user-created split from a sync-derived split here, so omit the Manual badge on split groups. */}
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">

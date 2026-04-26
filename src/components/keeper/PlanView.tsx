@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info } from 'lucide-react';
+import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
@@ -79,19 +79,44 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
     return formatLastVisited(lv);
   };
 
+  const hasIncome = (() => {
+    const fp = financialProfile;
+    if (!fp) return false;
+    const incomes = Array.isArray(fp.member_incomes) ? fp.member_incomes : [];
+    return incomes.some((m: any) => (Number(m.gross_income) || 0) > 0);
+  })();
+
   const isToolDisabled = (toolId: InsightToolId): boolean => {
     const fp = financialProfile;
+    if (!fp) return true;
     if (toolId === 'debt-payoff') {
-      if (!fp) return false;
       const debts = Array.isArray(fp.debts) ? fp.debts : [];
       return debts.length === 0;
+    }
+    if (toolId === 'retirement') {
+      // Needs income to model contributions and replacement targets
+      return !hasIncome;
+    }
+    if (toolId === 'mortgage-analyzer') {
+      // Only meaningful if the household owns and has mortgage data populated
+      if (fp.housing_type !== 'own') return true;
+      return !(Number(fp.mortgage_balance) > 0 && Number(fp.mortgage_payment) > 0);
+    }
+    if (toolId === 'life-insurance') {
+      // Income Replacement / DIME both need income
+      return !hasIncome;
+    }
+    if (toolId === 'emergency-fund') {
+      // Target months are derived from income + housing
+      return !hasIncome || !fp.housing_type;
     }
     return false;
   };
 
   const getDisabledReason = (toolId: InsightToolId): string | null => {
-    if (toolId === 'debt-payoff' && isToolDisabled(toolId)) return 'N/A';
-    return null;
+    if (!isToolDisabled(toolId)) return null;
+    if (toolId === 'debt-payoff') return 'N/A';
+    return 'Locked';
   };
 
   const insightTools: { id: InsightToolId; name: string; subtitle: string; icon: typeof Shield }[] = [
@@ -185,13 +210,14 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
             const disabled = isToolDisabled(tool.id);
             const disabledReason = getDisabledReason(tool.id);
             const lastVisited = getLastVisited(tool.id);
+            const isLocked = disabled && disabledReason === 'Locked';
             return (
               <button
                 key={tool.id}
                 onClick={() => handleToolNavigate(tool.id)}
                 disabled={disabled}
                 className={`w-full flex items-center gap-3 bg-card rounded-xl p-3.5 shadow-sm text-left transition-transform ${
-                  disabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
+                  disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'active:scale-[0.98]'
                 }`}
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -199,9 +225,13 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground leading-tight">{tool.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">{tool.subtitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">
+                    {isLocked ? 'Complete profile to unlock' : tool.subtitle}
+                  </p>
                 </div>
-                {disabled && disabledReason ? (
+                {isLocked ? (
+                  <Lock size={14} className="text-muted-foreground shrink-0" />
+                ) : disabled && disabledReason ? (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-muted text-muted-foreground">
                     {disabledReason}
                   </span>
