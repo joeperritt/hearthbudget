@@ -422,6 +422,7 @@ export function Dashboard({
   totalFixedSpent = 0,
   insightsSection,
   onViewAllUnassigned,
+  onViewAllActivity,
 }: DashboardProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
