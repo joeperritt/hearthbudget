@@ -476,7 +476,6 @@ const Index = () => {
                 error={insightsError}
                 lastUpdated={insightsLastUpdated}
                 hasCached={insightsHasCached}
-                onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
                 onGenerate={generateInsights}
               />
             }
