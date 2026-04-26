@@ -6,9 +6,9 @@ Last updated: April 26, 2026
 
 ## Security — pre-launch
 
-### Revisit Cloudflare auth rate limit thresholds before public launch
+### Decide on real rate-limiting strategy for login/password reset before public launch
 
-Currently 4 req/10sec per IP is appropriate for low traffic. May need adjustment if false positives appear in real usage (e.g., shared office IPs with multiple users logging in simultaneously). Revisit thresholds before opening signups beyond the current allowlist.
+Options: Cloudflare Worker proxying Supabase, hosted edge proxy, or migrate off Lovable Cloud to access GoTrue config directly.
 
 ### GoTrue CAPTCHA enforcement limitation
 
@@ -20,7 +20,7 @@ Mitigations currently in place:
 - HIBP password check on
 - Supabase default per-IP rate limits (30 per 5 min on sign-in attempts)
 
-If we ever see credential-stuffing or reset-spam patterns in logs, the answer is Cloudflare WAF (above), not migrating to self-hosted Supabase. Confirmed by Lovable support April 23, 2026.
+If we ever see credential-stuffing or reset-spam patterns in logs, the answer is a real distributed rate-limiting layer (see "Decide on real rate-limiting strategy" above and the deferred Cloudflare entry under Security caveats), not migrating to self-hosted Supabase. Confirmed by Lovable support April 23, 2026.
 
 ### Production hostname block maintenance
 
@@ -77,7 +77,7 @@ Guided tour showing benefits when profile is incomplete. Currently just shows em
 
 ## Security caveats
 
-**Cloudflare WAF active on keeperbudget.com (April 26, 2026).** Rate limiting auth endpoints (`/auth/v1/token`, `/auth/v1/signup`, `/auth/v1/recover`, `/auth/v1/otp`) at 4 req/10sec per IP, 10-min block on exceed. Bot Fight Mode and Block AI Bots enabled. SSL/TLS Full (strict). This closes the GoTrue CAPTCHA enforcement gap that Lovable Cloud doesn't expose for login/password reset.
+**Cloudflare distributed rate limiting on auth endpoints — DEFERRED (April 26, 2026).** Earlier attempt configured a rate limit rule for `/auth/v1/*` paths, but those endpoints live on Supabase's domain (`*.supabase.co`), not `keeperbudget.com` — so the rule doesn't fire. Cloudflare proxy on the apex domain also breaks Lovable's certificate provisioning, so A records are grey-cloud (DNS only). Real solutions for this would be: (1) Build a Cloudflare Worker that proxies Supabase auth calls through `keeperbudget.com` so we can rate-limit them, or (2) Wait for Lovable to expose GoTrue env vars. Until then, rate limiting on login/password reset relies on Supabase's defaults (30 sign-in attempts per 5 min per IP) plus the Turnstile widget as frontend friction. Cloudflare zone remains active for DNS, Bot Fight Mode, and Block AI Bots (zone-wide settings), but does not actively proxy or filter auth traffic.
 
 **SMS-based MFA — explicitly rejected.** Considered and ruled out due to SIM swap attack vulnerability, NIST SP 800-63B deprecation of SMS as an authenticator, and per-message carrier cost. Do not revisit without strong justification (e.g., a specific user segment that genuinely cannot use TOTP, email OTP, or passkeys, AND a mitigation for SIM swap risk).
 
