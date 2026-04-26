@@ -10,7 +10,7 @@ const iconMap: Record<Insight['type'], { icon: typeof AlertTriangle; color: stri
   savings: { icon: PiggyBank, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
 };
 
-interface InsightsSectionProps {
+interface BigPictureSectionProps {
   insights: Insight[];
   loading: boolean;
   error: string | null;
@@ -19,20 +19,19 @@ interface InsightsSectionProps {
   onGenerate: () => void;
 }
 
-export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate }: InsightsSectionProps) {
-  const displayInsights = insights.slice(0, 3);
+export function BigPictureSection({ insights, loading, error, lastUpdated, hasCached, onGenerate }: BigPictureSectionProps) {
   const ageDays = lastUpdated ? differenceInDays(new Date(), lastUpdated) : 0;
   const isStale = lastUpdated && ageDays >= 7;
-  const showEmpty = !hasCached && displayInsights.length === 0 && !loading && !error;
+  const showEmpty = !hasCached && insights.length === 0 && !loading && !error;
 
   return (
-    <div className="px-6 mt-6 animate-fade-up" style={{ animationDelay: '400ms', animationFillMode: 'both' }}>
+    <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Sparkles size={14} className="text-accent" />
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Insights</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Big Picture</h3>
         </div>
-        {(hasCached || displayInsights.length > 0) && (
+        {(hasCached || insights.length > 0) && (
           <button
             onClick={onGenerate}
             disabled={loading}
@@ -44,7 +43,6 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
         )}
       </div>
 
-      {/* Empty state — button-only invitation */}
       {showEmpty ? (
         <button
           onClick={onGenerate}
@@ -52,26 +50,24 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
         >
           <Sparkles size={22} className="text-accent" />
           <p className="text-sm text-foreground text-center max-w-xs leading-snug">
-            Get personalized analysis of this month's budget from your AI financial advisor
+            Get a cross-domain view connecting your budget to your long-term financial picture
           </p>
           <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium">
             <Sparkles size={14} />
-            Generate insights
+            Generate big picture
           </span>
         </button>
-      ) : loading && displayInsights.length === 0 ? (
-        // Loading-from-empty state
+      ) : loading && insights.length === 0 ? (
         <div className="bg-card rounded-lg shadow-sm px-4 py-8 flex flex-col items-center gap-2">
           <Loader2 size={20} className="text-accent animate-spin" />
-          <p className="text-sm text-muted-foreground">Analyzing your budget…</p>
+          <p className="text-sm text-muted-foreground">Analyzing your full picture…</p>
         </div>
       ) : (
         <>
-          {/* Stale nudge */}
           {isStale && !error && !loading && (
             <div className="mb-2 bg-accent/5 border border-accent/20 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
               <p className="text-xs text-foreground">
-                Your insights are {ageDays} days old
+                Your big picture is {ageDays} days old
               </p>
               <button
                 onClick={onGenerate}
@@ -82,20 +78,18 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
             </div>
           )}
 
-          {/* Loading overlay strip while keeping cached content visible */}
-          {loading && displayInsights.length > 0 && (
+          {loading && insights.length > 0 && (
             <div className="mb-2 bg-card border border-border rounded-lg px-3 py-2 flex items-center gap-2">
               <Loader2 size={14} className="text-accent animate-spin" />
-              <p className="text-xs text-muted-foreground">Analyzing your budget…</p>
+              <p className="text-xs text-muted-foreground">Analyzing your full picture…</p>
             </div>
           )}
 
-          {/* Inline error preserves section */}
           {error && (
             <div className="mb-2 bg-card rounded-lg shadow-sm px-3 py-2.5 border-l-[3px] border-l-destructive flex items-start gap-2">
               <AlertTriangle size={14} className="text-destructive mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-foreground">Couldn't refresh insights</p>
+                <p className="text-xs font-semibold text-foreground">Couldn't refresh big picture</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{error}</p>
               </div>
               <button
@@ -108,10 +102,9 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
             </div>
           )}
 
-          {/* Cached insights */}
-          {displayInsights.length > 0 && (
+          {insights.length > 0 && (
             <div className="space-y-2">
-              {displayInsights.map((insight, i) => {
+              {insights.map((insight, i) => {
                 const config = iconMap[insight.type] || iconMap.tip;
                 const Icon = config.icon;
                 return (

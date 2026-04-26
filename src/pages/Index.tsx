@@ -255,7 +255,10 @@ const Index = () => {
 
   const {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
-    hasCached: insightsHasCached, generateInsights, chatMessages, chatLoading, sendChatMessage, clearChat,
+    hasCached: insightsHasCached, generateInsights,
+    bigPictureInsights, bigPictureLoading, bigPictureError, bigPictureLastUpdated,
+    bigPictureHasCached, generateBigPicture,
+    chatMessages, chatLoading, sendChatMessage, clearChat,
   } = useBudgetInsights(
     activeMonth, activeMonthCategories, activeMonthFixedExpenses, monthTransactions,
     spentByCategory, transferAdjustments, accountSpending, unassignedTransactions.length, totalBudget,
@@ -473,7 +476,6 @@ const Index = () => {
                 error={insightsError}
                 lastUpdated={insightsLastUpdated}
                 hasCached={insightsHasCached}
-                onSeeAll={() => { setActiveTab('more'); setMoreSubView('ai-advisor'); }}
                 onGenerate={generateInsights}
               />
             }
@@ -570,13 +572,16 @@ const Index = () => {
         )}
         {activeTab === 'more' && moreSubView === 'ai-advisor' && (
           <AIAdvisorView
-            insights={insights}
-            loading={insightsLoading}
+            bigPictureInsights={bigPictureInsights}
+            bigPictureLoading={bigPictureLoading}
+            bigPictureError={bigPictureError}
+            bigPictureLastUpdated={bigPictureLastUpdated}
+            bigPictureHasCached={bigPictureHasCached}
+            onGenerateBigPicture={generateBigPicture}
             chatMessages={chatMessages}
             chatLoading={chatLoading}
             onSendMessage={sendChatMessage}
             onBack={() => setMoreSubView('menu')}
-            onRefresh={generateInsights}
           />
         )}
         {activeTab === 'more' && moreSubView === 'trends' && (

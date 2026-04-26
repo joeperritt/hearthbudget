@@ -341,6 +341,13 @@ export function useBudgetInsights(
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hasCached, setHasCached] = useState(false);
+
+  const [bigPictureInsights, setBigPictureInsights] = useState<Insight[]>([]);
+  const [bigPictureLoading, setBigPictureLoading] = useState(false);
+  const [bigPictureError, setBigPictureError] = useState<string | null>(null);
+  const [bigPictureLastUpdated, setBigPictureLastUpdated] = useState<Date | null>(null);
+  const [bigPictureHasCached, setBigPictureHasCached] = useState(false);
+
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const insightsRef = useRef<Insight[]>([]);
@@ -352,19 +359,29 @@ export function useBudgetInsights(
     (async () => {
       const { data } = await supabase
         .from('ai_insights_cache')
-        .select('insights, generated_at')
+        .select('insights, generated_at, kind')
         .eq('household_id', householdId)
-        .eq('kind', 'home')
-        .maybeSingle();
+        .in('kind', ['home', 'big_picture']);
       if (cancelled) return;
-      if (data) {
-        const parsed = parseInsights((data as any).insights);
+      const rows = (data || []) as { insights: unknown; generated_at: string; kind: string }[];
+      const homeRow = rows.find(r => r.kind === 'home');
+      const bpRow = rows.find(r => r.kind === 'big_picture');
+      if (homeRow) {
+        const parsed = parseInsights(homeRow.insights);
         setInsights(parsed);
         insightsRef.current = parsed;
-        setLastUpdated(new Date((data as any).generated_at));
+        setLastUpdated(new Date(homeRow.generated_at));
         setHasCached(true);
       } else {
         setHasCached(false);
+      }
+      if (bpRow) {
+        const parsed = parseInsights(bpRow.insights);
+        setBigPictureInsights(parsed);
+        setBigPictureLastUpdated(new Date(bpRow.generated_at));
+        setBigPictureHasCached(true);
+      } else {
+        setBigPictureHasCached(false);
       }
     })();
     return () => { cancelled = true; };
@@ -410,6 +427,38 @@ export function useBudgetInsights(
     }
   }, [getSummary]);
 
+  const generateBigPicture = useCallback(async () => {
+    setBigPictureLoading(true);
+    setBigPictureError(null);
+    try {
+      const summaryData = await getSummary();
+      const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
+        body: {
+          budgetSummary: summaryData,
+          mode: 'big_picture',
+          stewardshipMode: true,
+          forceRefresh: true,
+        },
+      });
+      if (fnError) throw new Error(fnError.message || 'Edge function error');
+      if (!data) throw new Error('No data returned from edge function');
+
+      const content = data?.content || '';
+      const parsed = parseInsights(content);
+      if (parsed.length === 0) throw new Error('Could not parse insights from response');
+
+      setBigPictureInsights(parsed);
+      setBigPictureLastUpdated(data?.generatedAt ? new Date(data.generatedAt) : new Date());
+      setBigPictureHasCached(true);
+    } catch (e: any) {
+      const msg = e?.message || 'Unknown error generating big picture';
+      console.error('[BigPicture] Failed:', msg, e);
+      setBigPictureError(msg);
+    } finally {
+      setBigPictureLoading(false);
+    }
+  }, [getSummary]);
+
   const sendChatMessage = useCallback(async (message: string) => {
     const userMsg = { role: 'user' as const, content: message };
     const newMessages = [...chatMessages, userMsg];
@@ -439,6 +488,12 @@ export function useBudgetInsights(
     lastUpdated,
     hasCached,
     generateInsights,
+    bigPictureInsights,
+    bigPictureLoading,
+    bigPictureError,
+    bigPictureLastUpdated,
+    bigPictureHasCached,
+    generateBigPicture,
     chatMessages,
     chatLoading,
     sendChatMessage,
