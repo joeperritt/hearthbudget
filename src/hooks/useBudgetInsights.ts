@@ -427,6 +427,38 @@ export function useBudgetInsights(
     }
   }, [getSummary]);
 
+  const generateBigPicture = useCallback(async () => {
+    setBigPictureLoading(true);
+    setBigPictureError(null);
+    try {
+      const summaryData = await getSummary();
+      const { data, error: fnError } = await supabase.functions.invoke('budget-insights', {
+        body: {
+          budgetSummary: summaryData,
+          mode: 'big_picture',
+          stewardshipMode: true,
+          forceRefresh: true,
+        },
+      });
+      if (fnError) throw new Error(fnError.message || 'Edge function error');
+      if (!data) throw new Error('No data returned from edge function');
+
+      const content = data?.content || '';
+      const parsed = parseInsights(content);
+      if (parsed.length === 0) throw new Error('Could not parse insights from response');
+
+      setBigPictureInsights(parsed);
+      setBigPictureLastUpdated(data?.generatedAt ? new Date(data.generatedAt) : new Date());
+      setBigPictureHasCached(true);
+    } catch (e: any) {
+      const msg = e?.message || 'Unknown error generating big picture';
+      console.error('[BigPicture] Failed:', msg, e);
+      setBigPictureError(msg);
+    } finally {
+      setBigPictureLoading(false);
+    }
+  }, [getSummary]);
+
   const sendChatMessage = useCallback(async (message: string) => {
     const userMsg = { role: 'user' as const, content: message };
     const newMessages = [...chatMessages, userMsg];
@@ -456,6 +488,12 @@ export function useBudgetInsights(
     lastUpdated,
     hasCached,
     generateInsights,
+    bigPictureInsights,
+    bigPictureLoading,
+    bigPictureError,
+    bigPictureLastUpdated,
+    bigPictureHasCached,
+    generateBigPicture,
     chatMessages,
     chatLoading,
     sendChatMessage,
