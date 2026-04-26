@@ -431,11 +431,8 @@ export function TransactionsView({
                     }`}>
                       {accountLabels[row.account] || row.account}
                     </span>
-                    {row.transactions.every(t => t.source === 'manual') && (
-                      <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
-                        Manual
-                      </span>
-                    )}
+                    {/* Note: split children always lose plaid_transaction_id on insert, so source==='manual' for all of them.
+                        We can't reliably tell a user-created split from a sync-derived split here, so omit the Manual badge on split groups. */}
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
