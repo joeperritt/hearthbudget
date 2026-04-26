@@ -137,7 +137,7 @@ function UnassignedSection({
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Unassigned</h3>
         </div>
         <div className="bg-card rounded-lg shadow-sm px-4 py-6 flex flex-col items-center justify-center">
-          <CheckCircle2 size={28} className="text-emerald-600 mb-2" />
+          <CheckCircle2 size={28} className="text-success mb-2" />
           <p className="text-sm text-foreground">All caught up — no unassigned transactions</p>
           {onViewAllActivity && (
             <button
