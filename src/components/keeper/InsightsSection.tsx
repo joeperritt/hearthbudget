@@ -1,4 +1,4 @@
-import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank, ChevronRight, RefreshCw, Loader2 } from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank, RefreshCw, Loader2 } from 'lucide-react';
 import { Insight } from '@/hooks/useBudgetInsights';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 
