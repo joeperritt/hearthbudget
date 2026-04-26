@@ -178,12 +178,16 @@ serve(async (req) => {
       ];
     } else if (budgetSummary) {
       const month = budgetSummary.currentMonth || "the current month";
-      const sysPrompt = activeSystemPrompt || HOME_PROMPT;
+      // Chat uses the dedicated CHAT_PROMPT (cross-domain, reactive, multi-turn).
+      // Cacheable modes use their respective prompts. Fallback to HOME_PROMPT.
+      const sysPrompt = isChat
+        ? CHAT_PROMPT
+        : (activeSystemPrompt || HOME_PROMPT);
       const stewardshipNote = `stewardshipMode is ${stewardshipMode ? "true" : "false"}.`;
       messages = isChat
         ? [
-            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}\n\nWhen answering follow-up questions, respond conversationally and specifically using the data provided. Be concise and helpful.` },
-            { role: "user", content: `The current active budget month is ${month}. Here is the data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
+            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}` },
+            { role: "user", content: `The current active budget month is ${month}. Here is the household's data (current month budget + long-term financial profile) for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
             ...chatMessages,
           ]
         : [
