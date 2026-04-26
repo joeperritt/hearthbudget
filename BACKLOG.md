@@ -6,9 +6,9 @@ Last updated: April 26, 2026
 
 ## Security — pre-launch
 
-### Revisit Cloudflare auth rate limit thresholds before public launch
+### Decide on real rate-limiting strategy for login/password reset before public launch
 
-Currently 4 req/10sec per IP is appropriate for low traffic. May need adjustment if false positives appear in real usage (e.g., shared office IPs with multiple users logging in simultaneously). Revisit thresholds before opening signups beyond the current allowlist.
+Options: Cloudflare Worker proxying Supabase, hosted edge proxy, or migrate off Lovable Cloud to access GoTrue config directly.
 
 ### GoTrue CAPTCHA enforcement limitation
 
