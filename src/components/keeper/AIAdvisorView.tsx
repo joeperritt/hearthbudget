@@ -1,28 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Sparkles, Send, AlertTriangle, CheckCircle2, Lightbulb, Heart, PiggyBank } from 'lucide-react';
+import { ArrowLeft, Sparkles, Send } from 'lucide-react';
 import { Insight } from '@/hooks/useBudgetInsights';
 import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
-
-const iconMap: Record<Insight['type'], { icon: typeof AlertTriangle; color: string; border: string; bg: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-destructive', border: 'border-l-destructive', bg: 'lg:bg-destructive/5' },
-  encouragement: { icon: CheckCircle2, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
-  tip: { icon: Lightbulb, color: 'text-yellow-600', border: 'border-l-yellow-500', bg: 'lg:bg-yellow-500/5' },
-  giving: { icon: Heart, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
-  savings: { icon: PiggyBank, color: 'text-green-600', border: 'border-l-green-500', bg: 'lg:bg-green-500/5' },
-};
+import { BigPictureSection } from './BigPictureSection';
 
 interface AIAdvisorViewProps {
-  insights: Insight[];
-  loading: boolean;
+  bigPictureInsights: Insight[];
+  bigPictureLoading: boolean;
+  bigPictureError: string | null;
+  bigPictureLastUpdated: Date | null;
+  bigPictureHasCached: boolean;
+  onGenerateBigPicture: () => void;
   chatMessages: { role: 'user' | 'assistant'; content: string }[];
   chatLoading: boolean;
   onSendMessage: (msg: string) => void;
   onBack: () => void;
-  onRefresh: () => void;
 }
 
-export function AIAdvisorView({ insights, loading, chatMessages, chatLoading, onSendMessage, onBack, onRefresh }: AIAdvisorViewProps) {
+export function AIAdvisorView({
+  bigPictureInsights,
+  bigPictureLoading,
+  bigPictureError,
+  bigPictureLastUpdated,
+  bigPictureHasCached,
+  onGenerateBigPicture,
+  chatMessages,
+  chatLoading,
+  onSendMessage,
+  onBack,
+}: AIAdvisorViewProps) {
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -49,51 +56,19 @@ export function AIAdvisorView({ insights, loading, chatMessages, chatLoading, on
             <Sparkles size={18} className="text-accent" />
             <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">AI Advisor</h1>
           </div>
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="ml-auto text-xs text-accent font-medium active:opacity-70 disabled:opacity-50"
-          >
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
         </div>
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 pb-4">
-        {/* All insight cards */}
-        {insights.length > 0 && (
-          <div className="space-y-2 mb-6">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Insights</h3>
-            {insights.map((insight, i) => {
-              const config = iconMap[insight.type] || iconMap.tip;
-              const Icon = config.icon;
-              return (
-                <div key={i} className={`bg-card rounded-lg shadow-sm p-3.5 border-l-[3px] ${config.border} ${config.bg}`}>
-                  <div className="flex items-start gap-2.5">
-                    <Icon size={16} className={`${config.color} mt-0.5 shrink-0`} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground font-display">{insight.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{insight.body}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {loading && insights.length === 0 && (
-          <div className="space-y-2 mb-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-card rounded-lg shadow-sm p-4 animate-pulse">
-                <div className="h-3 bg-muted rounded w-1/3 mb-2" />
-                <div className="h-2 bg-muted rounded w-full mb-1" />
-                <div className="h-2 bg-muted rounded w-2/3" />
-              </div>
-            ))}
-          </div>
-        )}
+        <BigPictureSection
+          insights={bigPictureInsights}
+          loading={bigPictureLoading}
+          error={bigPictureError}
+          lastUpdated={bigPictureLastUpdated}
+          hasCached={bigPictureHasCached}
+          onGenerate={onGenerateBigPicture}
+        />
 
         {/* Chat messages */}
         {chatMessages.length > 0 && (
@@ -139,7 +114,7 @@ export function AIAdvisorView({ insights, loading, chatMessages, chatLoading, on
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Ask about your budget..."
+            placeholder="Ask Keeper about your budget or plan..."
             className="flex-1 text-sm"
             disabled={chatLoading}
           />
