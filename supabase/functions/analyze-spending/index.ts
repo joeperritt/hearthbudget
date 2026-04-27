@@ -8,25 +8,29 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STEWARDSHIP_PROMPT = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA) reviewing a household's actual spending against their existing budget categories. Your job is to suggest realistic monthly budget targets per category based on the last 90 days of real activity, informed by CFP guidelines and stewardship principles (giving first, then saving, then living).
+const STEWARDSHIP_PROMPT = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA) reviewing a household's actual spending against their monthly take-home pay. Your job is to suggest realistic monthly budget targets per category based on the last 90 days of real activity, informed by CFP percentage-of-income guidelines and stewardship principles (giving first, then saving, then living).
 
-Tone: warm, encouraging, never shaming. If giving or saving is below typical guidelines (10% giving, 10–15% saving), frame it as a direction to grow toward — never a failure. Use plain language. Reference categories by what they represent ("eating out", "personal misc", "hosting and gifts") rather than internal slugs or codes. Do not use overtly devotional vocabulary.
+Use the user-provided "monthly_take_home" as the denominator for every percentage. For each category, compare actual_monthly_avg as a % of take-home against typical CFP guidelines (rough anchors: housing ≤28%, transportation ≤15%, food/groceries ≤12%, food out ≤5%, giving 10%, saving 10–15%, personal/discretionary ≤10% combined). When a category is well over guideline, suggest a dollar amount that brings it closer to the guideline %. When in line, suggest something near the actual_monthly_avg.
+
+Tone: warm, encouraging, never shaming. Frame giving/saving below guideline as a direction to grow toward. Use plain language. Reference categories by what they represent ("eating out", "personal misc", "hosting and gifts") rather than internal slugs or codes. Do not use overtly devotional vocabulary.
 
 For each category in the input, return:
 - "suggested": a realistic monthly target dollar amount (number, no $)
-- "commentary": one short sentence (max 20 words) explaining the suggestion in plain language
+- "commentary": one short sentence (max 20 words) referencing the % of take-home if it's notably high or low
 
 Also return an "overall_summary": 2–3 sentences describing the overall picture and the most important opportunity to focus on next month.
 
 Stay strictly within budgeting guidance. Do not recommend specific securities, give tax advice, or suggest insurance products.`;
 
-const STANDARD_PROMPT = `You are a Certified Financial Planner (CFP) reviewing a household's actual spending against their existing budget categories. Suggest realistic monthly budget targets per category based on the last 90 days of real activity, informed by CFP guidelines (housing ~28%, saving 15%+, etc).
+const STANDARD_PROMPT = `You are a Certified Financial Planner (CFP) reviewing a household's actual spending against their monthly take-home pay. Suggest realistic monthly budget targets per category based on the last 90 days of real activity, informed by CFP percentage-of-income guidelines.
+
+Use the user-provided "monthly_take_home" as the denominator for every percentage. For each category, compare actual_monthly_avg as a % of take-home against typical CFP guidelines (rough anchors: housing ≤28%, transportation ≤15%, food/groceries ≤12%, food out ≤5%, saving 15%+, personal/discretionary ≤10% combined). When a category is well over guideline, suggest a dollar amount that brings it closer to the guideline %. When in line, suggest something near the actual_monthly_avg.
 
 Tone: neutral, professional, direct. Use plain language. Reference categories by what they represent ("eating out", "personal misc", "hosting and gifts") rather than internal slugs or codes. No faith framing.
 
 For each category in the input, return:
 - "suggested": a realistic monthly target dollar amount (number, no $)
-- "commentary": one short sentence (max 20 words) explaining the suggestion in plain language
+- "commentary": one short sentence (max 20 words) referencing the % of take-home if it's notably high or low
 
 Also return an "overall_summary": 2–3 sentences describing the overall picture and the most important opportunity to focus on next month.
 
@@ -73,9 +77,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = (await req.json().catch(() => ({}))) as { stewardshipMode?: boolean; lookbackDays?: number };
+    const body = (await req.json().catch(() => ({}))) as { stewardshipMode?: boolean; lookbackDays?: number; monthlyIncome?: number };
     const stewardshipMode = body.stewardshipMode !== false;
     const lookbackDays = Math.min(Math.max(body.lookbackDays ?? 90, 30), 180);
+    const monthlyIncome = Number(body.monthlyIncome);
+    if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
+      return new Response(JSON.stringify({
+        error: "missing_income",
+        message: "Monthly take-home pay is required.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const sinceDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
@@ -114,24 +125,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Helper: any ignore-* slug or unassigned should never count as income or spending.
+    // Any ignore-* slug or unassigned should never count as spending.
     const isIgnored = (slug: string) =>
       !slug || slug === "unassigned" || slug.startsWith("ignore-");
-
-    // Income detection (avg/month):
-    //   1. Anything explicitly tagged transaction_type='income' that ISN'T ignore-* / unassigned.
-    //   2. PLUS positive-magnitude deposits into the checking account that aren't ignore-* / unassigned
-    //      (covers paychecks Plaid mis-tags as 'expense' or 'deposit').
-    // In this app, deposits land as negative amounts, so a "positive deposit" = amount < 0 on checking.
-    let incomeTotal = 0;
-    for (const t of transactions) {
-      if (isIgnored(t.category_slug)) continue;
-      const amt = Number(t.amount);
-      if (t.transaction_type === "income") {
-        incomeTotal += Math.abs(amt);
-      }
-    }
-    const detectedMonthlyIncome = incomeTotal / monthsObserved;
 
     // Spending grouped by category slug (skip ignore-* and unassigned)
     const spentBySlug = new Map<string, number>();
@@ -160,7 +156,7 @@ Deno.serve(async (req) => {
 
     const aiPayload = {
       months_observed: monthsObserved,
-      detected_monthly_income: round2(detectedMonthlyIncome),
+      monthly_take_home: round2(monthlyIncome),
       annual_gross_income_on_file: profileBits.annual_gross_income ?? null,
       filing_status: profileBits.filing_status ?? null,
       state: profileBits.state ?? null,
@@ -230,7 +226,7 @@ Deno.serve(async (req) => {
     }));
 
     return new Response(JSON.stringify({
-      detected_monthly_income: round2(detectedMonthlyIncome),
+      monthly_take_home: round2(monthlyIncome),
       months_observed: monthsObserved,
       lookback_days: lookbackDays,
       transaction_count: transactions.length,

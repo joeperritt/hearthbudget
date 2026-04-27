@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Pencil, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { BudgetCategory } from "@/types/budget";
 
 const LOADING_MESSAGES = [
   "Pulling your transaction history…",
-  "Calculating monthly income…",
-  "Grouping your spending into categories…",
-  "Building your CFP-informed budget…",
+  "Comparing spending to your take-home pay…",
+  "Checking against CFP guideline percentages…",
+  "Building your suggested targets…",
 ];
 
 interface AnalyzeResult {
-  detected_monthly_income: number;
+  monthly_take_home: number;
   months_observed: number;
   lookback_days: number;
   transaction_count: number;
@@ -43,6 +43,11 @@ function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
 }
 
+function pct(n: number, denom: number): string {
+  if (!denom) return "";
+  return `${Math.round((n / denom) * 100)}%`;
+}
+
 export function SpendingAnalyzer({
   open,
   onOpenChange,
@@ -50,11 +55,10 @@ export function SpendingAnalyzer({
   onApply,
   stewardshipMode = true,
 }: SpendingAnalyzerProps) {
-  const [phase, setPhase] = useState<"idle" | "loading" | "results">("idle");
+  const [phase, setPhase] = useState<"intake" | "loading" | "results">("intake");
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [income, setIncome] = useState<string>("");
-  const [editingIncome, setEditingIncome] = useState(false);
   // Per-row choice: "suggested" or "actual"
   const [choices, setChoices] = useState<Record<string, "suggested" | "actual">>({});
   const [applying, setApplying] = useState(false);
@@ -62,10 +66,10 @@ export function SpendingAnalyzer({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setPhase("idle");
+      setPhase("intake");
       setResult(null);
       setChoices({});
-      setEditingIncome(false);
+      setIncome("");
     }
   }, [open]);
 
@@ -78,12 +82,19 @@ export function SpendingAnalyzer({
     return () => clearInterval(t);
   }, [phase]);
 
+  const incomeNum = Number(income);
+  const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
+
   const runAnalysis = async () => {
+    if (!incomeValid) {
+      toast({ title: "Enter your monthly take-home pay first.", variant: "destructive" });
+      return;
+    }
     setPhase("loading");
     setLoadingIdx(0);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
-        body: { stewardshipMode, lookbackDays: 90 },
+        body: { stewardshipMode, lookbackDays: 90, monthlyIncome: incomeNum },
       });
       if (error) throw error;
       const r = data as AnalyzeResult & { error?: string; message?: string };
@@ -93,11 +104,10 @@ export function SpendingAnalyzer({
           description: r.message || "Try again in a moment.",
           variant: "destructive",
         });
-        setPhase("idle");
+        setPhase("intake");
         return;
       }
       setResult(r);
-      setIncome(String(Math.round(r.detected_monthly_income)));
       // Default each row to Suggested if delta > 5%, else Actual
       const next: Record<string, "suggested" | "actual"> = {};
       for (const row of r.categories) {
@@ -114,7 +124,7 @@ export function SpendingAnalyzer({
         description: e instanceof Error ? e.message : "Try again in a moment.",
         variant: "destructive",
       });
-      setPhase("idle");
+      setPhase("intake");
     }
   };
 
@@ -163,18 +173,44 @@ export function SpendingAnalyzer({
           </SheetTitle>
         </SheetHeader>
 
-        {phase === "idle" && (
-          <div className="px-5 py-8 space-y-5 text-center max-w-md mx-auto">
-            <p className="text-sm text-muted-foreground">
+        {phase === "intake" && (
+          <div className="px-5 py-8 space-y-6 max-w-md mx-auto">
+            <p className="text-sm text-muted-foreground text-center">
               We'll review your last 90 days of transactions and suggest realistic
-              monthly targets for each category, informed by Certified Financial
-              Planner (CFP) guidelines{stewardshipMode ? " and stewardship principles" : ""}.
+              monthly targets, comparing your spending to Certified Financial
+              Planner (CFP) guideline percentages
+              {stewardshipMode ? " informed by stewardship principles" : ""}.
             </p>
-            <p className="text-xs text-muted-foreground">
+
+            <div className="space-y-2">
+              <label htmlFor="take-home" className="text-sm font-medium text-foreground block">
+                What's your monthly take-home pay?
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base">$</span>
+                <input
+                  id="take-home"
+                  type="text"
+                  inputMode="decimal"
+                  value={income}
+                  onChange={e => setIncome(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="10,000"
+                  autoFocus
+                  className="w-full pl-7 pr-3 py-3 text-lg font-semibold tabular-nums bg-card border border-border rounded-xl outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use what actually lands in your accounts each month after taxes,
+                health insurance, and retirement contributions.
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
               Your manual category assignments and ignored transactions are respected.
               Nothing is changed until you review and apply.
             </p>
-            <Button onClick={runAnalysis} className="w-full">
+
+            <Button onClick={runAnalysis} disabled={!incomeValid} className="w-full">
               <Sparkles className="w-4 h-4 mr-2" />
               Analyze my spending
             </Button>
@@ -195,29 +231,9 @@ export function SpendingAnalyzer({
             {/* Income header */}
             <div className="px-5 py-4 bg-card border-b border-border">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-sm text-muted-foreground">
-                  Detected monthly take-home
-                </div>
-                <div className="flex items-center gap-2">
-                  {editingIncome ? (
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={income}
-                      onChange={e => setIncome(e.target.value.replace(/[^0-9.]/g, ""))}
-                      onBlur={() => setEditingIncome(false)}
-                      autoFocus
-                      className="w-28 text-right text-base font-semibold tabular-nums bg-transparent border-b border-amber-400 outline-none"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setEditingIncome(true)}
-                      className="flex items-center gap-1.5 text-base font-semibold tabular-nums text-foreground hover:text-amber-600 transition-colors"
-                    >
-                      {fmt(Number(income) || 0)}
-                      <Pencil className="w-3.5 h-3.5 text-amber-500" />
-                    </button>
-                  )}
+                <div className="text-sm text-muted-foreground">Monthly take-home</div>
+                <div className="text-base font-semibold tabular-nums text-foreground">
+                  {fmt(result.monthly_take_home)}
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -229,6 +245,8 @@ export function SpendingAnalyzer({
             <div className="px-5 py-3 space-y-3">
               {result.categories.map(row => {
                 const choice = choices[row.slug] ?? "suggested";
+                const actualPct = pct(row.actual_monthly_avg, result.monthly_take_home);
+                const suggestedPct = pct(row.suggested, result.monthly_take_home);
                 return (
                   <div key={row.slug} className="bg-card rounded-xl border border-border p-3">
                     <div className="flex items-center justify-between gap-2 mb-2">
@@ -259,11 +277,17 @@ export function SpendingAnalyzer({
                       </div>
                       <div>
                         <div className="text-muted-foreground">Actual avg</div>
-                        <div className="font-medium tabular-nums">{fmt(row.actual_monthly_avg)}</div>
+                        <div className="font-medium tabular-nums">
+                          {fmt(row.actual_monthly_avg)}
+                          {actualPct && <span className="text-muted-foreground font-normal ml-1">({actualPct})</span>}
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Suggested</div>
-                        <div className="font-medium tabular-nums text-amber-700 dark:text-amber-400">{fmt(row.suggested)}</div>
+                        <div className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                          {fmt(row.suggested)}
+                          {suggestedPct && <span className="text-amber-700/70 dark:text-amber-400/70 font-normal ml-1">({suggestedPct})</span>}
+                        </div>
                       </div>
                     </div>
                     {row.commentary && (
@@ -293,10 +317,15 @@ export function SpendingAnalyzer({
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-5 py-3 flex items-center justify-between gap-3">
               <div className="text-xs">
                 <div className="text-muted-foreground">Selected total</div>
-                <div className="font-semibold tabular-nums text-foreground">{fmt(totalBudget)}</div>
+                <div className="font-semibold tabular-nums text-foreground">
+                  {fmt(totalBudget)}
+                  <span className="text-muted-foreground font-normal ml-1">
+                    ({pct(totalBudget, result.monthly_take_home)})
+                  </span>
+                </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setPhase("idle")}>
+                <Button variant="ghost" size="sm" onClick={() => setPhase("intake")}>
                   <ArrowLeft className="w-4 h-4 mr-1" /> Back
                 </Button>
                 <Button onClick={apply} disabled={applying}>
