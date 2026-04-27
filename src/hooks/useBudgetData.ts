@@ -262,6 +262,19 @@ export function useBudgetData() {
     });
   }, [householdId]);
 
+  const deleteTransfer = useCallback(async (id: string) => {
+    let snapshot: BudgetTransfer[] = [];
+    setTransfers(prev => {
+      snapshot = prev;
+      return prev.filter(t => t.id !== id);
+    });
+    const { error } = await supabase.from('budget_transfers').delete().eq('id', id);
+    if (error) {
+      setTransfers(snapshot);
+      throw error;
+    }
+  }, []);
+
   const updateCategories = useCallback(async (cats: BudgetCategory[]) => {
     if (!householdId) return;
 
@@ -498,6 +511,7 @@ export function useBudgetData() {
     addTransactions,
     deleteTransaction,
     addTransfer,
+    deleteTransfer,
     updateCategories,
     updateFixedExpenses,
     addCategoryForMonth,

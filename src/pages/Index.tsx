@@ -52,7 +52,7 @@ const Index = () => {
   const {
     categories, fixedExpenses, transactions, transfers,
     activeMonth, loading, householdId,
-    addTransactions, deleteTransaction, addTransfer,
+    addTransactions, deleteTransaction, addTransfer, deleteTransfer,
     updateCategories, updateFixedExpenses, startNewMonth,
     addCategoryForMonth, addFixedExpenseForMonth,
     removeCategoryFromMonth, removeFixedExpenseFromMonth,
@@ -371,6 +371,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[cat.id] || 0}
           onBack={() => setSelectedCategoryId(null)}
           onDeleteTransaction={deleteTransaction}
+          onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />
@@ -396,6 +397,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[exp.id] || 0}
           onBack={() => setSelectedFixedExpenseId(null)}
           onDeleteTransaction={deleteTransaction}
+          onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />

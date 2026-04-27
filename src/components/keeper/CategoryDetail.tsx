@@ -1,10 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { AppAccount } from '@/hooks/useAccounts';
-import { ArrowLeft, ArrowLeftRight, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Search, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
@@ -27,11 +47,15 @@ interface CategoryDetailProps {
   transferAdjustment: number;
   onBack: () => void;
   onDeleteTransaction: (id: string) => void;
+  onDeleteTransfer?: (id: string) => Promise<void> | void;
   onGoToTransaction?: (transactionId: string) => void;
   accounts?: AppAccount[];
 }
 
-export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction, onGoToTransaction, accounts = [] }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction, onDeleteTransfer, onGoToTransaction, accounts = [] }: CategoryDetailProps) {
+  const [selectedTransfer, setSelectedTransfer] = useState<BudgetTransfer | null>(null);
+  const [pendingDeleteTransferId, setPendingDeleteTransferId] = useState<string | null>(null);
+  const [deletingTransfer, setDeletingTransfer] = useState(false);
   const adjustedBudget = category.budgeted + transferAdjustment;
   const accountLabelMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -168,8 +192,12 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
               const isFrom = t.fromCategoryId === category.id;
               const otherName = nameMap[isFrom ? t.toCategoryId : t.fromCategoryId] || 'Unknown';
               return (
-                <div key={t.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
-                  style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedTransfer(t)}
+                  className="flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors"
+                  style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}
+                >
                   <ArrowLeftRight size={12} className="text-muted-foreground/50 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">
@@ -198,6 +226,85 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
           </div>
         )}
       </div>
+      <Dialog open={!!selectedTransfer} onOpenChange={(o) => !o && setSelectedTransfer(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Fund Transfer</DialogTitle>
+            <DialogDescription>Reallocation between budget categories.</DialogDescription>
+          </DialogHeader>
+          {selectedTransfer && (() => {
+            const fromName = nameMap[selectedTransfer.fromCategoryId] || 'Unknown';
+            const toName = nameMap[selectedTransfer.toCategoryId] || 'Unknown';
+            return (
+              <div className="space-y-3 py-2">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Date</span>
+                  <span className="text-sm font-medium text-foreground">{format(new Date(selectedTransfer.date), 'MMM d, yyyy')}</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Amount</span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(selectedTransfer.amount)}</span>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">Movement</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-foreground font-medium">{fromName}</span>
+                    <ArrowLeftRight size={14} className="text-muted-foreground" />
+                    <span className="text-foreground font-medium">{toName}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter className="sm:justify-between gap-2">
+            <Button variant="ghost" onClick={() => setSelectedTransfer(null)}>Close</Button>
+            {onDeleteTransfer && (
+              <Button
+                variant="destructive"
+                onClick={() => selectedTransfer && setPendingDeleteTransferId(selectedTransfer.id)}
+                className="gap-1.5"
+              >
+                <Trash2 size={14} /> Delete this transfer
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!pendingDeleteTransferId} onOpenChange={(o) => !o && setPendingDeleteTransferId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this fund transfer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reverse the reallocation between the two categories. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingTransfer}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingTransfer}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!pendingDeleteTransferId || !onDeleteTransfer) return;
+                try {
+                  setDeletingTransfer(true);
+                  await onDeleteTransfer(pendingDeleteTransferId);
+                  toast.success('Fund transfer deleted');
+                  setPendingDeleteTransferId(null);
+                  setSelectedTransfer(null);
+                } catch (err) {
+                  toast.error('Failed to delete transfer');
+                } finally {
+                  setDeletingTransfer(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingTransfer ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
