@@ -423,10 +423,10 @@ export function TransactionsView({
                 <div key={row.key}>
                   <div
                     onClick={() => toggleSplit(row.key)}
-                    className="flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 lg:py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all lg:border-b lg:border-border/60 lg:last:border-0"
                     style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
                   >
-                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
+                    <span className={`text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap lg:w-32 lg:text-center ${
                       accounts.findIndex(a => a.id === row.account) === 0
                         ? 'bg-primary text-primary-foreground'
                         : accounts.findIndex(a => a.id === row.account) === 1
@@ -435,35 +435,39 @@ export function TransactionsView({
                     }`}>
                       {accountLabels[row.account] || row.account}
                     </span>
-                    {/* Note: split children always lose plaid_transaction_id on insert, so source==='manual' for all of them.
-                        We can't reliably tell a user-created split from a sync-derived split here, so omit the Manual badge on split groups. */}
 
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        <span className="text-[10px] font-semibold text-accent bg-accent/15 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Split</span>
+                    <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
+                      <p className="text-sm lg:text-base font-semibold truncate text-foreground inline-flex items-center gap-1">
+                        Split
+                        {expanded ? <ChevronUp size={14} className="text-muted-foreground/70" /> : <ChevronDown size={14} className="text-muted-foreground/70" />}
                       </p>
                       {row.description ? (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{row.description}</p>
+                        <p className="text-[11px] lg:text-xs text-muted-foreground/70 truncate mt-0.5 lg:mt-0 font-normal">{row.description}</p>
                       ) : null}
                       {row.notes ? (
-                        <p className="text-[10px] text-muted-foreground/70 italic truncate mt-0.5">📝 {row.notes}</p>
+                        <p className="text-[10px] lg:text-xs italic truncate mt-0.5 lg:mt-0 text-muted-foreground/70">📝 {row.notes}</p>
                       ) : null}
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-medium tabular-nums text-foreground">
+                    <div className="text-right shrink-0 lg:flex lg:items-center lg:gap-6">
+                      <p className="text-sm lg:text-base font-medium lg:font-semibold tabular-nums text-foreground">
                         {formatCurrency(row.totalAmount)}
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <p className="text-[11px] lg:text-sm text-muted-foreground mt-0.5 lg:mt-0 lg:w-16 lg:text-right">
                         {format(new Date(row.date), 'MMM d')}
                       </p>
                     </div>
 
-                    <div className="p-1.5 text-muted-foreground/60">
-                      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </div>
+                    <div className="w-[26px] shrink-0" />
                   </div>
 
+                  {expanded && (
+                    <div className="divide-y divide-border/50">
+                      {row.transactions.map((t, j) => renderSingleTx(t, j, row))}
+                    </div>
+                  )}
+                </div>
+              );
                   {expanded && (
                     <div className="divide-y divide-border/50">
                       {row.transactions.map((t, j) => renderSingleTx(t, j, row))}
