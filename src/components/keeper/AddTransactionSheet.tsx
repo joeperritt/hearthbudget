@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { BudgetCategory, FixedExpense, Transaction, AccountSource, categoryRequiresNotes, USER_IGNORE_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format } from 'date-fns';
