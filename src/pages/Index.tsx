@@ -397,6 +397,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[exp.id] || 0}
           onBack={() => setSelectedFixedExpenseId(null)}
           onDeleteTransaction={deleteTransaction}
+          onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />
