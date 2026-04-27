@@ -9,7 +9,11 @@ interface CategoryBudgetMiniProps {
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
   transactions: Transaction[];
-  /** Amount of the current transaction being assigned (positive = expense, shown as pending) */
+  /**
+   * Signed pending amount for the in-flight transaction.
+   * Positive = expense (adds to spent / pushes bar forward).
+   * Negative = refund/deposit (subtracts from spent / pulls bar backward).
+   */
   pendingAmount?: number;
   /** IDs of transactions being edited — excluded from spent calculation to avoid double-counting */
   excludeTransactionIds?: string[];
@@ -45,27 +49,48 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
   const spentPct = Math.min(Math.max((netSpent / budgeted) * 100, 0), 100);
   const over = netSpent > budgeted;
 
-  // Pending transaction projection
-  const hasPending = pendingAmount > 0;
+  // Pending projection — amount is signed:
+  //   positive => expense, adds to spent (forward bar)
+  //   negative => refund, subtracts from spent (backward bar)
+  const hasPending = pendingAmount !== 0;
+  const isRefund = pendingAmount < 0;
   const projectedSpent = netSpent + pendingAmount;
   const projectedRemaining = budgeted - projectedSpent;
-  const pendingPct = hasPending
-    ? Math.min(Math.max((projectedSpent / budgeted) * 100, 0), 100) - spentPct
-    : 0;
+  const projectedPct = Math.min(Math.max((projectedSpent / budgeted) * 100, 0), 100);
+  const deltaPct = Math.abs(projectedPct - spentPct);
   const projectedOver = projectedSpent > budgeted;
 
   return (
     <div className="mt-1.5">
       <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
-        <div
-          className={`h-full rounded-l-full transition-all duration-500 ease-out ${over ? 'bg-destructive' : 'bg-accent'}`}
-          style={{ width: `${spentPct}%` }}
-        />
-        {hasPending && pendingPct > 0 && (
-          <div
-            className={`h-full transition-all duration-500 ease-out ${projectedOver ? 'bg-destructive/50' : 'bg-accent/50'}`}
-            style={{ width: `${pendingPct}%` }}
-          />
+        {hasPending && isRefund ? (
+          <>
+            {/* Solid filled portion = projected (lower) spend */}
+            <div
+              className={`h-full rounded-l-full transition-all duration-500 ease-out ${projectedOver ? 'bg-destructive' : 'bg-accent'}`}
+              style={{ width: `${projectedPct}%` }}
+            />
+            {/* Faded refund delta = the budget being returned */}
+            {deltaPct > 0 && (
+              <div
+                className="h-full transition-all duration-500 ease-out bg-success/40"
+                style={{ width: `${deltaPct}%` }}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <div
+              className={`h-full rounded-l-full transition-all duration-500 ease-out ${over ? 'bg-destructive' : 'bg-accent'}`}
+              style={{ width: `${spentPct}%` }}
+            />
+            {hasPending && deltaPct > 0 && (
+              <div
+                className={`h-full transition-all duration-500 ease-out ${projectedOver ? 'bg-destructive/50' : 'bg-accent/50'}`}
+                style={{ width: `${deltaPct}%` }}
+              />
+            )}
+          </>
         )}
       </div>
       <div className="flex justify-between mt-1">
@@ -84,7 +109,7 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
                 {over ? `-${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
               </span>
               <span className="text-muted-foreground">→</span>
-              <span className={projectedOver ? 'text-destructive' : 'text-primary'}>
+              <span className={projectedOver ? 'text-destructive' : isRefund ? 'text-success' : 'text-primary'}>
                 {projectedOver ? `-${formatCurrency(Math.abs(projectedRemaining))} over` : `${formatCurrency(projectedRemaining)} left`}
               </span>
             </>
@@ -95,6 +120,11 @@ export function CategoryBudgetMini({ categoryId, categories, fixedExpenses, tran
           )}
         </span>
       </div>
+      {hasPending && isRefund && (
+        <p className="mt-1 text-[10px] text-success">
+          Refunded {formatCurrency(pendingAmount)} back to budget
+        </p>
+      )}
     </div>
   );
 }
