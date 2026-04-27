@@ -423,7 +423,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   </optgroup>
                 )}
               </select>
-              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={Math.abs(transaction.amount)} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[fixedCategoryId] || 0} />
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={transaction.amount} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[fixedCategoryId] || 0} />
             </div>
           )}
 
