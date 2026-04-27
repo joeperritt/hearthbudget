@@ -155,7 +155,26 @@ export function BudgetTabView({
             </span>
           </div>
         </div>
+
+        {hasPlaid && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 w-full border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            onClick={() => setAnalyzerOpen(true)}
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" />
+            Analyze my spending with AI
+          </Button>
+        )}
       </div>
+
+      <SpendingAnalyzer
+        open={analyzerOpen}
+        onOpenChange={setAnalyzerOpen}
+        categories={categories}
+        onApply={onUpdateCategories}
+      />
 
       {/* Inline Budget Planning (SettingsView in embedded mode) */}
       <div className="mt-4">
