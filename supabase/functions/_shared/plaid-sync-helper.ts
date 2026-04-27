@@ -373,46 +373,25 @@ async function syncOneItem(
     }
     const finalAmount = isCredit && plaidAmount > 0 ? -plaidAmount : plaidAmount;
     const description = buildTransactionDescription(tx);
-    const upperDesc = description.toUpperCase();
-    const isCcPayment =
-      isCredit &&
-      (upperDesc.includes("MOBILE PAYMENT") ||
-        upperDesc.includes("AMERICAN EXPRESS ACH PMT") ||
-        upperDesc.includes("AMEX ACH PMT") ||
-        upperDesc.includes("PAYMENT THANK YOU"));
 
-    // Detect inter-account transfers and outbound CC payments from checking.
-    // Primary signal: Plaid's personal_finance_category (TRANSFER_OUT / TRANSFER_IN).
-    // Fallback signal: regex on the description for institutions that don't return PFC.
-    const pfc = (tx as any).personal_finance_category as
-      | { primary?: string; detailed?: string }
-      | undefined;
-    const pfcPrimary = (pfc?.primary || "").toUpperCase();
-    const isPfcTransfer = pfcPrimary === "TRANSFER_OUT" || pfcPrimary === "TRANSFER_IN";
-    const transferRegex = /(ONLINE TRANSFER|WIRE TRANSFER|ACH TRANSFER|WAY2SAVE|TO SAVINGS|FROM SAVINGS)/i;
-    const isDescTransfer = transferRegex.test(description);
-    // Tightened CC-payment regex per spec: require Active Cash card name OR
-    // the explicit 12-X-then-4-digit Wells Fargo card mask, OR a TRANSFER…VISA CARD pattern.
-    const ccPaymentRegex = /(WELLS FARGO ACTIVE CASH|VISA CARD XXXXXXXXXXXX\d{4}|TRANSFER.*VISA CARD)/i;
-    const isOutboundCcPayment =
-      isCheckingAccount && (isPfcTransfer || isDescTransfer) && ccPaymentRegex.test(description);
-    const isInterAccountTransfer =
-      isCheckingAccount && (isPfcTransfer || isDescTransfer) && !isOutboundCcPayment;
+    // Auto-detect routing for inter-account transfers and CC payments is INTENTIONALLY DISABLED
+    // (per product decision 2026-04-27). Joe wants every Plaid-synced row to land in Unassigned
+    // for explicit manual review. Users mark them as Ignore one-by-one via the Add/Edit sheets,
+    // which writes the `ignore-user` slug.
+    //
+    // The legacy detection logic — Plaid personal_finance_category TRANSFER_OUT/TRANSFER_IN,
+    // description regex (ONLINE TRANSFER, ACH TRANSFER, WAY2SAVE, etc.), and the Wells Fargo
+    // VISA-card CC-payment regex — has been removed from the active path. The slug constants
+    // (`ignore-transfer`, `ignore-cc-payment`) are preserved in src/types/budget.ts so this
+    // routing can be re-enabled later via a user setting if desired. Existing rows already
+    // tagged with those slugs are left untouched.
 
     let transactionType = "expense";
-    let categorySlug = "unassigned";
-    if (isCcPayment) {
-      transactionType = "cc-payment";
-      categorySlug = "ignore-cc-payment";
-    } else if (isOutboundCcPayment) {
-      transactionType = "cc-payment";
-      categorySlug = "ignore-cc-payment";
-    } else if (isInterAccountTransfer) {
-      transactionType = "transfer";
-      categorySlug = "ignore-transfer";
-    } else if (isCreditCard && plaidAmount < 0) {
+    const categorySlug = "unassigned";
+    if (isCreditCard && plaidAmount < 0) {
+      // Surface CC refunds/credits with the right type so totals stay correct,
+      // but still leave them in Unassigned for manual review.
       transactionType = "deposit";
-      categorySlug = "unassigned";
     }
 
     return {
