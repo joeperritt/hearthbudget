@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     }));
 
     return new Response(JSON.stringify({
-      detected_monthly_income: round2(detectedMonthlyIncome),
+      monthly_take_home: round2(monthlyIncome),
       months_observed: monthsObserved,
       lookback_days: lookbackDays,
       transaction_count: transactions.length,
