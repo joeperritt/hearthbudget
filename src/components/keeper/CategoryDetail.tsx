@@ -1,10 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { AppAccount } from '@/hooks/useAccounts';
-import { ArrowLeft, ArrowLeftRight, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Search, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
