@@ -381,11 +381,35 @@ async function syncOneItem(
         upperDesc.includes("AMEX ACH PMT") ||
         upperDesc.includes("PAYMENT THANK YOU"));
 
+    // Detect inter-account transfers and outbound CC payments from checking.
+    // Primary signal: Plaid's personal_finance_category (TRANSFER_OUT / TRANSFER_IN).
+    // Fallback signal: regex on the description for institutions that don't return PFC.
+    const pfc = (tx as any).personal_finance_category as
+      | { primary?: string; detailed?: string }
+      | undefined;
+    const pfcPrimary = (pfc?.primary || "").toUpperCase();
+    const isPfcTransfer = pfcPrimary === "TRANSFER_OUT" || pfcPrimary === "TRANSFER_IN";
+    const transferRegex = /(ONLINE TRANSFER|WIRE TRANSFER|ACH TRANSFER|WAY2SAVE|TO SAVINGS|FROM SAVINGS)/i;
+    const isDescTransfer = transferRegex.test(description);
+    // Tightened CC-payment regex per spec: require Active Cash card name OR
+    // the explicit 12-X-then-4-digit Wells Fargo card mask, OR a TRANSFER…VISA CARD pattern.
+    const ccPaymentRegex = /(WELLS FARGO ACTIVE CASH|VISA CARD XXXXXXXXXXXX\d{4}|TRANSFER.*VISA CARD)/i;
+    const isOutboundCcPayment =
+      isCheckingAccount && (isPfcTransfer || isDescTransfer) && ccPaymentRegex.test(description);
+    const isInterAccountTransfer =
+      isCheckingAccount && (isPfcTransfer || isDescTransfer) && !isOutboundCcPayment;
+
     let transactionType = "expense";
     let categorySlug = "unassigned";
     if (isCcPayment) {
       transactionType = "cc-payment";
       categorySlug = "cc-payment";
+    } else if (isOutboundCcPayment) {
+      transactionType = "cc-payment";
+      categorySlug = "cc-payment";
+    } else if (isInterAccountTransfer) {
+      transactionType = "transfer";
+      categorySlug = "ignore-transfer";
     } else if (isCreditCard && plaidAmount < 0) {
       transactionType = "deposit";
       categorySlug = "unassigned";
@@ -647,7 +671,7 @@ async function syncOneItem(
           options: {
             count: pendingCount,
             offset: pendingOffset,
-            include_personal_finance_category: false,
+            include_personal_finance_category: true,
           },
         }),
       });
