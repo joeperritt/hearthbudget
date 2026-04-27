@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { AppAccount } from '@/hooks/useAccounts';
-import { ArrowLeft, ArrowLeftRight, ArrowDownLeft, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
