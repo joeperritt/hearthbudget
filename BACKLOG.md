@@ -134,6 +134,11 @@ Link mortgage, student loans.
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
 
+### Done — April 26, 2026
+
+- **Transfer detection and handling:** Plaid-synced bank transfers now auto-detected via `personal_finance_category` (with description-regex fallback) and excluded from Unassigned + budget calculations. Wells Fargo Active Cash card payments routed to `cc-payment`; Way2Save inter-account transfers routed to `ignore-transfer`. Manual Transfer category remains available as fallback in the Edit/Add transaction sheet (under Ignore mode). Transfers and CC payments remain visible in Activity tab with "Transfer" / "CC Payment" pill badges. Backfill flipped 11 historical Plaid rows in the Perritt household (8 transfer, 3 cc-payment).
+- **Manual duplicate cleanup needed (post-launch, low priority):** During the transfer fix, identified ~7 sibling duplicate rows from prior manual transfer-cleanup attempts. They sit in `ignore-*` buckets (financially neutral) but create accounting noise. Clean up manually in Activity tab when convenient — do NOT script cleanup due to risk of deleting wrong row of sibling pairs.
+
 ## Post-launch UX polish
 
 - Empty states polish
