@@ -134,9 +134,15 @@ Link mortgage, student loans.
 - Home tab: add Savings + Giving sections (desktop only, pill-style like Fixed)
 - Plan tab CFP tool desktop polish (some tools still mobile-shaped on desktop)
 
+### Done — April 27, 2026
+
+- **Transaction-type system simplified to 3 buttons (Variable / Fixed / Ignore):** Collapsed the previous 5-button Add/Edit sheets (Variable, Fixed, Deposit, CC Pmt, Ignore + sub-selectors) into a single 3-button system. Deposits and CC payments are now handled exclusively via Plaid auto-detect (set on sync) and surface as muted "Ignore" rows in Activity. New `ignore-user` slug introduced for user-initiated ignores; auto-detected `ignore-transfer` and `ignore-cc-payment` slugs are preserved when a user toggles a Plaid-detected row through Ignore. Refunds/reimbursements handled by selecting Variable + a category and letting the signed-sum reduce spending. Notes field is surfaced prominently on Ignore so user can leave context (e.g. "cash withdrawal", "tax refund").
+- **Slug rename `cc-payment` → `ignore-cc-payment`:** For naming consistency with the rest of the `ignore-*` family. Updated `CC_PAYMENT_CATEGORY` constant in `src/types/budget.ts`, the Plaid sync helper auto-detect target, and all 18 historical rows carrying the old slug.
+- **Activity row mute treatment:** Removed standalone "Transfer" and "CC Payment" pill badges. Ignored rows (transfer / cc-payment / income / deposit / prior-month / user-ignore) now render with `opacity-60` and muted text across the entire row (description, amount, account chip) as a single deemphasized visual unit. The muted styling is the signal — no auxiliary label needed.
+
 ### Done — April 26, 2026
 
-- **Transfer detection and handling:** Plaid-synced bank transfers now auto-detected via `personal_finance_category` (with description-regex fallback) and excluded from Unassigned + budget calculations. Wells Fargo Active Cash card payments routed to `cc-payment`; Way2Save inter-account transfers routed to `ignore-transfer`. Manual Transfer category remains available as fallback in the Edit/Add transaction sheet (under Ignore mode). Transfers and CC payments remain visible in Activity tab with "Transfer" / "CC Payment" pill badges. Backfill flipped 11 historical Plaid rows in the Perritt household (8 transfer, 3 cc-payment).
+- **Transfer detection and handling:** Plaid-synced bank transfers now auto-detected via `personal_finance_category` (with description-regex fallback) and excluded from Unassigned + budget calculations. Wells Fargo Active Cash card payments routed to `ignore-cc-payment` (renamed from `cc-payment` April 27); Way2Save inter-account transfers routed to `ignore-transfer`. Manual Transfer category remains available as fallback in the Edit/Add transaction sheet (under Ignore mode). Transfers and CC payments remain visible in Activity tab as muted rows. Backfill flipped 11 historical Plaid rows in the Perritt household (8 transfer, 3 cc-payment).
 - **Manual duplicate cleanup needed (post-launch, low priority):** During the transfer fix, identified ~7 sibling duplicate rows from prior manual transfer-cleanup attempts. They sit in `ignore-*` buckets (financially neutral) but create accounting noise. Clean up manually in Activity tab when convenient — do NOT script cleanup due to risk of deleting wrong row of sibling pairs.
 
 ## Post-launch UX polish
