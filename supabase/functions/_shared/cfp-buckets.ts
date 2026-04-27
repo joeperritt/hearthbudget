@@ -231,10 +231,25 @@ export interface BucketAssignment {
   bucket_key: string | null; // null = unmatched (do NOT fall back to "other")
 }
 
-export function assignBucket(slug: string, name: string): BucketAssignment {
+/**
+ * Assign a household category to a CFP bucket.
+ * @param slug   category slug (e.g. "j-eating")
+ * @param name   display name (e.g. "J-EO")
+ * @param group  optional source group: "tithe"/"savings"/"bills"/"joe"/"katie"/"shared".
+ *               When the group is unambiguous (tithe → giving, savings → saving),
+ *               we honor it before slug heuristics so things like a "Vacation"
+ *               sinking fund don't get pulled into Travel.
+ */
+export function assignBucket(slug: string, name: string, group?: string): BucketAssignment {
   const s = (slug || "").toLowerCase();
   const n = (name || "").toLowerCase();
-  // Slug pass first — exact intent signals
+  const g = (group || "").toLowerCase();
+
+  // Group-driven shortcuts: when the budgeting group is unambiguous, use it.
+  if (g === "tithe" || g === "giving") return { bucket_key: "giving" };
+  if (g === "savings" || g === "saving") return { bucket_key: "saving" };
+
+  // Slug pass — exact intent signals
   for (const b of CFP_BUCKETS) {
     if (b.slug_matchers.some(m => s.includes(m))) return { bucket_key: b.key };
   }
