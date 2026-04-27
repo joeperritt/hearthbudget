@@ -216,11 +216,30 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Send the AI only the variable buckets — fixed buckets (housing, utilities,
+    // insurance, debt, giving, saving) are shown to the user as informational
+    // structural rows so the framework adds up to ~100% of take-home, but we
+    // don't ask the AI to retune the mortgage or the tithe.
+    const variableRollups = bucketRollups.filter(b => b.role === "variable");
+    const fixedRollups = bucketRollups.filter(b => b.role === "fixed");
+    const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
+    const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
+
     const aiPayload = {
       months_observed: monthsObserved,
       monthly_take_home: round2(monthlyIncome),
       stewardship_mode: stewardshipMode,
-      buckets: bucketRollups.map(b => ({
+      structural_context: {
+        fixed_buckets_total: round2(fixedTotal),
+        fixed_buckets_pct_of_income: fixedPctOfIncome,
+        note: "Fixed bills (housing, utilities, insurance, debt, giving, saving) are shown to the user separately and are not yours to retune. Use these only for context when sizing variable cuts and reallocations.",
+        fixed_summary: fixedRollups.map(b => ({
+          key: b.key, label: b.label,
+          actual_monthly_avg: b.bucket_actual_monthly_avg,
+          pct_of_income: b.bucket_pct_of_income,
+        })),
+      },
+      buckets: variableRollups.map(b => ({
         key: b.key,
         label: b.label,
         guideline_pct: b.guideline_pct,
@@ -241,7 +260,7 @@ Deno.serve(async (req) => {
     }
 
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
-    const userMsg = `Household data (last ${lookbackDays} days, ${monthsObserved} months observed):\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY a JSON object with this exact shape:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each input bucket key. Do not echo internal slugs in commentary.`;
+    const userMsg = `Household data (last ${lookbackDays} days, ${monthsObserved} months observed):\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY a JSON object with this exact shape:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket key in the input. Reallocation hints may target the fixed Giving or Saving buckets when surplus headroom exists. Do not echo internal slugs in commentary.`;
 
     const result = await callGemini({
       model: "gemini-2.5-flash",
@@ -284,7 +303,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // For fixed buckets we synthesize a verdict from the data alone so the UI
+    // can render a complete picture without the AI weighing in on bills.
+    const verdictFromGuideline = (
+      actualPct: number, guidelinePct: number, kind: "max" | "min" | "target",
+    ): "under" | "in_line" | "over" => {
+      if (kind === "max") {
+        if (actualPct > guidelinePct + 1) return "over";
+        return "in_line";
+      }
+      if (kind === "min") {
+        if (actualPct < guidelinePct - 1) return "under";
+        return "in_line";
+      }
+      // target
+      if (Math.abs(actualPct - guidelinePct) <= 1) return "in_line";
+      return actualPct > guidelinePct ? "over" : "under";
+    };
+
     const mergedBuckets = bucketRollups.map(b => {
+      if (b.role === "fixed") {
+        return {
+          ...b,
+          verdict: verdictFromGuideline(b.bucket_pct_of_income, b.guideline_pct, b.guideline_kind),
+          suggested_bucket_total: round2(b.bucket_actual_monthly_avg),
+          commentary: "",
+        };
+      }
       const ai = byBucketMap.get(b.key);
       const suggested = ai?.suggested ?? b.bucket_actual_monthly_avg;
       return {
