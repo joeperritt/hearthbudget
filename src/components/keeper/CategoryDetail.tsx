@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Transaction, BudgetCategory, BudgetTransfer, FixedExpense, categoryRequiresNotes, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { ProgressBar } from './ProgressBar';
 import { AppAccount } from '@/hooks/useAccounts';
-import { ArrowLeft, ArrowLeftRight, ArrowDownLeft, Search } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 
@@ -142,12 +142,20 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
             </div>
           </div>
           <ProgressBar value={spent} max={adjustedBudget} />
-          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
-          {deposits.length > 0 && (
-            <p className="text-[10px] text-muted-foreground">
-              includes {formatCurrency(deposits.reduce((s, d) => s + Math.abs(d.amount), 0))} in reimbursements
-            </p>
-          )}
+          {(() => {
+            const refundTotal = deposits.reduce((s, d) => s + Math.abs(d.amount), 0);
+            const grossSpent = spent + refundTotal;
+            return (
+              <>
+                <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
+                {refundTotal > 0 && (
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                    ({formatCurrency(grossSpent)} spent − {formatCurrency(refundTotal)} in refunds)
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -178,25 +186,7 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
           </div>
         </div>
       )}
-      {/* Deposit Reimbursements */}
-      {deposits.length > 0 && (
-        <div className="px-6 mt-6">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Reimbursements</h3>
-          <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden">
-            {deposits.map((d, i) => (
-              <div key={d.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
-                style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
-                <ArrowDownLeft size={12} className="text-accent shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">{d.description || 'Deposit'}</p>
-                  <p className="text-[11px] text-muted-foreground">{format(new Date(d.date), 'MMM d')}</p>
-                </div>
-                <span className="text-sm font-medium tabular-nums text-accent shrink-0">+{formatCurrency(Math.abs(d.amount))}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       <div className="px-6 mt-6 pb-6">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Transactions</h3>
