@@ -2,7 +2,9 @@
 
 Running list of things to get to, known limitations, and stuff to remember about this project. When working with Lovable, you can point it at this file: "check BACKLOG.md."
 
-Last updated: April 26, 2026
+Last updated: April 27, 2026
+
+**Successfully published April 27, 2026** — UX simplification (3-button transaction type system, refund preview math, standardized split rows, clickable fund transfers with delete, Plaid auto-detect disabled) shipped to keeperbudget.com.
 
 ## Security — pre-launch
 
@@ -114,6 +116,10 @@ Current session management is just "sign out of all other devices." Full version
 Known limitation if we build it: Supabase JWTs remain valid until their expiry regardless of whether we mark a session revoked in our own table — so revoked sessions can stay live up to ~1 hour until next token refresh. Document this in the UI if we ship it.
 
 Requires: custom `user_sessions` table, IP geolocation API (paid), heartbeat for last-active, update to privacy policy.
+
+### Edit budget transfers in-place
+
+Currently fund transfers can be viewed and deleted from the category detail modal, but editing requires delete + recreate. Add inline edit (amount, date, from/to). Low priority.
 
 ### Net worth tracking
 
