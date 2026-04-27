@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
 import { AISuggestionCard } from './AISuggestionCard';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
