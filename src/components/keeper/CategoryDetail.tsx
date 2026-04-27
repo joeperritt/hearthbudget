@@ -192,8 +192,12 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
               const isFrom = t.fromCategoryId === category.id;
               const otherName = nameMap[isFrom ? t.toCategoryId : t.fromCategoryId] || 'Unknown';
               return (
-                <div key={t.id} className="flex items-center gap-3 px-4 py-3 animate-fade-up"
-                  style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}>
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedTransfer(t)}
+                  className="flex items-center gap-3 px-4 py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-colors"
+                  style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}
+                >
                   <ArrowLeftRight size={12} className="text-muted-foreground/50 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">
