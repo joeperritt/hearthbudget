@@ -199,6 +199,7 @@ export function TransactionsView({
     { id: 'unassigned', label: 'Unassigned' },
     ...accounts.map(a => ({ id: a.id, label: a.label })),
     { id: 'manual', label: 'Manual' },
+    ...(transfers.length > 0 ? [{ id: 'budget-transfers' as Filter, label: 'Budget Transfers' }] : []),
   ];
 
   const renderTransfer = (tr: BudgetTransfer, i: number) => (
