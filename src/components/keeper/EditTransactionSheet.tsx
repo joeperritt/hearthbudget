@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
 import { AISuggestionCard } from './AISuggestionCard';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -343,6 +344,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 </button>
               ))}
             </div>
+            {mode === 'variable' && (
+              <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed">
+                Counts toward a budget category — like groceries, gas, or eating out.
+              </p>
+            )}
+            {mode === 'fixed' && (
+              <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed">
+                Recurring bills you can predict — mortgage, utilities, subscriptions.
+              </p>
+            )}
           </div>
 
           {/* Variable category */}
@@ -442,12 +453,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
-          {/* Ignore — minimal UI, prominent notes */}
+          {/* Ignore — educational copy + prominent notes */}
           {mode === 'ignore' && (
-            <div className="animate-fade-up bg-muted/40 rounded-lg p-3">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {ignoreReasonLabel}. This transaction is excluded from budget totals and Unassigned.
-              </p>
+            <div className="animate-fade-up rounded-lg p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
+              <div className="flex gap-2">
+                <Lightbulb size={14} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" strokeWidth={2.25} />
+                <p className="text-[11px] text-foreground/80 leading-relaxed">
+                  {ignoreReasonLabel ? <><span className="font-medium">{ignoreReasonLabel}.</span> </> : null}
+                  Common uses: paychecks coming in, transfers to and from savings, paying off credit cards. These don't belong in budget categories because they're moving money around, not spending it.
+                </p>
+              </div>
             </div>
           )}
 

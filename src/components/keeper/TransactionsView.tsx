@@ -20,7 +20,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | 'manual' | 'unassigned' | 'transfers-hidden' | string;
+type Filter = 'all' | 'manual' | 'unassigned' | 'budget-transfers' | 'transfers-hidden' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -139,16 +139,31 @@ export function TransactionsView({
   const fixedMap = Object.fromEntries(fixedExpenses.map(e => [e.id, e]));
   const nameFor = (id: string) => catMap[id]?.name || fixedMap[id]?.name || id;
 
+  // Unassigned should ONLY surface real transactions awaiting categorization.
+  // Budget transfers (internal accounting moves) live in a separate `transfers` array
+  // and are intentionally excluded from txRows when the unassigned or budget-transfers filters are active.
   const filtered = filter === 'all'
     ? transactions
     : filter === 'manual'
       ? transactions.filter(t => t.source === 'manual')
       : filter === 'unassigned'
         ? transactions.filter(t => t.categoryId === 'unassigned')
-        : transactions.filter(t => t.account === filter);
+        : filter === 'budget-transfers'
+          ? [] // budget transfers are not transactions; render only transferRows below
+          : transactions.filter(t => t.account === filter);
   const txRows = groupSplitTransactions(filtered);
 
-  const transferRows: TransferRow[] = showTransfers
+  // Show transfers when:
+  // - filter is 'all' or an account-scoped filter AND user hasn't toggled them off
+  // - filter is 'budget-transfers' (always show, regardless of toggle)
+  // Hide transfers when filter is 'unassigned' or 'manual'
+  const shouldRenderTransfers =
+    filter === 'budget-transfers'
+      ? true
+      : filter === 'unassigned' || filter === 'manual'
+        ? false
+        : showTransfers;
+  const transferRows: TransferRow[] = shouldRenderTransfers
     ? transfers.map(tr => ({ type: 'transfer' as const, transfer: tr }))
     : [];
 
@@ -184,6 +199,7 @@ export function TransactionsView({
     { id: 'unassigned', label: 'Unassigned' },
     ...accounts.map(a => ({ id: a.id, label: a.label })),
     { id: 'manual', label: 'Manual' },
+    ...(transfers.length > 0 ? [{ id: 'budget-transfers' as Filter, label: 'Budget Transfers' }] : []),
   ];
 
   const renderTransfer = (tr: BudgetTransfer, i: number) => (
@@ -344,7 +360,7 @@ export function TransactionsView({
         ))}
       </div>
 
-      {transfers.length > 0 && (
+      {transfers.length > 0 && filter !== 'budget-transfers' && filter !== 'unassigned' && filter !== 'manual' && (
         <div className="px-6 mb-4">
           <button
             onClick={() => setShowTransfers(s => !s)}
