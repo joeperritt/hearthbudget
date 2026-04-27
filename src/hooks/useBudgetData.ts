@@ -511,6 +511,7 @@ export function useBudgetData() {
     addTransactions,
     deleteTransaction,
     addTransfer,
+    deleteTransfer,
     updateCategories,
     updateFixedExpenses,
     addCategoryForMonth,
