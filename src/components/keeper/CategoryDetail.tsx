@@ -142,12 +142,20 @@ export function CategoryDetail({ category, categories, fixedExpenses = [], trans
             </div>
           </div>
           <ProgressBar value={spent} max={adjustedBudget} />
-          <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
-          {deposits.length > 0 && (
-            <p className="text-[10px] text-muted-foreground">
-              includes {formatCurrency(deposits.reduce((s, d) => s + Math.abs(d.amount), 0))} in reimbursements
-            </p>
-          )}
+          {(() => {
+            const refundTotal = deposits.reduce((s, d) => s + Math.abs(d.amount), 0);
+            const grossSpent = spent + refundTotal;
+            return (
+              <>
+                <p className="text-xs text-muted-foreground mt-2 tabular-nums">{formatCurrency(spent)} net spent</p>
+                {refundTotal > 0 && (
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                    ({formatCurrency(grossSpent)} spent − {formatCurrency(refundTotal)} in refunds)
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
