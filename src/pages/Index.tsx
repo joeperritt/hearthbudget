@@ -52,7 +52,7 @@ const Index = () => {
   const {
     categories, fixedExpenses, transactions, transfers,
     activeMonth, loading, householdId,
-    addTransactions, deleteTransaction, addTransfer,
+    addTransactions, deleteTransaction, addTransfer, deleteTransfer,
     updateCategories, updateFixedExpenses, startNewMonth,
     addCategoryForMonth, addFixedExpenseForMonth,
     removeCategoryFromMonth, removeFixedExpenseFromMonth,
