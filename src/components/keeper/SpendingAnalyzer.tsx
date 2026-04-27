@@ -29,6 +29,7 @@ interface BucketResult {
   guideline_pct: number;
   guideline_kind: "max" | "min" | "target";
   guideline_source: string;
+  role: "variable" | "fixed";
   member_categories: MemberCategory[];
   bucket_current_budget: number;
   bucket_actual_monthly_avg: number;
@@ -133,12 +134,13 @@ export function SpendingAnalyzer({
         return;
       }
       setResult(r);
-      // Seed per-bucket target = AI suggestion
+      // Seed per-bucket target = AI suggestion (variable only — fixed buckets
+      // are informational and not editable here).
       const targets: Record<string, number> = {};
       const members: Record<string, number> = {};
       for (const b of r.buckets) {
+        if (b.role !== "variable") continue;
         targets[b.key] = b.suggested_bucket_total;
-        // Proportional split based on actual_monthly_avg; if all zero, equal split
         const actualSum = b.member_categories.reduce((s, m) => s + m.actual_monthly_avg, 0);
         for (const m of b.member_categories) {
           const share = actualSum > 0
@@ -186,7 +188,14 @@ export function SpendingAnalyzer({
 
   const totalSelected = useMemo(() => {
     if (!result) return 0;
-    return result.buckets.reduce((sum, b) => sum + (bucketTargets[b.key] || 0), 0);
+    // Selected = user-picked variable totals + the (uneditable) fixed actuals.
+    const variable = result.buckets
+      .filter(b => b.role === "variable")
+      .reduce((sum, b) => sum + (bucketTargets[b.key] || 0), 0);
+    const fixed = result.buckets
+      .filter(b => b.role === "fixed")
+      .reduce((sum, b) => sum + b.bucket_actual_monthly_avg, 0);
+    return variable + fixed;
   }, [result, bucketTargets]);
 
   const apply = async () => {
