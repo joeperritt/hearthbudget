@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { Info, Pencil } from 'lucide-react';
+import { Info, Pencil, Sparkles } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
+import { SpendingAnalyzer } from './SpendingAnalyzer';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -49,6 +53,19 @@ export function BudgetTabView({
   planningData, onUpdatePlanningData, initialViewMonth,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
+  const [analyzerOpen, setAnalyzerOpen] = useState(false);
+  const [hasPlaid, setHasPlaid] = useState(false);
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    const householdId = profile?.household_id;
+    if (!householdId) return;
+    supabase
+      .from('plaid_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('household_id', householdId)
+      .then(({ count }) => setHasPlaid((count || 0) > 0));
+  }, [profile?.household_id]);
 
   useEffect(() => {
     if (initialViewMonth) setViewMonthKey(initialViewMonth);
@@ -138,7 +155,26 @@ export function BudgetTabView({
             </span>
           </div>
         </div>
+
+        {hasPlaid && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 w-full border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            onClick={() => setAnalyzerOpen(true)}
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" />
+            Analyze my spending with AI
+          </Button>
+        )}
       </div>
+
+      <SpendingAnalyzer
+        open={analyzerOpen}
+        onOpenChange={setAnalyzerOpen}
+        categories={categories}
+        onApply={onUpdateCategories}
+      />
 
       {/* Inline Budget Planning (SettingsView in embedded mode) */}
       <div className="mt-4">
