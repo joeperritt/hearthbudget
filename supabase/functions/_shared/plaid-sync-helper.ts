@@ -403,10 +403,10 @@ async function syncOneItem(
     let categorySlug = "unassigned";
     if (isCcPayment) {
       transactionType = "cc-payment";
-      categorySlug = "cc-payment";
+      categorySlug = "ignore-cc-payment";
     } else if (isOutboundCcPayment) {
       transactionType = "cc-payment";
-      categorySlug = "cc-payment";
+      categorySlug = "ignore-cc-payment";
     } else if (isInterAccountTransfer) {
       transactionType = "transfer";
       categorySlug = "ignore-transfer";

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
+import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS } from '@/types/budget';
 import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
@@ -218,15 +218,16 @@ export function TransactionsView({
     const indent = !!splitGroup;
     const isCcPayment = t.transactionType === 'cc-payment' || t.categoryId === CC_PAYMENT_CATEGORY;
     const isIncome = !isCcPayment && (t.categoryId === INCOME_CATEGORY || (t.transactionType === 'income' && t.categoryId !== PRIOR_MONTH_CATEGORY));
-    const isTransfer = t.categoryId === TRANSFER_CATEGORY;
+    const isTransfer = t.categoryId === TRANSFER_CATEGORY || t.transactionType === 'transfer';
     const isPriorMonth = t.categoryId === PRIOR_MONTH_CATEGORY;
     const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
-    const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth;
-    const isIgnored = isIncome || isTransfer || isPriorMonth;
+    const isUserIgnore = t.categoryId === USER_IGNORE_CATEGORY;
+    const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth || isUserIgnore;
+    // Whole row is muted as a single visual unit when transaction is ignored
+    const isMuted = isExcluded;
 
     const handleClick = () => {
       if (splitGroup) {
-        // Open edit for the whole split group
         onEditTransaction(splitGroup.transactions[0], splitGroup.transactions);
       } else {
         onEditTransaction(t);
@@ -238,56 +239,31 @@ export function TransactionsView({
         key={t.id}
         id={`tx-${t.id}`}
         onClick={handleClick}
-        className={`flex items-center gap-3 px-4 py-3 lg:py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all lg:border-b lg:border-border/60 lg:last:border-0 ${isIgnored ? 'opacity-30 grayscale' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
+        className={`flex items-center gap-3 px-4 py-3 lg:py-3 animate-fade-up cursor-pointer active:bg-muted/50 transition-all lg:border-b lg:border-border/60 lg:last:border-0 ${isMuted ? 'opacity-60' : ''} ${indent ? 'bg-muted/30 pl-8' : ''}`}
         style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
       >
         <span className={`text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap lg:w-32 lg:text-center ${
-          accounts.findIndex(a => a.id === t.account) === 0
-            ? 'bg-primary text-primary-foreground'
-            : accounts.findIndex(a => a.id === t.account) === 1
-              ? 'bg-accent text-accent-foreground'
-              : 'bg-muted text-muted-foreground'
+          isMuted
+            ? 'bg-muted text-muted-foreground'
+            : accounts.findIndex(a => a.id === t.account) === 0
+              ? 'bg-primary text-primary-foreground'
+              : accounts.findIndex(a => a.id === t.account) === 1
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-muted text-muted-foreground'
         }`}>
           {accountLabels[t.account] || t.account}
         </span>
-        {t.source === 'manual' && !indent && (
+        {t.source === 'manual' && !indent && !isMuted && (
           <span className="text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
             Manual
           </span>
         )}
-        {!indent && isTransfer && (
-          <span className="text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
-            Transfer
-          </span>
-        )}
-        {!indent && isCcPayment && (
-          <span className="text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full shrink-0 whitespace-nowrap bg-muted text-muted-foreground">
-            CC Payment
-          </span>
-        )}
 
         <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
-          <p className="text-sm lg:text-base font-semibold text-foreground truncate">
-            {isCcPayment ? (
-              <span className="text-muted-foreground italic">
-                CC Payment
-                {t.categoryId !== CC_PAYMENT_CATEGORY && (catMap[t.categoryId] || fixedMap[t.categoryId]) && (
-                  <span className="ml-1 text-muted-foreground/80">→ {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name}</span>
-                )}
-              </span>
-            ) : isPriorMonth ? (
-              <span className="text-muted-foreground italic">Prior Month</span>
-            ) : isTransfer ? (
-              <span className="text-muted-foreground italic">Transfer</span>
-            ) : isIncome ? (
-              <span className="text-muted-foreground italic">Income</span>
-            ) : isDeposit ? (
-              <span className="text-muted-foreground italic">
-                Deposit
-                {t.categoryId !== DEPOSIT_CATEGORY && (catMap[t.categoryId] || fixedMap[t.categoryId]) && (
-                  <span className="ml-1 text-muted-foreground/80">→ {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name}</span>
-                )}
-              </span>
+          <p className={`text-sm lg:text-base font-semibold truncate ${isMuted ? 'text-muted-foreground' : 'text-foreground'}`}>
+            {isMuted ? (
+              // Use the merchant/description as the primary label for muted rows
+              <span>{t.description || 'Ignored'}</span>
             ) : (
               <>
                 {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
@@ -300,25 +276,27 @@ export function TransactionsView({
               </>
             )}
           </p>
-          {indent && t.description ? null : t.description ? (
+          {!isMuted && !indent && t.description ? (
             <p className="text-[11px] lg:text-xs text-muted-foreground/70 truncate mt-0.5 lg:mt-0 font-normal">{t.description}</p>
           ) : null}
           {t.notes ? (
-            <p className="text-[10px] lg:text-xs text-muted-foreground/70 italic truncate mt-0.5 lg:mt-0">📝 {t.notes}</p>
+            <p className={`text-[10px] lg:text-xs italic truncate mt-0.5 lg:mt-0 ${isMuted ? 'text-muted-foreground/80' : 'text-muted-foreground/70'}`}>📝 {t.notes}</p>
           ) : null}
         </div>
 
         <div className="text-right shrink-0 lg:flex lg:items-center lg:gap-6">
           {(() => {
             const { colorClassName, prefix, value } = getTransactionAmountPresentation(t, { isExcluded });
+            // Force muted color on ignored rows so the whole row reads as a single deemphasized unit
+            const amountClass = isMuted ? 'text-muted-foreground' : colorClassName;
             return (
-              <p className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ${colorClassName}`}>
+              <p className={`text-sm lg:text-base font-medium lg:font-semibold tabular-nums ${amountClass}`}>
                 {prefix}{formatCurrency(value)}
               </p>
             );
           })()}
           {!indent && (
-            <p className="text-[11px] lg:text-sm text-muted-foreground mt-0.5 lg:mt-0 lg:w-16 lg:text-right">
+            <p className={`text-[11px] lg:text-sm mt-0.5 lg:mt-0 lg:w-16 lg:text-right ${isMuted ? 'text-muted-foreground/80' : 'text-muted-foreground'}`}>
               {format(new Date(t.date), 'MMM d')}
             </p>
           )}

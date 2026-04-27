@@ -1,13 +1,26 @@
 export type AccountSource = string;
 
-export type TransactionType = 'expense' | 'budget-adjustment' | 'income' | 'deposit' | 'cc-payment';
+export type TransactionType = 'expense' | 'budget-adjustment' | 'income' | 'deposit' | 'cc-payment' | 'transfer' | 'prior-month';
 
-// Special category slug for income/credits that should be excluded from all budget tracking
+// Special category slugs for transactions that should be excluded from all budget tracking.
+// All ignore-* slugs render as a muted "Ignore" row in the UI; the specific slug carries
+// analytic intent (auto-detected vs. user-marked).
 export const INCOME_CATEGORY = 'ignore-income';
 export const DEPOSIT_CATEGORY = 'ignore-deposit';
 export const TRANSFER_CATEGORY = 'ignore-transfer';
-export const CC_PAYMENT_CATEGORY = 'cc-payment';
+export const CC_PAYMENT_CATEGORY = 'ignore-cc-payment';
+export const USER_IGNORE_CATEGORY = 'ignore-user';
 export const PRIOR_MONTH_CATEGORY = 'ignore-prior-month';
+
+// Set of all slugs that mean "ignore this transaction for budget purposes."
+export const IGNORE_CATEGORY_SLUGS = new Set<string>([
+  INCOME_CATEGORY,
+  DEPOSIT_CATEGORY,
+  TRANSFER_CATEGORY,
+  CC_PAYMENT_CATEGORY,
+  USER_IGNORE_CATEGORY,
+  PRIOR_MONTH_CATEGORY,
+]);
 
 export type TransactionSource = 'plaid' | 'manual';
 

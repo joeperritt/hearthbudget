@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY, categoryRequiresNotes } from '@/types/budget';
+import { useState, useEffect } from 'react';
+import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
 import { AISuggestionCard } from './AISuggestionCard';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { format, subMonths, addMonths } from 'date-fns';
@@ -9,10 +9,7 @@ import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 import { AppAccount } from '@/hooks/useAccounts';
 
-type TxMode = 'variable' | 'fixed' | 'deposit' | 'ignore' | 'cc-payment';
-type IgnoreType = 'income' | 'transfer' | 'prior-month';
-
-const CC_PAYMENT_PATTERNS = ['MOBILE PAYMENT', 'AMERICAN EXPRESS ACH PMT', 'AMEX ACH PMT'];
+type TxMode = 'variable' | 'fixed' | 'ignore';
 
 function generateMonthOptions(current: string): { value: string; label: string }[] {
   if (!current) return [];
@@ -39,40 +36,32 @@ interface EditTransactionSheetProps {
   transferAdjustments?: Record<string, number>;
 }
 
-function deriveMode(categoryId: string, transactionType: string, description: string, fixedExpenses: FixedExpense[]): TxMode {
-  if (transactionType === 'cc-payment' || categoryId === CC_PAYMENT_CATEGORY) return 'cc-payment';
-  if (categoryId === PRIOR_MONTH_CATEGORY) return 'ignore';
-  if (transactionType === 'income' || categoryId === INCOME_CATEGORY) {
-    const upperDesc = description.toUpperCase();
-    if (CC_PAYMENT_PATTERNS.some(p => upperDesc.includes(p))) return 'cc-payment';
+function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
+  // Auto-detected or user-marked Ignore family
+  if (IGNORE_CATEGORY_SLUGS.has(categoryId)) return 'ignore';
+  if (transactionType === 'income' || transactionType === 'transfer' || transactionType === 'cc-payment' || transactionType === 'deposit' || transactionType === 'prior-month') {
     return 'ignore';
   }
-  if (categoryId === TRANSFER_CATEGORY) return 'ignore';
-  if (transactionType === 'deposit') return 'deposit';
   if (fixedExpenses.some(e => e.id === categoryId)) return 'fixed';
   return 'variable';
-}
-
-function deriveIgnoreType(categoryId: string): IgnoreType {
-  if (categoryId === PRIOR_MONTH_CATEGORY) return 'prior-month';
-  if (categoryId === TRANSFER_CATEGORY) return 'transfer';
-  return 'income';
 }
 
 export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {} }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
-  const [depositCategoryId, setDepositCategoryId] = useState('');
-  const [ccPaymentCategoryId, setCcPaymentCategoryId] = useState('');
-  const [ccPaymentCategoryType, setCcPaymentCategoryType] = useState<'none' | 'variable' | 'fixed'>('none');
-  const [ignoreType, setIgnoreType] = useState<IgnoreType>('income');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [isSplit, setIsSplit] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([]);
   const [budgetMonth, setBudgetMonth] = useState('');
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
+  // Preserve the original auto-detected slug + type so we can restore it when user
+  // toggles Ignore on a Plaid-detected transfer/cc-payment without overriding.
+  const [originalIgnoreSlug, setOriginalIgnoreSlug] = useState<string | null>(null);
+  const [originalIgnoreType, setOriginalIgnoreType] = useState<string | null>(null);
+
   // Sync local state when transaction changes
   useEffect(() => {
     if (!transaction?.id) return;
@@ -80,7 +69,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     setNotes(transaction.notes);
     setBudgetMonth(transaction.budgetMonth || activeMonth);
 
-    // Auto-enter split mode if opening a split group
     if (splitSiblings.length > 1) {
       setIsSplit(true);
       setSplitLines(splitSiblings.map(s => ({ categoryId: s.categoryId, amount: s.amount.toString(), notes: s.notes || '' })));
@@ -89,31 +77,17 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       setSplitLines([]);
     }
 
-    const m = deriveMode(transaction.categoryId, transaction.transactionType, transaction.description, fixedExpenses);
+    const m = deriveMode(transaction.categoryId, transaction.transactionType, fixedExpenses);
     setMode(m);
 
     if (m === 'variable') {
       setVariableCategoryId(transaction.categoryId || 'unassigned');
     } else if (m === 'fixed') {
       setFixedCategoryId(transaction.categoryId);
-    } else if (m === 'deposit') {
-      setDepositCategoryId(transaction.categoryId !== DEPOSIT_CATEGORY ? transaction.categoryId : '');
-    } else if (m === 'cc-payment') {
-      const catId = transaction.categoryId;
-      if (catId && catId !== CC_PAYMENT_CATEGORY && catId !== INCOME_CATEGORY) {
-        if (fixedExpenses.some(e => e.id === catId)) {
-          setCcPaymentCategoryType('fixed');
-          setCcPaymentCategoryId(catId);
-        } else {
-          setCcPaymentCategoryType('variable');
-          setCcPaymentCategoryId(catId);
-        }
-      } else {
-        setCcPaymentCategoryType('none');
-        setCcPaymentCategoryId('');
-      }
     } else if (m === 'ignore') {
-      setIgnoreType(deriveIgnoreType(transaction.categoryId));
+      // Capture the existing routing so toggling away & back doesn't lose it
+      setOriginalIgnoreSlug(IGNORE_CATEGORY_SLUGS.has(transaction.categoryId) ? transaction.categoryId : null);
+      setOriginalIgnoreType(['transfer', 'cc-payment', 'deposit', 'income', 'prior-month'].includes(transaction.transactionType) ? transaction.transactionType : null);
     }
   }, [transaction?.id]);
 
@@ -123,15 +97,13 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const showAISuggestion = isUnassigned && !suggestionDismissed;
 
   const handleUseSuggestion = (suggestion: { type: string; subtype: string | null; categoryId: string | null }) => {
-    const typeMap: Record<string, TxMode> = { variable: 'variable', fixed: 'fixed', deposit: 'deposit', 'cc-payment': 'cc-payment', ignore: 'ignore' };
+    const typeMap: Record<string, TxMode> = { variable: 'variable', fixed: 'fixed', deposit: 'ignore', 'cc-payment': 'ignore', ignore: 'ignore' };
     const newMode = typeMap[suggestion.type] || 'variable';
     setMode(newMode);
     if (newMode === 'variable' && suggestion.categoryId) {
       setVariableCategoryId(suggestion.categoryId);
     } else if (newMode === 'fixed' && suggestion.categoryId) {
       setFixedCategoryId(suggestion.categoryId);
-    } else if (newMode === 'ignore' && suggestion.subtype) {
-      setIgnoreType(suggestion.subtype as IgnoreType);
     }
     setSuggestionDismissed(true);
   };
@@ -164,14 +136,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     if (notesRequired && !notes.trim()) return;
 
     if (isSplit && (mode === 'variable' || mode === 'fixed')) {
-      // Use total of all siblings if editing an existing split, otherwise use single tx amount
       const totalAmount = splitSiblings.length > 1
         ? splitSiblings.reduce((s, t) => s + t.amount, 0)
         : Math.abs(transaction.amount);
       const allocated = splitLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
       if (Math.abs(totalAmount - allocated) >= 0.01) return;
 
-      // Check per-line notes requirements
       const missingNotes = splitLines.some(l => parseFloat(l.amount) > 0 && categoryRequiresNotes(l.categoryId, categories, fixedExpenses) && !l.notes?.trim());
       if (missingNotes) return;
 
@@ -204,7 +174,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         return;
       }
 
-      // Delete all sibling transactions (or just the one if not from a split group)
       const idsToDelete = splitSiblings.length > 1
         ? splitSiblings.map(s => s.id)
         : [transaction.id];
@@ -233,17 +202,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
         slugToSave = fixedCategoryId;
         txType = 'expense';
         break;
-      case 'deposit':
-        slugToSave = depositCategoryId || DEPOSIT_CATEGORY;
-        txType = 'deposit';
-        break;
-      case 'cc-payment':
-        slugToSave = ccPaymentCategoryType !== 'none' && ccPaymentCategoryId ? ccPaymentCategoryId : CC_PAYMENT_CATEGORY;
-        txType = 'cc-payment';
-        break;
       case 'ignore':
-        slugToSave = ignoreType === 'transfer' ? TRANSFER_CATEGORY : ignoreType === 'prior-month' ? PRIOR_MONTH_CATEGORY : INCOME_CATEGORY;
-        txType = ignoreType === 'transfer' ? 'transfer' : ignoreType === 'prior-month' ? 'prior-month' : 'income';
+        // Preserve auto-detect routing if this transaction was auto-classified;
+        // otherwise mark as user-initiated ignore.
+        if (originalIgnoreSlug && originalIgnoreType) {
+          slugToSave = originalIgnoreSlug;
+          txType = originalIgnoreType;
+        } else {
+          slugToSave = USER_IGNORE_CATEGORY;
+          txType = 'expense';
+        }
         break;
     }
 
@@ -272,8 +240,6 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const MODE_BUTTONS: { id: TxMode; label: string }[] = [
     { id: 'variable', label: 'Variable' },
     { id: 'fixed', label: 'Fixed' },
-    { id: 'deposit', label: 'Deposit' },
-    { id: 'cc-payment', label: 'CC Pmt' },
     { id: 'ignore', label: 'Ignore' },
   ];
 
@@ -285,6 +251,17 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const canSave = (!notesRequired || !!notes.trim()) && (!isSplit || (splitBalanced && !splitMissingNotes)) && !saving;
 
   const monthOptions = generateMonthOptions(activeMonth);
+
+  // Friendly label for the ignore reason (when auto-detected)
+  const ignoreReasonLabel = (() => {
+    if (mode !== 'ignore') return null;
+    if (originalIgnoreSlug === TRANSFER_CATEGORY || originalIgnoreType === 'transfer') return 'Auto-detected as a transfer between accounts';
+    if (originalIgnoreSlug === CC_PAYMENT_CATEGORY || originalIgnoreType === 'cc-payment') return 'Auto-detected as a credit card payment';
+    if (originalIgnoreSlug === INCOME_CATEGORY || originalIgnoreType === 'income') return 'Marked as income';
+    if (originalIgnoreSlug === DEPOSIT_CATEGORY || originalIgnoreType === 'deposit') return 'Marked as a deposit';
+    if (originalIgnoreSlug === PRIOR_MONTH_CATEGORY || originalIgnoreType === 'prior-month') return 'Belongs to a prior budget month';
+    return 'Excluded from budget tracking';
+  })();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -356,7 +333,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 <button
                   key={b.id}
                   onClick={() => handleModeChange(b.id)}
-                  className={`flex-1 px-2 py-2 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
+                  className={`flex-1 px-2 py-2 rounded-full text-xs font-semibold transition-all active:scale-95 ${
                     mode === b.id
                       ? 'bg-accent text-accent-foreground shadow-sm'
                       : 'bg-card text-muted-foreground border border-border'
@@ -368,7 +345,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           </div>
 
-          {/* Category selection or Split editor */}
+          {/* Variable category */}
           {mode === 'variable' && !isSplit && (
             <div className="animate-fade-up">
               <div className="flex items-center justify-between">
@@ -395,6 +372,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
+          {/* Fixed category */}
           {mode === 'fixed' && !isSplit && (
             <div className="animate-fade-up">
               <div className="flex items-center justify-between">
@@ -464,150 +442,25 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
             </div>
           )}
 
-          {mode === 'deposit' && (
-            <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Apply to Category <span className="text-muted-foreground/60 normal-case">(optional)</span>
-              </label>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1.5">
-                Offsets spending in the selected category as a reimbursement
-              </p>
-              <select
-                value={depositCategoryId}
-                onChange={e => setDepositCategoryId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-              >
-                <option value="">None — general deposit</option>
-                <optgroup label="Variable">
-                  {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Fixed">
-                  {[...fixedExpenses].sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-          )}
-
-          {mode === 'cc-payment' && (
-            <div className="animate-fade-up space-y-3">
-              <p className="text-[11px] text-muted-foreground/70">
-                Reduces credit card balance. Optionally assign to a category to offset that budget.
-              </p>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Apply to Budget <span className="text-muted-foreground/60 normal-case">(optional)</span>
-                </label>
-                <div className="flex gap-1.5 mt-1.5 mb-2">
-                  {([
-                    { id: 'none' as const, label: 'None' },
-                    { id: 'variable' as const, label: 'Variable' },
-                    { id: 'fixed' as const, label: 'Fixed' },
-                  ]).map(opt => (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setCcPaymentCategoryType(opt.id);
-                        if (opt.id === 'none') setCcPaymentCategoryId('');
-                        if (opt.id === 'fixed' && !ccPaymentCategoryId) {
-                          const first = fixedExpenses[0];
-                          if (first) setCcPaymentCategoryId(first.id);
-                        }
-                      }}
-                      className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95 ${
-                        ccPaymentCategoryType === opt.id
-                          ? 'bg-muted text-foreground border border-accent/50'
-                          : 'bg-card text-muted-foreground border border-border'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {ccPaymentCategoryType === 'variable' && (
-                  <select
-                    value={ccPaymentCategoryId}
-                    onChange={e => setCcPaymentCategoryId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  >
-                    <option value="">Select category…</option>
-                    {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                )}
-                {ccPaymentCategoryType === 'fixed' && (
-                  <select
-                    value={ccPaymentCategoryId}
-                    onChange={e => setCcPaymentCategoryId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-card border border-accent/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  >
-                    {fixedExpenses.filter(e => e.group === 'bills').length > 0 && (
-                      <optgroup label="Bills">
-                        {fixedExpenses.filter(e => e.group === 'bills').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                          <option key={e.id} value={e.id}>{e.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {fixedExpenses.filter(e => e.group === 'savings').length > 0 && (
-                      <optgroup label="Savings">
-                        {fixedExpenses.filter(e => e.group === 'savings').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                          <option key={e.id} value={e.id}>{e.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {fixedExpenses.filter(e => e.group === 'tithe').length > 0 && (
-                      <optgroup label="Tithe / Giving">
-                        {fixedExpenses.filter(e => e.group === 'tithe').sort((a, b) => a.name.localeCompare(b.name)).map(e => (
-                          <option key={e.id} value={e.id}>{e.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                )}
-              </div>
-            </div>
-          )}
-
+          {/* Ignore — minimal UI, prominent notes */}
           {mode === 'ignore' && (
-            <div className="animate-fade-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reason</label>
-              <div className="flex gap-2 mt-1.5">
-                {([
-                  { id: 'income' as const, label: 'Income' },
-                  { id: 'transfer' as const, label: 'Transfer' },
-                  { id: 'prior-month' as const, label: 'Prior Month' },
-                ] as const).map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setIgnoreType(opt.id)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
-                      ignoreType === opt.id
-                        ? 'bg-muted text-foreground border border-accent/50'
-                        : 'bg-card text-muted-foreground border border-border'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground/70 mt-1.5">
-                {ignoreType === 'income' ? 'Paycheck, interest, or other income' : ignoreType === 'transfer' ? 'Inter-account transfer or credit card payment' : 'Transaction from a previous budget month'}
+            <div className="animate-fade-up bg-muted/40 rounded-lg p-3">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {ignoreReasonLabel}. This transaction is excluded from budget totals and Unassigned.
               </p>
             </div>
           )}
 
+          {/* Notes — surfaced prominently for Ignore so user can leave context */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Notes {notesRequired && <span className="text-destructive">*</span>}
+              {mode === 'ignore' && <span className="text-muted-foreground/60 normal-case ml-1">(why are you ignoring this?)</span>}
             </label>
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Add a note…"
+              placeholder={mode === 'ignore' ? 'e.g. cash withdrawal, tax refund, one-off…' : 'Add a note…'}
               className={`w-full mt-1 px-3 py-2.5 rounded-lg bg-card border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/30 ${
                 notesRequired && !notes.trim() ? 'border-accent/60' : 'border-border'
               }`}
