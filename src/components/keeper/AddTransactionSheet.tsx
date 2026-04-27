@@ -346,12 +346,15 @@ export function AddTransactionSheet({ open, onOpenChange, categories, fixedExpen
             </div>
           )}
 
-          {/* Ignore — minimal UI, prominent notes */}
+          {/* Ignore — educational copy + prominent notes */}
           {mode === 'ignore' && (
-            <div className="animate-fade-up bg-muted/40 rounded-lg p-3">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Excluded from budget totals and Unassigned. Use for cash withdrawals, tax refunds, or other one-offs you don't want to track.
-              </p>
+            <div className="animate-fade-up rounded-lg p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
+              <div className="flex gap-2">
+                <Lightbulb size={14} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" strokeWidth={2.25} />
+                <p className="text-[11px] text-foreground/80 leading-relaxed">
+                  Common uses: paychecks coming in, transfers to and from savings, paying off credit cards. These don't belong in budget categories because they're moving money around, not spending it.
+                </p>
+              </div>
             </div>
           )}
 
