@@ -437,9 +437,8 @@ export function TransactionsView({
                     </span>
 
                     <div className="flex-1 min-w-0 lg:flex lg:items-baseline lg:gap-2">
-                      <p className="text-sm lg:text-base font-semibold truncate text-foreground inline-flex items-center gap-1">
+                      <p className="text-sm lg:text-base font-semibold truncate text-foreground">
                         Split
-                        {expanded ? <ChevronUp size={14} className="text-muted-foreground/70" /> : <ChevronDown size={14} className="text-muted-foreground/70" />}
                       </p>
                       {row.description ? (
                         <p className="text-[11px] lg:text-xs text-muted-foreground/70 truncate mt-0.5 lg:mt-0 font-normal">{row.description}</p>
