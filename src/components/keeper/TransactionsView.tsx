@@ -457,7 +457,9 @@ export function TransactionsView({
                       </p>
                     </div>
 
-                    <div className="w-[26px] shrink-0" />
+                    <div className="w-[26px] shrink-0 flex items-center justify-center text-muted-foreground/70">
+                      {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
                   </div>
 
                   {expanded && (
