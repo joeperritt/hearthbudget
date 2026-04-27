@@ -371,6 +371,7 @@ const Index = () => {
           transferAdjustment={transferAdjustments[cat.id] || 0}
           onBack={() => setSelectedCategoryId(null)}
           onDeleteTransaction={deleteTransaction}
+          onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
         />
