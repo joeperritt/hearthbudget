@@ -121,24 +121,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Helper: any ignore-* slug or unassigned should never count as income or spending.
+    // Any ignore-* slug or unassigned should never count as spending.
     const isIgnored = (slug: string) =>
       !slug || slug === "unassigned" || slug.startsWith("ignore-");
-
-    // Income detection (avg/month):
-    //   1. Anything explicitly tagged transaction_type='income' that ISN'T ignore-* / unassigned.
-    //   2. PLUS positive-magnitude deposits into the checking account that aren't ignore-* / unassigned
-    //      (covers paychecks Plaid mis-tags as 'expense' or 'deposit').
-    // In this app, deposits land as negative amounts, so a "positive deposit" = amount < 0 on checking.
-    let incomeTotal = 0;
-    for (const t of transactions) {
-      if (isIgnored(t.category_slug)) continue;
-      const amt = Number(t.amount);
-      if (t.transaction_type === "income") {
-        incomeTotal += Math.abs(amt);
-      }
-    }
-    const detectedMonthlyIncome = incomeTotal / monthsObserved;
 
     // Spending grouped by category slug (skip ignore-* and unassigned)
     const spentBySlug = new Map<string, number>();
