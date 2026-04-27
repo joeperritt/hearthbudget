@@ -343,6 +343,16 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 </button>
               ))}
             </div>
+            {mode === 'variable' && (
+              <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed">
+                Counts toward a budget category — like groceries, gas, or eating out.
+              </p>
+            )}
+            {mode === 'fixed' && (
+              <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed">
+                Recurring bills you can predict — mortgage, utilities, subscriptions.
+              </p>
+            )}
           </div>
 
           {/* Variable category */}
