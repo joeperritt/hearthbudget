@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
 
     const aiPayload = {
       months_observed: monthsObserved,
-      detected_monthly_income: round2(detectedMonthlyIncome),
+      monthly_take_home: round2(monthlyIncome),
       annual_gross_income_on_file: profileBits.annual_gross_income ?? null,
       filing_status: profileBits.filing_status ?? null,
       state: profileBits.state ?? null,
