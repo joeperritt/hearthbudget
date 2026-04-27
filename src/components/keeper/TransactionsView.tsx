@@ -20,7 +20,7 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-type Filter = 'all' | 'manual' | 'unassigned' | 'transfers-hidden' | string;
+type Filter = 'all' | 'manual' | 'unassigned' | 'budget-transfers' | 'transfers-hidden' | string;
 
 interface TransactionsViewProps {
   transactions: Transaction[];
