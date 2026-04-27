@@ -1,32 +1,51 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, ChevronDown, ChevronRight, Info, ArrowRight, AlertCircle } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { BudgetCategory } from "@/types/budget";
 
 const LOADING_MESSAGES = [
   "Pulling your transaction history…",
-  "Comparing spending to your take-home pay…",
-  "Checking against CFP guideline percentages…",
+  "Rolling categories into CFP buckets…",
+  "Comparing each bucket to its guideline %…",
+  "Looking for reallocation opportunities…",
   "Building your suggested targets…",
 ];
+
+interface MemberCategory {
+  slug: string;
+  name: string;
+  group: string;
+  current_budget: number;
+  actual_monthly_avg: number;
+}
+
+interface BucketResult {
+  key: string;
+  label: string;
+  guideline_pct: number;
+  guideline_kind: "max" | "min" | "target";
+  guideline_source: string;
+  member_categories: MemberCategory[];
+  bucket_current_budget: number;
+  bucket_actual_monthly_avg: number;
+  bucket_pct_of_income: number;
+  verdict: "under" | "in_line" | "over";
+  suggested_bucket_total: number;
+  commentary: string;
+}
 
 interface AnalyzeResult {
   monthly_take_home: number;
   months_observed: number;
   lookback_days: number;
   transaction_count: number;
-  categories: Array<{
-    slug: string;
-    name: string;
-    group: string;
-    current_budget: number;
-    actual_monthly_avg: number;
-    suggested: number;
-    commentary: string;
-  }>;
+  buckets: BucketResult[];
+  unmatched_categories: MemberCategory[];
+  reallocation_hints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }>;
   overall_summary: string;
   stewardship_mode: boolean;
 }
@@ -40,7 +59,9 @@ interface SpendingAnalyzerProps {
 }
 
 function fmt(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD", minimumFractionDigits: 2,
+  }).format(n || 0);
 }
 
 function pct(n: number, denom: number): string {
@@ -48,37 +69,41 @@ function pct(n: number, denom: number): string {
   return `${Math.round((n / denom) * 100)}%`;
 }
 
+function verdictPill(v: BucketResult["verdict"]) {
+  if (v === "over") return { text: "Over guideline", cls: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200" };
+  if (v === "under") return { text: "Under guideline", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" };
+  return { text: "In line", cls: "bg-muted text-muted-foreground" };
+}
+
 export function SpendingAnalyzer({
-  open,
-  onOpenChange,
-  categories,
-  onApply,
-  stewardshipMode = true,
+  open, onOpenChange, categories, onApply, stewardshipMode = true,
 }: SpendingAnalyzerProps) {
   const [phase, setPhase] = useState<"intake" | "loading" | "results">("intake");
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
-  const [income, setIncome] = useState<string>("");
-  // Per-row choice: "suggested" or "actual"
-  const [choices, setChoices] = useState<Record<string, "suggested" | "actual">>({});
+  const [income, setIncome] = useState("");
   const [applying, setApplying] = useState(false);
 
-  // Reset on open
+  // Per-bucket: target total chosen by user (defaults to AI suggested)
+  const [bucketTargets, setBucketTargets] = useState<Record<string, number>>({});
+  // Per-member: dollar amount user has split out of bucket total. Default proportional to actual.
+  const [memberAmounts, setMemberAmounts] = useState<Record<string, number>>({});
+  const [expandedBuckets, setExpandedBuckets] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (open) {
       setPhase("intake");
       setResult(null);
-      setChoices({});
+      setBucketTargets({});
+      setMemberAmounts({});
+      setExpandedBuckets({});
       setIncome("");
     }
   }, [open]);
 
-  // Rotate loading messages every 1.6s
   useEffect(() => {
     if (phase !== "loading") return;
-    const t = setInterval(() => {
-      setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length);
-    }, 1600);
+    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1600);
     return () => clearInterval(t);
   }, [phase]);
 
@@ -108,14 +133,22 @@ export function SpendingAnalyzer({
         return;
       }
       setResult(r);
-      // Default each row to Suggested if delta > 5%, else Actual
-      const next: Record<string, "suggested" | "actual"> = {};
-      for (const row of r.categories) {
-        const base = Math.max(row.actual_monthly_avg, 1);
-        const delta = Math.abs(row.suggested - row.actual_monthly_avg) / base;
-        next[row.slug] = delta > 0.05 ? "suggested" : "actual";
+      // Seed per-bucket target = AI suggestion
+      const targets: Record<string, number> = {};
+      const members: Record<string, number> = {};
+      for (const b of r.buckets) {
+        targets[b.key] = b.suggested_bucket_total;
+        // Proportional split based on actual_monthly_avg; if all zero, equal split
+        const actualSum = b.member_categories.reduce((s, m) => s + m.actual_monthly_avg, 0);
+        for (const m of b.member_categories) {
+          const share = actualSum > 0
+            ? (m.actual_monthly_avg / actualSum) * b.suggested_bucket_total
+            : b.suggested_bucket_total / Math.max(b.member_categories.length, 1);
+          members[m.slug] = Math.round(share * 100) / 100;
+        }
       }
-      setChoices(next);
+      setBucketTargets(targets);
+      setMemberAmounts(members);
       setPhase("results");
     } catch (e) {
       console.error(e);
@@ -128,26 +161,42 @@ export function SpendingAnalyzer({
     }
   };
 
-  const totalBudget = useMemo(() => {
+  // When user changes a bucket total, redistribute proportionally based on current member shares.
+  const updateBucketTarget = (bucket: BucketResult, newTotal: number) => {
+    setBucketTargets(t => ({ ...t, [bucket.key]: newTotal }));
+    setMemberAmounts(prev => {
+      const next = { ...prev };
+      const currentSum = bucket.member_categories.reduce((s, m) => s + (prev[m.slug] || 0), 0);
+      if (currentSum > 0) {
+        for (const m of bucket.member_categories) {
+          const share = (prev[m.slug] || 0) / currentSum;
+          next[m.slug] = Math.round(share * newTotal * 100) / 100;
+        }
+      } else {
+        const equal = newTotal / Math.max(bucket.member_categories.length, 1);
+        for (const m of bucket.member_categories) next[m.slug] = Math.round(equal * 100) / 100;
+      }
+      return next;
+    });
+  };
+
+  const updateMemberAmount = (slug: string, val: number) => {
+    setMemberAmounts(m => ({ ...m, [slug]: val }));
+  };
+
+  const totalSelected = useMemo(() => {
     if (!result) return 0;
-    return result.categories.reduce((s, row) => {
-      const choice = choices[row.slug] ?? "suggested";
-      const v = choice === "suggested" ? row.suggested : row.actual_monthly_avg;
-      return s + (Number.isFinite(v) ? v : 0);
-    }, 0);
-  }, [result, choices]);
+    return result.buckets.reduce((sum, b) => sum + (bucketTargets[b.key] || 0), 0);
+  }, [result, bucketTargets]);
 
   const apply = async () => {
     if (!result) return;
     setApplying(true);
     try {
-      const byId = new Map(categories.map(c => [c.id, c]));
       const updated = categories.map(c => {
-        const row = result.categories.find(r => r.slug === c.id);
-        if (!row) return c;
-        const choice = choices[c.id] ?? "suggested";
-        const v = choice === "suggested" ? row.suggested : row.actual_monthly_avg;
-        return { ...byId.get(c.id)!, budgeted: Math.round(v * 100) / 100 };
+        const v = memberAmounts[c.id];
+        if (typeof v !== "number") return c;
+        return { ...c, budgeted: Math.round(v * 100) / 100 };
       });
       await onApply(updated);
       toast({ title: "Budget updated", description: "Your category targets have been saved." });
@@ -163,6 +212,12 @@ export function SpendingAnalyzer({
     }
   };
 
+  const bucketLabelByKey = useMemo(() => {
+    const m: Record<string, string> = {};
+    if (result) for (const b of result.buckets) m[b.key] = b.label;
+    return m;
+  }, [result]);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-0">
@@ -176,10 +231,9 @@ export function SpendingAnalyzer({
         {phase === "intake" && (
           <div className="px-5 py-8 space-y-6 max-w-md mx-auto">
             <p className="text-sm text-muted-foreground text-center">
-              We'll review your last 90 days of transactions and suggest realistic
-              monthly targets, comparing your spending to Certified Financial
-              Planner (CFP) guideline percentages
-              {stewardshipMode ? " informed by stewardship principles" : ""}.
+              We'll roll your last 90 days of spending into standard Certified Financial
+              Planner (CFP) buckets and compare each one to its guideline percentage
+              {stewardshipMode ? ", informed by stewardship principles" : ""}.
             </p>
 
             <div className="space-y-2">
@@ -207,7 +261,7 @@ export function SpendingAnalyzer({
 
             <p className="text-xs text-muted-foreground text-center">
               Your manual category assignments and ignored transactions are respected.
-              Nothing is changed until you review and apply.
+              Nothing changes until you review and apply.
             </p>
 
             <Button onClick={runAnalysis} disabled={!incomeValid} className="w-full">
@@ -237,68 +291,189 @@ export function SpendingAnalyzer({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Based on {result.transaction_count} transactions across {result.months_observed} months.
+                Based on {result.transaction_count} transactions across {result.months_observed} months,
+                rolled up into {result.buckets.length} CFP buckets.
               </p>
             </div>
 
-            {/* Per-category rows */}
+            {/* Bucket cards */}
             <div className="px-5 py-3 space-y-3">
-              {result.categories.map(row => {
-                const choice = choices[row.slug] ?? "suggested";
-                const actualPct = pct(row.actual_monthly_avg, result.monthly_take_home);
-                const suggestedPct = pct(row.suggested, result.monthly_take_home);
+              {result.buckets.map(b => {
+                const expanded = expandedBuckets[b.key] ?? false;
+                const target = bucketTargets[b.key] ?? b.suggested_bucket_total;
+                const memberSum = b.member_categories.reduce(
+                  (s, m) => s + (memberAmounts[m.slug] || 0), 0,
+                );
+                const splitDelta = Math.round((memberSum - target) * 100) / 100;
+                const pill = verdictPill(b.verdict);
+                const guidelineLabel = b.guideline_kind === "max"
+                  ? `≤ ${b.guideline_pct}%`
+                  : b.guideline_kind === "min" ? `≥ ${b.guideline_pct}%`
+                  : `~ ${b.guideline_pct}%`;
                 return (
-                  <div key={row.slug} className="bg-card rounded-xl border border-border p-3">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="font-semibold text-sm text-foreground">{row.name}</div>
-                      <div className="flex rounded-full bg-muted p-0.5 text-xs">
-                        <button
-                          onClick={() => setChoices(c => ({ ...c, [row.slug]: "actual" }))}
-                          className={`px-2.5 py-1 rounded-full transition-colors ${
-                            choice === "actual" ? "bg-background shadow-sm font-medium text-foreground" : "text-muted-foreground"
-                          }`}
-                        >
-                          Actual
-                        </button>
-                        <button
-                          onClick={() => setChoices(c => ({ ...c, [row.slug]: "suggested" }))}
-                          className={`px-2.5 py-1 rounded-full transition-colors ${
-                            choice === "suggested" ? "bg-background shadow-sm font-medium text-foreground" : "text-muted-foreground"
-                          }`}
-                        >
-                          Suggested
-                        </button>
+                  <div key={b.key} className="bg-card rounded-xl border border-border overflow-hidden">
+                    <div className="p-3">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="font-semibold text-sm text-foreground">{b.label}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <span className="tabular-nums">
+                              {fmt(b.bucket_actual_monthly_avg)} ({b.bucket_pct_of_income}% of take-home)
+                            </span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1">
+                              Guideline {guidelineLabel}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="Where does this guideline come from?"
+                                    className="text-muted-foreground hover:text-foreground"
+                                  >
+                                    <Info className="w-3 h-3" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 text-xs leading-relaxed" side="top">
+                                  {b.guideline_source}
+                                </PopoverContent>
+                              </Popover>
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
+                          {pill.text}
+                        </span>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs mb-2">
-                      <div>
-                        <div className="text-muted-foreground">Now</div>
-                        <div className="font-medium tabular-nums">{fmt(row.current_budget)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Actual avg</div>
-                        <div className="font-medium tabular-nums">
-                          {fmt(row.actual_monthly_avg)}
-                          {actualPct && <span className="text-muted-foreground font-normal ml-1">({actualPct})</span>}
+
+                      {b.commentary && (
+                        <p className="text-xs italic text-muted-foreground leading-snug mb-3">
+                          {b.commentary}
+                        </p>
+                      )}
+
+                      {/* Suggested bucket total — editable */}
+                      <div className="flex items-center justify-between gap-2 bg-muted/50 rounded-lg p-2.5">
+                        <label className="text-xs text-muted-foreground" htmlFor={`bt-${b.key}`}>
+                          Suggested bucket total
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                          <input
+                            id={`bt-${b.key}`}
+                            type="text"
+                            inputMode="decimal"
+                            value={target.toFixed(2)}
+                            onChange={e => {
+                              const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
+                              updateBucketTarget(b, Number.isFinite(v) ? v : 0);
+                            }}
+                            className="w-28 pl-5 pr-2 py-1 text-sm font-semibold tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
+                          />
                         </div>
                       </div>
-                      <div>
-                        <div className="text-muted-foreground">Suggested</div>
-                        <div className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
-                          {fmt(row.suggested)}
-                          {suggestedPct && <span className="text-amber-700/70 dark:text-amber-400/70 font-normal ml-1">({suggestedPct})</span>}
+
+                      {/* Expand to split across member categories */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBuckets(s => ({ ...s, [b.key]: !expanded }))}
+                        className="mt-2 w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground py-1"
+                      >
+                        <span className="flex items-center gap-1">
+                          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                          Split across {b.member_categories.length} of your categories
+                        </span>
+                        {Math.abs(splitDelta) >= 0.01 && (
+                          <span className={splitDelta > 0 ? "text-rose-600" : "text-amber-600"}>
+                            {splitDelta > 0 ? "+" : ""}{fmt(splitDelta)} vs total
+                          </span>
+                        )}
+                      </button>
+
+                      {expanded && (
+                        <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                          {b.member_categories.map(m => (
+                            <div key={m.slug} className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm text-foreground truncate">{m.name}</div>
+                                <div className="text-[11px] text-muted-foreground tabular-nums">
+                                  Actual avg {fmt(m.actual_monthly_avg)}
+                                </div>
+                              </div>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={(memberAmounts[m.slug] ?? 0).toFixed(2)}
+                                  onChange={e => {
+                                    const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
+                                    updateMemberAmount(m.slug, Number.isFinite(v) ? v : 0);
+                                  }}
+                                  className="w-24 pl-5 pr-2 py-1 text-sm tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
-                    {row.commentary && (
-                      <p className="text-xs italic text-muted-foreground leading-snug">
-                        {row.commentary}
-                      </p>
-                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Reallocation hints */}
+            {result.reallocation_hints.length > 0 && (
+              <div className="mx-5 my-4 p-4 rounded-xl border border-border bg-card">
+                <div className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                  <ArrowRight className="w-4 h-4 text-amber-500" />
+                  Reallocation ideas
+                </div>
+                <ul className="space-y-2">
+                  {result.reallocation_hints.map((h, i) => (
+                    <li key={i} className="text-xs leading-relaxed">
+                      <span className="font-medium text-foreground">
+                        {bucketLabelByKey[h.from_bucket] || h.from_bucket}
+                      </span>
+                      <ArrowRight className="inline w-3 h-3 mx-1 text-muted-foreground" />
+                      <span className="font-medium text-foreground">
+                        {bucketLabelByKey[h.to_bucket] || h.to_bucket}
+                      </span>
+                      <span className="text-amber-700 dark:text-amber-400 tabular-nums ml-1">
+                        ({fmt(h.amount)})
+                      </span>
+                      {h.rationale && (
+                        <div className="text-muted-foreground mt-0.5">{h.rationale}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Unmatched categories */}
+            {result.unmatched_categories.length > 0 && (
+              <div className="mx-5 my-4 p-4 rounded-xl border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20">
+                <div className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  Categories without a CFP bucket
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  These didn't fit any standard bucket. They were left out of this analysis —
+                  consider renaming, merging into an existing category, or telling us which bucket they belong in.
+                </p>
+                <ul className="text-xs text-foreground space-y-1">
+                  {result.unmatched_categories.map(m => (
+                    <li key={m.slug} className="flex items-center justify-between gap-2">
+                      <span>{m.name}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        avg {fmt(m.actual_monthly_avg)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Overall summary */}
             {result.overall_summary && (
@@ -313,14 +488,14 @@ export function SpendingAnalyzer({
               </div>
             )}
 
-            {/* Sticky footer with totals + apply */}
+            {/* Sticky footer */}
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-5 py-3 flex items-center justify-between gap-3">
               <div className="text-xs">
                 <div className="text-muted-foreground">Selected total</div>
                 <div className="font-semibold tabular-nums text-foreground">
-                  {fmt(totalBudget)}
+                  {fmt(totalSelected)}
                   <span className="text-muted-foreground font-normal ml-1">
-                    ({pct(totalBudget, result.monthly_take_home)})
+                    ({pct(totalSelected, result.monthly_take_home)})
                   </span>
                 </div>
               </div>
