@@ -73,9 +73,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = (await req.json().catch(() => ({}))) as { stewardshipMode?: boolean; lookbackDays?: number };
+    const body = (await req.json().catch(() => ({}))) as { stewardshipMode?: boolean; lookbackDays?: number; monthlyIncome?: number };
     const stewardshipMode = body.stewardshipMode !== false;
     const lookbackDays = Math.min(Math.max(body.lookbackDays ?? 90, 30), 180);
+    const monthlyIncome = Number(body.monthlyIncome);
+    if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
+      return new Response(JSON.stringify({
+        error: "missing_income",
+        message: "Monthly take-home pay is required.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const sinceDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
