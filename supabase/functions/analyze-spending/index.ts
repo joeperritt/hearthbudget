@@ -41,6 +41,7 @@ Also return:
 Stay strictly within budgeting guidance. Do not recommend securities, give tax advice, or suggest insurance products.`;
 
 interface DbCategory { slug: string; name: string; budgeted: number; group: string }
+interface DbFixed { slug: string; name: string; amount: number; group: string }
 interface DbTxn { date: string; amount: number; category_slug: string; transaction_type: string }
 
 Deno.serve(async (req) => {
@@ -97,17 +98,20 @@ Deno.serve(async (req) => {
     const sinceDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
 
-    const [{ data: cats }, { data: txns }] = await Promise.all([
+    const [{ data: cats }, { data: fixedRows }, { data: txns }] = await Promise.all([
       service.from("budget_categories").select("slug,name,budgeted,group")
+        .eq("household_id", householdId).order("sort_order"),
+      service.from("fixed_expenses").select("slug,name,amount,group")
         .eq("household_id", householdId).order("sort_order"),
       service.from("transactions").select("date,amount,category_slug,transaction_type")
         .eq("household_id", householdId).gte("date", sinceDate),
     ]);
 
     const categories = (cats || []) as DbCategory[];
+    const fixedExpenses = (fixedRows || []) as DbFixed[];
     const transactions = (txns || []) as DbTxn[];
 
-    if (categories.length === 0) {
+    if (categories.length === 0 && fixedExpenses.length === 0) {
       return new Response(JSON.stringify({ error: "No budget categories yet" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -140,22 +144,24 @@ Deno.serve(async (req) => {
 
     // Roll up into buckets. Track unmatched explicitly — do NOT bucket as "other".
     interface MemberRow {
-      slug: string; name: string; group: string;
+      slug: string; name: string; group: string; source: "variable" | "fixed";
       current_budget: number; actual_monthly_avg: number;
     }
     const bucketMembers = new Map<string, MemberRow[]>();
     const unmatchedMembers: MemberRow[] = [];
 
+    // Variable categories: actuals come from transactions.
     for (const c of categories) {
       const total = spentBySlug.get(c.slug) || 0;
       const row: MemberRow = {
         slug: c.slug,
         name: c.name,
         group: c.group,
+        source: "variable",
         current_budget: Number(c.budgeted),
         actual_monthly_avg: round2(total / monthsObserved),
       };
-      const { bucket_key } = assignBucket(c.slug, c.name);
+      const { bucket_key } = assignBucket(c.slug, c.name, c.group);
       if (!bucket_key) {
         unmatchedMembers.push(row);
       } else {
@@ -165,24 +171,50 @@ Deno.serve(async (req) => {
       }
     }
 
-    const bucketRollups = CFP_BUCKETS
-      .map(b => {
-        const members = bucketMembers.get(b.key) || [];
-        const bucket_actual = members.reduce((s, m) => s + m.actual_monthly_avg, 0);
-        const bucket_current_budget = members.reduce((s, m) => s + m.current_budget, 0);
-        return {
-          key: b.key,
-          label: b.label,
-          guideline_pct: b.guideline_pct,
-          guideline_kind: b.guideline_kind,
-          guideline_source: b.guideline_source,
-          member_categories: members,
-          bucket_current_budget: round2(bucket_current_budget),
-          bucket_actual_monthly_avg: round2(bucket_actual),
-          bucket_pct_of_income: round2((bucket_actual / monthlyIncome) * 100),
-        };
-      })
-      .filter(b => b.member_categories.length > 0);
+    // Fixed expenses: actuals come from transactions when present, otherwise
+    // fall back to the planned monthly amount so the bucket adds up even when
+    // the bill is paid via a Plaid-ignored channel.
+    for (const f of fixedExpenses) {
+      const observed = spentBySlug.get(f.slug);
+      const observedAvg = observed ? observed / monthsObserved : 0;
+      const planned = Number(f.amount) || 0;
+      const row: MemberRow = {
+        slug: f.slug,
+        name: f.name,
+        group: f.group,
+        source: "fixed",
+        current_budget: planned,
+        actual_monthly_avg: round2(observedAvg > 0 ? observedAvg : planned),
+      };
+      const { bucket_key } = assignBucket(f.slug, f.name, f.group);
+      if (!bucket_key) {
+        unmatchedMembers.push(row);
+      } else {
+        const arr = bucketMembers.get(bucket_key) || [];
+        arr.push(row);
+        bucketMembers.set(bucket_key, arr);
+      }
+    }
+
+    // Always emit one row per CFP bucket so the framework adds up to ~100% of
+    // take-home, even if a bucket has zero matched members yet.
+    const bucketRollups = CFP_BUCKETS.map(b => {
+      const members = bucketMembers.get(b.key) || [];
+      const bucket_actual = members.reduce((s, m) => s + m.actual_monthly_avg, 0);
+      const bucket_current_budget = members.reduce((s, m) => s + m.current_budget, 0);
+      return {
+        key: b.key,
+        label: b.label,
+        guideline_pct: b.guideline_pct,
+        guideline_kind: b.guideline_kind,
+        guideline_source: b.guideline_source,
+        role: b.role,
+        member_categories: members,
+        bucket_current_budget: round2(bucket_current_budget),
+        bucket_actual_monthly_avg: round2(bucket_actual),
+        bucket_pct_of_income: round2((bucket_actual / monthlyIncome) * 100),
+      };
+    });
 
     const aiPayload = {
       months_observed: monthsObserved,
