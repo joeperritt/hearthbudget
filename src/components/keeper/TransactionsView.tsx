@@ -360,7 +360,7 @@ export function TransactionsView({
         ))}
       </div>
 
-      {transfers.length > 0 && (
+      {transfers.length > 0 && filter !== 'budget-transfers' && filter !== 'unassigned' && filter !== 'manual' && (
         <div className="px-6 mb-4">
           <button
             onClick={() => setShowTransfers(s => !s)}
