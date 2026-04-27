@@ -301,13 +301,19 @@ export function SpendingAnalyzer({
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Based on {result.transaction_count} transactions across {result.months_observed} months,
-                rolled up into {result.buckets.length} CFP buckets.
+                rolled up into the standard CFP framework. Variable buckets are
+                yours to retune; fixed bills are shown for context so the picture adds up.
               </p>
             </div>
 
-            {/* Bucket cards */}
-            <div className="px-5 py-3 space-y-3">
-              {result.buckets.map(b => {
+            {/* Variable bucket cards (editable) */}
+            <div className="px-5 pt-4 pb-1">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                Variable spending
+              </div>
+            </div>
+            <div className="px-5 py-2 space-y-3">
+              {result.buckets.filter(b => b.role === "variable").map(b => {
                 const expanded = expandedBuckets[b.key] ?? false;
                 const target = bucketTargets[b.key] ?? b.suggested_bucket_total;
                 const memberSum = b.member_categories.reduce(
@@ -381,55 +387,118 @@ export function SpendingAnalyzer({
                         </div>
                       </div>
 
-                      {/* Expand to split across member categories */}
-                      <button
-                        type="button"
-                        onClick={() => setExpandedBuckets(s => ({ ...s, [b.key]: !expanded }))}
-                        className="mt-2 w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground py-1"
-                      >
-                        <span className="flex items-center gap-1">
-                          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                          Split across {b.member_categories.length} of your categories
-                        </span>
-                        {Math.abs(splitDelta) >= 0.01 && (
-                          <span className={splitDelta > 0 ? "text-rose-600" : "text-amber-600"}>
-                            {splitDelta > 0 ? "+" : ""}{fmt(splitDelta)} vs total
-                          </span>
-                        )}
-                      </button>
+                      {b.member_categories.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedBuckets(s => ({ ...s, [b.key]: !expanded }))}
+                            className="mt-2 w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground py-1"
+                          >
+                            <span className="flex items-center gap-1">
+                              {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                              Split across {b.member_categories.length} of your categories
+                            </span>
+                            {Math.abs(splitDelta) >= 0.01 && (
+                              <span className={splitDelta > 0 ? "text-rose-600" : "text-amber-600"}>
+                                {splitDelta > 0 ? "+" : ""}{fmt(splitDelta)} vs total
+                              </span>
+                            )}
+                          </button>
 
-                      {expanded && (
-                        <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-                          {b.member_categories.map(m => (
-                            <div key={m.slug} className="flex items-center justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm text-foreground truncate">{m.name}</div>
-                                <div className="text-[11px] text-muted-foreground tabular-nums">
-                                  Actual avg {fmt(m.actual_monthly_avg)}
+                          {expanded && (
+                            <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                              {b.member_categories.map(m => (
+                                <div key={m.slug} className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm text-foreground truncate">{m.name}</div>
+                                    <div className="text-[11px] text-muted-foreground tabular-nums">
+                                      Actual avg {fmt(m.actual_monthly_avg)}
+                                    </div>
+                                  </div>
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={(memberAmounts[m.slug] ?? 0).toFixed(2)}
+                                      onChange={e => {
+                                        const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
+                                        updateMemberAmount(m.slug, Number.isFinite(v) ? v : 0);
+                                      }}
+                                      className="w-24 pl-5 pr-2 py-1 text-sm tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="relative">
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={(memberAmounts[m.slug] ?? 0).toFixed(2)}
-                                  onChange={e => {
-                                    const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
-                                    updateMemberAmount(m.slug, Number.isFinite(v) ? v : 0);
-                                  }}
-                                  className="w-24 pl-5 pr-2 py-1 text-sm tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
-                                />
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* Fixed buckets — informational, not editable here */}
+            {result.buckets.some(b => b.role === "fixed") && (
+              <>
+                <div className="px-5 pt-5 pb-1">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                    Fixed structure
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Mortgage, utilities, insurance, debt, giving, and saving are managed
+                    on the Budget tab. Shown here so the framework adds up to your
+                    take-home pay.
+                  </p>
+                </div>
+                <div className="px-5 py-2 space-y-2">
+                  {result.buckets.filter(b => b.role === "fixed").map(b => {
+                    const pill = verdictPill(b.verdict);
+                    const guidelineLabel = b.guideline_kind === "max"
+                      ? `≤ ${b.guideline_pct}%`
+                      : b.guideline_kind === "min" ? `≥ ${b.guideline_pct}%`
+                      : `~ ${b.guideline_pct}%`;
+                    return (
+                      <div key={b.key} className="bg-muted/40 rounded-lg border border-border p-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-foreground">{b.label}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                              <span className="tabular-nums">
+                                {fmt(b.bucket_actual_monthly_avg)} ({b.bucket_pct_of_income}% of take-home)
+                              </span>
+                              <span>·</span>
+                              <span className="flex items-center gap-1">
+                                Guideline {guidelineLabel}
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      aria-label="Where does this guideline come from?"
+                                      className="text-muted-foreground hover:text-foreground"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72 text-xs leading-relaxed" side="top">
+                                    {b.guideline_source}
+                                  </PopoverContent>
+                                </Popover>
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
+                            {pill.text}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             {/* Reallocation hints */}
             {result.reallocation_hints.length > 0 && (
