@@ -47,11 +47,15 @@ interface CategoryDetailProps {
   transferAdjustment: number;
   onBack: () => void;
   onDeleteTransaction: (id: string) => void;
+  onDeleteTransfer?: (id: string) => Promise<void> | void;
   onGoToTransaction?: (transactionId: string) => void;
   accounts?: AppAccount[];
 }
 
-export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction, onGoToTransaction, accounts = [] }: CategoryDetailProps) {
+export function CategoryDetail({ category, categories, fixedExpenses = [], transactions, deposits = [], transfers, spent, transferAdjustment, onBack, onDeleteTransaction, onDeleteTransfer, onGoToTransaction, accounts = [] }: CategoryDetailProps) {
+  const [selectedTransfer, setSelectedTransfer] = useState<BudgetTransfer | null>(null);
+  const [pendingDeleteTransferId, setPendingDeleteTransferId] = useState<string | null>(null);
+  const [deletingTransfer, setDeletingTransfer] = useState(false);
   const adjustedBudget = category.budgeted + transferAdjustment;
   const accountLabelMap = useMemo(() => {
     const m: Record<string, string> = {};
