@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Info, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Sparkles, Loader2, Info, ArrowRight, PiggyBank } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useToolState } from "@/hooks/useToolState";
+import { useAuth } from "@/hooks/useAuth";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
