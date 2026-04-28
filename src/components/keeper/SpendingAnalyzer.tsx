@@ -238,6 +238,37 @@ export function SpendingAnalyzer({
               </p>
             </div>
 
+            {/* Unbudgeted callout — surfaces unassigned take-home as the #1 plan gap */}
+            {(() => {
+              const ub = result.buckets.find(b => b.key === "unbudgeted");
+              if (!ub || ub.bucket_actual_monthly_avg < 1) return null;
+              return (
+                <div className="mx-5 mt-4">
+                  <div className="rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4">
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                          Plan gap
+                        </div>
+                        <div className="font-semibold text-base text-foreground mt-0.5">
+                          {fmt(ub.bucket_actual_monthly_avg)} unbudgeted
+                          <span className="text-xs font-normal text-muted-foreground ml-1.5 tabular-nums">
+                            ({ub.bucket_pct_of_income}% of take-home)
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-200 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                        Assign this
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-900/90 dark:text-amber-100/90 leading-snug">
+                      Unassigned money is the #1 thing CFP planners push on — without a job, it tends to disappear into discretionary spending. Give every dollar a category to close the gap.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Variable bucket cards */}
             <div className="px-5 pt-4 pb-1">
               <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -312,7 +343,7 @@ export function SpendingAnalyzer({
             </div>
 
             {/* Fixed buckets — informational */}
-            {result.buckets.some(b => b.role === "fixed") && (
+            {result.buckets.some(b => b.role === "fixed" && b.key !== "unbudgeted") && (
               <>
                 <div className="px-5 pt-5 pb-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
@@ -323,7 +354,7 @@ export function SpendingAnalyzer({
                   </p>
                 </div>
                 <div className="px-5 py-2 space-y-2">
-                  {result.buckets.filter(b => b.role === "fixed").map(b => {
+                  {result.buckets.filter(b => b.role === "fixed" && b.key !== "unbudgeted").map(b => {
                     const pill = verdictPill(b.verdict);
                     const guidelineLabel = b.guideline_kind === "max"
                       ? `≤ ${b.guideline_pct}%`
