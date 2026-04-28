@@ -218,6 +218,43 @@ export function SpendingAnalyzer({
               </p>
             </div>
 
+            {/* Pre-tax savings input — included in Saving & Investing bucket
+                so users with 401(k)/pre-tax retirement contributions see their
+                TRUE savings rate, not the 1-2% that's left after pre-tax. */}
+            <div className="px-5 py-3 bg-muted/30 border-b border-border">
+              <div className="flex items-start gap-2">
+                <PiggyBank className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <label htmlFor="pretax" className="text-xs font-medium text-foreground">
+                      Pre-tax retirement / 401(k) per month
+                    </label>
+                    <Input
+                      id="pretax"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={String(toolState.preTaxSavingsMonthly ?? "")}
+                      onChange={(e) => setToolState({ preTaxSavingsMonthly: e.target.value })}
+                      className="h-7 w-24 text-right tabular-nums text-xs"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                      Money taken out before take-home (won't appear in any category). Added to Saving & Investing so your savings rate reflects reality.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void runAnalysis()}
+                      disabled={phase === "loading"}
+                      className="text-[11px] font-semibold text-primary whitespace-nowrap active:opacity-70 disabled:opacity-50"
+                    >
+                      Re-run
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Unbudgeted callout — surfaces unassigned take-home as the #1 plan gap */}
             {(() => {
               const ub = result.buckets.find(b => b.key === "unbudgeted");
