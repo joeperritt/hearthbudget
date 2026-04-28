@@ -363,14 +363,59 @@ Deno.serve(async (req) => {
         : "",
     });
 
-    const reallocationHints = (parsed.reallocation_hints || []).map((h: {
+    // Build a lookup of available "from" pools so we can clamp AI amounts
+    // to reality and synthesize a fallback hint if the model ignored unbudgeted.
+    const fromPool = new Map<string, number>();
+    fromPool.set("unbudgeted", round2(unbudgetedAmount));
+    for (const b of variableRollups) {
+      // Available headroom for max-kind buckets that are over guideline.
+      if (b.guideline_kind === "max") {
+        const guidelineDollars = (b.guideline_pct / 100) * monthlyIncome;
+        const headroom = b.bucket_actual_monthly_avg - guidelineDollars;
+        if (headroom > 0) fromPool.set(b.key, round2(headroom));
+      }
+    }
+
+    let reallocationHints = (parsed.reallocation_hints || []).map((h: {
       from_bucket?: unknown; to_bucket?: unknown; amount?: unknown; rationale?: unknown;
-    }) => ({
-      from_bucket: String(h?.from_bucket || ""),
-      to_bucket: String(h?.to_bucket || ""),
-      amount: Number(h?.amount) || 0,
-      rationale: stripMarkdown(String(h?.rationale || "")),
-    })).filter((h: { from_bucket: string; to_bucket: string }) => h.from_bucket && h.to_bucket);
+    }) => {
+      const from_bucket = String(h?.from_bucket || "");
+      const to_bucket = String(h?.to_bucket || "");
+      let amount = Number(h?.amount) || 0;
+      // Clamp AI amount to the actual available pool from the source.
+      const cap = fromPool.get(from_bucket);
+      if (cap !== undefined && amount > cap) amount = cap;
+      if (amount < 0) amount = 0;
+      return {
+        from_bucket,
+        to_bucket,
+        amount: round2(amount),
+        rationale: stripMarkdown(String(h?.rationale || "")),
+      };
+    }).filter((h: { from_bucket: string; to_bucket: string; amount: number }) =>
+      h.from_bucket && h.to_bucket && h.amount > 0
+    );
+
+    // Fallback: if there's meaningful unbudgeted money but no hint targets it,
+    // synthesize one pointing at the most under-guideline destination.
+    const hasUnbudgetedHint = reallocationHints.some(
+      (h: { from_bucket: string }) => h.from_bucket === "unbudgeted"
+    );
+    if (unbudgetedAmount > monthlyIncome * 0.01 && !hasUnbudgetedHint) {
+      const underTargets = variableRollups
+        .filter(b => b.guideline_kind === "min" && b.bucket_pct_of_income < b.guideline_pct - 1)
+        .sort((a, b) => (b.guideline_pct - b.bucket_pct_of_income) - (a.guideline_pct - a.bucket_pct_of_income));
+      const target = underTargets[0];
+      if (target) {
+        reallocationHints.unshift({
+          from_bucket: "unbudgeted",
+          to_bucket: target.key,
+          amount: round2(unbudgetedAmount),
+          rationale: `Move your full ${fmtUsd(unbudgetedAmount)} of unassigned take-home into ${target.label} to close the plan gap and lift you toward the ${target.guideline_pct}% guideline.`,
+        });
+      }
+    }
+
 
     const totalCategories = categories.length + fixedExpenses.length;
     const mappedCategoriesCount = (() => {
