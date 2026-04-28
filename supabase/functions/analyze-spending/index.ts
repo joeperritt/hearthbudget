@@ -95,10 +95,12 @@ Deno.serve(async (req) => {
       stewardshipMode?: boolean;
       monthlyIncome?: number;
       viewMonth?: string; // YYYY-MM
+      preTaxSavingsMonthly?: number; // 401k / pre-tax retirement that never hits take-home
     };
 
     const stewardshipMode = body.stewardshipMode !== false;
     const monthlyIncome = Number(body.monthlyIncome);
+    const preTaxSavings = Math.max(0, Number(body.preTaxSavingsMonthly) || 0);
     if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
       return jsonResponse({
         error: "missing_income",
@@ -163,12 +165,35 @@ Deno.serve(async (req) => {
       totalByBucket.set(bucketKey, (totalByBucket.get(bucketKey) || 0) + amt);
     }
 
+    // Inject pre-tax retirement savings as a synthetic member of the
+    // Saving & Investing bucket. Pre-tax 401(k) contributions never land in
+    // take-home, so we include them in the bucket total to surface the user's
+    // TRUE savings rate — but they do NOT reduce the unbudgeted pool, since
+    // they were never part of the take-home denominator's "spendable" cash.
+    if (preTaxSavings > 0) {
+      const savingKey = "saving_investing";
+      if (membersByBucket.has(savingKey)) {
+        membersByBucket.get(savingKey)!.push({
+          slug: "__pretax_retirement__",
+          name: "Pre-tax retirement (401k, etc.)",
+          amount: round2(preTaxSavings),
+        });
+        totalByBucket.set(savingKey, (totalByBucket.get(savingKey) || 0) + preTaxSavings);
+      }
+    }
+
     // Sort members by amount desc within each bucket.
     for (const arr of membersByBucket.values()) arr.sort((a, b) => b.amount - a.amount);
 
     const bucketRollups = CFP_BUCKETS.map(b => {
       const members = membersByBucket.get(b.key) || [];
       const total = totalByBucket.get(b.key) || 0;
+      // Saving bucket %-of-income uses an EFFECTIVE income that includes pre-tax,
+      // so the savings rate isn't artificially deflated by the pre-tax amount
+      // sitting outside take-home.
+      const denom = b.key === "saving_investing"
+        ? monthlyIncome + preTaxSavings
+        : monthlyIncome;
       return {
         key: b.key,
         label: b.label,
@@ -177,7 +202,7 @@ Deno.serve(async (req) => {
         guideline_source: b.guideline_source,
         role: b.role,
         bucket_actual_monthly_avg: round2(total),
-        bucket_pct_of_income: round2((total / monthlyIncome) * 100),
+        bucket_pct_of_income: round2((total / denom) * 100),
         member_descriptions: members.map(m => m.name),
         members,
       };
@@ -188,9 +213,9 @@ Deno.serve(async (req) => {
     const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
 
-    // Unbudgeted = take_home - sum(all bucket totals). MUST equal the
-    // Monthly Surplus on the Budget tab when all items are mapped.
-    const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
+    // Unbudgeted = take_home - sum(all bucket totals from take-home).
+    // Pre-tax savings is excluded from accountedFor since it never came out of take-home.
+    const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0) - preTaxSavings;
     const unbudgetedAmount = Math.max(0, monthlyIncome - accountedFor);
     const unbudgetedRollup = {
       key: "unbudgeted",
@@ -211,11 +236,17 @@ Deno.serve(async (req) => {
     const aiPayload = {
       view_month: viewMonth,
       monthly_take_home: round2(monthlyIncome),
+      pre_tax_savings_monthly: round2(preTaxSavings),
       stewardship_mode: stewardshipMode,
+      unbudgeted: {
+        amount: round2(unbudgetedAmount),
+        pct_of_income: unbudgetedRollup.bucket_pct_of_income,
+        note: "Take-home minus the sum of every bucket below. This is the largest single pool available for reallocation. Treat as the primary 'from_bucket' for hints when > 1% of take-home.",
+      },
       structural_context: {
         fixed_buckets_total: round2(fixedTotal),
         fixed_buckets_pct_of_income: fixedPctOfIncome,
-        note: "Fixed bucket totals come from the household's planned fixed expenses and any categories mapped to fixed buckets. Use as context only.",
+        note: "Fixed bucket totals come from the household's planned fixed expenses and any categories mapped to fixed buckets. Use as context only — do not propose reallocating from fixed buckets.",
         fixed_summary: fixedRollups.map(b => ({
           key: b.key, label: b.label,
           planned_monthly: b.bucket_actual_monthly_avg,
@@ -237,7 +268,7 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 500);
 
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
-    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
+    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReallocation rules — STRICT:\n- Every "amount" in reallocation_hints MUST be a real dollar number drawn from the data above. Do NOT invent amounts.\n- The "from_bucket" must be either "unbudgeted" or a variable bucket whose actual planned_monthly EXCEEDS its guideline (kind=max → over). Never propose reallocating from a fixed bucket or from a variable bucket that is already at/under guideline.\n- The "amount" must NOT exceed the source's available pool: for "unbudgeted", cap at unbudgeted.amount; for an over-guideline bucket, cap at (planned_monthly − guideline_pct% of take-home).\n- If unbudgeted.amount > 1% of take-home, the FIRST hint MUST move from "unbudgeted" and the proposed amount should be a meaningful share of unbudgeted (typically 50–100% of it, split across destinations if needed).\n- Prefer destinations that are under their guideline (e.g. saving_investing, giving in stewardship mode, emergency reserves).\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
 
     const callOnce = (model: string) => callGemini({
       model,
@@ -332,14 +363,59 @@ Deno.serve(async (req) => {
         : "",
     });
 
-    const reallocationHints = (parsed.reallocation_hints || []).map((h: {
+    // Build a lookup of available "from" pools so we can clamp AI amounts
+    // to reality and synthesize a fallback hint if the model ignored unbudgeted.
+    const fromPool = new Map<string, number>();
+    fromPool.set("unbudgeted", round2(unbudgetedAmount));
+    for (const b of variableRollups) {
+      // Available headroom for max-kind buckets that are over guideline.
+      if (b.guideline_kind === "max") {
+        const guidelineDollars = (b.guideline_pct / 100) * monthlyIncome;
+        const headroom = b.bucket_actual_monthly_avg - guidelineDollars;
+        if (headroom > 0) fromPool.set(b.key, round2(headroom));
+      }
+    }
+
+    let reallocationHints = (parsed.reallocation_hints || []).map((h: {
       from_bucket?: unknown; to_bucket?: unknown; amount?: unknown; rationale?: unknown;
-    }) => ({
-      from_bucket: String(h?.from_bucket || ""),
-      to_bucket: String(h?.to_bucket || ""),
-      amount: Number(h?.amount) || 0,
-      rationale: stripMarkdown(String(h?.rationale || "")),
-    })).filter((h: { from_bucket: string; to_bucket: string }) => h.from_bucket && h.to_bucket);
+    }) => {
+      const from_bucket = String(h?.from_bucket || "");
+      const to_bucket = String(h?.to_bucket || "");
+      let amount = Number(h?.amount) || 0;
+      // Clamp AI amount to the actual available pool from the source.
+      const cap = fromPool.get(from_bucket);
+      if (cap !== undefined && amount > cap) amount = cap;
+      if (amount < 0) amount = 0;
+      return {
+        from_bucket,
+        to_bucket,
+        amount: round2(amount),
+        rationale: stripMarkdown(String(h?.rationale || "")),
+      };
+    }).filter((h: { from_bucket: string; to_bucket: string; amount: number }) =>
+      h.from_bucket && h.to_bucket && h.amount > 0
+    );
+
+    // Fallback: if there's meaningful unbudgeted money but no hint targets it,
+    // synthesize one pointing at the most under-guideline destination.
+    const hasUnbudgetedHint = reallocationHints.some(
+      (h: { from_bucket: string }) => h.from_bucket === "unbudgeted"
+    );
+    if (unbudgetedAmount > monthlyIncome * 0.01 && !hasUnbudgetedHint) {
+      const underTargets = variableRollups
+        .filter(b => b.guideline_kind === "min" && b.bucket_pct_of_income < b.guideline_pct - 1)
+        .sort((a, b) => (b.guideline_pct - b.bucket_pct_of_income) - (a.guideline_pct - a.bucket_pct_of_income));
+      const target = underTargets[0];
+      if (target) {
+        reallocationHints.unshift({
+          from_bucket: "unbudgeted",
+          to_bucket: target.key,
+          amount: round2(unbudgetedAmount),
+          rationale: `Move your full ${fmtUsd(unbudgetedAmount)} of unassigned take-home into ${target.label} to close the plan gap and lift you toward the ${target.guideline_pct}% guideline.`,
+        });
+      }
+    }
+
 
     const totalCategories = categories.length + fixedExpenses.length;
     const mappedCategoriesCount = (() => {
@@ -377,6 +453,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
+
+function fmtUsd(n: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n || 0);
+}
 
 function stripMarkdown(s: string): string {
   return s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").trim();

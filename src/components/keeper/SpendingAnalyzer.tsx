@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Info, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Sparkles, Loader2, Info, ArrowRight, PiggyBank } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useToolState } from "@/hooks/useToolState";
+import { useAuth } from "@/hooks/useAuth";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
@@ -75,6 +78,14 @@ export function SpendingAnalyzer({
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
 
+  // Pre-tax savings (e.g. 401k) — never lands in take-home, so users can record
+  // it here so the Saving & Investing bucket reflects their TRUE savings rate.
+  const { profile } = useAuth();
+  const householdId = (profile as { household_id?: string } | null)?.household_id ?? null;
+  const { state: toolState, setState: setToolState, loaded: toolStateLoaded } =
+    useToolState(householdId, "analyze_budget", { preTaxSavingsMonthly: "" as string });
+  const preTaxAmount = Number(String(toolState.preTaxSavingsMonthly).replace(/[^0-9.]/g, "")) || 0;
+
   const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
   const runAnalysis = async () => {
@@ -83,7 +94,7 @@ export function SpendingAnalyzer({
     setLoadingIdx(0);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
-        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth },
+        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth, preTaxSavingsMonthly: preTaxAmount },
       });
       if (error) {
         let serverMsg: string | undefined;
@@ -126,9 +137,10 @@ export function SpendingAnalyzer({
   };
 
   // When the sheet opens with valid take-home, go straight to loading/results.
-  // No intake screen — take-home was already captured on the Budget tab card.
+  // Wait for toolState to load so pre-tax savings is included on first run.
   useEffect(() => {
     if (!open) return;
+    if (!toolStateLoaded) return;
     setResult(null);
     if (incomeValid) {
       void runAnalysis();
@@ -136,7 +148,7 @@ export function SpendingAnalyzer({
       setPhase("empty");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultIncome, viewMonth]);
+  }, [open, defaultIncome, viewMonth, toolStateLoaded]);
 
   useEffect(() => {
     if (phase !== "loading") return;
@@ -204,6 +216,43 @@ export function SpendingAnalyzer({
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
                 )}
               </p>
+            </div>
+
+            {/* Pre-tax savings input — included in Saving & Investing bucket
+                so users with 401(k)/pre-tax retirement contributions see their
+                TRUE savings rate, not the 1-2% that's left after pre-tax. */}
+            <div className="px-5 py-3 bg-muted/30 border-b border-border">
+              <div className="flex items-start gap-2">
+                <PiggyBank className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <label htmlFor="pretax" className="text-xs font-medium text-foreground">
+                      Pre-tax retirement / 401(k) per month
+                    </label>
+                    <Input
+                      id="pretax"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={String(toolState.preTaxSavingsMonthly ?? "")}
+                      onChange={(e) => setToolState({ preTaxSavingsMonthly: e.target.value })}
+                      className="h-7 w-24 text-right tabular-nums text-xs"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                      Money taken out before take-home (won't appear in any category). Added to Saving & Investing so your savings rate reflects reality.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void runAnalysis()}
+                      disabled={false}
+                      className="text-[11px] font-semibold text-primary whitespace-nowrap active:opacity-70 disabled:opacity-50"
+                    >
+                      Re-run
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Unbudgeted callout — surfaces unassigned take-home as the #1 plan gap */}
@@ -299,9 +348,18 @@ export function SpendingAnalyzer({
                       </div>
 
                       {b.members.length > 0 && (
-                        <div className="mt-2 text-[11px] text-muted-foreground">
-                          From: {b.members.slice(0, 4).map(m => m.name).join(" · ")}
-                          {b.members.length > 4 ? ` +${b.members.length - 4} more` : ""}
+                        <div className="mt-2 border-t border-border pt-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                            From {b.members.length} {b.members.length === 1 ? "category" : "categories"}
+                          </div>
+                          <ul className="space-y-0.5">
+                            {b.members.map(m => (
+                              <li key={m.slug} className="flex items-center justify-between gap-2 text-[11px]">
+                                <span className="text-foreground/80 truncate">{m.name}</span>
+                                <span className="tabular-nums text-muted-foreground">{fmt(m.amount)}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
@@ -356,11 +414,15 @@ export function SpendingAnalyzer({
                                 </Popover>
                               </span>
                             </div>
-                            {b.member_descriptions.length > 0 && (
-                              <div className="text-[11px] text-muted-foreground/80 mt-1 truncate">
-                                {b.member_descriptions.slice(0, 4).join(" · ")}
-                                {b.member_descriptions.length > 4 ? ` +${b.member_descriptions.length - 4} more` : ""}
-                              </div>
+                            {b.members.length > 0 && (
+                              <ul className="mt-1.5 space-y-0.5">
+                                {b.members.map(m => (
+                                  <li key={m.slug} className="flex items-center justify-between gap-2 text-[11px]">
+                                    <span className="text-foreground/80 truncate">{m.name}</span>
+                                    <span className="tabular-nums text-muted-foreground">{fmt(m.amount)}</span>
+                                  </li>
+                                ))}
+                              </ul>
                             )}
                           </div>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
