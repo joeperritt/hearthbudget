@@ -165,12 +165,35 @@ Deno.serve(async (req) => {
       totalByBucket.set(bucketKey, (totalByBucket.get(bucketKey) || 0) + amt);
     }
 
+    // Inject pre-tax retirement savings as a synthetic member of the
+    // Saving & Investing bucket. Pre-tax 401(k) contributions never land in
+    // take-home, so we include them in the bucket total to surface the user's
+    // TRUE savings rate — but they do NOT reduce the unbudgeted pool, since
+    // they were never part of the take-home denominator's "spendable" cash.
+    if (preTaxSavings > 0) {
+      const savingKey = "saving_investing";
+      if (membersByBucket.has(savingKey)) {
+        membersByBucket.get(savingKey)!.push({
+          slug: "__pretax_retirement__",
+          name: "Pre-tax retirement (401k, etc.)",
+          amount: round2(preTaxSavings),
+        });
+        totalByBucket.set(savingKey, (totalByBucket.get(savingKey) || 0) + preTaxSavings);
+      }
+    }
+
     // Sort members by amount desc within each bucket.
     for (const arr of membersByBucket.values()) arr.sort((a, b) => b.amount - a.amount);
 
     const bucketRollups = CFP_BUCKETS.map(b => {
       const members = membersByBucket.get(b.key) || [];
       const total = totalByBucket.get(b.key) || 0;
+      // Saving bucket %-of-income uses an EFFECTIVE income that includes pre-tax,
+      // so the savings rate isn't artificially deflated by the pre-tax amount
+      // sitting outside take-home.
+      const denom = b.key === "saving_investing"
+        ? monthlyIncome + preTaxSavings
+        : monthlyIncome;
       return {
         key: b.key,
         label: b.label,
@@ -179,7 +202,7 @@ Deno.serve(async (req) => {
         guideline_source: b.guideline_source,
         role: b.role,
         bucket_actual_monthly_avg: round2(total),
-        bucket_pct_of_income: round2((total / monthlyIncome) * 100),
+        bucket_pct_of_income: round2((total / denom) * 100),
         member_descriptions: members.map(m => m.name),
         members,
       };
@@ -190,9 +213,9 @@ Deno.serve(async (req) => {
     const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
 
-    // Unbudgeted = take_home - sum(all bucket totals). MUST equal the
-    // Monthly Surplus on the Budget tab when all items are mapped.
-    const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
+    // Unbudgeted = take_home - sum(all bucket totals from take-home).
+    // Pre-tax savings is excluded from accountedFor since it never came out of take-home.
+    const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0) - preTaxSavings;
     const unbudgetedAmount = Math.max(0, monthlyIncome - accountedFor);
     const unbudgetedRollup = {
       key: "unbudgeted",
