@@ -78,6 +78,14 @@ export function SpendingAnalyzer({
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
 
+  // Pre-tax savings (e.g. 401k) — never lands in take-home, so users can record
+  // it here so the Saving & Investing bucket reflects their TRUE savings rate.
+  const { profile } = useAuth();
+  const householdId = (profile as { household_id?: string } | null)?.household_id ?? null;
+  const { state: toolState, setState: setToolState, loaded: toolStateLoaded } =
+    useToolState(householdId, "analyze_budget", { preTaxSavingsMonthly: "" as string });
+  const preTaxAmount = Number(String(toolState.preTaxSavingsMonthly).replace(/[^0-9.]/g, "")) || 0;
+
   const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
   const runAnalysis = async () => {
@@ -86,7 +94,7 @@ export function SpendingAnalyzer({
     setLoadingIdx(0);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
-        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth },
+        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth, preTaxSavingsMonthly: preTaxAmount },
       });
       if (error) {
         let serverMsg: string | undefined;
