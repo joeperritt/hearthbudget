@@ -918,7 +918,17 @@ export function SettingsView({
                   <Plus size={14} /> Add Fixed Item
                 </button>
               )}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Fixed</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                Fixed
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" aria-label="What does Notes required mean?" className="text-muted-foreground/70 hover:text-foreground"><Info className="w-3 h-3" /></button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="start" className="w-72 text-xs text-muted-foreground leading-snug">
+                    <span className="font-medium text-foreground">Notes required:</span> when on, you must add a short note every time you log a transaction in this category. Useful for catch-all lines like "Misc" so you remember what was spent.
+                  </PopoverContent>
+                </Popover>
+              </h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                 {fixedBills.map((e, idx) => (
                   <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
