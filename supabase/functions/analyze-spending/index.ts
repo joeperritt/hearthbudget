@@ -236,11 +236,17 @@ Deno.serve(async (req) => {
     const aiPayload = {
       view_month: viewMonth,
       monthly_take_home: round2(monthlyIncome),
+      pre_tax_savings_monthly: round2(preTaxSavings),
       stewardship_mode: stewardshipMode,
+      unbudgeted: {
+        amount: round2(unbudgetedAmount),
+        pct_of_income: unbudgetedRollup.bucket_pct_of_income,
+        note: "Take-home minus the sum of every bucket below. This is the largest single pool available for reallocation. Treat as the primary 'from_bucket' for hints when > 1% of take-home.",
+      },
       structural_context: {
         fixed_buckets_total: round2(fixedTotal),
         fixed_buckets_pct_of_income: fixedPctOfIncome,
-        note: "Fixed bucket totals come from the household's planned fixed expenses and any categories mapped to fixed buckets. Use as context only.",
+        note: "Fixed bucket totals come from the household's planned fixed expenses and any categories mapped to fixed buckets. Use as context only — do not propose reallocating from fixed buckets.",
         fixed_summary: fixedRollups.map(b => ({
           key: b.key, label: b.label,
           planned_monthly: b.bucket_actual_monthly_avg,
@@ -262,7 +268,7 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 500);
 
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
-    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
+    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReallocation rules — STRICT:\n- Every "amount" in reallocation_hints MUST be a real dollar number drawn from the data above. Do NOT invent amounts.\n- The "from_bucket" must be either "unbudgeted" or a variable bucket whose actual planned_monthly EXCEEDS its guideline (kind=max → over). Never propose reallocating from a fixed bucket or from a variable bucket that is already at/under guideline.\n- The "amount" must NOT exceed the source's available pool: for "unbudgeted", cap at unbudgeted.amount; for an over-guideline bucket, cap at (planned_monthly − guideline_pct% of take-home).\n- If unbudgeted.amount > 1% of take-home, the FIRST hint MUST move from "unbudgeted" and the proposed amount should be a meaningful share of unbudgeted (typically 50–100% of it, split across destinations if needed).\n- Prefer destinations that are under their guideline (e.g. saving_investing, giving in stewardship mode, emergency reserves).\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
 
     const callOnce = (model: string) => callGemini({
       model,
