@@ -127,13 +127,15 @@ export function BucketMappingSheet({
                           const sug = suggestBucket(item.name, item.group);
                           const sugBucket = sug ? getBucket(sug) : null;
                           return (
-                            <button
+                            <div
                               key={item.slug}
-                              type="button"
-                              onClick={() => setPickerSlug(item.slug)}
-                              className="w-full flex items-center justify-between gap-2 p-3 bg-card rounded-lg border border-border hover:border-amber-300 transition-colors text-left"
+                              className="w-full flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-amber-300 transition-colors"
                             >
-                              <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setPickerSlug(item.slug)}
+                                className="flex-1 min-w-0 text-left"
+                              >
                                 <div className="text-sm font-medium text-foreground truncate">{item.name}</div>
                                 {sugBucket && (
                                   <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -141,9 +143,28 @@ export function BucketMappingSheet({
                                     Suggested: {sugBucket.label}
                                   </div>
                                 )}
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                            </button>
+                              </button>
+                              {sugBucket ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void handleApprove(item, sugBucket.key); }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200 text-[11px] font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors flex-shrink-0"
+                                  aria-label={`Approve mapping to ${sugBucket.label}`}
+                                >
+                                  <Check className="w-3 h-3" />
+                                  {sugBucket.label}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPickerSlug(item.slug)}
+                                  className="flex-shrink-0 p-1"
+                                  aria-label="Pick a bucket"
+                                >
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
