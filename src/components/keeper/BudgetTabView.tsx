@@ -56,8 +56,10 @@ export function BudgetTabView({
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
+  const [mappingOpen, setMappingOpen] = useState(false);
   const [hasPlaid, setHasPlaid] = useState(false);
   const { profile } = useAuth();
+  const { map: bucketMap } = useCategoryBucketMap();
 
   useEffect(() => {
     const householdId = profile?.household_id;
