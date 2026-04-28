@@ -311,9 +311,18 @@ export function SpendingAnalyzer({
                       </div>
 
                       {b.members.length > 0 && (
-                        <div className="mt-2 text-[11px] text-muted-foreground">
-                          From: {b.members.slice(0, 4).map(m => m.name).join(" · ")}
-                          {b.members.length > 4 ? ` +${b.members.length - 4} more` : ""}
+                        <div className="mt-2 border-t border-border pt-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                            From {b.members.length} {b.members.length === 1 ? "category" : "categories"}
+                          </div>
+                          <ul className="space-y-0.5">
+                            {b.members.map(m => (
+                              <li key={m.slug} className="flex items-center justify-between gap-2 text-[11px]">
+                                <span className="text-foreground/80 truncate">{m.name}</span>
+                                <span className="tabular-nums text-muted-foreground">{fmt(m.amount)}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
