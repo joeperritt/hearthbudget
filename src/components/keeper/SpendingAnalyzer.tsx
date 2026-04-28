@@ -245,7 +245,7 @@ export function SpendingAnalyzer({
                     <button
                       type="button"
                       onClick={() => void runAnalysis()}
-                      disabled={phase === "loading"}
+                      disabled={false}
                       className="text-[11px] font-semibold text-primary whitespace-nowrap active:opacity-70 disabled:opacity-50"
                     >
                       Re-run
