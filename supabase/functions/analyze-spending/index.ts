@@ -101,8 +101,55 @@ Deno.serve(async (req) => {
     if (!householdId) return jsonResponse({ error: "No household" }, 400);
 
     const body = (await req.json().catch(() => ({}))) as {
+      action?: "reassign_merchant";
       stewardshipMode?: boolean; lookbackDays?: number; monthlyIncome?: number;
+      // reassign_merchant payload
+      merchant_normalized?: string;
+      bucket_key?: string;
+      split?: Array<{ bucket_key: string; pct: number }>;
     };
+
+    // -----------------------------------------------------------------------
+    // Side action: user corrects a merchant's bucket assignment. Persist with
+    // source='user' so future runs trust this over AI.
+    // -----------------------------------------------------------------------
+    if (body.action === "reassign_merchant") {
+      const merchantKey = String(body.merchant_normalized || "").trim();
+      const bucketKey = String(body.bucket_key || "").trim();
+      const validKeys = new Set(VARIABLE_BUCKET_KEYS);
+      if (!merchantKey || !validKeys.has(bucketKey)) {
+        return jsonResponse({ error: "invalid_input", message: "merchant_normalized and a valid bucket_key are required." }, 400);
+      }
+      const split = Array.isArray(body.split)
+        ? body.split
+            .map(s => ({ bucket_key: String(s.bucket_key || ""), pct: Math.max(0, Math.min(100, Number(s.pct) || 0)) }))
+            .filter(s => validKeys.has(s.bucket_key) && s.pct > 0)
+        : [];
+      let normalizedSplit = split;
+      if (split.length > 0) {
+        const sum = split.reduce((a, b) => a + b.pct, 0);
+        if (sum > 0) normalizedSplit = split.map(s => ({ ...s, pct: round2((s.pct / sum) * 100) }));
+        else normalizedSplit = [];
+      }
+      const { error: upErr } = await service
+        .from("merchant_bucket_cache")
+        .upsert({
+          household_id: householdId,
+          merchant_normalized: merchantKey,
+          merchant_display: merchantKey,
+          bucket_key: bucketKey,
+          split: normalizedSplit,
+          source: "user",
+          confidence: "high",
+          sample_count: 0,
+        }, { onConflict: "household_id,merchant_normalized" });
+      if (upErr) {
+        console.error("reassign upsert error:", upErr);
+        return jsonResponse({ error: "save_failed", message: upErr.message }, 500);
+      }
+      return jsonResponse({ ok: true });
+    }
+
     const stewardshipMode = body.stewardshipMode !== false;
     const lookbackDays = Math.min(Math.max(body.lookbackDays ?? 90, 30), 180);
     const monthlyIncome = Number(body.monthlyIncome);
