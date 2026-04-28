@@ -195,17 +195,11 @@ Deno.serve(async (req) => {
       if (m.bucketKey === "saving") savingFromCategories += monthly;
     }
 
-    // Fixed expenses grouped by bucket.
+    // Fixed expenses grouped by bucket. Only user-mapped fixed expenses count.
     interface FixedSummary { name: string; amount: number; slug: string; }
     const fixedByBucket = new Map<string, FixedSummary[]>();
     for (const f of fixedExpenses) {
-      let bucketKey = slugToBucket.get(f.slug);
-      if (!bucketKey) {
-        // Structural fallback for unmapped fixed expenses.
-        const g = (f.group || "").toLowerCase();
-        if (g === "savings" || g === "saving") bucketKey = "saving";
-        else if (g === "tithe" || g === "giving") bucketKey = "giving";
-      }
+      const bucketKey = slugToBucket.get(f.slug);
       if (!bucketKey || !validBucketKeys.has(bucketKey)) continue;
       const arr = fixedByBucket.get(bucketKey) || [];
       arr.push({ name: f.name, amount: Number(f.amount) || 0, slug: f.slug });
