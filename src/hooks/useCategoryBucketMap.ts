@@ -82,17 +82,12 @@ export function useCategoryBucketMap() {
   }, [householdId]);
 
   /**
-   * Return the bucket for a category, falling back to the structural
-   * shortcut for `savings`/`tithe`/`giving` groups so users with intentional
-   * schema decisions don't have to map those by hand.
+   * Return the user-mapped bucket for a category, or null if unmapped.
+   * No structural fallback — savings/tithe groups are sinking funds for many
+   * users and the user must pick the right bucket explicitly.
    */
-  const resolveBucket = useCallback((categorySlug: string, name?: string, group?: string): string | null => {
-    const explicit = map[categorySlug]?.bucket_key;
-    if (explicit) return explicit;
-    const g = (group || "").toLowerCase();
-    if (g === "savings" || g === "saving") return "saving";
-    if (g === "tithe" || g === "giving") return "giving";
-    return null;
+  const resolveBucket = useCallback((categorySlug: string, _name?: string, _group?: string): string | null => {
+    return map[categorySlug]?.bucket_key ?? null;
   }, [map]);
 
   /**
