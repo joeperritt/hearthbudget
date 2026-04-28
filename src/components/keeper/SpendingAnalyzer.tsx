@@ -377,11 +377,15 @@ export function SpendingAnalyzer({
                                 </Popover>
                               </span>
                             </div>
-                            {b.member_descriptions.length > 0 && (
-                              <div className="text-[11px] text-muted-foreground/80 mt-1 truncate">
-                                {b.member_descriptions.slice(0, 4).join(" · ")}
-                                {b.member_descriptions.length > 4 ? ` +${b.member_descriptions.length - 4} more` : ""}
-                              </div>
+                            {b.members.length > 0 && (
+                              <ul className="mt-1.5 space-y-0.5">
+                                {b.members.map(m => (
+                                  <li key={m.slug} className="flex items-center justify-between gap-2 text-[11px]">
+                                    <span className="text-foreground/80 truncate">{m.name}</span>
+                                    <span className="tabular-nums text-muted-foreground">{fmt(m.amount)}</span>
+                                  </li>
+                                ))}
+                              </ul>
                             )}
                           </div>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
