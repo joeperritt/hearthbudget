@@ -454,6 +454,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
 
+function fmtUsd(n: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n || 0);
+}
+
 function stripMarkdown(s: string): string {
   return s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").trim();
 }
