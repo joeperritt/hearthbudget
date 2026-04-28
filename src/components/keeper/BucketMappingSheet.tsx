@@ -24,15 +24,13 @@ interface BucketMappingSheetProps {
 
 /**
  * Bottom-sheet UI that walks the user through assigning each of their
- * categories (variable + fixed) to a CFP bucket. Categories with structural
- * groups (savings/tithe/giving) auto-resolve and are not shown.
+ * categories (variable + fixed) to a CFP bucket. Every category is shown —
+ * even savings/tithe groups — because many "savings" categories are actually
+ * sinking funds for delayed expenses (vacation savings → Travel, etc.) and
+ * the user is the one who knows which is which.
  *
- * When the user opens the sheet with unmapped items, we show a list. Tapping
- * an item opens a bucket picker (same sheet, second screen) with a smart
- * default highlighted (keyword-based suggestion). User taps a bucket to assign.
- *
- * When the user opens the sheet with everything mapped, we show the full list
- * with current assignments and let them edit any.
+ * Tapping the row name opens the full picker. Rows with a smart suggestion
+ * also show an "Approve" pill on the right that assigns in one tap.
  */
 export function BucketMappingSheet({
   open, onOpenChange, categories, fixedExpenses,
@@ -48,19 +46,14 @@ export function BucketMappingSheet({
     }
   }, [open]);
 
-  // Build the unified list of mappable items. Skip ones whose group already
-  // implies a bucket (savings/tithe/giving) since those are deterministic and
-  // showing them adds clutter.
+  // Build the unified list of mappable items. Show every category — no
+  // structural exclusions.
   const items = useMemo<CategoryItem[]>(() => {
     const list: CategoryItem[] = [];
     for (const c of categories) {
-      const g = (c.group || "").toLowerCase();
-      if (g === "savings" || g === "saving" || g === "tithe" || g === "giving") continue;
       list.push({ slug: c.id, name: c.name, group: c.group, kind: "variable" });
     }
     for (const f of fixedExpenses) {
-      const g = (f.group || "").toLowerCase();
-      if (g === "savings" || g === "saving" || g === "tithe" || g === "giving") continue;
       list.push({ slug: f.id, name: f.name, group: f.group, kind: "fixed" });
     }
     return list;
@@ -82,6 +75,15 @@ export function BucketMappingSheet({
       description: "Mapping saved.",
     });
     setPickerSlug(null);
+  };
+
+  // One-tap approve from the list view (no picker open).
+  const handleApprove = async (item: CategoryItem, bucketKey: string) => {
+    await setMapping(item.slug, bucketKey, item.kind);
+    toast({
+      title: `${item.name} → ${getBucket(bucketKey)?.label}`,
+      description: "Mapping saved.",
+    });
   };
 
   const handleSkip = () => setPickerSlug(null);
@@ -125,13 +127,15 @@ export function BucketMappingSheet({
                           const sug = suggestBucket(item.name, item.group);
                           const sugBucket = sug ? getBucket(sug) : null;
                           return (
-                            <button
+                            <div
                               key={item.slug}
-                              type="button"
-                              onClick={() => setPickerSlug(item.slug)}
-                              className="w-full flex items-center justify-between gap-2 p-3 bg-card rounded-lg border border-border hover:border-amber-300 transition-colors text-left"
+                              className="w-full flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-amber-300 transition-colors"
                             >
-                              <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setPickerSlug(item.slug)}
+                                className="flex-1 min-w-0 text-left"
+                              >
                                 <div className="text-sm font-medium text-foreground truncate">{item.name}</div>
                                 {sugBucket && (
                                   <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -139,9 +143,28 @@ export function BucketMappingSheet({
                                     Suggested: {sugBucket.label}
                                   </div>
                                 )}
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                            </button>
+                              </button>
+                              {sugBucket ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void handleApprove(item, sugBucket.key); }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200 text-[11px] font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors flex-shrink-0"
+                                  aria-label={`Approve mapping to ${sugBucket.label}`}
+                                >
+                                  <Check className="w-3 h-3" />
+                                  {sugBucket.label}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPickerSlug(item.slug)}
+                                  className="flex-shrink-0 p-1"
+                                  aria-label="Pick a bucket"
+                                >
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>

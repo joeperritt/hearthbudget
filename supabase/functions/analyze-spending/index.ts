@@ -116,17 +116,12 @@ Deno.serve(async (req) => {
     const transactions = (txns || []) as DbTxn[];
     const userMap = (mapRows || []) as DbMapRow[];
 
-    // Build slug → bucket lookup. User mapping wins; structural shortcuts
-    // (group='savings'/'tithe'/'giving') fill in for unmapped categories.
+    // Build slug → bucket lookup. Only user-defined mappings count — we no
+    // longer auto-route group='savings'/'tithe' because many "savings"
+    // categories are sinking funds for delayed expenses (vacation, car taxes,
+    // pet costs) and shouldn't inflate the Saving bucket. The user maps each.
     const slugToBucket = new Map<string, string>();
     for (const m of userMap) slugToBucket.set(m.category_slug, m.bucket_key);
-
-    for (const c of categories) {
-      if (slugToBucket.has(c.slug)) continue;
-      const g = (c.group || "").toLowerCase();
-      if (g === "savings" || g === "saving") slugToBucket.set(c.slug, "saving");
-      else if (g === "tithe" || g === "giving") slugToBucket.set(c.slug, "giving");
-    }
 
     const validBucketKeys = new Set(ALL_BUCKET_KEYS);
 
@@ -200,17 +195,11 @@ Deno.serve(async (req) => {
       if (m.bucketKey === "saving") savingFromCategories += monthly;
     }
 
-    // Fixed expenses grouped by bucket.
+    // Fixed expenses grouped by bucket. Only user-mapped fixed expenses count.
     interface FixedSummary { name: string; amount: number; slug: string; }
     const fixedByBucket = new Map<string, FixedSummary[]>();
     for (const f of fixedExpenses) {
-      let bucketKey = slugToBucket.get(f.slug);
-      if (!bucketKey) {
-        // Structural fallback for unmapped fixed expenses.
-        const g = (f.group || "").toLowerCase();
-        if (g === "savings" || g === "saving") bucketKey = "saving";
-        else if (g === "tithe" || g === "giving") bucketKey = "giving";
-      }
+      const bucketKey = slugToBucket.get(f.slug);
       if (!bucketKey || !validBucketKeys.has(bucketKey)) continue;
       const arr = fixedByBucket.get(bucketKey) || [];
       arr.push({ name: f.name, amount: Number(f.amount) || 0, slug: f.slug });
