@@ -999,7 +999,18 @@ export function SettingsView({
                   <Plus size={14} /> Add Savings Item
                 </button>
               )}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Savings</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                Savings
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" aria-label="Fixed vs Variable explanation" className="text-muted-foreground/70 hover:text-foreground"><Info className="w-3 h-3" /></button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="start" className="w-72 text-xs text-muted-foreground leading-snug space-y-1.5">
+                    <div><span className="font-medium text-foreground">Fixed vs Variable:</span> choose Fixed for set monthly contributions (retirement transfer, emergency fund top-up). Choose Variable for amounts that change month to month.</div>
+                    <div><span className="font-medium text-foreground">Notes required:</span> when on, you must add a short note when logging a transaction here.</div>
+                  </PopoverContent>
+                </Popover>
+              </h3>
               <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                 {savingsBuckets.map((e) => (
                   <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
