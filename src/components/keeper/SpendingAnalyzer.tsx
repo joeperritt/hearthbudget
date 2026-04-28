@@ -160,47 +160,19 @@ export function SpendingAnalyzer({
           </SheetTitle>
         </SheetHeader>
 
-        {phase === "intake" && (
-          <div className="px-5 py-8 space-y-6 max-w-md mx-auto">
-            <p className="text-sm text-muted-foreground text-center">
-              We'll roll your last 90 days of spending into your mapped Certified Financial
-              Planner (CFP) buckets and compare each one to its guideline percentage
-              {stewardshipMode ? ", informed by stewardship principles" : ""}.
+        {phase === "empty" && (
+          <div className="px-5 py-12 space-y-4 max-w-md mx-auto text-center">
+            <Sparkles className="w-10 h-10 text-amber-500 mx-auto" />
+            <h3 className="font-display text-lg font-semibold text-foreground">
+              Set your take-home first
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              We compare your monthly budget to Certified Financial Planner (CFP)
+              guidelines. To do that, we need your monthly take-home pay — enter
+              it on the Budget tab card, then tap Analyze again.
             </p>
-
-            <div className="space-y-2">
-              <label htmlFor="take-home" className="text-sm font-medium text-foreground block">
-                What's your monthly take-home pay?
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base">$</span>
-                <input
-                  id="take-home"
-                  type="text"
-                  inputMode="decimal"
-                  value={income}
-                  onChange={e => setIncome(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="10,000"
-                  autoFocus
-                  className="w-full pl-7 pr-3 py-3 text-lg font-semibold tabular-nums bg-card border border-border rounded-xl outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Use what actually lands in your accounts each month after taxes,
-                health insurance, and retirement contributions.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">How this works: </span>
-              We use the CFP-bucket mappings you set on your categories. Categories
-              that aren't mapped won't show up in the variable-spending rollup
-              (they'll just be missing from the percentages).
-            </div>
-
-            <Button onClick={runAnalysis} disabled={!incomeValid} className="w-full">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Run analysis
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
             </Button>
           </div>
         )}
@@ -225,8 +197,8 @@ export function SpendingAnalyzer({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Based on {result.transaction_count} transactions across {result.months_observed} months,
-                rolled up using your category-to-bucket mappings.
+                We compare your monthly budget to CFP guidelines using the
+                category-to-bucket mappings you set.
                 {result.diagnostics && result.diagnostics.mapped_categories < result.diagnostics.total_categories && (
                   <> {result.diagnostics.total_categories - result.diagnostics.mapped_categories} unmapped category
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
