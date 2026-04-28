@@ -165,6 +165,34 @@ export function BudgetTabView({
               {isSurplus ? '+' : '-'}{fmt(Math.abs(surplus))}
             </span>
           </div>
+
+          {/* Anchor Map / Analyze inside the card so the analysis is visibly
+              tied to the month's take-home and budget totals shown above. */}
+          <div className="border-t border-border pt-3 mt-1">
+            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+              Compare {format(new Date(viewMonthKey + '-01'), 'MMMM')}'s budget to CFP guidelines.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border"
+                onClick={() => setMappingOpen(true)}
+              >
+                <Tags className="w-4 h-4 mr-1.5" />
+                {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                onClick={() => setAnalyzerOpen(true)}
+              >
+                <Sparkles className="w-4 h-4 mr-1.5" />
+                Analyze budget
+              </Button>
+            </div>
+          </div>
         </div>
 
         {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
@@ -187,27 +215,6 @@ export function BudgetTabView({
             </div>
           </div>
         )}
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-border"
-            onClick={() => setMappingOpen(true)}
-          >
-            <Tags className="w-4 h-4 mr-1.5" />
-            {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
-            onClick={() => setAnalyzerOpen(true)}
-          >
-            <Sparkles className="w-4 h-4 mr-1.5" />
-            Analyze budget
-          </Button>
-        </div>
       </div>
 
       <SpendingAnalyzer
