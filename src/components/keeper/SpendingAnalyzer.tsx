@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ArrowLeft, ChevronDown, ChevronRight, Info, ArrowRight, AlertCircle, Pencil } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, ChevronDown, ChevronRight, Info, ArrowRight } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
