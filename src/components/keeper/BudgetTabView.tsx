@@ -227,6 +227,7 @@ export function BudgetTabView({
         open={analyzerOpen}
         onOpenChange={setAnalyzerOpen}
         defaultIncome={totalTakeHome > 0 ? totalTakeHome : undefined}
+        viewMonth={viewMonthKey}
       />
 
       <BucketMappingSheet
