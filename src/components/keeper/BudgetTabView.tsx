@@ -182,24 +182,60 @@ export function BudgetTabView({
           </div>
         </div>
 
-        {hasPlaid && (
+        {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
+              </div>
+              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
+                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMappingOpen(true)}
+                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
+              >
+                Map them now →
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="mt-3 w-full border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            className="border-border"
+            onClick={() => setMappingOpen(true)}
+          >
+            <Tags className="w-4 h-4 mr-1.5" />
+            {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
             onClick={() => setAnalyzerOpen(true)}
           >
             <Sparkles className="w-4 h-4 mr-1.5" />
-            Analyze my spending with AI
+            Analyze budget
           </Button>
-        )}
+        </div>
       </div>
 
       <SpendingAnalyzer
         open={analyzerOpen}
         onOpenChange={setAnalyzerOpen}
-        categories={categories}
-        onApply={onUpdateCategories}
+        defaultIncome={totalTakeHome > 0 ? totalTakeHome : undefined}
+      />
+
+      <BucketMappingSheet
+        open={mappingOpen}
+        onOpenChange={setMappingOpen}
+        categories={monthCategories}
+        fixedExpenses={monthFixedExpenses}
       />
 
       {/* Inline Budget Planning (SettingsView in embedded mode) */}
