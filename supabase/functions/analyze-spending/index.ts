@@ -252,6 +252,26 @@ Deno.serve(async (req) => {
     const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
 
+    // Unbudgeted: take-home that isn't accounted for by any bucket. CFP planners
+    // treat unassigned money as the #1 leak — it almost always becomes
+    // discretionary spending. We surface it as a synthetic "bucket" so it gets
+    // flagged in the results, with a guideline of 0% (any positive amount is a
+    // plan gap to close).
+    const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
+    const unbudgetedAmount = Math.max(0, monthlyIncome - accountedFor);
+    const unbudgetedRollup = {
+      key: "unbudgeted",
+      label: "Unbudgeted",
+      guideline_pct: 0,
+      guideline_kind: "max" as const,
+      guideline_source: "Unassigned money is the #1 thing CFP planners flag — without a job, it tends to disappear into discretionary spending. Aim to give every dollar a category.",
+      role: "fixed" as const,
+      bucket_actual_monthly_avg: round2(unbudgetedAmount),
+      bucket_pct_of_income: round2((unbudgetedAmount / monthlyIncome) * 100),
+      member_descriptions: [] as string[],
+      members: [] as Array<{ slug: string; name: string; amount: number }>,
+    };
+
     // ---------------------------------------------------------------------
     // AI commentary call (one shot).
     // ---------------------------------------------------------------------
