@@ -199,6 +199,7 @@ export function BudgetTabView({
               </Button>
             </div>
           </div>
+        </div>
 
         {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
           <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
