@@ -525,6 +525,54 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_bucket_cache: {
+        Row: {
+          bucket_key: string
+          confidence: string
+          created_at: string
+          household_id: string | null
+          id: string
+          is_global_candidate: boolean
+          last_seen_at: string
+          merchant_display: string
+          merchant_normalized: string
+          sample_count: number
+          source: string
+          split: Json
+          updated_at: string
+        }
+        Insert: {
+          bucket_key: string
+          confidence?: string
+          created_at?: string
+          household_id?: string | null
+          id?: string
+          is_global_candidate?: boolean
+          last_seen_at?: string
+          merchant_display: string
+          merchant_normalized: string
+          sample_count?: number
+          source?: string
+          split?: Json
+          updated_at?: string
+        }
+        Update: {
+          bucket_key?: string
+          confidence?: string
+          created_at?: string
+          household_id?: string | null
+          id?: string
+          is_global_candidate?: boolean
+          last_seen_at?: string
+          merchant_display?: string
+          merchant_normalized?: string
+          sample_count?: number
+          source?: string
+          split?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mfa_attempt_log: {
         Row: {
           attempt_type: Database["public"]["Enums"]["mfa_attempt_type"]
