@@ -343,7 +343,7 @@ export function SpendingAnalyzer({
             </div>
 
             {/* Fixed buckets — informational */}
-            {result.buckets.some(b => b.role === "fixed") && (
+            {result.buckets.some(b => b.role === "fixed" && b.key !== "unbudgeted") && (
               <>
                 <div className="px-5 pt-5 pb-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
