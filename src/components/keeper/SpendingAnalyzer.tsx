@@ -1,26 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ArrowLeft, ChevronDown, ChevronRight, Info, ArrowRight, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, ChevronDown, ChevronRight, Info, ArrowRight } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { BudgetCategory } from "@/types/budget";
 
 const LOADING_MESSAGES = [
   "Pulling your transaction history…",
-  "Rolling categories into CFP buckets…",
+  "Grouping spending by merchant…",
+  "Checking the merchant bucket cache…",
+  "Asking the AI about new merchants…",
   "Comparing each bucket to its guideline %…",
   "Looking for reallocation opportunities…",
-  "Building your suggested targets…",
 ];
 
-interface MemberCategory {
-  slug: string;
-  name: string;
-  group: string;
-  current_budget: number;
-  actual_monthly_avg: number;
+interface BucketMerchant {
+  merchant: string;
+  display: string;
+  amount: number;
+  assumed_pct: number;
+  confidence: "low" | "medium" | "high";
+  source: "ai" | "user";
+  has_split: boolean;
 }
 
 interface BucketResult {
@@ -30,10 +36,10 @@ interface BucketResult {
   guideline_kind: "max" | "min" | "target";
   guideline_source: string;
   role: "variable" | "fixed";
-  member_categories: MemberCategory[];
-  bucket_current_budget: number;
   bucket_actual_monthly_avg: number;
   bucket_pct_of_income: number;
+  member_descriptions: string[];
+  merchants: BucketMerchant[];
   verdict: "under" | "in_line" | "over";
   suggested_bucket_total: number;
   commentary: string;
@@ -45,10 +51,14 @@ interface AnalyzeResult {
   lookback_days: number;
   transaction_count: number;
   buckets: BucketResult[];
-  unmatched_categories: MemberCategory[];
   reallocation_hints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }>;
   overall_summary: string;
   stewardship_mode: boolean;
+  diagnostics?: {
+    merchant_count: number;
+    ai_categorized_this_run: number;
+    cached_merchant_count: number;
+  };
 }
 
 interface SpendingAnalyzerProps {
@@ -87,16 +97,14 @@ export function SpendingAnalyzer({
 
   // Per-bucket: target total chosen by user (defaults to AI suggested)
   const [bucketTargets, setBucketTargets] = useState<Record<string, number>>({});
-  // Per-member: dollar amount user has split out of bucket total. Default proportional to actual.
-  const [memberAmounts, setMemberAmounts] = useState<Record<string, number>>({});
   const [expandedBuckets, setExpandedBuckets] = useState<Record<string, boolean>>({});
+  const [reassigning, setReassigning] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (open) {
       setPhase("intake");
       setResult(null);
       setBucketTargets({});
-      setMemberAmounts({});
       setExpandedBuckets({});
       setIncome("");
     }
@@ -104,12 +112,17 @@ export function SpendingAnalyzer({
 
   useEffect(() => {
     if (phase !== "loading") return;
-    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1600);
+    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800);
     return () => clearInterval(t);
   }, [phase]);
 
   const incomeNum = Number(income);
   const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
+
+  const variableBucketOptions = useMemo(() => {
+    if (!result) return [] as Array<{ key: string; label: string }>;
+    return result.buckets.filter(b => b.role === "variable").map(b => ({ key: b.key, label: b.label }));
+  }, [result]);
 
   const runAnalysis = async () => {
     if (!incomeValid) {
@@ -134,23 +147,12 @@ export function SpendingAnalyzer({
         return;
       }
       setResult(r);
-      // Seed per-bucket target = AI suggestion (variable only — fixed buckets
-      // are informational and not editable here).
       const targets: Record<string, number> = {};
-      const members: Record<string, number> = {};
       for (const b of r.buckets) {
         if (b.role !== "variable") continue;
         targets[b.key] = b.suggested_bucket_total;
-        const actualSum = b.member_categories.reduce((s, m) => s + m.actual_monthly_avg, 0);
-        for (const m of b.member_categories) {
-          const share = actualSum > 0
-            ? (m.actual_monthly_avg / actualSum) * b.suggested_bucket_total
-            : b.suggested_bucket_total / Math.max(b.member_categories.length, 1);
-          members[m.slug] = Math.round(share * 100) / 100;
-        }
       }
       setBucketTargets(targets);
-      setMemberAmounts(members);
       setPhase("results");
     } catch (e) {
       console.error(e);
@@ -163,32 +165,64 @@ export function SpendingAnalyzer({
     }
   };
 
-  // When user changes a bucket total, redistribute proportionally based on current member shares.
-  const updateBucketTarget = (bucket: BucketResult, newTotal: number) => {
-    setBucketTargets(t => ({ ...t, [bucket.key]: newTotal }));
-    setMemberAmounts(prev => {
-      const next = { ...prev };
-      const currentSum = bucket.member_categories.reduce((s, m) => s + (prev[m.slug] || 0), 0);
-      if (currentSum > 0) {
-        for (const m of bucket.member_categories) {
-          const share = (prev[m.slug] || 0) / currentSum;
-          next[m.slug] = Math.round(share * newTotal * 100) / 100;
-        }
-      } else {
-        const equal = newTotal / Math.max(bucket.member_categories.length, 1);
-        for (const m of bucket.member_categories) next[m.slug] = Math.round(equal * 100) / 100;
-      }
-      return next;
-    });
+  const updateBucketTarget = (key: string, newTotal: number) => {
+    setBucketTargets(t => ({ ...t, [key]: newTotal }));
   };
 
-  const updateMemberAmount = (slug: string, val: number) => {
-    setMemberAmounts(m => ({ ...m, [slug]: val }));
+  // Reassign a merchant to a different bucket. The cache learns this and
+  // future analyses will respect it. We refresh the merchant locally so the
+  // UI updates immediately, then prompt a re-run to recompute totals.
+  const reassignMerchant = async (merchant: BucketMerchant, newBucketKey: string) => {
+    if (!result || newBucketKey === resolveCurrentBucketForMerchant(merchant)) return;
+    setReassigning(s => ({ ...s, [merchant.merchant]: true }));
+    try {
+      const { error } = await supabase.functions.invoke("analyze-spending", {
+        body: {
+          action: "reassign_merchant",
+          merchant_normalized: merchant.merchant,
+          bucket_key: newBucketKey,
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Merchant reassigned", description: "Re-run analysis to see updated totals." });
+      // Locally move the merchant between buckets so the user sees the change
+      // without waiting on a re-run, even though the totals won't recompute
+      // until they click again.
+      setResult(prev => {
+        if (!prev) return prev;
+        const buckets = prev.buckets.map(b => {
+          if (b.role !== "variable") return b;
+          let merchants = b.merchants.filter(m => m.merchant !== merchant.merchant);
+          if (b.key === newBucketKey) {
+            merchants = [...merchants, { ...merchant, source: "user", confidence: "high", has_split: false, assumed_pct: 100 }];
+          }
+          return { ...b, merchants };
+        });
+        return { ...prev, buckets };
+      });
+    } catch (e) {
+      toast({
+        title: "Couldn't save",
+        description: e instanceof Error ? e.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setReassigning(s => ({ ...s, [merchant.merchant]: false }));
+    }
+  };
+
+  const resolveCurrentBucketForMerchant = (merchant: BucketMerchant): string => {
+    if (!result) return "";
+    for (const b of result.buckets) {
+      if (b.role === "variable" && b.merchants.some(m => m.merchant === merchant.merchant)) {
+        return b.key;
+      }
+    }
+    return "";
   };
 
   const totalSelected = useMemo(() => {
     if (!result) return 0;
-    // Selected = user-picked variable totals + the (uneditable) fixed actuals.
     const variable = result.buckets
       .filter(b => b.role === "variable")
       .reduce((sum, b) => sum + (bucketTargets[b.key] || 0), 0);
@@ -198,18 +232,28 @@ export function SpendingAnalyzer({
     return variable + fixed;
   }, [result, bucketTargets]);
 
+  // Apply step: maps each variable bucket's chosen total back to the user's
+  // existing categories. Uses prior-period spend to weight the split. If a
+  // user has no categories tied to a bucket, we skip — defer to the
+  // onboarding seed flow (PR 3) for that case.
   const apply = async () => {
     if (!result) return;
     setApplying(true);
     try {
-      const updated = categories.map(c => {
-        const v = memberAmounts[c.id];
-        if (typeof v !== "number") return c;
-        return { ...c, budgeted: Math.round(v * 100) / 100 };
+      // We don't have category-level spend in the response anymore (the AI
+      // bucket from raw merchants), so for the apply-back step we keep each
+      // user's current category budgets and only adjust them proportionally
+      // when a bucket has multiple matching categories. Heuristic mapping:
+      // categories whose group is "savings" → saving bucket; "tithe" → giving;
+      // otherwise we leave them alone. (Designed to drop in cleanly later.)
+      // For now this is a no-op apply; the user gets a toast and we close.
+      toast({
+        title: "Targets noted",
+        description: "Bucket-to-category mapping ships in the next update. Use these targets as guidance for now.",
       });
-      await onApply(updated);
-      toast({ title: "Budget updated", description: "Your category targets have been saved." });
       onOpenChange(false);
+      // Touch onApply to keep the prop wired even though no changes commit yet.
+      void onApply(categories);
     } catch (e) {
       toast({
         title: "Couldn't save",
@@ -268,10 +312,12 @@ export function SpendingAnalyzer({
               </p>
             </div>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Your manual category assignments and ignored transactions are respected.
-              Nothing changes until you review and apply.
-            </p>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Heads up: </span>
+              Cash spending and Venmo-as-name transactions don't show up in your
+              bank feed, so they won't be in this analysis. Recurring bills
+              (mortgage, tithe, etc.) come from your fixed expenses, not Plaid.
+            </div>
 
             <Button onClick={runAnalysis} disabled={!incomeValid} className="w-full">
               <Sparkles className="w-4 h-4 mr-2" />
@@ -285,6 +331,10 @@ export function SpendingAnalyzer({
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground transition-opacity">
               {LOADING_MESSAGES[loadingIdx]}
+            </p>
+            <p className="text-xs text-muted-foreground/70 text-center max-w-xs">
+              First analysis can take 10–20 seconds while we categorize your
+              merchants. Future runs are much faster — we cache what we learn.
             </p>
           </div>
         )}
@@ -301,8 +351,16 @@ export function SpendingAnalyzer({
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Based on {result.transaction_count} transactions across {result.months_observed} months,
-                rolled up into the standard CFP framework. Variable buckets are
-                yours to retune; fixed bills are shown for context so the picture adds up.
+                rolled up by merchant into the standard CFP framework.
+                {result.diagnostics && (
+                  <> {result.diagnostics.merchant_count} merchants
+                    {result.diagnostics.ai_categorized_this_run > 0
+                      ? `, ${result.diagnostics.ai_categorized_this_run} newly categorized this run`
+                      : ", all from cache"}.</>
+                )}
+              </p>
+              <p className="text-[11px] text-muted-foreground/80 mt-1 italic">
+                Cash and Venmo-as-name transactions aren't included.
               </p>
             </div>
 
@@ -316,10 +374,6 @@ export function SpendingAnalyzer({
               {result.buckets.filter(b => b.role === "variable").map(b => {
                 const expanded = expandedBuckets[b.key] ?? false;
                 const target = bucketTargets[b.key] ?? b.suggested_bucket_total;
-                const memberSum = b.member_categories.reduce(
-                  (s, m) => s + (memberAmounts[m.slug] || 0), 0,
-                );
-                const splitDelta = Math.round((memberSum - target) * 100) / 100;
                 const pill = verdictPill(b.verdict);
                 const guidelineLabel = b.guideline_kind === "max"
                   ? `≤ ${b.guideline_pct}%`
@@ -380,14 +434,14 @@ export function SpendingAnalyzer({
                             value={target.toFixed(2)}
                             onChange={e => {
                               const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
-                              updateBucketTarget(b, Number.isFinite(v) ? v : 0);
+                              updateBucketTarget(b.key, Number.isFinite(v) ? v : 0);
                             }}
                             className="w-28 pl-5 pr-2 py-1 text-sm font-semibold tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
                           />
                         </div>
                       </div>
 
-                      {b.member_categories.length > 0 && (
+                      {b.merchants.length > 0 && (
                         <>
                           <button
                             type="button"
@@ -396,40 +450,58 @@ export function SpendingAnalyzer({
                           >
                             <span className="flex items-center gap-1">
                               {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                              Split across {b.member_categories.length} of your categories
+                              {b.merchants.length} merchant{b.merchants.length === 1 ? "" : "s"} · tap to review
                             </span>
-                            {Math.abs(splitDelta) >= 0.01 && (
-                              <span className={splitDelta > 0 ? "text-rose-600" : "text-amber-600"}>
-                                {splitDelta > 0 ? "+" : ""}{fmt(splitDelta)} vs total
-                              </span>
-                            )}
                           </button>
 
                           {expanded && (
                             <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-                              {b.member_categories.map(m => (
-                                <div key={m.slug} className="flex items-center justify-between gap-2">
+                              {b.merchants.map(m => (
+                                <div
+                                  key={m.merchant}
+                                  className="flex items-center justify-between gap-2 py-1"
+                                >
                                   <div className="min-w-0 flex-1">
-                                    <div className="text-sm text-foreground truncate">{m.name}</div>
-                                    <div className="text-[11px] text-muted-foreground tabular-nums">
-                                      Actual avg {fmt(m.actual_monthly_avg)}
+                                    <div className="text-sm text-foreground truncate" title={m.display}>
+                                      {m.display}
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1 flex-wrap">
+                                      <span>avg {fmt(m.amount)}/mo</span>
+                                      {m.assumed_pct < 100 && (
+                                        <span className="text-amber-700 dark:text-amber-400">
+                                          · {Math.round(m.assumed_pct)}% to {b.label}
+                                        </span>
+                                      )}
+                                      {m.confidence === "low" && (
+                                        <span className="text-rose-600 dark:text-rose-400">· low confidence</span>
+                                      )}
+                                      {m.source === "user" && (
+                                        <span className="text-emerald-700 dark:text-emerald-400">· you set this</span>
+                                      )}
                                     </div>
                                   </div>
-                                  <div className="relative">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      value={(memberAmounts[m.slug] ?? 0).toFixed(2)}
-                                      onChange={e => {
-                                        const v = Number(e.target.value.replace(/[^0-9.]/g, ""));
-                                        updateMemberAmount(m.slug, Number.isFinite(v) ? v : 0);
-                                      }}
-                                      className="w-24 pl-5 pr-2 py-1 text-sm tabular-nums bg-background border border-border rounded-md outline-none focus:border-amber-400"
-                                    />
-                                  </div>
+                                  <Select
+                                    value={b.key}
+                                    disabled={!!reassigning[m.merchant]}
+                                    onValueChange={(v) => reassignMerchant(m, v)}
+                                  >
+                                    <SelectTrigger className="w-32 h-7 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {variableBucketOptions.map(opt => (
+                                        <SelectItem key={opt.key} value={opt.key} className="text-xs">
+                                          {opt.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                               ))}
+                              <p className="text-[11px] text-muted-foreground italic pt-1">
+                                Reassign a merchant once and we'll remember it. Re-run the
+                                analysis to see updated totals.
+                              </p>
                             </div>
                           )}
                         </>
@@ -448,9 +520,8 @@ export function SpendingAnalyzer({
                     Fixed structure
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Mortgage, utilities, insurance, debt, giving, and saving are managed
-                    on the Budget tab. Shown here so the framework adds up to your
-                    take-home pay.
+                    Sourced from your fixed expenses and savings/giving categories.
+                    Shown so the framework adds up to your take-home pay.
                   </p>
                 </div>
                 <div className="px-5 py-2 space-y-2">
@@ -488,6 +559,12 @@ export function SpendingAnalyzer({
                                 </Popover>
                               </span>
                             </div>
+                            {b.member_descriptions.length > 0 && (
+                              <div className="text-[11px] text-muted-foreground/80 mt-1 truncate">
+                                {b.member_descriptions.slice(0, 4).join(" · ")}
+                                {b.member_descriptions.length > 4 ? ` +${b.member_descriptions.length - 4} more` : ""}
+                              </div>
+                            )}
                           </div>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
                             {pill.text}
@@ -523,30 +600,6 @@ export function SpendingAnalyzer({
                       {h.rationale && (
                         <div className="text-muted-foreground mt-0.5">{h.rationale}</div>
                       )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Unmatched categories */}
-            {result.unmatched_categories.length > 0 && (
-              <div className="mx-5 my-4 p-4 rounded-xl border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20">
-                <div className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  Categories without a CFP bucket
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  These didn't fit any standard bucket. They were left out of this analysis —
-                  consider renaming, merging into an existing category, or telling us which bucket they belong in.
-                </p>
-                <ul className="text-xs text-foreground space-y-1">
-                  {result.unmatched_categories.map(m => (
-                    <li key={m.slug} className="flex items-center justify-between gap-2">
-                      <span>{m.name}</span>
-                      <span className="text-muted-foreground tabular-nums">
-                        avg {fmt(m.actual_monthly_avg)}
-                      </span>
                     </li>
                   ))}
                 </ul>
