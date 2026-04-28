@@ -137,9 +137,10 @@ export function SpendingAnalyzer({
   };
 
   // When the sheet opens with valid take-home, go straight to loading/results.
-  // No intake screen — take-home was already captured on the Budget tab card.
+  // Wait for toolState to load so pre-tax savings is included on first run.
   useEffect(() => {
     if (!open) return;
+    if (!toolStateLoaded) return;
     setResult(null);
     if (incomeValid) {
       void runAnalysis();
@@ -147,7 +148,7 @@ export function SpendingAnalyzer({
       setPhase("empty");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultIncome, viewMonth]);
+  }, [open, defaultIncome, viewMonth, toolStateLoaded]);
 
   useEffect(() => {
     if (phase !== "loading") return;
