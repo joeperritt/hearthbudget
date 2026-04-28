@@ -57,19 +57,9 @@ export function BudgetTabView({
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
   const [mappingOpen, setMappingOpen] = useState(false);
-  const [hasPlaid, setHasPlaid] = useState(false);
   const { profile } = useAuth();
+  void profile; // reserved for future household-aware UI; keep useAuth wired
   const { map: bucketMap } = useCategoryBucketMap();
-
-  useEffect(() => {
-    const householdId = profile?.household_id;
-    if (!householdId) return;
-    supabase
-      .from('plaid_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('household_id', householdId)
-      .then(({ count }) => setHasPlaid((count || 0) > 0));
-  }, [profile?.household_id]);
 
   useEffect(() => {
     if (initialViewMonth) setViewMonthKey(initialViewMonth);
