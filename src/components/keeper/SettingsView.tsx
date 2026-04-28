@@ -845,7 +845,19 @@ export function SettingsView({
               const cats = nonGivingCats.filter(c => c.group === group);
               return (
                 <div key={group} className="mb-4">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{groupLabels[group]}</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    {groupLabels[group]}
+                    {group === 'shared' && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" aria-label="What does Notes required mean?" className="text-muted-foreground/70 hover:text-foreground"><Info className="w-3 h-3" /></button>
+                        </PopoverTrigger>
+                        <PopoverContent side="bottom" align="start" className="w-72 text-xs text-muted-foreground leading-snug">
+                          <span className="font-medium text-foreground">Notes required:</span> when on, you must add a short note every time you log a transaction in this category. Useful for catch-all lines like "Misc" so you remember what was spent.
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </p>
                   <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
                     {cats.map((c, idx) => (
                       <div key={c.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
