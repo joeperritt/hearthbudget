@@ -417,14 +417,13 @@ export function SpendingAnalyzer({
             )}
 
             {/* Sticky footer */}
+            {/* Sticky footer */}
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-5 py-3 flex items-center justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setPhase("intake")}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
               <Button size="sm" onClick={() => onOpenChange(false)}>
                 Done
               </Button>
             </div>
+
           </div>
         )}
       </SheetContent>
