@@ -170,7 +170,13 @@ export function BudgetTabView({
               tied to the month's take-home and budget totals shown above. */}
           <div className="border-t border-border pt-3 mt-1">
             <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
-              Compare {format(new Date(viewMonthKey + '-01'), 'MMMM')}'s budget to CFP guidelines.
+              Compare {(() => {
+                // Parse YYYY-MM as a LOCAL date — `new Date('2026-04-01')` is
+                // UTC midnight, which renders as the prior month in negative
+                // timezones (off-by-one bug).
+                const [y, m] = viewMonthKey.split('-').map(Number);
+                return format(new Date(y, m - 1, 1), 'MMMM');
+              })()}'s budget to CFP guidelines.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -193,7 +199,6 @@ export function BudgetTabView({
               </Button>
             </div>
           </div>
-        </div>
 
         {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
           <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
