@@ -105,7 +105,26 @@ export function SpendingAnalyzer({
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
         body: { stewardshipMode, lookbackDays: 90, monthlyIncome: incomeNum },
       });
-      if (error) throw error;
+      // supabase-js wraps non-2xx responses in FunctionsHttpError. Try to read
+      // the JSON body from the underlying response so the user sees the
+      // server's actual message.
+      if (error) {
+        let serverMsg: string | undefined;
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === "function") {
+          try {
+            const body = await ctx.json();
+            serverMsg = body?.message || body?.error;
+          } catch { /* ignore */ }
+        }
+        toast({
+          title: "Couldn't analyze",
+          description: serverMsg || error.message || "Try again in a moment.",
+          variant: "destructive",
+        });
+        setPhase("intake");
+        return;
+      }
       const r = data as AnalyzeResult & { error?: string; message?: string };
       if (r.error) {
         toast({
