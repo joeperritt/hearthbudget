@@ -7,10 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const LOADING_MESSAGES = [
-  "Pulling your transaction history…",
-  "Rolling spending into your CFP buckets…",
-  "Comparing each bucket to its guideline %…",
-  "Looking for reallocation opportunities…",
+  "Reading your category-to-bucket mappings…",
+  "Calculating bucket totals from recent spending…",
+  "Comparing each bucket to its CFP guideline…",
+  "Generating commentary and reallocation ideas…",
 ];
 
 interface BucketMember {

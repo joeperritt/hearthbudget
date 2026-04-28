@@ -286,21 +286,43 @@ Deno.serve(async (req) => {
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
     const userMsg = `Household data (last ${lookbackDays} days, ${monthsObserved} months):\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket. Reallocation hints may target the fixed Giving or Saving buckets when surplus exists.`;
 
-    const result = await callGemini({
-      model: "gemini-2.5-flash",
+    // Try gemini-2.5-flash first; on 503 (high demand) or 429, retry once with
+    // a short backoff and finally fall back to gemini-2.5-flash-lite.
+    const callOnce = (model: string) => callGemini({
+      model,
       messages: [
         { role: "system", content: sys },
         { role: "user", content: userMsg },
       ],
       apiKey: GEMINI_API_KEY,
     });
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+    let result = await callOnce("gemini-2.5-flash");
+    if (!result.ok && (result.status === 503 || result.status === 429)) {
+      console.warn("Gemini busy, retrying in 1.5s", result.status);
+      await sleep(1500);
+      result = await callOnce("gemini-2.5-flash");
+    }
+    if (!result.ok && (result.status === 503 || result.status === 429)) {
+      console.warn("Gemini still busy, falling back to gemini-2.5-flash-lite");
+      result = await callOnce("gemini-2.5-flash-lite");
+    }
 
     if (!result.ok) {
       console.error("Gemini commentary error", result.status, result.errorBody);
+      // Return 200 with an error envelope so supabase-js surfaces it via `data`
+      // (functions.invoke treats non-2xx as a thrown FunctionsHttpError and
+      // hides the body). The client checks `data.error` and shows a toast.
       return jsonResponse({
-        error: "ai_failed", status: result.status,
-        message: "Couldn't analyze right now. Try again in a moment.",
-      }, result.status === 429 ? 429 : 502);
+        error: "ai_failed",
+        status: result.status,
+        message: result.status === 503
+          ? "The AI is experiencing high demand. Please try again in a minute."
+          : result.status === 429
+            ? "Hit the AI rate limit. Wait a moment and try again."
+            : "Couldn't reach the AI right now. Try again in a moment.",
+      }, 200);
     }
 
     const parsed = parseAiJson(result.content || "");
@@ -309,7 +331,7 @@ Deno.serve(async (req) => {
       return jsonResponse({
         error: "ai_parse_failed",
         message: "AI response was not valid JSON. Try again.",
-      }, 502);
+      }, 200);
     }
 
     const byBucketMap = new Map<string, { verdict: string; suggested: number; commentary: string }>();
