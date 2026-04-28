@@ -211,11 +211,10 @@ export const ALL_BUCKET_KEYS = CFP_BUCKETS.map(b => b.key);
  * match. Used for smart defaults in the bucket picker.
  */
 export function suggestBucket(name: string, group?: string): string | null {
-  const g = (group || "").toLowerCase();
-  // Group-driven shortcuts: these are intentional schema decisions.
-  if (g === "savings" || g === "saving") return "saving";
-  if (g === "tithe" || g === "giving") return "giving";
-
+  // Note: We intentionally do NOT auto-route group='savings'/'tithe'/'giving'
+  // to the Saving/Giving buckets. Many "savings" categories are sinking funds
+  // for delayed expenses (vacation savings → Travel, car taxes → Transportation,
+  // dog savings → Pets). The user picks. Keyword match still kicks in below.
   const n = (name || "").toLowerCase();
   if (!n) return null;
 
