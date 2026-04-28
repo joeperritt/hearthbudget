@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ArrowLeft, Info, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, Info, ArrowRight } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
-  "Calculating bucket totals from recent spending…",
+  "Summing planned amounts per bucket…",
   "Comparing each bucket to its CFP guideline…",
   "Generating commentary and reallocation ideas…",
 ];
