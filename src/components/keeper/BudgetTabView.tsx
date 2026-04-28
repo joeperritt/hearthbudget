@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { Info, Pencil, Sparkles } from 'lucide-react';
+import { AlertCircle, Info, Pencil, Sparkles, Tags } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
 import { SpendingAnalyzer } from './SpendingAnalyzer';
+import { BucketMappingSheet } from './BucketMappingSheet';
+import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -54,18 +56,10 @@ export function BudgetTabView({
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
-  const [hasPlaid, setHasPlaid] = useState(false);
+  const [mappingOpen, setMappingOpen] = useState(false);
   const { profile } = useAuth();
-
-  useEffect(() => {
-    const householdId = profile?.household_id;
-    if (!householdId) return;
-    supabase
-      .from('plaid_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('household_id', householdId)
-      .then(({ count }) => setHasPlaid((count || 0) > 0));
-  }, [profile?.household_id]);
+  void profile; // reserved for future household-aware UI; keep useAuth wired
+  const { map: bucketMap } = useCategoryBucketMap();
 
   useEffect(() => {
     if (initialViewMonth) setViewMonthKey(initialViewMonth);
@@ -93,6 +87,28 @@ export function BudgetTabView({
   // Surplus = take-home minus budget total, nothing else
   const surplus = totalTakeHome - budgetTotal;
   const isSurplus = surplus >= 0;
+
+  // Count mappable items vs unmapped — categories/fixed-expenses with structural
+  // groups (savings/tithe/giving) auto-resolve and are excluded from the count.
+  const mappingStats = useMemo(() => {
+    const isStructural = (g: string) => {
+      const lower = (g || '').toLowerCase();
+      return lower === 'savings' || lower === 'saving' || lower === 'tithe' || lower === 'giving';
+    };
+    let total = 0;
+    let mapped = 0;
+    for (const c of monthCategories) {
+      if (isStructural(c.group)) continue;
+      total += 1;
+      if (bucketMap[c.id]) mapped += 1;
+    }
+    for (const f of monthFixedExpenses) {
+      if (isStructural(f.group)) continue;
+      total += 1;
+      if (bucketMap[f.id]) mapped += 1;
+    }
+    return { total, mapped, unmapped: total - mapped };
+  }, [monthCategories, monthFixedExpenses, bucketMap]);
 
   const handleTakeHomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9.,]/g, '');
@@ -156,24 +172,60 @@ export function BudgetTabView({
           </div>
         </div>
 
-        {hasPlaid && (
+        {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
+              </div>
+              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
+                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMappingOpen(true)}
+                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
+              >
+                Map them now →
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="mt-3 w-full border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            className="border-border"
+            onClick={() => setMappingOpen(true)}
+          >
+            <Tags className="w-4 h-4 mr-1.5" />
+            {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
             onClick={() => setAnalyzerOpen(true)}
           >
             <Sparkles className="w-4 h-4 mr-1.5" />
-            Analyze my spending with AI
+            Analyze budget
           </Button>
-        )}
+        </div>
       </div>
 
       <SpendingAnalyzer
         open={analyzerOpen}
         onOpenChange={setAnalyzerOpen}
-        categories={categories}
-        onApply={onUpdateCategories}
+        defaultIncome={totalTakeHome > 0 ? totalTakeHome : undefined}
+      />
+
+      <BucketMappingSheet
+        open={mappingOpen}
+        onOpenChange={setMappingOpen}
+        categories={monthCategories}
+        fixedExpenses={monthFixedExpenses}
       />
 
       {/* Inline Budget Planning (SettingsView in embedded mode) */}

@@ -1,10 +1,17 @@
+// Analyze Spending — CFP bucket commentary edge function.
+//
+// Input model: the user has manually mapped each of their budget categories
+// (and fixed expenses) to a CFP bucket via the bucket-mapping UI. This
+// function rolls actual spending up by bucket using those user-owned
+// mappings, computes % vs guideline, and asks Gemini for verdicts +
+// reallocation hints.
+//
+// No AI categorization. No merchant cache. Mapping is deterministic and
+// owned by the user.
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGemini } from "../_shared/gemini.ts";
-import {
-  CFP_BUCKETS,
-  VARIABLE_BUCKET_KEYS,
-  normalizeMerchant,
-} from "../_shared/cfp-buckets.ts";
+import { CFP_BUCKETS, VARIABLE_BUCKET_KEYS, ALL_BUCKET_KEYS } from "../_shared/cfp-buckets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,15 +19,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ---------------------------------------------------------------------------
-// Stage-2 prompt: same shape as the prior version, just sees richer payloads.
-// ---------------------------------------------------------------------------
-
 const STEWARDSHIP_PROMPT = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA) reviewing a household's spending rolled up into standard CFP buckets. The user provides their monthly take-home pay; use it as the denominator for every percentage.
 
 For EACH variable bucket in the input, return:
-- "verdict": one of "under" | "in_line" | "over" — relative to the bucket's guideline_pct (with kind: max means over=spending more than guideline, min means under=spending less than guideline, target means within ~1pp is in_line).
-- "suggested_bucket_total": a realistic monthly target dollar amount for the whole bucket (number, no $).
+- "verdict": one of "under" | "in_line" | "over" — relative to the bucket's guideline_pct (kind: max means over=spending more than guideline; min means under=spending less than guideline; target means within ~1pp is in_line).
+- "suggested_bucket_total": a realistic monthly target dollar amount (number, no $).
   - If "over": suggest a number that meaningfully moves toward the guideline %, not a token nudge.
   - If "under" on a max-kind bucket: affirm with a number near the actual; do NOT inflate spending.
   - If "under" on a min-kind bucket (giving, saving): suggest growth using headroom from elsewhere.
@@ -40,37 +43,13 @@ Also return reallocation_hints (array of {from_bucket, to_bucket, amount, ration
 
 Stay strictly within budgeting guidance. No securities, no tax advice, no insurance product recs.`;
 
-// ---------------------------------------------------------------------------
-// Stage-1 merchant categorization prompt (single tool call, all uncached
-// merchants at once).
-// ---------------------------------------------------------------------------
-
-const MERCHANT_CATEGORIZER_PROMPT = `You categorize merchants into standard CFP budgeting buckets for a household budget app. You will be given a list of merchants, each with: a normalized merchant name, the original Plaid description, total dollars spent in the lookback window, the number of transactions, and (when available) Plaid's primary and detailed personal-finance categories.
-
-Return one assignment per merchant. Each assignment has:
-- "merchant": the exact normalized merchant name from input.
-- "bucket_key": one of the variable bucket keys provided.
-- "confidence": "high" | "medium" | "low".
-- "split": OPTIONAL array of { "bucket_key", "pct" } summing to 100, ONLY when a merchant clearly serves multiple buckets (classic case: Costco/Target/Walmart split between groceries and personal/household). Omit when single-bucket.
-
-Rules:
-- Only assign to the variable buckets listed. Do NOT assign to fixed buckets — those are handled outside this call.
-- If a merchant is genuinely ambiguous and you have no signal, default to "personal" with confidence "low".
-- Never invent merchants. Return one entry per input merchant.`;
-
 interface DbCategory { slug: string; name: string; budgeted: number; group: string }
 interface DbFixed { slug: string; name: string; amount: number; group: string }
 interface DbTxn {
   id: string; date: string; amount: number; category_slug: string;
-  transaction_type: string; description: string; account: string;
-  plaid_transaction_id: string | null;
+  transaction_type: string;
 }
-interface CacheRow {
-  id: string; merchant_normalized: string; merchant_display: string;
-  bucket_key: string; split: Array<{ bucket_key: string; pct: number }>;
-  source: "ai" | "user"; confidence: "low" | "medium" | "high";
-  sample_count: number;
-}
+interface DbMapRow { category_slug: string; bucket_key: string; category_kind: string }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -101,54 +80,10 @@ Deno.serve(async (req) => {
     if (!householdId) return jsonResponse({ error: "No household" }, 400);
 
     const body = (await req.json().catch(() => ({}))) as {
-      action?: "reassign_merchant";
-      stewardshipMode?: boolean; lookbackDays?: number; monthlyIncome?: number;
-      // reassign_merchant payload
-      merchant_normalized?: string;
-      bucket_key?: string;
-      split?: Array<{ bucket_key: string; pct: number }>;
+      stewardshipMode?: boolean;
+      lookbackDays?: number;
+      monthlyIncome?: number;
     };
-
-    // -----------------------------------------------------------------------
-    // Side action: user corrects a merchant's bucket assignment. Persist with
-    // source='user' so future runs trust this over AI.
-    // -----------------------------------------------------------------------
-    if (body.action === "reassign_merchant") {
-      const merchantKey = String(body.merchant_normalized || "").trim();
-      const bucketKey = String(body.bucket_key || "").trim();
-      const validKeys = new Set(VARIABLE_BUCKET_KEYS);
-      if (!merchantKey || !validKeys.has(bucketKey)) {
-        return jsonResponse({ error: "invalid_input", message: "merchant_normalized and a valid bucket_key are required." }, 400);
-      }
-      const split = Array.isArray(body.split)
-        ? body.split
-            .map(s => ({ bucket_key: String(s.bucket_key || ""), pct: Math.max(0, Math.min(100, Number(s.pct) || 0)) }))
-            .filter(s => validKeys.has(s.bucket_key) && s.pct > 0)
-        : [];
-      let normalizedSplit = split;
-      if (split.length > 0) {
-        const sum = split.reduce((a, b) => a + b.pct, 0);
-        if (sum > 0) normalizedSplit = split.map(s => ({ ...s, pct: round2((s.pct / sum) * 100) }));
-        else normalizedSplit = [];
-      }
-      const { error: upErr } = await service
-        .from("merchant_bucket_cache")
-        .upsert({
-          household_id: householdId,
-          merchant_normalized: merchantKey,
-          merchant_display: merchantKey,
-          bucket_key: bucketKey,
-          split: normalizedSplit,
-          source: "user",
-          confidence: "high",
-          sample_count: 0,
-        }, { onConflict: "household_id,merchant_normalized" });
-      if (upErr) {
-        console.error("reassign upsert error:", upErr);
-        return jsonResponse({ error: "save_failed", message: upErr.message }, 500);
-      }
-      return jsonResponse({ ok: true });
-    }
 
     const stewardshipMode = body.stewardshipMode !== false;
     const lookbackDays = Math.min(Math.max(body.lookbackDays ?? 90, 30), 180);
@@ -163,321 +98,150 @@ Deno.serve(async (req) => {
     const sinceDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
 
-    const [{ data: cats }, { data: fixedRows }, { data: txns }, { data: cacheRows }] =
+    const [{ data: cats }, { data: fixedRows }, { data: txns }, { data: mapRows }] =
       await Promise.all([
         service.from("budget_categories").select("slug,name,budgeted,group")
           .eq("household_id", householdId).order("sort_order"),
         service.from("fixed_expenses").select("slug,name,amount,group")
           .eq("household_id", householdId).order("sort_order"),
         service.from("transactions")
-          .select("id,date,amount,category_slug,transaction_type,description,account,plaid_transaction_id")
+          .select("id,date,amount,category_slug,transaction_type")
           .eq("household_id", householdId).gte("date", sinceDate),
-        service.from("merchant_bucket_cache")
-          .select("id,merchant_normalized,merchant_display,bucket_key,split,source,confidence,sample_count")
+        service.from("category_bucket_map").select("category_slug,bucket_key,category_kind")
           .eq("household_id", householdId),
       ]);
 
     const categories = (cats || []) as DbCategory[];
     const fixedExpenses = (fixedRows || []) as DbFixed[];
     const transactions = (txns || []) as DbTxn[];
-    const cache = (cacheRows || []) as CacheRow[];
-    const cacheByMerchant = new Map<string, CacheRow>();
-    for (const c of cache) cacheByMerchant.set(c.merchant_normalized, c);
+    const userMap = (mapRows || []) as DbMapRow[];
 
-    const monthsTouched = new Set<string>();
-    for (const t of transactions) monthsTouched.add(t.date.slice(0, 7));
-    const monthsObserved = Math.max(monthsTouched.size, 1);
+    // Build slug → bucket lookup. User mapping wins; structural shortcuts
+    // (group='savings'/'tithe'/'giving') fill in for unmapped categories.
+    const slugToBucket = new Map<string, string>();
+    for (const m of userMap) slugToBucket.set(m.category_slug, m.bucket_key);
 
-    if (transactions.length < 30 || monthsObserved < 2) {
-      return jsonResponse({
-        error: "insufficient_history",
-        message: "Need at least 30 transactions across 2+ months to analyze. Check back in a few weeks.",
-        transactionCount: transactions.length, monthsObserved,
-      }, 422);
+    for (const c of categories) {
+      if (slugToBucket.has(c.slug)) continue;
+      const g = (c.group || "").toLowerCase();
+      if (g === "savings" || g === "saving") slugToBucket.set(c.slug, "saving");
+      else if (g === "tithe" || g === "giving") slugToBucket.set(c.slug, "giving");
     }
 
-    // -----------------------------------------------------------------------
-    // Bucket-eligible transactions = expenses, not unassigned, not ignore-*.
-    // -----------------------------------------------------------------------
+    const validBucketKeys = new Set(ALL_BUCKET_KEYS);
+
+    // Months observed (for averaging variable spend).
+    const monthsTouched = new Set<string>();
+    for (const t of transactions) {
+      if (t.date) monthsTouched.add(t.date.slice(0, 7));
+    }
+    const monthsObserved = Math.max(monthsTouched.size, 1);
+
+    // ---------------------------------------------------------------------
+    // Variable bucket totals from transactions.
+    // ---------------------------------------------------------------------
     const isIgnored = (slug: string) =>
       !slug || slug === "unassigned" || slug.startsWith("ignore-");
 
-    // Build group-by-slug map for structural shortcuts.
-    const slugToGroup = new Map<string, string>();
-    for (const c of categories) slugToGroup.set(c.slug, (c.group || "").toLowerCase());
-
-    // Structural totals: dollars routed to giving/saving from the user's
-    // intentional category structure. These sidestep the AI entirely.
-    let givingFromTxns = 0;
-    let savingFromTxns = 0;
-
-    // Variable transactions to be merchant-bucketed.
-    interface VariableTxn { id: string; merchantRaw: string; merchantNormalized: string; amount: number; }
-    const variableTxns: VariableTxn[] = [];
+    interface VariableMember { slug: string; name: string; total: number; bucketKey: string; }
+    const memberBySlug = new Map<string, VariableMember>();
+    const slugToCat = new Map<string, DbCategory>();
+    for (const c of categories) slugToCat.set(c.slug, c);
 
     for (const t of transactions) {
       if (t.transaction_type !== "expense") continue;
       const amt = Math.abs(Number(t.amount) || 0);
       if (amt <= 0) continue;
       if (isIgnored(t.category_slug)) continue;
-
-      const grp = slugToGroup.get(t.category_slug);
-      if (grp === "tithe" || grp === "giving") { givingFromTxns += amt; continue; }
-      if (grp === "savings" || grp === "saving") { savingFromTxns += amt; continue; }
-
-      // Everything else gets merchant-categorized.
-      const raw = (t.description || "").trim();
-      const norm = normalizeMerchant(raw);
-      if (!norm) continue; // can't bucket what we can't name
-      variableTxns.push({
-        id: t.id, merchantRaw: raw, merchantNormalized: norm, amount: amt,
+      const bucketKey = slugToBucket.get(t.category_slug);
+      if (!bucketKey || !validBucketKeys.has(bucketKey)) continue; // unmapped — skipped
+      const cat = slugToCat.get(t.category_slug);
+      const entry = memberBySlug.get(t.category_slug);
+      if (entry) entry.total += amt;
+      else memberBySlug.set(t.category_slug, {
+        slug: t.category_slug,
+        name: cat?.name || t.category_slug,
+        total: amt,
+        bucketKey,
       });
     }
 
-    // -----------------------------------------------------------------------
-    // Group variable transactions by merchant.
-    // -----------------------------------------------------------------------
-    interface MerchantAgg {
-      merchant_normalized: string; merchant_display: string;
-      total: number; count: number;
-    }
-    const merchants = new Map<string, MerchantAgg>();
-    for (const vt of variableTxns) {
-      const cur = merchants.get(vt.merchantNormalized);
-      if (cur) { cur.total += vt.amount; cur.count += 1; }
-      else {
-        merchants.set(vt.merchantNormalized, {
-          merchant_normalized: vt.merchantNormalized,
-          merchant_display: vt.merchantRaw.slice(0, 60),
-          total: vt.amount, count: 1,
-        });
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Stage 1: AI-categorize uncached merchants.
-    // -----------------------------------------------------------------------
-    const uncached: MerchantAgg[] = [];
-    for (const m of merchants.values()) {
-      if (!cacheByMerchant.has(m.merchant_normalized)) uncached.push(m);
-    }
-
-    let aiAssignmentCount = 0;
-    if (uncached.length > 0) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-      if (!GEMINI_API_KEY) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 500);
-
-      // Cap per-call to keep token usage predictable. Process in batches of 80.
-      const BATCH = 80;
-      for (let i = 0; i < uncached.length; i += BATCH) {
-        const slice = uncached.slice(i, i + BATCH);
-        const payload = {
-          variable_buckets: CFP_BUCKETS.filter(b => b.role === "variable").map(b => ({
-            key: b.key, label: b.label, hint: b.ai_hint,
-          })),
-          merchants: slice.map(m => ({
-            merchant: m.merchant_normalized,
-            display: m.merchant_display,
-            total_dollars: round2(m.total),
-            transaction_count: m.count,
-          })),
-        };
-        const userMsg = `Categorize these merchants into the listed variable buckets. Return ONLY a JSON object:\n{\n  "assignments": [\n    {"merchant": "...", "bucket_key": "...", "confidence": "high|medium|low", "split": [{"bucket_key": "...", "pct": 70}, ...]}\n  ]\n}\nInput:\n${JSON.stringify(payload)}`;
-
-        const result = await callGemini({
-          model: "gemini-2.5-flash",
-          messages: [
-            { role: "system", content: MERCHANT_CATEGORIZER_PROMPT },
-            { role: "user", content: userMsg },
-          ],
-          apiKey: GEMINI_API_KEY,
-        });
-
-        if (!result.ok) {
-          console.error("Gemini stage-1 error", result.status, result.errorBody);
-          if (result.status === 429) {
-            return jsonResponse({ error: "ai_failed", status: 429,
-              message: "AI is rate-limited. Try again in a moment." }, 429);
-          }
-          // For partial failure, fall through — uncategorized merchants will
-          // default to "personal" below.
-          continue;
-        }
-
-        const parsed = parseAiJson(result.content || "");
-        const assignments = (parsed?.assignments || []) as Array<{
-          merchant?: string; bucket_key?: string; confidence?: string;
-          split?: Array<{ bucket_key?: string; pct?: number }>;
-        }>;
-
-        const validKeys = new Set(VARIABLE_BUCKET_KEYS);
-        const cacheInserts: Array<Record<string, unknown>> = [];
-        for (const a of assignments) {
-          if (typeof a?.merchant !== "string") continue;
-          const merchantKey = a.merchant.trim();
-          const merchant = merchants.get(merchantKey);
-          if (!merchant) continue;
-          let bucketKey = String(a.bucket_key || "").trim();
-          if (!validKeys.has(bucketKey)) bucketKey = "personal";
-          const conf = ["high", "medium", "low"].includes(String(a.confidence))
-            ? String(a.confidence) : "medium";
-          const split = Array.isArray(a.split)
-            ? a.split
-                .map(s => ({
-                  bucket_key: String(s?.bucket_key || ""),
-                  pct: Math.max(0, Math.min(100, Number(s?.pct) || 0)),
-                }))
-                .filter(s => validKeys.has(s.bucket_key) && s.pct > 0)
-            : [];
-          // If split provided but doesn't sum to 100, normalize.
-          let normalizedSplit = split;
-          if (split.length > 0) {
-            const sum = split.reduce((a, b) => a + b.pct, 0);
-            if (sum > 0) normalizedSplit = split.map(s => ({ ...s, pct: round2((s.pct / sum) * 100) }));
-            else normalizedSplit = [];
-          }
-
-          cacheInserts.push({
-            household_id: householdId,
-            merchant_normalized: merchantKey,
-            merchant_display: merchant.merchant_display,
-            bucket_key: bucketKey,
-            split: normalizedSplit,
-            source: "ai",
-            confidence: conf,
-            sample_count: merchant.count,
-          });
-          // Update in-memory cache for the rollup below.
-          cacheByMerchant.set(merchantKey, {
-            id: "", merchant_normalized: merchantKey,
-            merchant_display: merchant.merchant_display,
-            bucket_key: bucketKey, split: normalizedSplit,
-            source: "ai", confidence: conf as "low" | "medium" | "high",
-            sample_count: merchant.count,
-          });
-          aiAssignmentCount += 1;
-        }
-
-        if (cacheInserts.length > 0) {
-          const { error: insertErr } = await service
-            .from("merchant_bucket_cache")
-            .upsert(cacheInserts, { onConflict: "household_id,merchant_normalized" });
-          if (insertErr) console.error("merchant_bucket_cache upsert error:", insertErr);
-        }
-      }
-    }
-
-    // Any merchant still without a cache entry (e.g. AI batch failed) defaults
-    // to "personal" with low confidence so the analysis still completes.
-    for (const m of merchants.values()) {
-      if (!cacheByMerchant.has(m.merchant_normalized)) {
-        cacheByMerchant.set(m.merchant_normalized, {
-          id: "", merchant_normalized: m.merchant_normalized,
-          merchant_display: m.merchant_display,
-          bucket_key: "personal", split: [],
-          source: "ai", confidence: "low", sample_count: m.count,
-        });
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Roll merchants up into variable buckets, honoring per-merchant splits.
-    // -----------------------------------------------------------------------
-    interface BucketMerchant {
-      merchant: string; display: string; amount: number;
-      assumed_pct: number; confidence: string; source: string; has_split: boolean;
-    }
-    const variableBucketTotals = new Map<string, number>();
-    const variableBucketMerchants = new Map<string, BucketMerchant[]>();
+    // ---------------------------------------------------------------------
+    // Build bucket rollups (variable from txns avg/month, fixed from
+    // fixed_expenses + structural giving/saving categories).
+    // ---------------------------------------------------------------------
+    interface BucketMember { slug: string; name: string; amount: number; }
+    const variableMembersByBucket = new Map<string, BucketMember[]>();
+    const variableTotalByBucket = new Map<string, number>();
     for (const k of VARIABLE_BUCKET_KEYS) {
-      variableBucketTotals.set(k, 0);
-      variableBucketMerchants.set(k, []);
+      variableMembersByBucket.set(k, []);
+      variableTotalByBucket.set(k, 0);
     }
 
-    for (const m of merchants.values()) {
-      const c = cacheByMerchant.get(m.merchant_normalized)!;
-      const splits = (c.split && c.split.length > 0)
-        ? c.split
-        : [{ bucket_key: c.bucket_key, pct: 100 }];
-      for (const s of splits) {
-        const portion = m.total * (s.pct / 100);
-        variableBucketTotals.set(s.bucket_key,
-          (variableBucketTotals.get(s.bucket_key) || 0) + portion);
-        variableBucketMerchants.get(s.bucket_key)!.push({
-          merchant: m.merchant_normalized,
-          display: m.merchant_display,
-          amount: round2(portion),
-          assumed_pct: s.pct,
-          confidence: c.confidence,
-          source: c.source,
-          has_split: splits.length > 1,
-        });
-      }
+    for (const m of memberBySlug.values()) {
+      const arr = variableMembersByBucket.get(m.bucketKey);
+      if (!arr) continue; // mapped to a fixed bucket — handled below as structural
+      const monthly = m.total / monthsObserved;
+      arr.push({ slug: m.slug, name: m.name, amount: round2(monthly) });
+      variableTotalByBucket.set(m.bucketKey, (variableTotalByBucket.get(m.bucketKey) || 0) + monthly);
     }
 
-    // -----------------------------------------------------------------------
-    // Build all bucket rollups (variable + fixed).
-    // Fixed buckets:
-    //   - giving:    sum of giving/tithe transactions (structural)
-    //   - saving:    sum of savings transactions     (structural)
-    //   - housing/utilities/insurance/debt: from fixed_expenses.amount
-    // -----------------------------------------------------------------------
-    interface FixedExpenseSummary { name: string; amount: number; group: string; slug: string; }
-    const fixedByBucket = new Map<string, FixedExpenseSummary[]>();
-    const groupToBucket = (group: string, name: string): string | null => {
-      const g = (group || "").toLowerCase();
-      const n = (name || "").toLowerCase();
-      if (g === "savings" || g === "saving") return "saving";
-      if (g === "tithe" || g === "giving") return "giving";
-      // "Bills" group: dispatch by name keywords.
-      if (n.includes("mortgage") || n.includes("rent") || n.includes("hoa") || n.includes("lawn")
-        || n.includes("home") || n.includes("house")) return "housing";
-      if (n.includes("electric") || n.includes("water") || n.includes("gas")
-        || n.includes("internet") || n.includes("spectrum") || n.includes("phone")
-        || n.includes("cell") || n.includes("trash") || n.includes("dominion")
-        || n.includes("utility") || n.includes("utilities")) return "utilities";
-      if (n.includes("insurance") || n.includes("ltd") || n.includes("disability")
-        || n.includes("policy") || n.includes("term life")) return "insurance";
-      if (n.includes("loan") || n.includes("debt") || n.includes("perritt")
-        || n.includes("tahoe") || n.includes("clark") || n.includes("payoff")) return "debt";
-      // Subscriptions or other recurring items billed as fixed sit in their
-      // variable bucket so we don't inflate "Insurance" with Netflix.
-      return null;
-    };
+    // Sort variable members by amount desc.
+    for (const arr of variableMembersByBucket.values()) {
+      arr.sort((a, b) => b.amount - a.amount);
+    }
 
+    // Structural giving / saving from variable categories mapped to those buckets.
+    let givingFromCategories = 0;
+    let savingFromCategories = 0;
+    for (const m of memberBySlug.values()) {
+      const monthly = m.total / monthsObserved;
+      if (m.bucketKey === "giving") givingFromCategories += monthly;
+      if (m.bucketKey === "saving") savingFromCategories += monthly;
+    }
+
+    // Fixed expenses grouped by bucket.
+    interface FixedSummary { name: string; amount: number; slug: string; }
+    const fixedByBucket = new Map<string, FixedSummary[]>();
     for (const f of fixedExpenses) {
-      const key = groupToBucket(f.group, f.name);
-      if (!key) continue;
-      const arr = fixedByBucket.get(key) || [];
-      arr.push({ name: f.name, amount: Number(f.amount) || 0, group: f.group, slug: f.slug });
-      fixedByBucket.set(key, arr);
+      let bucketKey = slugToBucket.get(f.slug);
+      if (!bucketKey) {
+        // Structural fallback for unmapped fixed expenses.
+        const g = (f.group || "").toLowerCase();
+        if (g === "savings" || g === "saving") bucketKey = "saving";
+        else if (g === "tithe" || g === "giving") bucketKey = "giving";
+      }
+      if (!bucketKey || !validBucketKeys.has(bucketKey)) continue;
+      const arr = fixedByBucket.get(bucketKey) || [];
+      arr.push({ name: f.name, amount: Number(f.amount) || 0, slug: f.slug });
+      fixedByBucket.set(bucketKey, arr);
     }
-
-    // Compute average monthly observed for giving/saving from txns.
-    const givingObservedAvg = givingFromTxns / monthsObserved;
-    const savingObservedAvg = savingFromTxns / monthsObserved;
 
     const bucketRollups = CFP_BUCKETS.map(b => {
       let actual = 0;
-      let memberDescription: string[] = [];
-      let merchantList: BucketMerchant[] = [];
+      const memberDescriptions: string[] = [];
+      let memberList: BucketMember[] = [];
 
       if (b.role === "variable") {
-        actual = (variableBucketTotals.get(b.key) || 0) / monthsObserved;
-        merchantList = (variableBucketMerchants.get(b.key) || [])
-          .map(m => ({ ...m, amount: round2(m.amount / monthsObserved) }))
-          .sort((a, b) => b.amount - a.amount);
-      } else if (b.key === "giving") {
-        actual = givingObservedAvg;
-        memberDescription = (fixedByBucket.get("giving") || []).map(f => f.name);
-      } else if (b.key === "saving") {
-        actual = savingObservedAvg;
-        memberDescription = (fixedByBucket.get("saving") || []).map(f => f.name);
+        actual = variableTotalByBucket.get(b.key) || 0;
+        memberList = variableMembersByBucket.get(b.key) || [];
       } else {
-        // housing/utilities/insurance/debt — trust fixed_expenses.amount.
-        const items = fixedByBucket.get(b.key) || [];
-        actual = items.reduce((s, f) => s + f.amount, 0);
-        memberDescription = items.map(f => f.name);
+        // Fixed buckets: fixed_expenses + (for giving/saving) structural txns.
+        const fixedItems = fixedByBucket.get(b.key) || [];
+        actual = fixedItems.reduce((s, f) => s + f.amount, 0);
+        memberDescriptions.push(...fixedItems.map(f => f.name));
+        if (b.key === "giving") {
+          actual += givingFromCategories;
+          for (const m of memberBySlug.values()) {
+            if (m.bucketKey === "giving") memberDescriptions.push(m.name);
+          }
+        }
+        if (b.key === "saving") {
+          actual += savingFromCategories;
+          for (const m of memberBySlug.values()) {
+            if (m.bucketKey === "saving") memberDescriptions.push(m.name);
+          }
+        }
       }
 
       return {
@@ -489,8 +253,8 @@ Deno.serve(async (req) => {
         role: b.role,
         bucket_actual_monthly_avg: round2(actual),
         bucket_pct_of_income: round2((actual / monthlyIncome) * 100),
-        member_descriptions: memberDescription,
-        merchants: merchantList,
+        member_descriptions: memberDescriptions,
+        members: memberList,
       };
     });
 
@@ -499,9 +263,9 @@ Deno.serve(async (req) => {
     const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
 
-    // -----------------------------------------------------------------------
-    // Stage 2: AI verdicts + reallocation hints + summary on variable buckets.
-    // -----------------------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // AI commentary call (one shot).
+    // ---------------------------------------------------------------------
     const aiPayload = {
       months_observed: monthsObserved,
       monthly_take_home: round2(monthlyIncome),
@@ -509,7 +273,7 @@ Deno.serve(async (req) => {
       structural_context: {
         fixed_buckets_total: round2(fixedTotal),
         fixed_buckets_pct_of_income: fixedPctOfIncome,
-        note: "Fixed bills (housing, utilities, insurance, debt, giving, saving) are sourced from the household's fixed expenses and savings/giving transactions. Use them as context only.",
+        note: "Fixed bills (housing, utilities, insurance, debt, giving, saving) are sourced from the household's fixed expenses and intentional giving/saving categories. Use them as context only.",
         fixed_summary: fixedRollups.map(b => ({
           key: b.key, label: b.label,
           actual_monthly_avg: b.bucket_actual_monthly_avg,
@@ -523,7 +287,7 @@ Deno.serve(async (req) => {
         guideline_kind: b.guideline_kind,
         bucket_actual_monthly_avg: b.bucket_actual_monthly_avg,
         bucket_pct_of_income: b.bucket_pct_of_income,
-        top_merchants: b.merchants.slice(0, 5).map(m => ({ display: m.display, amount: m.amount })),
+        top_members: b.members.slice(0, 5).map(m => ({ name: m.name, amount: m.amount })),
       })),
     };
 
@@ -543,7 +307,7 @@ Deno.serve(async (req) => {
     });
 
     if (!result.ok) {
-      console.error("Gemini stage-2 error", result.status, result.errorBody);
+      console.error("Gemini commentary error", result.status, result.errorBody);
       return jsonResponse({
         error: "ai_failed", status: result.status,
         message: "Couldn't analyze right now. Try again in a moment.",
@@ -552,7 +316,7 @@ Deno.serve(async (req) => {
 
     const parsed = parseAiJson(result.content || "");
     if (!parsed) {
-      console.error("Failed to parse stage-2 AI JSON:", result.content?.slice(0, 500));
+      console.error("Failed to parse AI JSON:", result.content?.slice(0, 500));
       return jsonResponse({
         error: "ai_parse_failed",
         message: "AI response was not valid JSON. Try again.",
@@ -607,6 +371,15 @@ Deno.serve(async (req) => {
       rationale: stripMarkdown(String(h?.rationale || "")),
     })).filter((h: { from_bucket: string; to_bucket: string }) => h.from_bucket && h.to_bucket);
 
+    // Diagnostics for the UI.
+    const totalCategories = categories.length + fixedExpenses.length;
+    const mappedCategoriesCount = (() => {
+      let n = 0;
+      for (const c of categories) if (slugToBucket.has(c.slug)) n++;
+      for (const f of fixedExpenses) if (slugToBucket.has(f.slug)) n++;
+      return n;
+    })();
+
     return jsonResponse({
       monthly_take_home: round2(monthlyIncome),
       months_observed: monthsObserved,
@@ -617,9 +390,8 @@ Deno.serve(async (req) => {
       overall_summary: stripMarkdown(String(parsed.overall_summary || "")),
       stewardship_mode: stewardshipMode,
       diagnostics: {
-        merchant_count: merchants.size,
-        ai_categorized_this_run: aiAssignmentCount,
-        cached_merchant_count: cache.length,
+        total_categories: totalCategories,
+        mapped_categories: mappedCategoriesCount,
       },
     });
   } catch (e) {
@@ -647,7 +419,6 @@ function parseAiJson(s: string): {
   by_bucket?: Array<{ key?: string; verdict?: unknown; suggested_bucket_total?: unknown; commentary?: unknown }>;
   reallocation_hints?: Array<Record<string, unknown>>;
   overall_summary?: unknown;
-  assignments?: Array<Record<string, unknown>>;
 } | null {
   const cleaned = s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
   try { return JSON.parse(cleaned); } catch { /* fallthrough */ }
