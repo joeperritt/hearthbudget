@@ -95,10 +95,13 @@ export function getBucket(key: string): CfpBucket | undefined {
  * group). Deterministic keyword match — no AI. Returns null if no match.
  */
 export function suggestBucket(name: string, group?: string): string | null {
-  const g = (group || "").toLowerCase();
-  if (g === "savings" || g === "saving") return "saving";
-  if (g === "tithe" || g === "giving") return "giving";
-
+  // Note: We intentionally do NOT auto-route group='savings'/'tithe'/'giving'
+  // to the Saving/Giving buckets. Many "savings" categories are actually
+  // sinking funds for delayed expenses (vacation savings → Travel, car taxes
+  // → Transportation, dog savings → Pets). Only true Saving (retirement,
+  // emergency fund, brokerage) and true Giving (tithe, charity) belong in
+  // those buckets — the user knows which is which. Keyword match still kicks
+  // in below for obvious cases (e.g. "retirement" → Saving).
   const n = (name || "").toLowerCase();
   if (!n) return null;
 
