@@ -77,6 +77,15 @@ export function BucketMappingSheet({
     setPickerSlug(null);
   };
 
+  // One-tap approve from the list view (no picker open).
+  const handleApprove = async (item: CategoryItem, bucketKey: string) => {
+    await setMapping(item.slug, bucketKey, item.kind);
+    toast({
+      title: `${item.name} → ${getBucket(bucketKey)?.label}`,
+      description: "Mapping saved.",
+    });
+  };
+
   const handleSkip = () => setPickerSlug(null);
 
   const handleClear = async () => {
