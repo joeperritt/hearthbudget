@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, LogOut, AlertTriangle, MessageSquare, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
