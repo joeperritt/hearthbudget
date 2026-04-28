@@ -37,9 +37,7 @@ interface BucketResult {
 
 interface AnalyzeResult {
   monthly_take_home: number;
-  months_observed: number;
-  lookback_days: number;
-  transaction_count: number;
+  view_month: string;
   buckets: BucketResult[];
   reallocation_hints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }>;
   overall_summary: string;
@@ -55,6 +53,7 @@ interface SpendingAnalyzerProps {
   onOpenChange: (open: boolean) => void;
   stewardshipMode?: boolean;
   defaultIncome?: number;
+  viewMonth?: string; // YYYY-MM
 }
 
 function fmt(n: number) {
@@ -70,44 +69,22 @@ function verdictPill(v: BucketResult["verdict"]) {
 }
 
 export function SpendingAnalyzer({
-  open, onOpenChange, stewardshipMode = true, defaultIncome,
+  open, onOpenChange, stewardshipMode = true, defaultIncome, viewMonth,
 }: SpendingAnalyzerProps) {
-  const [phase, setPhase] = useState<"intake" | "loading" | "results">("intake");
+  const [phase, setPhase] = useState<"empty" | "loading" | "results">("empty");
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
-  const [income, setIncome] = useState("");
 
-  useEffect(() => {
-    if (open) {
-      setPhase("intake");
-      setResult(null);
-      setIncome(defaultIncome && defaultIncome > 0 ? String(defaultIncome) : "");
-    }
-  }, [open, defaultIncome]);
-
-  useEffect(() => {
-    if (phase !== "loading") return;
-    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800);
-    return () => clearInterval(t);
-  }, [phase]);
-
-  const incomeNum = Number(income);
-  const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
+  const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
   const runAnalysis = async () => {
-    if (!incomeValid) {
-      toast({ title: "Enter your monthly take-home pay first.", variant: "destructive" });
-      return;
-    }
+    if (!incomeValid) return;
     setPhase("loading");
     setLoadingIdx(0);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
-        body: { stewardshipMode, lookbackDays: 90, monthlyIncome: incomeNum },
+        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth },
       });
-      // supabase-js wraps non-2xx responses in FunctionsHttpError. Try to read
-      // the JSON body from the underlying response so the user sees the
-      // server's actual message.
       if (error) {
         let serverMsg: string | undefined;
         const ctx = (error as { context?: Response }).context;
@@ -122,7 +99,7 @@ export function SpendingAnalyzer({
           description: serverMsg || error.message || "Try again in a moment.",
           variant: "destructive",
         });
-        setPhase("intake");
+        setPhase("empty");
         return;
       }
       const r = data as AnalyzeResult & { error?: string; message?: string };
@@ -132,7 +109,7 @@ export function SpendingAnalyzer({
           description: r.message || "Try again in a moment.",
           variant: "destructive",
         });
-        setPhase("intake");
+        setPhase("empty");
         return;
       }
       setResult(r);
@@ -144,9 +121,28 @@ export function SpendingAnalyzer({
         description: e instanceof Error ? e.message : "Try again in a moment.",
         variant: "destructive",
       });
-      setPhase("intake");
+      setPhase("empty");
     }
   };
+
+  // When the sheet opens with valid take-home, go straight to loading/results.
+  // No intake screen — take-home was already captured on the Budget tab card.
+  useEffect(() => {
+    if (!open) return;
+    setResult(null);
+    if (incomeValid) {
+      void runAnalysis();
+    } else {
+      setPhase("empty");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultIncome, viewMonth]);
+
+  useEffect(() => {
+    if (phase !== "loading") return;
+    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800);
+    return () => clearInterval(t);
+  }, [phase]);
 
   const bucketLabelByKey = useMemo(() => {
     const m: Record<string, string> = {};
