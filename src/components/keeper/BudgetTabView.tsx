@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { Info, Pencil, Sparkles } from 'lucide-react';
+import { AlertCircle, Info, Pencil, Sparkles, Tags } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
 import { SpendingAnalyzer } from './SpendingAnalyzer';
+import { BucketMappingSheet } from './BucketMappingSheet';
+import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
