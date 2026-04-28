@@ -202,6 +202,36 @@ export type Database = {
           },
         ]
       }
+      category_bucket_map: {
+        Row: {
+          bucket_key: string
+          category_kind: string
+          category_slug: string
+          created_at: string
+          household_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_key: string
+          category_kind?: string
+          category_slug: string
+          created_at?: string
+          household_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_key?: string
+          category_kind?: string
+          category_slug?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -522,54 +552,6 @@ export type Database = {
           revoked_at?: string | null
           used_at?: string | null
           used_by?: string | null
-        }
-        Relationships: []
-      }
-      merchant_bucket_cache: {
-        Row: {
-          bucket_key: string
-          confidence: string
-          created_at: string
-          household_id: string | null
-          id: string
-          is_global_candidate: boolean
-          last_seen_at: string
-          merchant_display: string
-          merchant_normalized: string
-          sample_count: number
-          source: string
-          split: Json
-          updated_at: string
-        }
-        Insert: {
-          bucket_key: string
-          confidence?: string
-          created_at?: string
-          household_id?: string | null
-          id?: string
-          is_global_candidate?: boolean
-          last_seen_at?: string
-          merchant_display: string
-          merchant_normalized: string
-          sample_count?: number
-          source?: string
-          split?: Json
-          updated_at?: string
-        }
-        Update: {
-          bucket_key?: string
-          confidence?: string
-          created_at?: string
-          household_id?: string | null
-          id?: string
-          is_global_candidate?: boolean
-          last_seen_at?: string
-          merchant_display?: string
-          merchant_normalized?: string
-          sample_count?: number
-          source?: string
-          split?: Json
-          updated_at?: string
         }
         Relationships: []
       }
