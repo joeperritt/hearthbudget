@@ -88,22 +88,17 @@ export function BudgetTabView({
   const surplus = totalTakeHome - budgetTotal;
   const isSurplus = surplus >= 0;
 
-  // Count mappable items vs unmapped — categories/fixed-expenses with structural
-  // groups (savings/tithe/giving) auto-resolve and are excluded from the count.
+  // Count mappable items vs unmapped — every category & fixed expense needs a
+  // user-chosen bucket. We no longer auto-resolve savings/tithe groups because
+  // many "savings" categories are sinking funds for delayed expenses.
   const mappingStats = useMemo(() => {
-    const isStructural = (g: string) => {
-      const lower = (g || '').toLowerCase();
-      return lower === 'savings' || lower === 'saving' || lower === 'tithe' || lower === 'giving';
-    };
     let total = 0;
     let mapped = 0;
     for (const c of monthCategories) {
-      if (isStructural(c.group)) continue;
       total += 1;
       if (bucketMap[c.id]) mapped += 1;
     }
     for (const f of monthFixedExpenses) {
-      if (isStructural(f.group)) continue;
       total += 1;
       if (bucketMap[f.id]) mapped += 1;
     }
