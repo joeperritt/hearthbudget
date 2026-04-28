@@ -95,10 +95,12 @@ Deno.serve(async (req) => {
       stewardshipMode?: boolean;
       monthlyIncome?: number;
       viewMonth?: string; // YYYY-MM
+      preTaxSavingsMonthly?: number; // 401k / pre-tax retirement that never hits take-home
     };
 
     const stewardshipMode = body.stewardshipMode !== false;
     const monthlyIncome = Number(body.monthlyIncome);
+    const preTaxSavings = Math.max(0, Number(body.preTaxSavingsMonthly) || 0);
     if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
       return jsonResponse({
         error: "missing_income",
