@@ -393,6 +393,20 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Append Unbudgeted as a flagged synthetic bucket. Verdict is "over" any
+    // time there's meaningful unassigned dollars (>1% of take-home), so it
+    // surfaces in the results screen alongside real buckets.
+    const unbudgetedVerdict: "under" | "in_line" | "over" =
+      unbudgetedRollup.bucket_pct_of_income > 1 ? "over" : "in_line";
+    mergedBuckets.push({
+      ...unbudgetedRollup,
+      verdict: unbudgetedVerdict,
+      suggested_bucket_total: 0,
+      commentary: unbudgetedVerdict === "over"
+        ? "Assign this — unassigned money is the #1 thing CFP planners push on."
+        : "",
+    });
+
     const reallocationHints = (parsed.reallocation_hints || []).map((h: {
       from_bucket?: unknown; to_bucket?: unknown; amount?: unknown; rationale?: unknown;
     }) => ({
