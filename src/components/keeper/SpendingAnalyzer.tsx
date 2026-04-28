@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ArrowLeft, Info, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, Info, ArrowRight } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
-  "Calculating bucket totals from recent spending…",
+  "Summing planned amounts per bucket…",
   "Comparing each bucket to its CFP guideline…",
   "Generating commentary and reallocation ideas…",
 ];
@@ -37,9 +37,7 @@ interface BucketResult {
 
 interface AnalyzeResult {
   monthly_take_home: number;
-  months_observed: number;
-  lookback_days: number;
-  transaction_count: number;
+  view_month: string;
   buckets: BucketResult[];
   reallocation_hints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }>;
   overall_summary: string;
@@ -55,6 +53,7 @@ interface SpendingAnalyzerProps {
   onOpenChange: (open: boolean) => void;
   stewardshipMode?: boolean;
   defaultIncome?: number;
+  viewMonth?: string; // YYYY-MM
 }
 
 function fmt(n: number) {
@@ -70,44 +69,22 @@ function verdictPill(v: BucketResult["verdict"]) {
 }
 
 export function SpendingAnalyzer({
-  open, onOpenChange, stewardshipMode = true, defaultIncome,
+  open, onOpenChange, stewardshipMode = true, defaultIncome, viewMonth,
 }: SpendingAnalyzerProps) {
-  const [phase, setPhase] = useState<"intake" | "loading" | "results">("intake");
+  const [phase, setPhase] = useState<"empty" | "loading" | "results">("empty");
   const [loadingIdx, setLoadingIdx] = useState(0);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
-  const [income, setIncome] = useState("");
 
-  useEffect(() => {
-    if (open) {
-      setPhase("intake");
-      setResult(null);
-      setIncome(defaultIncome && defaultIncome > 0 ? String(defaultIncome) : "");
-    }
-  }, [open, defaultIncome]);
-
-  useEffect(() => {
-    if (phase !== "loading") return;
-    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800);
-    return () => clearInterval(t);
-  }, [phase]);
-
-  const incomeNum = Number(income);
-  const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
+  const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
   const runAnalysis = async () => {
-    if (!incomeValid) {
-      toast({ title: "Enter your monthly take-home pay first.", variant: "destructive" });
-      return;
-    }
+    if (!incomeValid) return;
     setPhase("loading");
     setLoadingIdx(0);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-spending", {
-        body: { stewardshipMode, lookbackDays: 90, monthlyIncome: incomeNum },
+        body: { stewardshipMode, monthlyIncome: defaultIncome, viewMonth },
       });
-      // supabase-js wraps non-2xx responses in FunctionsHttpError. Try to read
-      // the JSON body from the underlying response so the user sees the
-      // server's actual message.
       if (error) {
         let serverMsg: string | undefined;
         const ctx = (error as { context?: Response }).context;
@@ -122,7 +99,7 @@ export function SpendingAnalyzer({
           description: serverMsg || error.message || "Try again in a moment.",
           variant: "destructive",
         });
-        setPhase("intake");
+        setPhase("empty");
         return;
       }
       const r = data as AnalyzeResult & { error?: string; message?: string };
@@ -132,7 +109,7 @@ export function SpendingAnalyzer({
           description: r.message || "Try again in a moment.",
           variant: "destructive",
         });
-        setPhase("intake");
+        setPhase("empty");
         return;
       }
       setResult(r);
@@ -144,9 +121,28 @@ export function SpendingAnalyzer({
         description: e instanceof Error ? e.message : "Try again in a moment.",
         variant: "destructive",
       });
-      setPhase("intake");
+      setPhase("empty");
     }
   };
+
+  // When the sheet opens with valid take-home, go straight to loading/results.
+  // No intake screen — take-home was already captured on the Budget tab card.
+  useEffect(() => {
+    if (!open) return;
+    setResult(null);
+    if (incomeValid) {
+      void runAnalysis();
+    } else {
+      setPhase("empty");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultIncome, viewMonth]);
+
+  useEffect(() => {
+    if (phase !== "loading") return;
+    const t = setInterval(() => setLoadingIdx(i => (i + 1) % LOADING_MESSAGES.length), 1800);
+    return () => clearInterval(t);
+  }, [phase]);
 
   const bucketLabelByKey = useMemo(() => {
     const m: Record<string, string> = {};
@@ -164,47 +160,19 @@ export function SpendingAnalyzer({
           </SheetTitle>
         </SheetHeader>
 
-        {phase === "intake" && (
-          <div className="px-5 py-8 space-y-6 max-w-md mx-auto">
-            <p className="text-sm text-muted-foreground text-center">
-              We'll roll your last 90 days of spending into your mapped Certified Financial
-              Planner (CFP) buckets and compare each one to its guideline percentage
-              {stewardshipMode ? ", informed by stewardship principles" : ""}.
+        {phase === "empty" && (
+          <div className="px-5 py-12 space-y-4 max-w-md mx-auto text-center">
+            <Sparkles className="w-10 h-10 text-amber-500 mx-auto" />
+            <h3 className="font-display text-lg font-semibold text-foreground">
+              Set your take-home first
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              We compare your monthly budget to Certified Financial Planner (CFP)
+              guidelines. To do that, we need your monthly take-home pay — enter
+              it on the Budget tab card, then tap Analyze again.
             </p>
-
-            <div className="space-y-2">
-              <label htmlFor="take-home" className="text-sm font-medium text-foreground block">
-                What's your monthly take-home pay?
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base">$</span>
-                <input
-                  id="take-home"
-                  type="text"
-                  inputMode="decimal"
-                  value={income}
-                  onChange={e => setIncome(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="10,000"
-                  autoFocus
-                  className="w-full pl-7 pr-3 py-3 text-lg font-semibold tabular-nums bg-card border border-border rounded-xl outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Use what actually lands in your accounts each month after taxes,
-                health insurance, and retirement contributions.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">How this works: </span>
-              We use the CFP-bucket mappings you set on your categories. Categories
-              that aren't mapped won't show up in the variable-spending rollup
-              (they'll just be missing from the percentages).
-            </div>
-
-            <Button onClick={runAnalysis} disabled={!incomeValid} className="w-full">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Run analysis
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
             </Button>
           </div>
         )}
@@ -229,8 +197,8 @@ export function SpendingAnalyzer({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Based on {result.transaction_count} transactions across {result.months_observed} months,
-                rolled up using your category-to-bucket mappings.
+                We compare your monthly budget to CFP guidelines using the
+                category-to-bucket mappings you set.
                 {result.diagnostics && result.diagnostics.mapped_categories < result.diagnostics.total_categories && (
                   <> {result.diagnostics.total_categories - result.diagnostics.mapped_categories} unmapped category
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
@@ -449,14 +417,13 @@ export function SpendingAnalyzer({
             )}
 
             {/* Sticky footer */}
+            {/* Sticky footer */}
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-5 py-3 flex items-center justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setPhase("intake")}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
               <Button size="sm" onClick={() => onOpenChange(false)}>
                 Done
               </Button>
             </div>
+
           </div>
         )}
       </SheetContent>
