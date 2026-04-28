@@ -1,13 +1,19 @@
-// Analyze Spending — CFP bucket commentary edge function.
+// Analyze Budget — CFP bucket commentary edge function.
 //
-// Input model: the user has manually mapped each of their budget categories
-// (and fixed expenses) to a CFP bucket via the bucket-mapping UI. This
-// function rolls actual spending up by bucket using those user-owned
-// mappings, computes % vs guideline, and asks Gemini for verdicts +
-// reallocation hints.
+// Data source: PLANNED amounts only.
+//   - Variable bucket totals  = sum of budget_categories.budgeted for
+//                               categories the user has mapped to that bucket.
+//   - Fixed bucket totals     = sum of fixed_expenses.amount for fixed
+//                               expenses the user has mapped to that bucket,
+//                               PLUS any budget_categories.budgeted mapped to
+//                               a fixed bucket (e.g. retirement contributions
+//                               or tithe modeled as variable categories).
+//   - Unbudgeted              = take_home - sum(all bucket totals). This
+//                               equals the "Monthly Surplus/Deficit" shown
+//                               on the Budget tab.
 //
-// No AI categorization. No merchant cache. Mapping is deterministic and
-// owned by the user.
+// No transactions. No 90-day averages. The Budget tab card and the analyzer
+// are now reading the same numbers from the same source of truth.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGemini } from "../_shared/gemini.ts";
@@ -19,15 +25,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STEWARDSHIP_PROMPT = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA) reviewing a household's spending rolled up into standard CFP buckets. The user provides their monthly take-home pay; use it as the denominator for every percentage.
+const STEWARDSHIP_PROMPT = `You are a Certified Financial Planner (CFP) and Certified Kingdom Advisor (CKA) reviewing a household's MONTHLY BUDGET (planned amounts) rolled up into standard CFP buckets. The user provides their monthly take-home pay; use it as the denominator for every percentage. These are PLANNED amounts, not historical spending — frame your commentary around plan structure, not behavior.
 
 For EACH variable bucket in the input, return:
-- "verdict": one of "under" | "in_line" | "over" — relative to the bucket's guideline_pct (kind: max means over=spending more than guideline; min means under=spending less than guideline; target means within ~1pp is in_line).
+- "verdict": one of "under" | "in_line" | "over" — relative to the bucket's guideline_pct (kind: max means over=budgeting more than guideline; min means under=budgeting less than guideline; target means within ~1pp is in_line).
 - "suggested_bucket_total": a realistic monthly target dollar amount (number, no $).
-  - If "over": suggest a number that meaningfully moves toward the guideline %, not a token nudge.
-  - If "under" on a max-kind bucket: affirm with a number near the actual; do NOT inflate spending.
-  - If "under" on a min-kind bucket (giving, saving): suggest growth using headroom from elsewhere.
-- "commentary": one short sentence (max 25 words) referencing the bucket's % of take-home in plain language.
+- "commentary": one short sentence (max 25 words) referencing the bucket's % of take-home.
 
 Also return:
 - "reallocation_hints": ARRAY of { "from_bucket", "to_bucket", "amount", "rationale" } showing cross-bucket moves. In stewardship mode, surplus headroom should preferentially flow to Giving and Saving when those are below their min guidelines.
@@ -35,21 +38,30 @@ Also return:
 
 Stay strictly within budgeting guidance. Do not recommend specific securities, give tax advice, or suggest insurance products.`;
 
-const STANDARD_PROMPT = `You are a Certified Financial Planner (CFP) reviewing a household's spending rolled up into standard CFP buckets. The user provides their monthly take-home pay; use it as the denominator for every percentage.
+const STANDARD_PROMPT = `You are a Certified Financial Planner (CFP) reviewing a household's MONTHLY BUDGET (planned amounts) rolled up into standard CFP buckets. The user provides their monthly take-home pay; use it as the denominator for every percentage. These are PLANNED amounts, not historical spending.
 
-For EACH variable bucket in the input, return verdict ("under"|"in_line"|"over"), suggested_bucket_total (number), and one short plain-language commentary (max 25 words). When "over", suggest a number that meaningfully moves toward the guideline %; when "under" on a max bucket, affirm without inflating spend; when "under" on a min bucket (saving), suggest growth using headroom from elsewhere.
+For EACH variable bucket in the input, return verdict ("under"|"in_line"|"over"), suggested_bucket_total (number), and one short plain-language commentary (max 25 words).
 
-Also return reallocation_hints (array of {from_bucket, to_bucket, amount, rationale}) and a 2–3 sentence overall_summary. Headroom in under-spent max buckets should preferentially fund Saving when Saving is below guideline.
+Also return reallocation_hints (array of {from_bucket, to_bucket, amount, rationale}) and a 2–3 sentence overall_summary.
 
 Stay strictly within budgeting guidance. No securities, no tax advice, no insurance product recs.`;
 
-interface DbCategory { slug: string; name: string; budgeted: number; group: string }
-interface DbFixed { slug: string; name: string; amount: number; group: string }
-interface DbTxn {
-  id: string; date: string; amount: number; category_slug: string;
-  transaction_type: string;
+interface DbCategory {
+  slug: string; name: string; budgeted: number; group: string;
+  start_month: string | null; end_month: string | null;
+}
+interface DbFixed {
+  slug: string; name: string; amount: number; group: string;
+  start_month: string | null; end_month: string | null;
 }
 interface DbMapRow { category_slug: string; bucket_key: string; category_kind: string }
+
+// True if a category/expense is active in the given YYYY-MM month.
+function isActiveForMonth(item: { start_month: string | null; end_month: string | null }, month: string): boolean {
+  if (item.start_month && item.start_month > month) return false;
+  if (item.end_month && item.end_month < month) return false;
+  return true;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -81,12 +93,11 @@ Deno.serve(async (req) => {
 
     const body = (await req.json().catch(() => ({}))) as {
       stewardshipMode?: boolean;
-      lookbackDays?: number;
       monthlyIncome?: number;
+      viewMonth?: string; // YYYY-MM
     };
 
     const stewardshipMode = body.stewardshipMode !== false;
-    const lookbackDays = Math.min(Math.max(body.lookbackDays ?? 90, 30), 180);
     const monthlyIncome = Number(body.monthlyIncome);
     if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) {
       return jsonResponse({
@@ -94,145 +105,70 @@ Deno.serve(async (req) => {
         message: "Monthly take-home pay is required.",
       }, 400);
     }
+    const viewMonth = typeof body.viewMonth === "string" && /^\d{4}-\d{2}$/.test(body.viewMonth)
+      ? body.viewMonth
+      : new Date().toISOString().slice(0, 7);
 
-    const sinceDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
-      .toISOString().slice(0, 10);
+    const [{ data: cats }, { data: fixedRows }, { data: mapRows }] = await Promise.all([
+      service.from("budget_categories").select("slug,name,budgeted,group,start_month,end_month")
+        .eq("household_id", householdId).order("sort_order"),
+      service.from("fixed_expenses").select("slug,name,amount,group,start_month,end_month")
+        .eq("household_id", householdId).order("sort_order"),
+      service.from("category_bucket_map").select("category_slug,bucket_key,category_kind")
+        .eq("household_id", householdId),
+    ]);
 
-    const [{ data: cats }, { data: fixedRows }, { data: txns }, { data: mapRows }] =
-      await Promise.all([
-        service.from("budget_categories").select("slug,name,budgeted,group")
-          .eq("household_id", householdId).order("sort_order"),
-        service.from("fixed_expenses").select("slug,name,amount,group")
-          .eq("household_id", householdId).order("sort_order"),
-        service.from("transactions")
-          .select("id,date,amount,category_slug,transaction_type")
-          .eq("household_id", householdId).gte("date", sinceDate),
-        service.from("category_bucket_map").select("category_slug,bucket_key,category_kind")
-          .eq("household_id", householdId),
-      ]);
-
-    const categories = (cats || []) as DbCategory[];
-    const fixedExpenses = (fixedRows || []) as DbFixed[];
-    const transactions = (txns || []) as DbTxn[];
+    const allCategories = (cats || []) as DbCategory[];
+    const allFixed = (fixedRows || []) as DbFixed[];
     const userMap = (mapRows || []) as DbMapRow[];
 
-    // Build slug → bucket lookup. Only user-defined mappings count — we no
-    // longer auto-route group='savings'/'tithe' because many "savings"
-    // categories are sinking funds for delayed expenses (vacation, car taxes,
-    // pet costs) and shouldn't inflate the Saving bucket. The user maps each.
+    // Filter to items active for the requested view month — matches the
+    // Budget tab's `filterForMonth` logic so totals line up exactly.
+    const categories = allCategories.filter(c => isActiveForMonth(c, viewMonth));
+    const fixedExpenses = allFixed.filter(f => isActiveForMonth(f, viewMonth));
+
     const slugToBucket = new Map<string, string>();
     for (const m of userMap) slugToBucket.set(m.category_slug, m.bucket_key);
 
     const validBucketKeys = new Set(ALL_BUCKET_KEYS);
 
-    // Months observed (for averaging variable spend).
-    const monthsTouched = new Set<string>();
-    for (const t of transactions) {
-      if (t.date) monthsTouched.add(t.date.slice(0, 7));
-    }
-    const monthsObserved = Math.max(monthsTouched.size, 1);
-
     // ---------------------------------------------------------------------
-    // Variable bucket totals from transactions.
-    // ---------------------------------------------------------------------
-    const isIgnored = (slug: string) =>
-      !slug || slug === "unassigned" || slug.startsWith("ignore-");
-
-    interface VariableMember { slug: string; name: string; total: number; bucketKey: string; }
-    const memberBySlug = new Map<string, VariableMember>();
-    const slugToCat = new Map<string, DbCategory>();
-    for (const c of categories) slugToCat.set(c.slug, c);
-
-    for (const t of transactions) {
-      if (t.transaction_type !== "expense") continue;
-      const amt = Math.abs(Number(t.amount) || 0);
-      if (amt <= 0) continue;
-      if (isIgnored(t.category_slug)) continue;
-      const bucketKey = slugToBucket.get(t.category_slug);
-      if (!bucketKey || !validBucketKeys.has(bucketKey)) continue; // unmapped — skipped
-      const cat = slugToCat.get(t.category_slug);
-      const entry = memberBySlug.get(t.category_slug);
-      if (entry) entry.total += amt;
-      else memberBySlug.set(t.category_slug, {
-        slug: t.category_slug,
-        name: cat?.name || t.category_slug,
-        total: amt,
-        bucketKey,
-      });
-    }
-
-    // ---------------------------------------------------------------------
-    // Build bucket rollups (variable from txns avg/month, fixed from
-    // fixed_expenses + structural giving/saving categories).
+    // Bucket rollups (PLANNED amounts only).
     // ---------------------------------------------------------------------
     interface BucketMember { slug: string; name: string; amount: number; }
-    const variableMembersByBucket = new Map<string, BucketMember[]>();
-    const variableTotalByBucket = new Map<string, number>();
-    for (const k of VARIABLE_BUCKET_KEYS) {
-      variableMembersByBucket.set(k, []);
-      variableTotalByBucket.set(k, 0);
+    const membersByBucket = new Map<string, BucketMember[]>();
+    const totalByBucket = new Map<string, number>();
+    for (const k of ALL_BUCKET_KEYS) {
+      membersByBucket.set(k, []);
+      totalByBucket.set(k, 0);
     }
 
-    for (const m of memberBySlug.values()) {
-      const arr = variableMembersByBucket.get(m.bucketKey);
-      if (!arr) continue; // mapped to a fixed bucket — handled below as structural
-      const monthly = m.total / monthsObserved;
-      arr.push({ slug: m.slug, name: m.name, amount: round2(monthly) });
-      variableTotalByBucket.set(m.bucketKey, (variableTotalByBucket.get(m.bucketKey) || 0) + monthly);
+    // Variable categories — each carries its budgeted amount for this month.
+    for (const c of categories) {
+      const bucketKey = slugToBucket.get(c.slug);
+      if (!bucketKey || !validBucketKeys.has(bucketKey)) continue;
+      const amt = Number(c.budgeted) || 0;
+      if (amt <= 0) continue;
+      membersByBucket.get(bucketKey)!.push({ slug: c.slug, name: c.name, amount: round2(amt) });
+      totalByBucket.set(bucketKey, (totalByBucket.get(bucketKey) || 0) + amt);
     }
 
-    // Sort variable members by amount desc.
-    for (const arr of variableMembersByBucket.values()) {
-      arr.sort((a, b) => b.amount - a.amount);
-    }
-
-    // Structural giving / saving from variable categories mapped to those buckets.
-    let givingFromCategories = 0;
-    let savingFromCategories = 0;
-    for (const m of memberBySlug.values()) {
-      const monthly = m.total / monthsObserved;
-      if (m.bucketKey === "giving") givingFromCategories += monthly;
-      if (m.bucketKey === "saving") savingFromCategories += monthly;
-    }
-
-    // Fixed expenses grouped by bucket. Only user-mapped fixed expenses count.
-    interface FixedSummary { name: string; amount: number; slug: string; }
-    const fixedByBucket = new Map<string, FixedSummary[]>();
+    // Fixed expenses — each carries its monthly amount.
     for (const f of fixedExpenses) {
       const bucketKey = slugToBucket.get(f.slug);
       if (!bucketKey || !validBucketKeys.has(bucketKey)) continue;
-      const arr = fixedByBucket.get(bucketKey) || [];
-      arr.push({ name: f.name, amount: Number(f.amount) || 0, slug: f.slug });
-      fixedByBucket.set(bucketKey, arr);
+      const amt = Number(f.amount) || 0;
+      if (amt <= 0) continue;
+      membersByBucket.get(bucketKey)!.push({ slug: f.slug, name: f.name, amount: round2(amt) });
+      totalByBucket.set(bucketKey, (totalByBucket.get(bucketKey) || 0) + amt);
     }
 
+    // Sort members by amount desc within each bucket.
+    for (const arr of membersByBucket.values()) arr.sort((a, b) => b.amount - a.amount);
+
     const bucketRollups = CFP_BUCKETS.map(b => {
-      let actual = 0;
-      const memberDescriptions: string[] = [];
-      let memberList: BucketMember[] = [];
-
-      if (b.role === "variable") {
-        actual = variableTotalByBucket.get(b.key) || 0;
-        memberList = variableMembersByBucket.get(b.key) || [];
-      } else {
-        // Fixed buckets: fixed_expenses + (for giving/saving) structural txns.
-        const fixedItems = fixedByBucket.get(b.key) || [];
-        actual = fixedItems.reduce((s, f) => s + f.amount, 0);
-        memberDescriptions.push(...fixedItems.map(f => f.name));
-        if (b.key === "giving") {
-          actual += givingFromCategories;
-          for (const m of memberBySlug.values()) {
-            if (m.bucketKey === "giving") memberDescriptions.push(m.name);
-          }
-        }
-        if (b.key === "saving") {
-          actual += savingFromCategories;
-          for (const m of memberBySlug.values()) {
-            if (m.bucketKey === "saving") memberDescriptions.push(m.name);
-          }
-        }
-      }
-
+      const members = membersByBucket.get(b.key) || [];
+      const total = totalByBucket.get(b.key) || 0;
       return {
         key: b.key,
         label: b.label,
@@ -240,10 +176,10 @@ Deno.serve(async (req) => {
         guideline_kind: b.guideline_kind,
         guideline_source: b.guideline_source,
         role: b.role,
-        bucket_actual_monthly_avg: round2(actual),
-        bucket_pct_of_income: round2((actual / monthlyIncome) * 100),
-        member_descriptions: memberDescriptions,
-        members: memberList,
+        bucket_actual_monthly_avg: round2(total),
+        bucket_pct_of_income: round2((total / monthlyIncome) * 100),
+        member_descriptions: members.map(m => m.name),
+        members,
       };
     });
 
@@ -252,11 +188,8 @@ Deno.serve(async (req) => {
     const fixedTotal = fixedRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const fixedPctOfIncome = round2((fixedTotal / monthlyIncome) * 100);
 
-    // Unbudgeted: take-home that isn't accounted for by any bucket. CFP planners
-    // treat unassigned money as the #1 leak — it almost always becomes
-    // discretionary spending. We surface it as a synthetic "bucket" so it gets
-    // flagged in the results, with a guideline of 0% (any positive amount is a
-    // plan gap to close).
+    // Unbudgeted = take_home - sum(all bucket totals). MUST equal the
+    // Monthly Surplus on the Budget tab when all items are mapped.
     const accountedFor = bucketRollups.reduce((s, b) => s + b.bucket_actual_monthly_avg, 0);
     const unbudgetedAmount = Math.max(0, monthlyIncome - accountedFor);
     const unbudgetedRollup = {
@@ -273,19 +206,19 @@ Deno.serve(async (req) => {
     };
 
     // ---------------------------------------------------------------------
-    // AI commentary call (one shot).
+    // AI commentary (variable buckets only).
     // ---------------------------------------------------------------------
     const aiPayload = {
-      months_observed: monthsObserved,
+      view_month: viewMonth,
       monthly_take_home: round2(monthlyIncome),
       stewardship_mode: stewardshipMode,
       structural_context: {
         fixed_buckets_total: round2(fixedTotal),
         fixed_buckets_pct_of_income: fixedPctOfIncome,
-        note: "Fixed bills (housing, utilities, insurance, debt, giving, saving) are sourced from the household's fixed expenses and intentional giving/saving categories. Use them as context only.",
+        note: "Fixed bucket totals come from the household's planned fixed expenses and any categories mapped to fixed buckets. Use as context only.",
         fixed_summary: fixedRollups.map(b => ({
           key: b.key, label: b.label,
-          actual_monthly_avg: b.bucket_actual_monthly_avg,
+          planned_monthly: b.bucket_actual_monthly_avg,
           pct_of_income: b.bucket_pct_of_income,
         })),
       },
@@ -294,9 +227,9 @@ Deno.serve(async (req) => {
         label: b.label,
         guideline_pct: b.guideline_pct,
         guideline_kind: b.guideline_kind,
-        bucket_actual_monthly_avg: b.bucket_actual_monthly_avg,
-        bucket_pct_of_income: b.bucket_pct_of_income,
-        top_members: b.members.slice(0, 5).map(m => ({ name: m.name, amount: m.amount })),
+        planned_monthly: b.bucket_actual_monthly_avg,
+        pct_of_income: b.bucket_pct_of_income,
+        members: b.members.slice(0, 5).map(m => ({ name: m.name, amount: m.amount })),
       })),
     };
 
@@ -304,10 +237,8 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 500);
 
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
-    const userMsg = `Household data (last ${lookbackDays} days, ${monthsObserved} months):\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket. Reallocation hints may target the fixed Giving or Saving buckets when surplus exists.`;
+    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
 
-    // Try gemini-2.5-flash first; on 503 (high demand) or 429, retry once with
-    // a short backoff and finally fall back to gemini-2.5-flash-lite.
     const callOnce = (model: string) => callGemini({
       model,
       messages: [
@@ -331,9 +262,6 @@ Deno.serve(async (req) => {
 
     if (!result.ok) {
       console.error("Gemini commentary error", result.status, result.errorBody);
-      // Return 200 with an error envelope so supabase-js surfaces it via `data`
-      // (functions.invoke treats non-2xx as a thrown FunctionsHttpError and
-      // hides the body). The client checks `data.error` and shows a toast.
       return jsonResponse({
         error: "ai_failed",
         status: result.status,
@@ -387,15 +315,12 @@ Deno.serve(async (req) => {
       const suggested = ai?.suggested ?? b.bucket_actual_monthly_avg;
       return {
         ...b,
-        verdict: ai?.verdict ?? "in_line",
+        verdict: ai?.verdict ?? verdictFromGuideline(b.bucket_pct_of_income, b.guideline_pct, b.guideline_kind),
         suggested_bucket_total: round2(suggested),
         commentary: ai?.commentary ?? "",
       };
     });
 
-    // Append Unbudgeted as a flagged synthetic bucket. Verdict is "over" any
-    // time there's meaningful unassigned dollars (>1% of take-home), so it
-    // surfaces in the results screen alongside real buckets.
     const unbudgetedVerdict: "under" | "in_line" | "over" =
       unbudgetedRollup.bucket_pct_of_income > 1 ? "over" : "in_line";
     mergedBuckets.push({
@@ -416,7 +341,6 @@ Deno.serve(async (req) => {
       rationale: stripMarkdown(String(h?.rationale || "")),
     })).filter((h: { from_bucket: string; to_bucket: string }) => h.from_bucket && h.to_bucket);
 
-    // Diagnostics for the UI.
     const totalCategories = categories.length + fixedExpenses.length;
     const mappedCategoriesCount = (() => {
       let n = 0;
@@ -427,9 +351,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       monthly_take_home: round2(monthlyIncome),
-      months_observed: monthsObserved,
-      lookback_days: lookbackDays,
-      transaction_count: transactions.length,
+      view_month: viewMonth,
       buckets: mergedBuckets,
       reallocation_hints: reallocationHints,
       overall_summary: stripMarkdown(String(parsed.overall_summary || "")),
