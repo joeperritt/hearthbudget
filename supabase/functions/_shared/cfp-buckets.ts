@@ -1,30 +1,32 @@
 // CFP-style spending buckets used by the Spending Analyzer.
-// Guideline percentages are anchors widely cited in CFP and stewardship
-// literature. They guide conversation, not hard rules.
+// Guideline percentages are anchors widely cited in Certified Financial Planner
+// (CFP) and stewardship literature. They guide conversation, not hard rules.
 //
 // "role":
-//   "variable" — buckets typically driven by user discretion month-to-month.
-//                Categorized by AI from raw merchant data, with a per-household
-//                merchant cache learning corrections over time.
-//   "fixed"    — buckets typically paid via recurring bills (mortgage,
-//                utilities, insurance, debt service, giving, saving). Sourced
-//                from `fixed_expenses` and structural budget groups (savings,
-//                giving). The AI never retunes these.
+//   "variable" — buckets typically driven by user discretion month-to-month
+//                (groceries, eating out, personal, etc.). The AI commentary
+//                step focuses suggestions and reallocation hints here.
+//   "fixed"    — buckets typically paid via recurring bills (housing, utilities,
+//                insurance, debt service) or structural intent (giving, saving).
+//                Shown for context so the framework adds to ~100% of take-home.
 
 export interface CfpBucket {
   key: string;
   label: string;
   guideline_pct: number;        // target % of monthly take-home
   guideline_kind: "max" | "min" | "target";
-  guideline_source: string;     // shown in info tooltip in UI
+  guideline_source: string;     // shown in the info popover in the UI
   role: "variable" | "fixed";
-  // Plain-language hint used in the AI prompt so Gemini knows what kinds of
-  // merchants belong here. Not used for any deterministic matching.
-  ai_hint: string;
+  // Plain-language description used in the bucket-picker UI to help users
+  // decide where a category belongs.
+  description: string;
+  // Lowercase keyword tokens used by `suggestBucket` for the smart default
+  // when a user creates / maps a category. Deterministic, no AI involved.
+  match_keywords: string[];
 }
 
 export const CFP_BUCKETS: CfpBucket[] = [
-  // ---------- Fixed / structural buckets (informational, sum to ~41%) ----------
+  // ---------- Fixed / structural buckets ----------
   {
     key: "giving",
     label: "Giving",
@@ -32,16 +34,18 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "min",
     guideline_source: "Tithe / generosity baseline (10%) — common stewardship anchor.",
     role: "fixed",
-    ai_hint: "Tithe, church, charity, missions, religious giving, non-profit donations.",
+    description: "Tithe, charitable giving, missions, non-profit donations.",
+    match_keywords: ["tithe", "giving", "church", "missions", "charity", "donation", "offering", "kingdom"],
   },
   {
     key: "saving",
     label: "Saving & Investing",
     guideline_pct: 15,
     guideline_kind: "min",
-    guideline_source: "CFP retirement-readiness guideline of 10–15% of gross.",
+    guideline_source: "CFP retirement-readiness guideline of 10–15% of gross income.",
     role: "fixed",
-    ai_hint: "Transfers to savings accounts, retirement contributions (401k/IRA), brokerage deposits, sinking funds.",
+    description: "Transfers to savings, retirement contributions, sinking funds.",
+    match_keywords: ["saving", "savings", "invest", "retirement", "401k", "ira", "roth", "brokerage", "sinking", "emergency fund"],
   },
   {
     key: "housing",
@@ -50,7 +54,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "CFP guideline: total housing (mortgage/rent + taxes + insurance) ≤28% of take-home.",
     role: "fixed",
-    ai_hint: "Mortgage, rent, HOA, property taxes, home repairs, lawn care, household maintenance.",
+    description: "Mortgage, rent, HOA, property taxes, home repairs, lawn care.",
+    match_keywords: ["mortgage", "rent", "hoa", "lawn", "home repair", "house", "household", "property tax", "yard"],
   },
   {
     key: "utilities",
@@ -59,7 +64,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Utilities (electric, water, gas, trash, internet, phone) — typically 5–7% of take-home.",
     role: "fixed",
-    ai_hint: "Electric, water, gas, trash, internet, cell phone bills.",
+    description: "Electric, water, gas, trash, internet, cell phone bills.",
+    match_keywords: ["electric", "water", "gas bill", "internet", "spectrum", "phone", "cell", "trash", "dominion", "utility", "utilities"],
   },
   {
     key: "insurance",
@@ -68,7 +74,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Combined insurance (health, life, disability, auto, home, pet) — typically ≤10% of take-home.",
     role: "fixed",
-    ai_hint: "Health, life, disability, auto, home, renters, and pet insurance premiums.",
+    description: "Health, life, disability, auto, home, renters, pet insurance.",
+    match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium"],
   },
   {
     key: "debt",
@@ -77,7 +84,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Non-mortgage debt service (auto, student, credit card payoff) — CFP 36% rule less housing.",
     role: "fixed",
-    ai_hint: "Student loan, auto loan, personal loan, credit card payoff payments (not credit card spending itself).",
+    description: "Student loan, auto loan, personal loan, credit card payoff.",
+    match_keywords: ["loan", "debt", "payoff", "student loan", "auto loan"],
   },
 
   // ---------- Variable / discretionary buckets ----------
@@ -88,16 +96,18 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Variable transportation (fuel, parking, rideshare, repairs) — typically ≤8% of take-home outside of car payments.",
     role: "variable",
-    ai_hint: "Gas stations, parking, tolls, rideshare (Uber/Lyft), public transit, auto repair shops, oil change.",
+    description: "Gas, parking, rideshare, public transit, auto repair.",
+    match_keywords: ["gas", "fuel", "parking", "uber", "lyft", "rideshare", "transit", "auto repair", "oil change", "tolls", "transportation", "car"],
   },
   {
     key: "groceries",
     label: "Groceries",
     guideline_pct: 12,
     guideline_kind: "max",
-    guideline_source: "USDA/CFP food-at-home guideline: roughly 8–12% of take-home for a family.",
+    guideline_source: "USDA / CFP food-at-home guideline: roughly 8–12% of take-home for a family.",
     role: "variable",
-    ai_hint: "Supermarkets, grocery stores (Publix, Kroger, Aldi, Trader Joe's, Whole Foods, Walmart Grocery, Costco for food).",
+    description: "Supermarkets, food at home, household staples.",
+    match_keywords: ["grocery", "groceries", "food", "supermarket", "publix", "kroger", "aldi", "walmart"],
   },
   {
     key: "eating_out",
@@ -106,7 +116,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "CFP discretionary food guideline: dining out ≤5% of take-home.",
     role: "variable",
-    ai_hint: "Restaurants, fast food, coffee shops (Starbucks, Chick-fil-A, Chipotle), takeout, delivery (DoorDash, Uber Eats), bars.",
+    description: "Restaurants, fast food, coffee shops, takeout, delivery.",
+    match_keywords: ["eat", "eating", "restaurant", "dining", "takeout", "delivery", "coffee", "fast food", "doordash", "ubereats", "bar", "eo"],
   },
   {
     key: "personal",
@@ -115,7 +126,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Personal & lifestyle (clothing, hobbies, self-care, miscellaneous) — typically ≤10% combined.",
     role: "variable",
-    ai_hint: "Clothing, shoes, hair salon, barber, beauty, spa, hobbies, personal Amazon/Target purchases not otherwise categorized.",
+    description: "Clothing, hobbies, self-care, personal spending money.",
+    match_keywords: ["personal", "clothing", "clothes", "hair", "salon", "barber", "beauty", "spa", "hobby", "hobbies", "joe", "katie", "spending", "random", "misc"],
   },
   {
     key: "kids",
@@ -124,7 +136,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Kids' direct expenses (activities, school, supplies) — varies widely; 5–10% is a common range.",
     role: "variable",
-    ai_hint: "Daycare, school tuition, kids' activities, sports, school supplies, diapers, kids' clothing, toy stores.",
+    description: "Daycare, school, kids' activities, kids' clothing, supplies.",
+    match_keywords: ["kid", "kids", "child", "children", "daycare", "school", "tuition", "diaper", "baby", "toy"],
   },
   {
     key: "pets",
@@ -133,7 +146,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Routine pet costs (food, grooming, vet basics) — typically ≤2% of take-home.",
     role: "variable",
-    ai_hint: "Pet food (Chewy, PetSmart), groomer, vet visits, pet supplies.",
+    description: "Pet food, grooming, vet, pet supplies.",
+    match_keywords: ["pet", "pets", "dog", "cat", "vet", "groomer", "chewy", "petsmart"],
   },
   {
     key: "hosting",
@@ -142,7 +156,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "target",
     guideline_source: "Hospitality / community meals — a stewardship-informed line; typically 1–3% of take-home.",
     role: "variable",
-    ai_hint: "Hospitality, hosting community meals, party supplies for guests, church hospitality. Rare unless explicit.",
+    description: "Hospitality, community meals, hosting guests.",
+    match_keywords: ["hosting", "hospitality", "guests", "community meal"],
   },
   {
     key: "gifts",
@@ -151,7 +166,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Gift-giving (birthdays, Christmas, weddings) — typically ≤2% of take-home.",
     role: "variable",
-    ai_hint: "Gift purchases, flowers (1-800-Flowers), wedding registries, birthday/Christmas/holiday gifts.",
+    description: "Gifts for birthdays, Christmas, weddings, baby showers.",
+    match_keywords: ["gift", "gifts", "birthday", "christmas", "wedding", "shower", "present"],
   },
   {
     key: "medical",
@@ -160,7 +176,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Out-of-pocket medical (copays, prescriptions, dental) — typically ≤5% of take-home.",
     role: "variable",
-    ai_hint: "Doctor copays, dentist, pharmacy (CVS, Walgreens), prescriptions, urgent care, optometrist.",
+    description: "Doctor, dentist, pharmacy, copays, prescriptions.",
+    match_keywords: ["medical", "doctor", "dentist", "pharmacy", "prescription", "copay", "health", "urgent care"],
   },
   {
     key: "subscriptions",
@@ -169,7 +186,8 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Recurring digital subscriptions (streaming, software, memberships) — typically ≤2% of take-home.",
     role: "variable",
-    ai_hint: "Streaming (Netflix, Spotify, Hulu, Disney+), software subscriptions (Claude, ChatGPT), gym memberships (YMCA), clothing rental (Nuuly).",
+    description: "Streaming, software, gym memberships, recurring subscriptions.",
+    match_keywords: ["subscription", "subscriptions", "streaming", "netflix", "spotify", "hulu", "gym", "membership", "software"],
   },
   {
     key: "travel",
@@ -178,39 +196,40 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_kind: "max",
     guideline_source: "Travel & vacation — typically ≤5% of take-home, often saved into a sinking fund.",
     role: "variable",
-    ai_hint: "Airlines, hotels, Airbnb, VRBO, vacation rentals, cruise lines, travel booking sites.",
+    description: "Vacations, flights, hotels, travel.",
+    match_keywords: ["travel", "vacation", "flight", "hotel", "airbnb", "trip"],
   },
 ];
 
 export const VARIABLE_BUCKET_KEYS = CFP_BUCKETS.filter(b => b.role === "variable").map(b => b.key);
 export const FIXED_BUCKET_KEYS = CFP_BUCKETS.filter(b => b.role === "fixed").map(b => b.key);
+export const ALL_BUCKET_KEYS = CFP_BUCKETS.map(b => b.key);
 
 /**
- * Normalize a merchant name for caching: lowercase, strip non-alphanumerics,
- * collapse whitespace. Aim is to merge "AMAZON.COM*ABC123" / "Amazon Mktp"
- * variants into a single cache key. Caller is responsible for any extra
- * stripping (e.g. trailing transaction IDs).
+ * Suggest a CFP bucket for a category based on its name (and optionally its
+ * group). Deterministic keyword match — no AI. Returns null if no confident
+ * match. Used for smart defaults in the bucket picker.
  */
-export function normalizeMerchant(raw: string | null | undefined): string {
-  if (!raw) return "";
-  let s = raw.toLowerCase();
-  // Strip common Plaid suffixes / store ids
-  s = s.replace(/\b(purchase|payment|debit|pos|tst\*|sq \*|sq\*|tst |pmnt|ach)\b/g, " ");
-  s = s.replace(/\*[a-z0-9]{4,}/g, " "); // *ABC123 ids
-  s = s.replace(/#\d+/g, " ");
-  s = s.replace(/\b\d{4,}\b/g, " ");      // long numeric runs
-  s = s.replace(/[^a-z0-9 ]+/g, " ");
-  s = s.replace(/\s+/g, " ").trim();
-  return s;
-}
+export function suggestBucket(name: string, group?: string): string | null {
+  const g = (group || "").toLowerCase();
+  // Group-driven shortcuts: these are intentional schema decisions.
+  if (g === "savings" || g === "saving") return "saving";
+  if (g === "tithe" || g === "giving") return "giving";
 
-/**
- * Family-of-merchant key — the first 1-2 meaningful tokens, used to detect
- * obvious cross-household merchants. Used only for grouping, never for AI
- * substitution.
- */
-export function merchantFamilyKey(normalized: string): string {
-  if (!normalized) return "";
-  const parts = normalized.split(" ").filter(Boolean);
-  return parts.slice(0, 2).join(" ");
+  const n = (name || "").toLowerCase();
+  if (!n) return null;
+
+  // Score each bucket by how many of its keywords appear in the name. Pick
+  // the highest-scoring bucket, but only if there's at least one hit.
+  let best: { key: string; score: number } | null = null;
+  for (const b of CFP_BUCKETS) {
+    let score = 0;
+    for (const kw of b.match_keywords) {
+      if (n.includes(kw)) score += kw.length; // longer keyword = stronger signal
+    }
+    if (score > 0 && (!best || score > best.score)) {
+      best = { key: b.key, score };
+    }
+  }
+  return best?.key ?? null;
 }
