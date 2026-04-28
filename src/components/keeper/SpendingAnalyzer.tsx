@@ -354,7 +354,7 @@ export function SpendingAnalyzer({
                   </p>
                 </div>
                 <div className="px-5 py-2 space-y-2">
-                  {result.buckets.filter(b => b.role === "fixed").map(b => {
+                  {result.buckets.filter(b => b.role === "fixed" && b.key !== "unbudgeted").map(b => {
                     const pill = verdictPill(b.verdict);
                     const guidelineLabel = b.guideline_kind === "max"
                       ? `≤ ${b.guideline_pct}%`
