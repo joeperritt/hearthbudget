@@ -24,15 +24,13 @@ interface BucketMappingSheetProps {
 
 /**
  * Bottom-sheet UI that walks the user through assigning each of their
- * categories (variable + fixed) to a CFP bucket. Categories with structural
- * groups (savings/tithe/giving) auto-resolve and are not shown.
+ * categories (variable + fixed) to a CFP bucket. Every category is shown —
+ * even savings/tithe groups — because many "savings" categories are actually
+ * sinking funds for delayed expenses (vacation savings → Travel, etc.) and
+ * the user is the one who knows which is which.
  *
- * When the user opens the sheet with unmapped items, we show a list. Tapping
- * an item opens a bucket picker (same sheet, second screen) with a smart
- * default highlighted (keyword-based suggestion). User taps a bucket to assign.
- *
- * When the user opens the sheet with everything mapped, we show the full list
- * with current assignments and let them edit any.
+ * Tapping the row name opens the full picker. Rows with a smart suggestion
+ * also show an "Approve" pill on the right that assigns in one tap.
  */
 export function BucketMappingSheet({
   open, onOpenChange, categories, fixedExpenses,
@@ -48,19 +46,14 @@ export function BucketMappingSheet({
     }
   }, [open]);
 
-  // Build the unified list of mappable items. Skip ones whose group already
-  // implies a bucket (savings/tithe/giving) since those are deterministic and
-  // showing them adds clutter.
+  // Build the unified list of mappable items. Show every category — no
+  // structural exclusions.
   const items = useMemo<CategoryItem[]>(() => {
     const list: CategoryItem[] = [];
     for (const c of categories) {
-      const g = (c.group || "").toLowerCase();
-      if (g === "savings" || g === "saving" || g === "tithe" || g === "giving") continue;
       list.push({ slug: c.id, name: c.name, group: c.group, kind: "variable" });
     }
     for (const f of fixedExpenses) {
-      const g = (f.group || "").toLowerCase();
-      if (g === "savings" || g === "saving" || g === "tithe" || g === "giving") continue;
       list.push({ slug: f.id, name: f.name, group: f.group, kind: "fixed" });
     }
     return list;
