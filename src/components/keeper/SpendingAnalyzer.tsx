@@ -300,7 +300,7 @@ export function SpendingAnalyzer({
                     Fixed structure
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    From your fixed expenses and savings/giving categories. Shown so the framework adds up to your take-home pay.
+                    From your fixed expenses and any categories you mapped to fixed buckets. Shown so the framework adds up to your take-home pay.
                   </p>
                 </div>
                 <div className="px-5 py-2 space-y-2">
