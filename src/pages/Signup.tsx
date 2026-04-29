@@ -183,6 +183,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function ToggleRow({
+  label, help, checked, onChange,
+}: { label: string; help: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-accent" : "bg-input"}`}
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-background shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`}
+        />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground leading-tight">{label}</div>
+        <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{help}</p>
+      </div>
+    </label>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-10">
