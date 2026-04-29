@@ -1,5 +1,5 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, Sparkles, Calculator, BarChart3, Building2, LogOut, ShieldCheck, User } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
@@ -11,16 +11,8 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'profile', label: 'Profile', icon: User },
 ];
 
+// Kept exported for type compatibility with Index.tsx routing.
 export type ProfileSidebarItem = 'financial-profile' | 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections' | 'security';
-
-const moreItems: { id: ProfileSidebarItem; label: string; icon: typeof Home }[] = [
-  { id: 'financial-profile', label: 'Financial Profile', icon: User },
-  { id: 'bank-connections', label: 'Accounts', icon: Building2 },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'ai-advisor', label: 'AI Advisor', icon: Sparkles },
-  { id: 'calculators', label: 'Calculators', icon: Calculator },
-  { id: 'trends', label: 'Trends', icon: BarChart3 },
-];
 
 interface SideNavProps {
   activeTab: TabId;
@@ -29,7 +21,7 @@ interface SideNavProps {
   onSelectProfileItem?: (item: ProfileSidebarItem) => void;
 }
 
-export function SideNav({ activeTab, onTabChange, activeProfileItem, onSelectProfileItem }: SideNavProps) {
+export function SideNav({ activeTab, onTabChange, activeProfileItem }: SideNavProps) {
   const { signOut } = useAuth();
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-[220px] bg-card/60 border-r border-border flex-col z-40 safe-top overflow-y-auto">
