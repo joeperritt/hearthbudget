@@ -237,6 +237,19 @@ export function SpendingAnalyzer({
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
                 )}
               </p>
+              <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
+                This analysis assumes Stewardship Mode is{' '}
+                <span className="font-semibold text-foreground">{flags.stewardship_mode ? 'ON' : 'OFF'}</span>,
+                you {flags.has_kids ? 'have kids' : "don't have kids"}, and you{' '}
+                {flags.has_pets ? 'have pets' : "don't have pets"}. Update your{' '}
+                <button
+                  type="button"
+                  onClick={() => { onOpenChange(false); onOpenProfile?.(); }}
+                  className="text-accent font-semibold underline underline-offset-2 hover:opacity-80"
+                >
+                  profile
+                </button>{' '}to change.
+              </p>
             </div>
 
             {/* Payroll-deducted retirement input — included in Saving & Investing
