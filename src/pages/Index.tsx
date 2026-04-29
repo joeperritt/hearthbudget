@@ -507,6 +507,13 @@ const Index = () => {
               setActivityInitialFilter(undefined);
               setActiveTab('transactions');
             }}
+            topBanner={
+              <PostOnboardingCards
+                householdId={householdId}
+                onOpenBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+                onOpenAccounts={() => { setProfileSubView('bank-connections'); setActiveTab('profile'); }}
+              />
+            }
             insightsSection={
               <InsightsSection
                 insights={insights}
