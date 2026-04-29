@@ -36,6 +36,7 @@ interface BucketResult {
   verdict: "under" | "in_line" | "over";
   suggested_bucket_total: number;
   commentary: string;
+  pretax_savings_monthly?: number;
 }
 
 interface AnalyzeResult {
@@ -240,7 +241,7 @@ export function SpendingAnalyzer({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] text-muted-foreground leading-snug">
-                      Money taken out before take-home (won't appear in any category). Added to Saving & Investing so your savings rate reflects reality.
+                      Money taken out before take-home (won't appear in any category). Used only to lift your savings rate % — does NOT change any dollar totals or your plan gap.
                     </p>
                     <button
                       type="button"
@@ -423,6 +424,12 @@ export function SpendingAnalyzer({
                                   </li>
                                 ))}
                               </ul>
+                            )}
+                            {b.key === "saving_investing" && (b.pretax_savings_monthly ?? 0) > 0 && (
+                              <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] italic">
+                                <span className="text-foreground/70 truncate">+ Pre-tax retirement (counted toward your savings rate only)</span>
+                                <span className="tabular-nums text-muted-foreground">{fmt(b.pretax_savings_monthly ?? 0)}</span>
+                              </div>
                             )}
                           </div>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
