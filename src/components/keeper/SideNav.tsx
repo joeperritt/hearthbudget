@@ -1,5 +1,5 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal, Sparkles, Calculator, BarChart3, Building2, LogOut, ShieldCheck } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, Sparkles, Calculator, BarChart3, Building2, LogOut, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
@@ -8,16 +8,18 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'transactions', label: 'Activity', icon: List },
   { id: 'budget', label: 'Budget', icon: CalendarDays },
   { id: 'plan', label: 'Plan', icon: Compass },
+  { id: 'profile', label: 'Profile', icon: User },
 ];
 
-export type ProfileSidebarItem = 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections' | 'security';
+export type ProfileSidebarItem = 'financial-profile' | 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections' | 'security';
 
 const moreItems: { id: ProfileSidebarItem; label: string; icon: typeof Home }[] = [
+  { id: 'financial-profile', label: 'Financial Profile', icon: User },
+  { id: 'bank-connections', label: 'Accounts', icon: Building2 },
+  { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'ai-advisor', label: 'AI Advisor', icon: Sparkles },
   { id: 'calculators', label: 'Calculators', icon: Calculator },
   { id: 'trends', label: 'Trends', icon: BarChart3 },
-  { id: 'bank-connections', label: 'Accounts', icon: Building2 },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
 ];
 
 interface SideNavProps {
@@ -60,7 +62,7 @@ export function SideNav({ activeTab, onTabChange, activeProfileItem, onSelectPro
           })}
         </div>
 
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mt-5 mb-3">More</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mt-5 mb-3">Profile</p>
         <div className="space-y-1">
           {moreItems.map(({ id, label, icon: Icon }) => {
             const active = activeProfileItem === id;
