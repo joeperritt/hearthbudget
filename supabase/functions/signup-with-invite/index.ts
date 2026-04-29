@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     });
 
     const body: SignupBody = await req.json();
-    const { email, password, first_name, last_name, invite_code, captcha_token } = body;
+    const { email, password, first_name, last_name, invite_code, captcha_token, stewardship_mode, has_kids, has_pets } = body;
 
     if (!email || !password || !first_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
