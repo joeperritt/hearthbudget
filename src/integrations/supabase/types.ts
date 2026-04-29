@@ -500,6 +500,7 @@ export type Database = {
           has_pets: boolean
           id: string
           name: string
+          onboarding_completed: boolean
           planning_data: Json
           stewardship_mode: boolean
         }
@@ -510,6 +511,7 @@ export type Database = {
           has_pets?: boolean
           id?: string
           name?: string
+          onboarding_completed?: boolean
           planning_data?: Json
           stewardship_mode?: boolean
         }
@@ -520,6 +522,7 @@ export type Database = {
           has_pets?: boolean
           id?: string
           name?: string
+          onboarding_completed?: boolean
           planning_data?: Json
           stewardship_mode?: boolean
         }
