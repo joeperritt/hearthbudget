@@ -16,7 +16,7 @@ import { EditTransactionSheet } from '@/components/keeper/EditTransactionSheet';
 import { CategoryDetail } from '@/components/keeper/CategoryDetail';
 
 import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
-import { MoreView } from '@/components/keeper/MoreView';
+import { ProfileTab } from '@/components/keeper/ProfileTab';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
 import { AIAdvisorView } from '@/components/keeper/AIAdvisorView';
@@ -45,7 +45,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
-type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
+type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
 
 const Index = () => {
@@ -571,7 +571,10 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
-          <MoreView onSelect={tab => setProfileSubView(tab as ProfileSubView)} householdId={householdId} />
+          <ProfileTab onSelect={tab => setProfileSubView(tab as ProfileSubView)} householdId={householdId} />
+        )}
+        {activeTab === 'profile' && profileSubView === 'financial-profile' && (
+          <CFPProfileView onBack={() => setProfileSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
         )}
         {activeTab === 'profile' && profileSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
