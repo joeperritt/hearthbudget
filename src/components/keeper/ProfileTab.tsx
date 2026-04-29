@@ -2,12 +2,25 @@ import { useEffect, useState } from 'react';
 import {
   LogOut, Building2, Sparkles, BarChart3, Calculator, ShieldCheck,
   Heart, Baby, PawPrint, ChevronRight, User as UserIcon, Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+// Email allowlist for the "Reset onboarding" dev tool. Hardcoded on purpose:
+// this button must NOT be gated by general admin role — only this single
+// test inbox should ever see it.
+const RESET_ONBOARDING_ALLOWLIST = new Set<string>([
+  'joeperritt31+test@gmail.com',
+]);
 
 export type ProfileTabSelection =
   | 'financial-profile'
@@ -23,8 +36,37 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const { flags, loading: flagsLoading, updateFlag } = useHouseholdFlags(householdId);
+  const canResetOnboarding = !!user?.email && RESET_ONBOARDING_ALLOWLIST.has(user.email.toLowerCase());
+  const [resettingOnboarding, setResettingOnboarding] = useState(false);
+
+  const handleResetOnboarding = async () => {
+    if (!householdId) return;
+    setResettingOnboarding(true);
+    try {
+      // Flip the household back to un-onboarded.
+      const { error: hhErr } = await supabase
+        .from('households')
+        .update({ onboarding_completed: false })
+        .eq('id', householdId);
+      if (hhErr) throw hhErr;
+
+      // Clear onboarding-specific tool state if present (no-op if absent).
+      await supabase
+        .from('tool_states')
+        .delete()
+        .eq('household_id', householdId)
+        .eq('tool_name', 'onboarding');
+
+      toast.success('Onboarding reset. Reload to walk through the flow.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not reset onboarding');
+    } finally {
+      setResettingOnboarding(false);
+    }
+  };
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
   const [savingName, setSavingName] = useState(false);
@@ -170,6 +212,46 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
           onClick={() => onSelect('trends')}
         />
       </div>
+
+      {/* Dev: Reset Onboarding (test account only) */}
+      {canResetOnboarding && (
+        <div className="px-6 mt-10">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Developer</h2>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-amber-400/40"
+                disabled={resettingOnboarding}
+              >
+                <div className="w-10 h-10 rounded-full bg-amber-400/15 flex items-center justify-center">
+                  {resettingOnboarding
+                    ? <Loader2 size={20} className="text-amber-600 animate-spin" />
+                    : <RotateCcw size={20} className="text-amber-600" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Reset onboarding</p>
+                  <p className="text-xs text-muted-foreground">Replays the welcome flow on next reload</p>
+                </div>
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset onboarding for this household?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This flips your household back to "not onboarded" and clears any
+                  onboarding-specific saved state. Your transactions, accounts, budgets,
+                  and profile data are NOT touched. Reload after confirming to walk
+                  through the flow again.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetOnboarding}>Reset</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
 
       {/* Log Out */}
       <div className="px-6 mt-10 pb-6">
