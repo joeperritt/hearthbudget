@@ -2,12 +2,25 @@ import { useEffect, useState } from 'react';
 import {
   LogOut, Building2, Sparkles, BarChart3, Calculator, ShieldCheck,
   Heart, Baby, PawPrint, ChevronRight, User as UserIcon, Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+// Email allowlist for the "Reset onboarding" dev tool. Hardcoded on purpose:
+// this button must NOT be gated by general admin role — only this single
+// test inbox should ever see it.
+const RESET_ONBOARDING_ALLOWLIST = new Set<string>([
+  'joeperritt31+test@gmail.com',
+]);
 
 export type ProfileTabSelection =
   | 'financial-profile'
