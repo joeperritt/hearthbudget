@@ -598,6 +598,9 @@ export function Dashboard({
         />
       )}
 
+      {/* Post-onboarding setup cards (dismissible) */}
+      {topBanner}
+
       {/* End-of-month unassigned warning */}
       <EndOfMonthBanner count={unassignedTransactions.length} />
 
