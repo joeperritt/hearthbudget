@@ -496,23 +496,32 @@ export type Database = {
         Row: {
           active_month: string
           created_at: string
+          has_kids: boolean
+          has_pets: boolean
           id: string
           name: string
           planning_data: Json
+          stewardship_mode: boolean
         }
         Insert: {
           active_month?: string
           created_at?: string
+          has_kids?: boolean
+          has_pets?: boolean
           id?: string
           name?: string
           planning_data?: Json
+          stewardship_mode?: boolean
         }
         Update: {
           active_month?: string
           created_at?: string
+          has_kids?: boolean
+          has_pets?: boolean
           id?: string
           name?: string
           planning_data?: Json
+          stewardship_mode?: boolean
         }
         Relationships: []
       }
