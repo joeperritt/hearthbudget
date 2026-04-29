@@ -425,6 +425,12 @@ export function SpendingAnalyzer({
                                 ))}
                               </ul>
                             )}
+                            {b.key === "saving_investing" && (b.pretax_savings_monthly ?? 0) > 0 && (
+                              <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] italic">
+                                <span className="text-foreground/70 truncate">+ Pre-tax retirement (counted toward your savings rate only)</span>
+                                <span className="tabular-nums text-muted-foreground">{fmt(b.pretax_savings_monthly ?? 0)}</span>
+                              </div>
+                            )}
                           </div>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${pill.cls}`}>
                             {pill.text}
