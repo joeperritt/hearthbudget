@@ -142,16 +142,6 @@ export const CFP_BUCKETS: CfpBucket[] = [
     match_keywords: ["pet", "pets", "dog", "cat", "vet", "groomer", "chewy", "petsmart"],
   },
   {
-    key: "hosting",
-    label: "Hosting",
-    guideline_pct: 3,
-    guideline_kind: "target",
-    guideline_source: "Hospitality / community meals — a stewardship-informed line; typically 1–3% of take-home.",
-    role: "variable",
-    description: "Hospitality, community meals, hosting guests.",
-    match_keywords: ["hosting", "hospitality", "guests", "community meal"],
-  },
-  {
     key: "medical",
     label: "Medical",
     guideline_pct: 5,
