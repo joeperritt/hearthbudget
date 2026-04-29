@@ -62,12 +62,12 @@ export const CFP_BUCKETS: CfpBucket[] = [
   {
     key: "insurance",
     label: "Insurance",
-    guideline_pct: 10,
+    guideline_pct: 3,
     guideline_kind: "max",
-    guideline_source: "Combined insurance (health, life, disability, auto, home, pet) — typically ≤10% of take-home.",
+    guideline_source: "Standalone insurance only — excludes homeowners (in housing escrow) and auto (in transportation). Term life, disability, and umbrella policies typically ≤3% of take-home.",
     role: "fixed",
-    description: "Health, life, disability, auto, home, renters, pet insurance.",
-    match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium"],
+    description: "Standalone insurance: term life, disability, umbrella. Excludes homeowners (escrowed with mortgage) and auto (in transportation).",
+    match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium", "umbrella"],
   },
   {
     key: "non_housing_debt",
@@ -140,16 +140,6 @@ export const CFP_BUCKETS: CfpBucket[] = [
     role: "variable",
     description: "Pet food, grooming, vet, pet supplies.",
     match_keywords: ["pet", "pets", "dog", "cat", "vet", "groomer", "chewy", "petsmart"],
-  },
-  {
-    key: "hosting",
-    label: "Hosting",
-    guideline_pct: 3,
-    guideline_kind: "target",
-    guideline_source: "Hospitality / community meals — a stewardship-informed line; typically 1–3% of take-home.",
-    role: "variable",
-    description: "Hospitality, community meals, hosting guests.",
-    match_keywords: ["hosting", "hospitality", "guests", "community meal"],
   },
   {
     key: "medical",
