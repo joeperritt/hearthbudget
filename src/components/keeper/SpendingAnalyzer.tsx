@@ -437,9 +437,9 @@ export function SpendingAnalyzer({
                                 ))}
                               </ul>
                             )}
-                            {b.key === "saving_investing" && (b.pretax_savings_monthly ?? 0) > 0 && (
+                            {b.key === "saving" && (b.pretax_savings_monthly ?? 0) > 0 && (
                               <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] italic">
-                                <span className="text-foreground/70 truncate">+ Pre-tax retirement (counted toward your savings rate only)</span>
+                                <span className="text-foreground/70 truncate">+ Payroll retirement (401k/Roth) — counted toward your savings rate only</span>
                                 <span className="tabular-nums text-muted-foreground">{fmt(b.pretax_savings_monthly ?? 0)}</span>
                               </div>
                             )}
