@@ -61,9 +61,10 @@ export function useHouseholdFlags(householdId: string | null) {
       // Optimistic update — the UI is a single switch; rollback on error.
       const prev = flags[key];
       setFlags(f => ({ ...f, [key]: value }));
+      const patch = { [key]: value } as Partial<HouseholdFlags>;
       const { error } = await supabase
         .from('households')
-        .update({ [key]: value })
+        .update(patch)
         .eq('id', householdId);
       if (error) {
         setFlags(f => ({ ...f, [key]: prev }));
