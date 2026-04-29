@@ -65,6 +65,9 @@ const Index = () => {
   const { user } = useAuth();
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
+  // Onboarding gate. `null` = unknown (still loading), `true` = show app,
+  // `false` = render the OnboardingFlow on top of everything else.
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   useEffect(() => {
     if (!householdId || !user) return;
     supabase
@@ -81,6 +84,22 @@ const Index = () => {
         });
       });
   }, [householdId, user]);
+
+  // Pull onboarding_completed once the household is known.
+  useEffect(() => {
+    if (!householdId) return;
+    let cancelled = false;
+    supabase
+      .from('households')
+      .select('onboarding_completed')
+      .eq('id', householdId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setOnboardingCompleted(data?.onboarding_completed ?? true);
+      });
+    return () => { cancelled = true; };
+  }, [householdId]);
 
   // On-open fallback sync: if the most recent successful sync for this household
   // is more than 4 hours old (or never), kick off a background sync. We don't
