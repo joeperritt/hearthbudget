@@ -406,6 +406,9 @@ interface DashboardProps {
   totalVariableSpent?: number;
   totalFixedSpent?: number;
   insightsSection?: React.ReactNode;
+  /** Optional slot rendered between the sync header and the unassigned section.
+   *  Used by Index.tsx to drop in dismissible post-onboarding cards. */
+  topBanner?: React.ReactNode;
   onViewAllUnassigned?: () => void;
   onViewAllActivity?: () => void;
 }
@@ -421,6 +424,7 @@ export function Dashboard({
   totalVariableSpent = 0,
   totalFixedSpent = 0,
   insightsSection,
+  topBanner,
   onViewAllUnassigned,
   onViewAllActivity,
 }: DashboardProps) {
