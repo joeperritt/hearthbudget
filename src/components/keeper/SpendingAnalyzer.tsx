@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useToolState } from "@/hooks/useToolState";
 import { useAuth } from "@/hooks/useAuth";
+import { useHouseholdFlags } from "@/hooks/useHouseholdFlags";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
@@ -57,9 +58,10 @@ interface AnalyzeResult {
 interface SpendingAnalyzerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stewardshipMode?: boolean;
   defaultIncome?: number;
   viewMonth?: string; // YYYY-MM
+  /** Fired when the user clicks the "profile" link in the disclaimer. */
+  onOpenProfile?: () => void;
 }
 
 function fmt(n: number) {
@@ -75,7 +77,7 @@ function verdictPill(v: BucketResult["verdict"]) {
 }
 
 export function SpendingAnalyzer({
-  open, onOpenChange, stewardshipMode = true, defaultIncome, viewMonth,
+  open, onOpenChange, defaultIncome, viewMonth, onOpenProfile,
 }: SpendingAnalyzerProps) {
   const [phase, setPhase] = useState<"empty" | "loading" | "results">("empty");
   const [loadingIdx, setLoadingIdx] = useState(0);
