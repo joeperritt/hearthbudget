@@ -449,6 +449,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       monthly_take_home: round2(monthlyIncome),
+      pretax_savings_monthly: round2(preTaxSavings),
+      effective_income_for_savings: round2(monthlyIncome + preTaxSavings),
       view_month: viewMonth,
       buckets: mergedBuckets,
       reallocation_hints: reallocationHints,
