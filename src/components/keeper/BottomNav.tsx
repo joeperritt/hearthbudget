@@ -1,5 +1,5 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, MoreHorizontal } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, User } from 'lucide-react';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
@@ -7,7 +7,7 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'transactions', label: 'Activity', icon: List },
   { id: 'budget', label: 'Budget', icon: CalendarDays },
   { id: 'plan', label: 'Plan', icon: Compass },
-  { id: 'more', label: 'More', icon: MoreHorizontal },
+  { id: 'profile', label: 'Profile', icon: User },
 ];
 
 export function BottomNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (t: TabId) => void }) {

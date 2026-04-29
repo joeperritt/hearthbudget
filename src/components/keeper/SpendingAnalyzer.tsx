@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useToolState } from "@/hooks/useToolState";
 import { useAuth } from "@/hooks/useAuth";
+import { useHouseholdFlags } from "@/hooks/useHouseholdFlags";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
@@ -57,9 +58,10 @@ interface AnalyzeResult {
 interface SpendingAnalyzerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stewardshipMode?: boolean;
   defaultIncome?: number;
   viewMonth?: string; // YYYY-MM
+  /** Fired when the user clicks the "profile" link in the disclaimer. */
+  onOpenProfile?: () => void;
 }
 
 function fmt(n: number) {
@@ -75,7 +77,7 @@ function verdictPill(v: BucketResult["verdict"]) {
 }
 
 export function SpendingAnalyzer({
-  open, onOpenChange, stewardshipMode = true, defaultIncome, viewMonth,
+  open, onOpenChange, defaultIncome, viewMonth, onOpenProfile,
 }: SpendingAnalyzerProps) {
   const [phase, setPhase] = useState<"empty" | "loading" | "results">("empty");
   const [loadingIdx, setLoadingIdx] = useState(0);
@@ -88,6 +90,10 @@ export function SpendingAnalyzer({
   const { state: toolState, setState: setToolState, loaded: toolStateLoaded } =
     useToolState(householdId, "analyze_budget", { preTaxSavingsMonthly: "" as string });
   const preTaxAmount = Number(String(toolState.preTaxSavingsMonthly).replace(/[^0-9.]/g, "")) || 0;
+
+  // Household flags drive analyzer framing — read-only here. Edit on Profile tab.
+  const { flags, loading: flagsLoading } = useHouseholdFlags(householdId);
+  const stewardshipMode = flags.stewardship_mode;
 
   const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
@@ -140,10 +146,12 @@ export function SpendingAnalyzer({
   };
 
   // When the sheet opens with valid take-home, go straight to loading/results.
-  // Wait for toolState to load so pre-tax savings is included on first run.
+  // Wait for toolState AND household flags so the analyzer always runs with the
+  // user's true Stewardship Mode setting on first open.
   useEffect(() => {
     if (!open) return;
     if (!toolStateLoaded) return;
+    if (flagsLoading) return;
     setResult(null);
     if (incomeValid) {
       void runAnalysis();
@@ -151,7 +159,7 @@ export function SpendingAnalyzer({
       setPhase("empty");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultIncome, viewMonth, toolStateLoaded]);
+  }, [open, defaultIncome, viewMonth, toolStateLoaded, flagsLoading, stewardshipMode]);
 
   useEffect(() => {
     if (phase !== "loading") return;
@@ -228,6 +236,19 @@ export function SpendingAnalyzer({
                   <> {result.diagnostics.total_categories - result.diagnostics.mapped_categories} unmapped category
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
                 )}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
+                This analysis assumes Stewardship Mode is{' '}
+                <span className="font-semibold text-foreground">{flags.stewardship_mode ? 'ON' : 'OFF'}</span>,
+                you {flags.has_kids ? 'have kids' : "don't have kids"}, and you{' '}
+                {flags.has_pets ? 'have pets' : "don't have pets"}. Update your{' '}
+                <button
+                  type="button"
+                  onClick={() => { onOpenChange(false); onOpenProfile?.(); }}
+                  className="text-accent font-semibold underline underline-offset-2 hover:opacity-80"
+                >
+                  profile
+                </button>{' '}to change.
               </p>
             </div>
 

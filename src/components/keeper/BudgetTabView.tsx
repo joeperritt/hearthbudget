@@ -44,6 +44,7 @@ interface BudgetTabViewProps {
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
   initialViewMonth?: string;
+  onOpenProfile?: () => void;
 }
 
 export function BudgetTabView({
@@ -52,7 +53,7 @@ export function BudgetTabView({
   onAddCategoryForMonth, onAddFixedExpenseForMonth,
   onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
-  planningData, onUpdatePlanningData, initialViewMonth,
+  planningData, onUpdatePlanningData, initialViewMonth, onOpenProfile,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
@@ -228,6 +229,7 @@ export function BudgetTabView({
         onOpenChange={setAnalyzerOpen}
         defaultIncome={totalTakeHome > 0 ? totalTakeHome : undefined}
         viewMonth={viewMonthKey}
+        onOpenProfile={onOpenProfile}
       />
 
       <BucketMappingSheet
