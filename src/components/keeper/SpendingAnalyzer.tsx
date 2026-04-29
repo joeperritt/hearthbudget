@@ -41,6 +41,8 @@ interface BucketResult {
 
 interface AnalyzeResult {
   monthly_take_home: number;
+  pretax_savings_monthly?: number;
+  effective_income_for_savings?: number;
   view_month: string;
   buckets: BucketResult[];
   reallocation_hints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }>;
