@@ -21,19 +21,15 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_source: "CFP retirement-readiness guideline of 10–15% of gross income.",
     role: "fixed", description: "Transfers to savings, retirement contributions, sinking funds.",
     match_keywords: ["saving", "savings", "invest", "retirement", "401k", "ira", "roth", "brokerage", "sinking", "emergency fund"] },
-  { key: "housing", label: "Housing", guideline_pct: 28, guideline_kind: "max",
-    guideline_source: "CFP guideline: total housing (mortgage/rent + taxes + insurance) ≤28% of take-home.",
-    role: "fixed", description: "Mortgage, rent, HOA, property taxes, home repairs, lawn care.",
-    match_keywords: ["mortgage", "rent", "hoa", "lawn", "home repair", "house", "household", "property tax", "yard"] },
-  { key: "utilities", label: "Utilities", guideline_pct: 7, guideline_kind: "max",
-    guideline_source: "Utilities (electric, water, gas, trash, internet, phone) — typically 5–7% of take-home.",
-    role: "fixed", description: "Electric, water, gas, trash, internet, cell phone bills.",
-    match_keywords: ["electric", "water", "gas bill", "internet", "spectrum", "phone", "cell", "trash", "dominion", "utility", "utilities"] },
+  { key: "housing", label: "Housing", guideline_pct: 33, guideline_kind: "max",
+    guideline_source: "Total monthly housing cost (mortgage/rent + taxes + insurance + utilities) ≤33% of take-home — extends the classic CFP 28% PITI rule to include utilities, which a typical household pays alongside the housing bill.",
+    role: "fixed", description: "Mortgage, rent, HOA, property taxes, home repairs, lawn care, electric, water, gas, trash, internet, cell phone.",
+    match_keywords: ["mortgage", "rent", "hoa", "lawn", "home repair", "house", "household", "property tax", "yard", "electric", "water", "gas bill", "internet", "spectrum", "phone", "cell", "trash", "dominion", "utility", "utilities"] },
   { key: "insurance", label: "Insurance", guideline_pct: 10, guideline_kind: "max",
     guideline_source: "Combined insurance (health, life, disability, auto, home, pet) — typically ≤10% of take-home.",
     role: "fixed", description: "Health, life, disability, auto, home, renters, pet insurance.",
     match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium"] },
-  { key: "debt", label: "Debt Service", guideline_pct: 15, guideline_kind: "max",
+  { key: "non_housing_debt", label: "Non-Housing Debt", guideline_pct: 15, guideline_kind: "max",
     guideline_source: "Non-mortgage debt service (auto, student, credit card payoff) — CFP 36% rule less housing.",
     role: "fixed", description: "Student loan, auto loan, personal loan, credit card payoff.",
     match_keywords: ["loan", "debt", "payoff", "student loan", "auto loan"] },
@@ -49,10 +45,10 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_source: "CFP discretionary food guideline: dining out ≤5% of take-home.",
     role: "variable", description: "Restaurants, fast food, coffee shops, takeout, delivery.",
     match_keywords: ["eat", "eating", "restaurant", "dining", "takeout", "delivery", "coffee", "fast food", "doordash", "ubereats", "bar", "eo"] },
-  { key: "personal", label: "Personal", guideline_pct: 10, guideline_kind: "max",
-    guideline_source: "Personal & lifestyle (clothing, hobbies, self-care, miscellaneous) — typically ≤10% combined.",
-    role: "variable", description: "Clothing, hobbies, self-care, personal spending money.",
-    match_keywords: ["personal", "clothing", "clothes", "hair", "salon", "barber", "beauty", "spa", "hobby", "hobbies", "joe", "katie", "spending", "random", "misc"] },
+  { key: "lifestyle", label: "Lifestyle", guideline_pct: 12, guideline_kind: "max",
+    guideline_source: "Combined discretionary lifestyle (clothing, hobbies, subscriptions, gifts, personal spending) — derived from the 50/30/20 framework's 'wants' allocation, scaled to support 10%+ giving and 15%+ saving.",
+    role: "variable", description: "Clothing, hobbies, self-care, personal spending, streaming, software, memberships, gifts (birthdays, Christmas, weddings).",
+    match_keywords: ["personal", "clothing", "clothes", "hair", "salon", "barber", "beauty", "spa", "hobby", "hobbies", "joe", "katie", "spending", "random", "misc", "subscription", "subscriptions", "streaming", "netflix", "spotify", "hulu", "gym", "membership", "software", "gift", "gifts", "birthday", "christmas", "wedding", "shower", "present"] },
   { key: "kids", label: "Kids", guideline_pct: 10, guideline_kind: "max",
     guideline_source: "Kids' direct expenses (activities, school, supplies) — varies widely; 5–10% is a common range.",
     role: "variable", description: "Daycare, school, kids' activities, kids' clothing, supplies.",
@@ -65,18 +61,10 @@ export const CFP_BUCKETS: CfpBucket[] = [
     guideline_source: "Hospitality / community meals — a stewardship-informed line; typically 1–3% of take-home.",
     role: "variable", description: "Hospitality, community meals, hosting guests.",
     match_keywords: ["hosting", "hospitality", "guests", "community meal"] },
-  { key: "gifts", label: "Gifts", guideline_pct: 2, guideline_kind: "max",
-    guideline_source: "Gift-giving (birthdays, Christmas, weddings) — typically ≤2% of take-home.",
-    role: "variable", description: "Gifts for birthdays, Christmas, weddings, baby showers.",
-    match_keywords: ["gift", "gifts", "birthday", "christmas", "wedding", "shower", "present"] },
   { key: "medical", label: "Medical", guideline_pct: 5, guideline_kind: "max",
     guideline_source: "Out-of-pocket medical (copays, prescriptions, dental) — typically ≤5% of take-home.",
     role: "variable", description: "Doctor, dentist, pharmacy, copays, prescriptions.",
     match_keywords: ["medical", "doctor", "dentist", "pharmacy", "prescription", "copay", "health", "urgent care"] },
-  { key: "subscriptions", label: "Subscriptions", guideline_pct: 2, guideline_kind: "max",
-    guideline_source: "Recurring digital subscriptions (streaming, software, memberships) — typically ≤2% of take-home.",
-    role: "variable", description: "Streaming, software, gym memberships, recurring subscriptions.",
-    match_keywords: ["subscription", "subscriptions", "streaming", "netflix", "spotify", "hulu", "gym", "membership", "software"] },
   { key: "travel", label: "Travel", guideline_pct: 5, guideline_kind: "max",
     guideline_source: "Travel & vacation — typically ≤5% of take-home, often saved into a sinking fund.",
     role: "variable", description: "Vacations, flights, hotels, travel.",
@@ -85,6 +73,24 @@ export const CFP_BUCKETS: CfpBucket[] = [
 
 export const VARIABLE_BUCKETS = CFP_BUCKETS.filter(b => b.role === "variable");
 export const FIXED_BUCKETS = CFP_BUCKETS.filter(b => b.role === "fixed");
+
+/**
+ * Bucket keys that have been removed from the taxonomy. If the database still
+ * has a mapping referencing one of these (e.g. after a future taxonomy change
+ * before its migration runs), the UI should detect it and prompt the user to
+ * re-map. The Apr 2026 migration auto-remapped these to the keys listed here.
+ */
+export const RETIRED_BUCKET_KEYS: Record<string, string> = {
+  utilities: "housing",
+  subscriptions: "lifestyle",
+  gifts: "lifestyle",
+  personal: "lifestyle",
+  debt: "non_housing_debt",
+};
+
+export function isRetiredBucket(key: string): boolean {
+  return key in RETIRED_BUCKET_KEYS;
+}
 
 export function getBucket(key: string): CfpBucket | undefined {
   return CFP_BUCKETS.find(b => b.key === key);
