@@ -62,12 +62,12 @@ export const CFP_BUCKETS: CfpBucket[] = [
   {
     key: "insurance",
     label: "Insurance",
-    guideline_pct: 10,
+    guideline_pct: 3,
     guideline_kind: "max",
-    guideline_source: "Combined insurance (health, life, disability, auto, home, pet) — typically ≤10% of take-home.",
+    guideline_source: "Standalone insurance only — excludes homeowners (in housing escrow) and auto (in transportation). Term life, disability, and umbrella policies typically ≤3% of take-home.",
     role: "fixed",
-    description: "Health, life, disability, auto, home, renters, pet insurance.",
-    match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium"],
+    description: "Standalone insurance: term life, disability, umbrella. Excludes homeowners (escrowed with mortgage) and auto (in transportation).",
+    match_keywords: ["insurance", "ltd", "disability", "term life", "policy", "premium", "umbrella"],
   },
   {
     key: "non_housing_debt",
