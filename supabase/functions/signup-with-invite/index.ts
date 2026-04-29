@@ -14,6 +14,9 @@ interface SignupBody {
   last_name: string;
   invite_code?: string;
   captcha_token?: string;
+  stewardship_mode?: boolean;
+  has_kids?: boolean;
+  has_pets?: boolean;
 }
 
 async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
