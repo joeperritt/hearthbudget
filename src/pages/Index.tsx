@@ -543,6 +543,10 @@ const Index = () => {
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
+            onOpenProfile={() => {
+              setProfileSubView('menu');
+              setActiveTab('profile');
+            }}
           />
         )}
 
