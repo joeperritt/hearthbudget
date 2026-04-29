@@ -91,6 +91,10 @@ export function SpendingAnalyzer({
     useToolState(householdId, "analyze_budget", { preTaxSavingsMonthly: "" as string });
   const preTaxAmount = Number(String(toolState.preTaxSavingsMonthly).replace(/[^0-9.]/g, "")) || 0;
 
+  // Household flags drive analyzer framing — read-only here. Edit on Profile tab.
+  const { flags, loading: flagsLoading } = useHouseholdFlags(householdId);
+  const stewardshipMode = flags.stewardship_mode;
+
   const incomeValid = Number.isFinite(defaultIncome) && (defaultIncome ?? 0) > 0;
 
   const runAnalysis = async () => {
@@ -142,10 +146,12 @@ export function SpendingAnalyzer({
   };
 
   // When the sheet opens with valid take-home, go straight to loading/results.
-  // Wait for toolState to load so pre-tax savings is included on first run.
+  // Wait for toolState AND household flags so the analyzer always runs with the
+  // user's true Stewardship Mode setting on first open.
   useEffect(() => {
     if (!open) return;
     if (!toolStateLoaded) return;
+    if (flagsLoading) return;
     setResult(null);
     if (incomeValid) {
       void runAnalysis();
@@ -153,7 +159,7 @@ export function SpendingAnalyzer({
       setPhase("empty");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultIncome, viewMonth, toolStateLoaded]);
+  }, [open, defaultIncome, viewMonth, toolStateLoaded, flagsLoading, stewardshipMode]);
 
   useEffect(() => {
     if (phase !== "loading") return;
