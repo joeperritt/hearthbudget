@@ -241,7 +241,7 @@ export function SpendingAnalyzer({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] text-muted-foreground leading-snug">
-                      Money taken out before take-home (won't appear in any category). Added to Saving & Investing so your savings rate reflects reality.
+                      Money taken out before take-home (won't appear in any category). Used only to lift your savings rate % — does NOT change any dollar totals or your plan gap.
                     </p>
                     <button
                       type="button"
