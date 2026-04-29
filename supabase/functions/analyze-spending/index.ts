@@ -182,10 +182,11 @@ Deno.serve(async (req) => {
     const bucketRollups = CFP_BUCKETS.map(b => {
       const members = membersByBucket.get(b.key) || [];
       const total = totalByBucket.get(b.key) || 0;
-      // Savings rate adjustment: numerator includes pre-tax retirement so the
-      // displayed % reflects the user's true savings behavior. Denominator
-      // stays as take-home (per spec) — do NOT inflate the denominator.
-      const effectiveTotal = b.key === "saving_investing" ? total + preTaxSavings : total;
+      // Savings rate adjustment: numerator includes payroll-deducted retirement
+      // (401k/Roth 401k/etc.) so the displayed % reflects the user's true
+      // savings behavior. Denominator stays as take-home (per spec) — do NOT
+      // inflate the denominator. Bucket key is "saving" (see cfp-buckets.ts).
+      const effectiveTotal = b.key === "saving" ? total + preTaxSavings : total;
       return {
         key: b.key,
         label: b.label,
@@ -197,7 +198,7 @@ Deno.serve(async (req) => {
         bucket_pct_of_income: round2((effectiveTotal / monthlyIncome) * 100),
         member_descriptions: members.map(m => m.name),
         members,
-        ...(b.key === "saving_investing" && preTaxSavings > 0
+        ...(b.key === "saving" && preTaxSavings > 0
           ? { pretax_savings_monthly: round2(preTaxSavings) }
           : {}),
       };
@@ -263,7 +264,7 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 500);
 
     const sys = stewardshipMode ? STEWARDSHIP_PROMPT : STANDARD_PROMPT;
-    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReallocation rules — STRICT:\n- Every "amount" in reallocation_hints MUST be a real dollar number drawn from the data above. Do NOT invent amounts.\n- The "from_bucket" must be either "unbudgeted" or a variable bucket whose actual planned_monthly EXCEEDS its guideline (kind=max → over). Never propose reallocating from a fixed bucket or from a variable bucket that is already at/under guideline.\n- The "amount" must NOT exceed the source's available pool: for "unbudgeted", cap at unbudgeted.amount; for an over-guideline bucket, cap at (planned_monthly − guideline_pct% of take-home).\n- If unbudgeted.amount > 1% of take-home, the FIRST hint MUST move from "unbudgeted" and the proposed amount should be a meaningful share of unbudgeted (typically 50–100% of it, split across destinations if needed).\n- Prefer destinations that are under their guideline (e.g. saving_investing, giving in stewardship mode, emergency reserves).\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
+    const userMsg = `Household budget data for ${viewMonth}:\n${JSON.stringify(aiPayload, null, 2)}\n\nReallocation rules — STRICT:\n- Every "amount" in reallocation_hints MUST be a real dollar number drawn from the data above. Do NOT invent amounts.\n- The "from_bucket" must be either "unbudgeted" or a variable bucket whose actual planned_monthly EXCEEDS its guideline (kind=max → over). Never propose reallocating from a fixed bucket or from a variable bucket that is already at/under guideline.\n- NEVER suggest reallocating TO a bucket that is already over/at its guideline. For kind=max destinations, only target buckets where pct_of_income < guideline_pct. For kind=min destinations (e.g. saving, giving), only target buckets where pct_of_income < guideline_pct (i.e. still under the minimum). If a bucket meets/exceeds its guideline, it is NOT a valid destination.\n- The CUMULATIVE total of all hints sourced from "unbudgeted" MUST NOT exceed unbudgeted.amount. If you want to distribute unbudgeted across multiple destinations, SPLIT the amount across hints — do NOT propose the full unbudgeted amount to each destination. Same rule applies for any over-guideline source: total drawn ≤ that bucket's headroom.\n- Prefer ONE consolidated plan: if unbudgeted has $X, output 1–3 hints whose amounts SUM to ≤ $X, distributed across the most under-guideline destinations. Do not list four parallel hints all claiming the full $X.\n- If unbudgeted.amount > 1% of take-home, the FIRST hint MUST move from "unbudgeted".\n\nReturn ONLY:\n{\n  "by_bucket": [{"key": "...", "verdict": "under|in_line|over", "suggested_bucket_total": 0, "commentary": "..."}],\n  "reallocation_hints": [{"from_bucket": "...", "to_bucket": "...", "amount": 0, "rationale": "..."}],\n  "overall_summary": "..."\n}\nInclude one entry in by_bucket for each VARIABLE bucket.`;
 
     const callOnce = (model: string) => callGemini({
       model,
@@ -371,25 +372,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    let reallocationHints = (parsed.reallocation_hints || []).map((h: {
+    // Build a quick lookup for destination validity:
+    // - kind=max bucket: valid only if currently UNDER guideline (room to grow).
+    // - kind=min bucket: valid only if currently UNDER the minimum guideline.
+    // - "unbudgeted" is never a valid destination (it's the source, not a sink).
+    // - Fixed buckets aren't AI-evaluated; allow them as destinations only if
+    //   there's an explicit guideline check we can run (skip for now — keep
+    //   destinations restricted to variable buckets we have signal on).
+    const variableByKey = new Map(variableRollups.map(b => [b.key, b]));
+    const isValidDestination = (key: string): boolean => {
+      if (key === "unbudgeted") return false;
+      const b = variableByKey.get(key);
+      if (!b) return true; // unknown (e.g. fixed bucket) — let it through
+      if (b.guideline_kind === "max") return b.bucket_pct_of_income < b.guideline_pct - 0.5;
+      if (b.guideline_kind === "min") return b.bucket_pct_of_income < b.guideline_pct - 0.5;
+      return true;
+    };
+
+    // Track cumulative draws per source so the SUM of hints from one source
+    // can never exceed the source's available pool. Iterate AI hints in order
+    // and clamp each to the REMAINING pool, dropping hints that hit zero.
+    const remaining = new Map(fromPool);
+    const rawHints = (parsed.reallocation_hints || []) as Array<{
       from_bucket?: unknown; to_bucket?: unknown; amount?: unknown; rationale?: unknown;
-    }) => {
+    }>;
+    let reallocationHints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }> = [];
+    for (const h of rawHints) {
       const from_bucket = String(h?.from_bucket || "");
       const to_bucket = String(h?.to_bucket || "");
+      if (!from_bucket || !to_bucket) continue;
+      if (!isValidDestination(to_bucket)) continue; // drop over-guideline destinations
       let amount = Number(h?.amount) || 0;
-      // Clamp AI amount to the actual available pool from the source.
-      const cap = fromPool.get(from_bucket);
-      if (cap !== undefined && amount > cap) amount = cap;
-      if (amount < 0) amount = 0;
-      return {
+      if (amount <= 0) continue;
+      const pool = remaining.get(from_bucket);
+      if (pool !== undefined) {
+        if (pool <= 0) continue;
+        if (amount > pool) amount = pool;
+        remaining.set(from_bucket, round2(pool - amount));
+      }
+      reallocationHints.push({
         from_bucket,
         to_bucket,
         amount: round2(amount),
         rationale: stripMarkdown(String(h?.rationale || "")),
-      };
-    }).filter((h: { from_bucket: string; to_bucket: string; amount: number }) =>
-      h.from_bucket && h.to_bucket && h.amount > 0
-    );
+      });
+    }
 
     // Fallback: if there's meaningful unbudgeted money but no hint targets it,
     // synthesize one pointing at the most under-guideline destination.
@@ -422,6 +449,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       monthly_take_home: round2(monthlyIncome),
+      pretax_savings_monthly: round2(preTaxSavings),
+      effective_income_for_savings: round2(monthlyIncome + preTaxSavings),
       view_month: viewMonth,
       buckets: mergedBuckets,
       reallocation_hints: reallocationHints,
