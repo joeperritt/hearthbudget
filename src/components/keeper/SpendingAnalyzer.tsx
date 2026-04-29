@@ -36,6 +36,7 @@ interface BucketResult {
   verdict: "under" | "in_line" | "over";
   suggested_bucket_total: number;
   commentary: string;
+  pretax_savings_monthly?: number;
 }
 
 interface AnalyzeResult {
