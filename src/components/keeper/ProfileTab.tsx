@@ -36,8 +36,37 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const { flags, loading: flagsLoading, updateFlag } = useHouseholdFlags(householdId);
+  const canResetOnboarding = !!user?.email && RESET_ONBOARDING_ALLOWLIST.has(user.email.toLowerCase());
+  const [resettingOnboarding, setResettingOnboarding] = useState(false);
+
+  const handleResetOnboarding = async () => {
+    if (!householdId) return;
+    setResettingOnboarding(true);
+    try {
+      // Flip the household back to un-onboarded.
+      const { error: hhErr } = await supabase
+        .from('households')
+        .update({ onboarding_completed: false })
+        .eq('id', householdId);
+      if (hhErr) throw hhErr;
+
+      // Clear onboarding-specific tool state if present (no-op if absent).
+      await supabase
+        .from('tool_states')
+        .delete()
+        .eq('household_id', householdId)
+        .eq('tool_name', 'onboarding');
+
+      toast.success('Onboarding reset. Reload to walk through the flow.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not reset onboarding');
+    } finally {
+      setResettingOnboarding(false);
+    }
+  };
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
   const [savingName, setSavingName] = useState(false);
