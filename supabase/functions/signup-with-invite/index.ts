@@ -185,7 +185,12 @@ Deno.serve(async (req) => {
       if (!householdId) {
         const { data: hh, error: hhErr } = await admin
           .from("households")
-          .insert({ name: `${first_name}'s Household` })
+          .insert({
+            name: `${first_name}'s Household`,
+            stewardship_mode: stewardship_mode ?? true,
+            has_kids: has_kids ?? false,
+            has_pets: has_pets ?? false,
+          })
           .select()
           .single();
         if (hhErr || !hh) throw new Error(hhErr?.message ?? "Could not create household");
