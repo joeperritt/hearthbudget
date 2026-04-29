@@ -37,6 +37,8 @@ import { GoalsPlanner } from '@/components/keeper/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/keeper/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/keeper/LifeInsuranceAnalysis';
 import { AdminMfaBanner } from '@/components/auth/AdminMfaBanner';
+import { OnboardingFlow } from '@/components/keeper/OnboardingFlow';
+import { PostOnboardingCards } from '@/components/keeper/PostOnboardingCards';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
 
