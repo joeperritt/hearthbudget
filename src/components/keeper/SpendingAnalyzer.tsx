@@ -211,6 +211,16 @@ export function SpendingAnalyzer({
                   {fmt(result.monthly_take_home)}
                 </div>
               </div>
+              {(result.pretax_savings_monthly ?? 0) > 0 && (
+                <div className="flex items-center justify-between gap-3 mt-1">
+                  <div className="text-[11px] text-muted-foreground">
+                    Effective income for savings rate (incl. payroll retirement)
+                  </div>
+                  <div className="text-xs font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                    {fmt(result.effective_income_for_savings ?? result.monthly_take_home)}
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 We compare your monthly budget to CFP guidelines using the
                 category-to-bucket mappings you set.
@@ -221,16 +231,16 @@ export function SpendingAnalyzer({
               </p>
             </div>
 
-            {/* Pre-tax savings input — included in Saving & Investing bucket
-                so users with 401(k)/pre-tax retirement contributions see their
-                TRUE savings rate, not the 1-2% that's left after pre-tax. */}
+            {/* Payroll-deducted retirement input — included in Saving & Investing
+                bucket's percentage so users with 401(k)/Roth 401(k)/etc.
+                payroll deductions see their TRUE savings rate. */}
             <div className="px-5 py-3 bg-muted/30 border-b border-border">
               <div className="flex items-start gap-2">
                 <PiggyBank className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <label htmlFor="pretax" className="text-xs font-medium text-foreground">
-                      Pre-tax retirement / 401(k) per month
+                      Payroll-deducted retirement (401k, Roth 401k, etc.)
                     </label>
                     <Input
                       id="pretax"
@@ -243,7 +253,7 @@ export function SpendingAnalyzer({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] text-muted-foreground leading-snug">
-                      Money taken out before take-home (won't appear in any category). Used only to lift your savings rate % — does NOT change any dollar totals or your plan gap.
+                      Money taken out of your paycheck before it hits your account — pre-tax or Roth, traditional or alternative. Used to lift your savings rate without changing dollar totals or your plan gap.
                     </p>
                     <button
                       type="button"
