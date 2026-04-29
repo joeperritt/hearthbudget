@@ -367,13 +367,24 @@ const Index = () => {
     return () => setProfileSubView(parent as ProfileSubView);
   };
 
-  if (loading || !activeMonth) {
+  if (loading || !activeMonth || onboardingCompleted === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
           <span className="text-primary-foreground font-display text-lg font-bold">K</span>
         </div>
       </div>
+    );
+  }
+
+  // Onboarding takes over the entire screen until completed. The rest of the
+  // app stays mounted underneath but is visually covered by the fixed overlay.
+  if (onboardingCompleted === false && householdId) {
+    return (
+      <OnboardingFlow
+        householdId={householdId}
+        onComplete={() => setOnboardingCompleted(true)}
+      />
     );
   }
 
