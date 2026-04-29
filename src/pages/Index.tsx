@@ -7,7 +7,7 @@ import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/keeper/BottomNav';
-import { SideNav, MoreSidebarItem } from '@/components/keeper/SideNav';
+import { SideNav, ProfileSidebarItem } from '@/components/keeper/SideNav';
 import { Dashboard } from '@/components/keeper/Dashboard';
 import { SpendingView } from '@/components/keeper/SpendingView';
 import { TransactionsView } from '@/components/keeper/TransactionsView';
@@ -45,7 +45,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
-type MoreSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
+type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
 
 const Index = () => {
@@ -116,8 +116,8 @@ const Index = () => {
   // the Bank Connections screen via a global event.
   useEffect(() => {
     const handler = () => {
-      setActiveTab('more');
-      setMoreSubView('bank-connections');
+      setActiveTab('profile');
+      setProfileSubView('bank-connections');
     };
     window.addEventListener('open-bank-connections', handler);
     return () => window.removeEventListener('open-bank-connections', handler);
@@ -131,7 +131,7 @@ const Index = () => {
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
-  const [moreSubView, setMoreSubView] = useState<MoreSubView>('menu');
+  const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
 
@@ -279,7 +279,7 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'more') setMoreSubView('menu');
+    if (tab === 'profile') setProfileSubView('menu');
     if (tab === 'plan') setPlanSubView('menu');
     if (tab === 'budget') setBudgetSubView('main');
   };
@@ -312,11 +312,11 @@ const Index = () => {
   }, [transactions]);
 
   // Helper to navigate to insight/calculator tool from Plan or More
-  const navigateToTool = (tool: string, fromTab: 'plan' | 'more') => {
+  const navigateToTool = (tool: string, fromTab: 'plan' | 'profile') => {
     if (fromTab === 'plan') {
       setPlanSubView(tool as PlanSubView);
     } else {
-      setMoreSubView(tool as MoreSubView);
+      setProfileSubView(tool as ProfileSubView);
     }
   };
 
@@ -341,9 +341,9 @@ const Index = () => {
   }, []);
 
   // Helper to get back target for tools
-  const getToolBackTarget = (fromTab: 'plan' | 'more', parent: string) => {
+  const getToolBackTarget = (fromTab: 'plan' | 'profile', parent: string) => {
     if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
-    return () => setMoreSubView(parent as MoreSubView);
+    return () => setProfileSubView(parent as ProfileSubView);
   };
 
   if (loading || !activeMonth) {
@@ -438,13 +438,13 @@ const Index = () => {
       <SideNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        activeMoreItem={activeTab === 'more' && moreSubView !== 'menu' ? (moreSubView as MoreSidebarItem) : null}
-        onSelectMoreItem={(item) => { setActiveTab('more'); setMoreSubView(item as MoreSubView); }}
+        activeProfileItem={activeTab === 'profile' && profileSubView !== 'menu' ? (profileSubView as ProfileSidebarItem) : null}
+        onSelectProfileItem={(item) => { setActiveTab('profile'); setProfileSubView(item as ProfileSubView); }}
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
         <AdminMfaBanner
-          hidden={activeTab === 'more' && moreSubView === 'security'}
-          onOpenSecurity={() => { setActiveTab('more'); setMoreSubView('security'); }}
+          hidden={activeTab === 'profile' && profileSubView === 'security'}
+          onOpenSecurity={() => { setActiveTab('profile'); setProfileSubView('security'); }}
         />
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'dashboard' && (
@@ -570,13 +570,13 @@ const Index = () => {
         )}
 
         {/* More Tab */}
-        {activeTab === 'more' && moreSubView === 'menu' && (
-          <MoreView onSelect={tab => setMoreSubView(tab as MoreSubView)} householdId={householdId} />
+        {activeTab === 'profile' && profileSubView === 'menu' && (
+          <MoreView onSelect={tab => setProfileSubView(tab as ProfileSubView)} householdId={householdId} />
         )}
-        {activeTab === 'more' && moreSubView === 'bank-connections' && (
-          <BankConnectionView onBack={() => setMoreSubView('menu')} />
+        {activeTab === 'profile' && profileSubView === 'bank-connections' && (
+          <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
-        {activeTab === 'more' && moreSubView === 'ai-advisor' && (
+        {activeTab === 'profile' && profileSubView === 'ai-advisor' && (
           <AIAdvisorView
             bigPictureInsights={bigPictureInsights}
             bigPictureLoading={bigPictureLoading}
@@ -587,29 +587,29 @@ const Index = () => {
             chatMessages={chatMessages}
             chatLoading={chatLoading}
             onSendMessage={sendChatMessage}
-            onBack={() => setMoreSubView('menu')}
+            onBack={() => setProfileSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'trends' && (
+        {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
-            onBack={() => setMoreSubView('menu')}
+            onBack={() => setProfileSubView('menu')}
           />
         )}
-        {activeTab === 'more' && moreSubView === 'calculators' && (
+        {activeTab === 'profile' && profileSubView === 'calculators' && (
           <CalculatorsList
-            onBack={() => setMoreSubView('menu')}
-            onSelectCalculator={(calc) => setMoreSubView(calc as MoreSubView)}
+            onBack={() => setProfileSubView('menu')}
+            onSelectCalculator={(calc) => setProfileSubView(calc as ProfileSubView)}
           />
         )}
-        {activeTab === 'more' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(moreSubView) && (
-          renderTool(moreSubView, () => setMoreSubView('calculators'))
+        {activeTab === 'profile' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(profileSubView) && (
+          renderTool(profileSubView, () => setProfileSubView('calculators'))
         )}
-        {activeTab === 'more' && moreSubView === 'security' && (
-          <SecurityView onBack={() => setMoreSubView('menu')} />
+        {activeTab === 'profile' && profileSubView === 'security' && (
+          <SecurityView onBack={() => setProfileSubView('menu')} />
         )}
         </div>
       </div>
