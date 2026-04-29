@@ -372,25 +372,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    let reallocationHints = (parsed.reallocation_hints || []).map((h: {
+    // Build a quick lookup for destination validity:
+    // - kind=max bucket: valid only if currently UNDER guideline (room to grow).
+    // - kind=min bucket: valid only if currently UNDER the minimum guideline.
+    // - "unbudgeted" is never a valid destination (it's the source, not a sink).
+    // - Fixed buckets aren't AI-evaluated; allow them as destinations only if
+    //   there's an explicit guideline check we can run (skip for now — keep
+    //   destinations restricted to variable buckets we have signal on).
+    const variableByKey = new Map(variableRollups.map(b => [b.key, b]));
+    const isValidDestination = (key: string): boolean => {
+      if (key === "unbudgeted") return false;
+      const b = variableByKey.get(key);
+      if (!b) return true; // unknown (e.g. fixed bucket) — let it through
+      if (b.guideline_kind === "max") return b.bucket_pct_of_income < b.guideline_pct - 0.5;
+      if (b.guideline_kind === "min") return b.bucket_pct_of_income < b.guideline_pct - 0.5;
+      return true;
+    };
+
+    // Track cumulative draws per source so the SUM of hints from one source
+    // can never exceed the source's available pool. Iterate AI hints in order
+    // and clamp each to the REMAINING pool, dropping hints that hit zero.
+    const remaining = new Map(fromPool);
+    const rawHints = (parsed.reallocation_hints || []) as Array<{
       from_bucket?: unknown; to_bucket?: unknown; amount?: unknown; rationale?: unknown;
-    }) => {
+    }>;
+    let reallocationHints: Array<{ from_bucket: string; to_bucket: string; amount: number; rationale: string }> = [];
+    for (const h of rawHints) {
       const from_bucket = String(h?.from_bucket || "");
       const to_bucket = String(h?.to_bucket || "");
+      if (!from_bucket || !to_bucket) continue;
+      if (!isValidDestination(to_bucket)) continue; // drop over-guideline destinations
       let amount = Number(h?.amount) || 0;
-      // Clamp AI amount to the actual available pool from the source.
-      const cap = fromPool.get(from_bucket);
-      if (cap !== undefined && amount > cap) amount = cap;
-      if (amount < 0) amount = 0;
-      return {
+      if (amount <= 0) continue;
+      const pool = remaining.get(from_bucket);
+      if (pool !== undefined) {
+        if (pool <= 0) continue;
+        if (amount > pool) amount = pool;
+        remaining.set(from_bucket, round2(pool - amount));
+      }
+      reallocationHints.push({
         from_bucket,
         to_bucket,
         amount: round2(amount),
         rationale: stripMarkdown(String(h?.rationale || "")),
-      };
-    }).filter((h: { from_bucket: string; to_bucket: string; amount: number }) =>
-      h.from_bucket && h.to_bucket && h.amount > 0
-    );
+      });
+    }
 
     // Fallback: if there's meaningful unbudgeted money but no hint targets it,
     // synthesize one pointing at the most under-guideline destination.
