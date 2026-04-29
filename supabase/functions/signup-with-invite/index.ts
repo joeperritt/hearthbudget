@@ -14,6 +14,9 @@ interface SignupBody {
   last_name: string;
   invite_code?: string;
   captcha_token?: string;
+  stewardship_mode?: boolean;
+  has_kids?: boolean;
+  has_pets?: boolean;
 }
 
 async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
     });
 
     const body: SignupBody = await req.json();
-    const { email, password, first_name, last_name, invite_code, captcha_token } = body;
+    const { email, password, first_name, last_name, invite_code, captcha_token, stewardship_mode, has_kids, has_pets } = body;
 
     if (!email || !password || !first_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -182,7 +185,12 @@ Deno.serve(async (req) => {
       if (!householdId) {
         const { data: hh, error: hhErr } = await admin
           .from("households")
-          .insert({ name: `${first_name}'s Household` })
+          .insert({
+            name: `${first_name}'s Household`,
+            stewardship_mode: stewardship_mode ?? true,
+            has_kids: has_kids ?? false,
+            has_pets: has_pets ?? false,
+          })
           .select()
           .single();
         if (hhErr || !hh) throw new Error(hhErr?.message ?? "Could not create household");

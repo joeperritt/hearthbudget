@@ -21,6 +21,9 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [stewardshipMode, setStewardshipMode] = useState(true);
+  const [hasKids, setHasKids] = useState(false);
+  const [hasPets, setHasPets] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,6 +61,9 @@ export default function Signup() {
         last_name: lastName.trim(),
         invite_code: inviteCode.trim() || undefined,
         captcha_token: captchaToken,
+        stewardship_mode: stewardshipMode,
+        has_kids: hasKids,
+        has_pets: hasPets,
       },
     });
     setLoading(false);
@@ -121,6 +127,28 @@ export default function Signup() {
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" className="auth-input" />
         </Field>
 
+        <div className="pt-2 border-t border-border space-y-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">About your household</p>
+          <ToggleRow
+            label="Are you a stewardship-minded household?"
+            help="Tunes your AI advisor's tone toward generosity, contentment, and faith-informed framing. You can change this anytime."
+            checked={stewardshipMode}
+            onChange={setStewardshipMode}
+          />
+          <ToggleRow
+            label="Do you have kids?"
+            help="Keeps the Kids bucket and related guidelines in your budget analysis."
+            checked={hasKids}
+            onChange={setHasKids}
+          />
+          <ToggleRow
+            label="Do you have pets?"
+            help="Keeps the Pets bucket and related guidelines in your budget analysis."
+            checked={hasPets}
+            onChange={setHasPets}
+          />
+        </div>
+
         {error && <p className="text-xs text-destructive text-center">{error}</p>}
 
         <div className="flex justify-center">
@@ -152,6 +180,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</label>
       <div className="mt-1">{children}</div>
     </div>
+  );
+}
+
+function ToggleRow({
+  label, help, checked, onChange,
+}: { label: string; help: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-accent" : "bg-input"}`}
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-background shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`}
+        />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground leading-tight">{label}</div>
+        <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{help}</p>
+      </div>
+    </label>
   );
 }
 
