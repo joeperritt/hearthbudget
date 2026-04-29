@@ -17,7 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { callGemini } from "../_shared/gemini.ts";
-import { CFP_BUCKETS, VARIABLE_BUCKET_KEYS, ALL_BUCKET_KEYS } from "../_shared/cfp-buckets.ts";
+import { CFP_BUCKETS, VARIABLE_BUCKET_KEYS, ALL_BUCKET_KEYS, RETIRED_BUCKET_KEYS } from "../_shared/cfp-buckets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,7 +130,13 @@ Deno.serve(async (req) => {
     const fixedExpenses = allFixed.filter(f => isActiveForMonth(f, viewMonth));
 
     const slugToBucket = new Map<string, string>();
-    for (const m of userMap) slugToBucket.set(m.category_slug, m.bucket_key);
+    // Safety net: route any retired bucket key to its current replacement at
+    // read time so the analyzer never crashes on a stale mapping if a future
+    // taxonomy change ships before its data migration runs.
+    for (const m of userMap) {
+      const liveKey = RETIRED_BUCKET_KEYS[m.bucket_key] ?? m.bucket_key;
+      slugToBucket.set(m.category_slug, liveKey);
+    }
 
     const validBucketKeys = new Set(ALL_BUCKET_KEYS);
 
