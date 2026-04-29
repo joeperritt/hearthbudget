@@ -61,6 +61,9 @@ export default function Signup() {
         last_name: lastName.trim(),
         invite_code: inviteCode.trim() || undefined,
         captcha_token: captchaToken,
+        stewardship_mode: stewardshipMode,
+        has_kids: hasKids,
+        has_pets: hasPets,
       },
     });
     setLoading(false);
@@ -123,6 +126,28 @@ export default function Signup() {
         <Field label="Confirm password">
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" className="auth-input" />
         </Field>
+
+        <div className="pt-2 border-t border-border space-y-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">About your household</p>
+          <ToggleRow
+            label="Are you a stewardship-minded household?"
+            help="Tunes your AI advisor's tone toward generosity, contentment, and faith-informed framing. You can change this anytime."
+            checked={stewardshipMode}
+            onChange={setStewardshipMode}
+          />
+          <ToggleRow
+            label="Do you have kids?"
+            help="Keeps the Kids bucket and related guidelines in your budget analysis."
+            checked={hasKids}
+            onChange={setHasKids}
+          />
+          <ToggleRow
+            label="Do you have pets?"
+            help="Keeps the Pets bucket and related guidelines in your budget analysis."
+            checked={hasPets}
+            onChange={setHasPets}
+          />
+        </div>
 
         {error && <p className="text-xs text-destructive text-center">{error}</p>}
 
