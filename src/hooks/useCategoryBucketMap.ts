@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { suggestBucket } from "@/lib/cfpBuckets";
+import { suggestBucket, RETIRED_BUCKET_KEYS } from "@/lib/cfpBuckets";
 
 export interface CategoryBucketMapping {
   category_slug: string;
@@ -37,9 +37,13 @@ export function useCategoryBucketMap() {
     }
     const next: Record<string, CategoryBucketMapping> = {};
     for (const row of data || []) {
+      // Safety net: if the DB still has a retired bucket key (e.g. a future
+      // taxonomy change shipped before its migration ran), route it to the
+      // current bucket at read time so the analyzer never breaks.
+      const liveKey = RETIRED_BUCKET_KEYS[row.bucket_key] ?? row.bucket_key;
       next[row.category_slug] = {
         category_slug: row.category_slug,
-        bucket_key: row.bucket_key,
+        bucket_key: liveKey,
         category_kind: (row.category_kind as "variable" | "fixed") || "variable",
       };
     }
