@@ -37,6 +37,8 @@ import { GoalsPlanner } from '@/components/keeper/GoalsPlanner';
 import { EmergencyFundAnalysis } from '@/components/keeper/EmergencyFundAnalysis';
 import { LifeInsuranceAnalysis } from '@/components/keeper/LifeInsuranceAnalysis';
 import { AdminMfaBanner } from '@/components/auth/AdminMfaBanner';
+import { OnboardingFlow } from '@/components/keeper/OnboardingFlow';
+import { PostOnboardingCards } from '@/components/keeper/PostOnboardingCards';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
 
@@ -63,6 +65,9 @@ const Index = () => {
   const { user } = useAuth();
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
+  // Onboarding gate. `null` = unknown (still loading), `true` = show app,
+  // `false` = render the OnboardingFlow on top of everything else.
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   useEffect(() => {
     if (!householdId || !user) return;
     supabase
@@ -79,6 +84,22 @@ const Index = () => {
         });
       });
   }, [householdId, user]);
+
+  // Pull onboarding_completed once the household is known.
+  useEffect(() => {
+    if (!householdId) return;
+    let cancelled = false;
+    supabase
+      .from('households')
+      .select('onboarding_completed')
+      .eq('id', householdId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setOnboardingCompleted(data?.onboarding_completed ?? true);
+      });
+    return () => { cancelled = true; };
+  }, [householdId]);
 
   // On-open fallback sync: if the most recent successful sync for this household
   // is more than 4 hours old (or never), kick off a background sync. We don't
@@ -346,13 +367,24 @@ const Index = () => {
     return () => setProfileSubView(parent as ProfileSubView);
   };
 
-  if (loading || !activeMonth) {
+  if (loading || !activeMonth || onboardingCompleted === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
           <span className="text-primary-foreground font-display text-lg font-bold">K</span>
         </div>
       </div>
+    );
+  }
+
+  // Onboarding takes over the entire screen until completed. The rest of the
+  // app stays mounted underneath but is visually covered by the fixed overlay.
+  if (onboardingCompleted === false && householdId) {
+    return (
+      <OnboardingFlow
+        householdId={householdId}
+        onComplete={() => setOnboardingCompleted(true)}
+      />
     );
   }
 
@@ -475,6 +507,13 @@ const Index = () => {
               setActivityInitialFilter(undefined);
               setActiveTab('transactions');
             }}
+            topBanner={
+              <PostOnboardingCards
+                householdId={householdId}
+                onOpenBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+                onOpenAccounts={() => { setProfileSubView('bank-connections'); setActiveTab('profile'); }}
+              />
+            }
             insightsSection={
               <InsightsSection
                 insights={insights}

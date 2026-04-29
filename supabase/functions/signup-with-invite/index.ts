@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { seedHouseholdDefaults } from "../_shared/seed-defaults.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,7 +195,10 @@ Deno.serve(async (req) => {
         if (hhErr || !hh) throw new Error(hhErr?.message ?? "Could not create household");
         householdId = hh.id;
         createdHouseholdId = hh.id;
-        await seedHouseholdDefaults(admin, householdId);
+        // NOTE: Defaults are intentionally NOT seeded here anymore. New households
+        // build their starter budget through the in-app Onboarding flow (Step 5),
+        // which creates only the buckets the user actually engages with. Empty
+        // budget on first load is the desired state until onboarding completes.
       }
 
       const { error: profErr } = await admin.from("profiles").insert({
