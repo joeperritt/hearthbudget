@@ -114,6 +114,23 @@ export function SettingsView({
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [allSnapshotMonths, setAllSnapshotMonths] = useState<string[]>([]);
 
+  // Household partner display name (for replacing hardcoded "Joe / Katie" copy)
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!profile?.household_id || !profile?.user_id) return;
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .eq('household_id', profile.household_id)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const other = data.find(p => p.user_id !== profile.user_id);
+        setPartnerDisplayName(other?.display_name ?? null);
+      });
+    return () => { cancelled = true; };
+  }, [profile?.household_id, profile?.user_id]);
+
   // Fetch all snapshots once
   useEffect(() => {
     async function fetch() {
