@@ -86,6 +86,18 @@ export default function LoginMfaChallenge() {
     }
   };
 
+  const mintTrustIfChosen = async () => {
+    if (!rememberDevice) return;
+    try {
+      const { data } = await supabase.functions.invoke('mfa-trust-device', { body: {} });
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id;
+      if (uid && data?.token) setTrustedDeviceToken(uid, data.token);
+    } catch (e) {
+      console.warn('trust-device mint failed', e);
+    }
+  };
+
   const handleVerifyTotp = async () => {
     if (!pendingMfa) return;
     setSubmitting(true);
