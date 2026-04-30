@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import {
   ChevronLeft, ChevronRight, Check, Sparkles, Heart, Baby, PawPrint,
-  Wallet, Building2, Compass, MessageSquareText, ListChecks, Loader2,
-  HelpCircle, AlertTriangle, Plus, Trash2,
+  Building2, Compass, MessageSquareText, ListChecks, Loader2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,11 +10,9 @@ import { Switch } from '@/components/ui/switch';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { CFP_BUCKETS, type CfpBucket } from '@/lib/cfpBuckets';
+import { CFP_BUCKETS } from '@/lib/cfpBuckets';
 import { STATE_OPTIONS } from '@/data/stateDefaults';
 import { BudgetBuilderStep, type BucketCategoryDraft, persistBudgetDrafts } from './BudgetBuilderStep';
 
