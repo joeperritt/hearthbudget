@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle, Smartphone, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { DisableMfaDialog } from '@/components/auth/DisableMfaDialog';
 import { useAdminMfaGraceState } from '@/components/auth/AdminMfaBanner';
+import { getTrustedDeviceToken, clearTrustedDeviceToken } from '@/lib/trustedDevice';
 
 interface SecurityViewProps {
   onBack: () => void;
@@ -353,6 +354,18 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           )}
         </section>
 
+        {/* ===== Trusted devices section ===== */}
+        {hasVerifiedFactor && (
+          <section>
+            <h2 className="font-display text-lg font-semibold text-foreground mb-2">Trusted devices</h2>
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Devices where you chose "Remember this device" skip the two-factor prompt for 60 days.
+              Revoke any device you no longer use or trust.
+            </p>
+            <TrustedDevicesSection userId={user?.id} />
+          </section>
+        )}
+
         {/* ===== Sign-out-others section (existing) ===== */}
         <section>
           <h2 className="font-display text-lg font-semibold text-foreground mb-2">Other devices</h2>
@@ -584,6 +597,177 @@ function RecoveryCodesPanel(props: {
       >
         I've saved them — continue
       </button>
+    </div>
+  );
+}
+
+// ===== Trusted Devices Section =====
+
+interface TrustedDeviceRow {
+  id: string;
+  device_label: string | null;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  token_hash: string;
+}
+
+export function TrustedDevicesSection({ userId }: { userId: string | null | undefined }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [devices, setDevices] = useState<TrustedDeviceRow[]>([]);
+  const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [revokingAll, setRevokingAll] = useState(false);
+
+  const load = async () => {
+    if (!userId) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('mfa_trusted_devices')
+      .select('id, device_label, created_at, expires_at, last_used_at, revoked_at, token_hash')
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('last_used_at', { ascending: false, nullsFirst: false });
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Could not load trusted devices', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setDevices((data ?? []) as TrustedDeviceRow[]);
+  };
+
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [userId]);
+
+  // SHA-256 hex of the local token, to identify which row is "this device".
+  const [thisDeviceHash, setThisDeviceHash] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      if (!userId) return;
+      const tok = getTrustedDeviceToken(userId);
+      if (!tok) { setThisDeviceHash(null); return; }
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tok));
+      const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      setThisDeviceHash(hex);
+    })();
+  }, [userId, devices.length]);
+
+  const revoke = async (id: string) => {
+    setRevokeId(null);
+    const row = devices.find(d => d.id === id);
+    const { error } = await supabase
+      .from('mfa_trusted_devices')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Could not revoke device', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (row && userId && row.token_hash === thisDeviceHash) {
+      clearTrustedDeviceToken(userId);
+    }
+    toast({ title: 'Device revoked', description: 'Two-factor will be required next time on that device.' });
+    void load();
+  };
+
+  const revokeAll = async () => {
+    setRevokingAll(true);
+    const { error } = await supabase
+      .from('mfa_trusted_devices')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('user_id', userId!)
+      .is('revoked_at', null);
+    setRevokingAll(false);
+    if (error) {
+      toast({ title: 'Could not revoke devices', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (userId) clearTrustedDeviceToken(userId);
+    toast({ title: 'All trusted devices revoked' });
+    void load();
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-card rounded-lg p-4 shadow-sm border border-border flex items-center gap-3">
+        <Loader2 size={16} className="animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Loading trusted devices…</span>
+      </div>
+    );
+  }
+
+  if (devices.length === 0) {
+    return (
+      <div className="bg-card rounded-lg p-4 shadow-sm border border-border">
+        <p className="text-xs text-muted-foreground">
+          No trusted devices yet. Check "Remember this device for 60 days" the next time you sign in
+          to skip the two-factor prompt on a personal device.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {devices.map(d => {
+        const isThis = d.token_hash === thisDeviceHash;
+        const expiresIn = Math.max(0, Math.ceil((new Date(d.expires_at).getTime() - Date.now()) / 86400000));
+        return (
+          <div key={d.id} className="bg-card rounded-lg p-4 shadow-sm border border-border flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Smartphone size={16} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {d.device_label || 'Unknown device'}
+                {isThis && <span className="ml-2 text-[10px] uppercase tracking-wide text-accent font-bold">This device</span>}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Expires in {expiresIn} {expiresIn === 1 ? 'day' : 'days'}
+                {d.last_used_at && ` · Last used ${new Date(d.last_used_at).toLocaleDateString()}`}
+              </p>
+            </div>
+            <button
+              onClick={() => setRevokeId(d.id)}
+              className="p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+              aria-label="Revoke device"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        );
+      })}
+
+      {devices.length > 1 && (
+        <button
+          onClick={revokeAll}
+          disabled={revokingAll}
+          className="w-full text-xs font-semibold text-destructive py-2 hover:bg-destructive/5 rounded-md transition-colors disabled:opacity-60"
+        >
+          {revokingAll ? 'Revoking…' : 'Revoke all trusted devices'}
+        </button>
+      )}
+
+      <AlertDialog open={revokeId !== null} onOpenChange={o => !o && setRevokeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Revoke this device?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The next time someone signs in on that device, they'll be required to enter a two-factor code.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => revokeId && revoke(revokeId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revoke
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

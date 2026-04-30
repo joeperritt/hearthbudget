@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { setTrustedDeviceToken } from '@/lib/trustedDevice';
 
 const LOCK_KEY = 'keeper.mfa.lockedUntil';
 const RECOVERY_LOCK_KEY = 'keeper.mfa.recoveryLockedUntil';
@@ -11,6 +12,7 @@ type Mode = 'totp' | 'recovery';
 export default function LoginMfaChallenge() {
   const { pendingMfa, cancelMfaChallenge, completeMfaChallenge } = useAuth();
   const [mode, setMode] = useState<Mode>('totp');
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +86,18 @@ export default function LoginMfaChallenge() {
     }
   };
 
+  const mintTrustIfChosen = async () => {
+    if (!rememberDevice) return;
+    try {
+      const { data } = await supabase.functions.invoke('mfa-trust-device', { body: {} });
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id;
+      if (uid && data?.token) setTrustedDeviceToken(uid, data.token);
+    } catch (e) {
+      console.warn('trust-device mint failed', e);
+    }
+  };
+
   const handleVerifyTotp = async () => {
     if (!pendingMfa) return;
     setSubmitting(true);
@@ -112,6 +126,7 @@ export default function LoginMfaChallenge() {
         await callLogAttempt(true);
         // Clear any per-session recovery banner — user successfully used TOTP
         localStorage.removeItem(RECOVERY_FLAG_KEY);
+        await mintTrustIfChosen();
         await completeMfaChallenge();
       }
     } catch (e) {
@@ -148,6 +163,7 @@ export default function LoginMfaChallenge() {
         );
         // Tell AuthProvider to use recovery bypass path
         (window as any).__keeperRecoveryBypass = true;
+        await mintTrustIfChosen();
         await completeMfaChallenge();
       } else {
         setCode('');
@@ -248,6 +264,18 @@ export default function LoginMfaChallenge() {
               )}
             </div>
           )}
+
+
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberDevice}
+              onChange={e => setRememberDevice(e.target.checked)}
+              disabled={submitting || isLocked}
+              className="w-4 h-4 rounded border-border text-accent focus:ring-accent/30"
+            />
+            <span>Remember this device for 60 days</span>
+          </label>
 
           <button
             type="submit"

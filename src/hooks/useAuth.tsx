@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  getTrustedDeviceToken,
+  setTrustedDeviceToken,
+  clearTrustedDeviceToken,
+} from '@/lib/trustedDevice';
 
 interface Profile {
   id: string;
@@ -32,7 +37,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function detectMfaChallenge(): Promise<PendingMfa | null> {
   // If session AAL is aal1 but the user has a verified TOTP factor, they must
-  // complete the MFA challenge before any authenticated route renders.
+  // complete the MFA challenge before any authenticated route renders — UNLESS
+  // this device has a valid trusted-device token (60-day "remember this device").
   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (!aalData) return null;
   const { currentLevel, nextLevel } = aalData;
@@ -43,6 +49,33 @@ async function detectMfaChallenge(): Promise<PendingMfa | null> {
   if (!verifiedTotp) return null;
 
   const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  // Trusted-device short-circuit. If a stored token validates, skip the MFA gate
+  // and rotate the token. Any failure path falls through to showing the prompt.
+  if (userId) {
+    const token = getTrustedDeviceToken(userId);
+    if (token) {
+      try {
+        const { data: trustData } = await supabase.functions.invoke(
+          'mfa-check-trusted-device',
+          { body: { token } },
+        );
+        if (trustData?.trusted && typeof trustData.token === 'string') {
+          setTrustedDeviceToken(userId, trustData.token);
+          return null; // device is trusted; bypass MFA
+        }
+        // Server says no — purge stale local token to avoid retry storms.
+        if (trustData && trustData.trusted === false) {
+          clearTrustedDeviceToken(userId);
+        }
+      } catch (e) {
+        console.warn('trusted-device check failed', e);
+        // Fail closed: still show MFA prompt.
+      }
+    }
+  }
+
   return {
     factorId: verifiedTotp.id,
     email: userData.user?.email ?? '',
