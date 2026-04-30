@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { setTrustedDeviceToken } from '@/lib/trustedDevice';
 
 const LOCK_KEY = 'keeper.mfa.lockedUntil';
 const RECOVERY_LOCK_KEY = 'keeper.mfa.recoveryLockedUntil';
