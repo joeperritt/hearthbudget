@@ -845,8 +845,8 @@ export function SettingsView({
                   <select value={newCatGroup} onChange={e => setNewCatGroup(e.target.value as GroupType)}
                     className="flex-1 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
                     <option value="shared">Shared</option>
-                    <option value="joe">Joe's</option>
-                    <option value="katie">Katie's</option>
+                    <option value="joe">{primaryLabel}'s</option>
+                    {partnerDisplayName && <option value="katie">{partnerLabel}'s</option>}
                   </select>
                   <input type="number" value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} placeholder="$0"
                     className="w-24 px-3 py-2 rounded-lg bg-card border border-border text-sm tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
