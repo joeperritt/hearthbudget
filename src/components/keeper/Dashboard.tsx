@@ -702,13 +702,21 @@ export function Dashboard({
                   <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {totalSpentForBudget === 0 ? (
+                  {totalSpentForBudget === 0 && totalBudget === 0 ? (
                     <span className="text-sm font-medium tabular-nums text-muted-foreground">
                       No activity yet
                     </span>
+                  ) : totalSpentForBudget === 0 ? (
+                    <span className="text-sm font-bold tabular-nums text-accent">
+                      {formatCurrency(totalBudget)} left
+                    </span>
+                  ) : budgetDifference >= 0 ? (
+                    <span className="text-sm font-bold tabular-nums text-accent">
+                      {formatCurrency(budgetDifference)} left
+                    </span>
                   ) : (
-                    <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                      {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
+                    <span className="text-sm font-bold tabular-nums text-destructive">
+                      Over budget by {formatCurrency(Math.abs(budgetDifference))}
                     </span>
                   )}
                   {summaryOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
@@ -735,12 +743,18 @@ export function Dashboard({
                   </div>
                   <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
                     <span className="text-sm font-semibold text-foreground">
-                      {totalSpentForBudget === 0
+                      {totalSpentForBudget === 0 && totalBudget === 0
                         ? 'No activity yet'
-                        : budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+                        : totalSpentForBudget === 0
+                          ? 'Left for the month'
+                          : budgetDifference >= 0 ? 'Left for the month' : 'Over budget'}
                     </span>
-                    {totalSpentForBudget === 0 ? (
+                    {totalSpentForBudget === 0 && totalBudget === 0 ? (
                       <span className="text-sm font-medium tabular-nums text-muted-foreground">—</span>
+                    ) : totalSpentForBudget === 0 ? (
+                      <span className="text-sm font-bold tabular-nums text-accent">
+                        {formatCurrency(totalBudget)}
+                      </span>
                     ) : (
                       <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
                         {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
