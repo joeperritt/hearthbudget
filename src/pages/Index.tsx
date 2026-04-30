@@ -554,6 +554,7 @@ const Index = () => {
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
             onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+            householdMembers={householdMembers}
           />
         )}
         {activeTab === 'transactions' && (
