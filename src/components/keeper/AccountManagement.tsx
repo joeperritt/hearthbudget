@@ -24,8 +24,11 @@ export function AccountManagement() {
   const [addName, setAddName] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addPassword, setAddPassword] = useState('');
-  const [addInitial, setAddInitial] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Auto-derived initial from display name (first letter, uppercase). Falls
+  // back to email's first letter if no name is entered.
+  const derivedInitial = (addName.trim() || addEmail.trim()).charAt(0).toUpperCase() || '?';
 
   // Edit user
   const [editUserId, setEditUserId] = useState<string | null>(null);
