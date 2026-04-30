@@ -630,8 +630,8 @@ export function SettingsView({
           <div className="px-6 pb-4">
             {([
               { label: 'Shared', items: shared },
-              { label: "Joe's", items: joe },
-              { label: "Katie's", items: katie },
+              { label: `${primaryLabel}'s`, items: joe },
+              { label: `${partnerLabel}'s`, items: katie },
             ] as const).map(({ label, items }) => items.length > 0 && (
               <div key={label} className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
