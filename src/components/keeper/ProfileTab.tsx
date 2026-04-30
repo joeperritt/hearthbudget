@@ -173,15 +173,6 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
             onChange={v => handleToggle('has_pets', v)}
           />
         </div>
-        <div className="mt-3">
-          <Tile
-            icon={UserIcon}
-            color="primary"
-            title="Financial Profile"
-            subtitle="Income, housing, debts, accounts, insurance"
-            onClick={() => onSelect('financial-profile')}
-          />
-        </div>
       </div>
 
       {/* Accounts & Connections */}
