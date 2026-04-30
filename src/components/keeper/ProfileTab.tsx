@@ -392,3 +392,30 @@ function Tile({
     </button>
   );
 }
+
+// Visually distinct tile for "Financial Planning Tools" section — blue accent
+// to signal these are planning-grade tools (vs. settings).
+function PlanTile({
+  icon: Icon, title, subtitle, onClick,
+}: {
+  icon: typeof Heart;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border-l-4 border-blue-500"
+    >
+      <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+        <Icon size={20} className="text-blue-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+    </button>
+  );
+}
