@@ -543,6 +543,7 @@ const Index = () => {
             variableSpent={totalVariableSpent}
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
+            onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
           />
         )}
         {activeTab === 'transactions' && (
