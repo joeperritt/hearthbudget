@@ -47,7 +47,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
-type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
+type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
 
 const Index = () => {
@@ -614,7 +614,10 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
-          <ProfileTab onSelect={tab => setProfileSubView(tab as ProfileSubView)} householdId={householdId} />
+          <ProfileTab onSelect={tab => {
+            if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
+            setProfileSubView(tab as ProfileSubView);
+          }} householdId={householdId} />
         )}
         {activeTab === 'profile' && profileSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => setProfileSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
@@ -622,20 +625,7 @@ const Index = () => {
         {activeTab === 'profile' && profileSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
-        {activeTab === 'profile' && profileSubView === 'ai-advisor' && (
-          <AIAdvisorView
-            bigPictureInsights={bigPictureInsights}
-            bigPictureLoading={bigPictureLoading}
-            bigPictureError={bigPictureError}
-            bigPictureLastUpdated={bigPictureLastUpdated}
-            bigPictureHasCached={bigPictureHasCached}
-            onGenerateBigPicture={generateBigPicture}
-            chatMessages={chatMessages}
-            chatLoading={chatLoading}
-            onSendMessage={sendChatMessage}
-            onBack={() => setProfileSubView('menu')}
-          />
-        )}
+        {/* AI Advisor removed — use contextual Ask AI buttons instead */}
         {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
