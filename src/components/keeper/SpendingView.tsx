@@ -125,11 +125,13 @@ interface SpendingViewProps {
   fixedTotal: number;
   fixedSpent: number;
   onEditBudget?: () => void;
+  /** Display labels for the two household members so we don't hardcode "Joe" / "Katie". */
+  householdMembers?: { primaryName: string; partnerName: string | null };
 }
 
 export function SpendingView({
   categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
-  totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent, onEditBudget,
+  totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent, onEditBudget, householdMembers,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
 
@@ -146,14 +148,19 @@ export function SpendingView({
   // Use the same spentByCategory map for fixed expenses (already includes deposit offsets)
   const fixedSpentMap = spentByCategory;
 
+  // The DB still uses 'joe' / 'katie' as group keys for historical reasons; the
+  // labels here are just display strings that follow the household's actual members.
+  const primaryLabel = householdMembers?.primaryName?.trim() || 'Joe';
+  const partnerLabel = householdMembers?.partnerName?.trim() || 'Katie';
+
   let delay = 0;
 
   const renderVariable = (keyPrefix: string) => (
     <div className="space-y-1">
       {([
         { label: 'Shared', items: shared },
-        { label: 'Joe', items: joe },
-        { label: 'Katie', items: katie },
+        { label: primaryLabel, items: joe },
+        { label: partnerLabel, items: katie },
       ] as const).map(({ label, items }) => items.length > 0 && (
         <div key={`${keyPrefix}-${label}`}>
           <SectionLabel label={label} delay={(delay++) * 40} />
