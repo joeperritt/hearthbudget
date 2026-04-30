@@ -31,10 +31,22 @@ export function InvitesManagement() {
   const { toast } = useToast();
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
 
-  const [inviteType, setInviteType] = useState<InviteType>("new_household");
+  // Default non-system-admins to "join my household" — they can't create
+  // brand-new household invites (server-side RLS also enforces this).
+  const [inviteType, setInviteType] = useState<InviteType>("own_household");
   const [emailLock, setEmailLock] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Detect system admin specifically (vs household admin) — only system
+  // admins can create new-household invites for beta testers.
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      setIsSystemAdmin(data?.some((r: any) => r.role === "system_admin") ?? false);
+    });
+  }, [user]);
 
   const fetchInvites = async () => {
     const { data } = await supabase.from("invites").select("*").order("created_at", { ascending: false });
