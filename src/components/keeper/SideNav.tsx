@@ -1,5 +1,5 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, LogOut, User } from 'lucide-react';
+import { Home, Wallet, List, CalendarDays, Compass, LogOut, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
@@ -8,7 +8,7 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'transactions', label: 'Activity', icon: List },
   { id: 'budget', label: 'Budget', icon: CalendarDays },
   { id: 'plan', label: 'Plan', icon: Compass },
-  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'profile', label: 'More', icon: MoreHorizontal },
 ];
 
 // Kept exported for type compatibility with Index.tsx routing.
