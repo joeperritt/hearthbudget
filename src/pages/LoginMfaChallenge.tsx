@@ -163,6 +163,7 @@ export default function LoginMfaChallenge() {
         );
         // Tell AuthProvider to use recovery bypass path
         (window as any).__keeperRecoveryBypass = true;
+        await mintTrustIfChosen();
         await completeMfaChallenge();
       } else {
         setCode('');
