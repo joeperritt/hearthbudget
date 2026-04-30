@@ -107,25 +107,32 @@ export function InvitesManagement() {
         <h3 className="font-display text-base font-semibold text-foreground">Generate invite</h3>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invite type</label>
-          <div className="grid grid-cols-1 gap-2">
-            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "new_household" ? "border-accent bg-accent/5" : "border-border"}`}>
-              <input type="radio" checked={inviteType === "new_household"} onChange={() => setInviteType("new_household")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Create their own household</p>
-                <p className="text-xs text-muted-foreground">Beta tester — gets a brand-new household with seeded defaults.</p>
-              </div>
-            </label>
-            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "own_household" ? "border-accent bg-accent/5" : "border-border"}`}>
-              <input type="radio" checked={inviteType === "own_household"} onChange={() => setInviteType("own_household")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Join my household</p>
-                <p className="text-xs text-muted-foreground">Adds them as a member of your household (e.g., spouse).</p>
-              </div>
-            </label>
+        {isSystemAdmin ? (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invite type</label>
+            <div className="grid grid-cols-1 gap-2">
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "new_household" ? "border-accent bg-accent/5" : "border-border"}`}>
+                <input type="radio" checked={inviteType === "new_household"} onChange={() => setInviteType("new_household")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Create their own household</p>
+                  <p className="text-xs text-muted-foreground">Beta tester — they sign up and walk through onboarding to set up their own budget.</p>
+                </div>
+              </label>
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "own_household" ? "border-accent bg-accent/5" : "border-border"}`}>
+                <input type="radio" checked={inviteType === "own_household"} onChange={() => setInviteType("own_household")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Join my household</p>
+                  <p className="text-xs text-muted-foreground">Adds them as a member of your household (e.g., spouse).</p>
+                </div>
+              </label>
+            </div>
           </div>
-        </div>
-
+        ) : (
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <p className="text-sm font-semibold text-foreground">Invite to your household</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Adds them as a member of your household (e.g., spouse).</p>
+          </div>
+        )}
         <div>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Lock to email (optional)</label>
           <input type="email" value={emailLock} onChange={(e) => setEmailLock(e.target.value)}
