@@ -702,9 +702,15 @@ export function Dashboard({
                   <span className="text-sm font-semibold text-foreground">Monthly Summary</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                    {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
-                  </span>
+                  {totalSpentForBudget === 0 ? (
+                    <span className="text-sm font-medium tabular-nums text-muted-foreground">
+                      No activity yet
+                    </span>
+                  ) : (
+                    <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                      {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'} {formatCurrency(Math.abs(budgetDifference))}
+                    </span>
+                  )}
                   {summaryOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
                 </div>
               </button>
@@ -729,11 +735,17 @@ export function Dashboard({
                   </div>
                   <div className="flex justify-between items-center px-4 py-3 bg-primary/5">
                     <span className="text-sm font-semibold text-foreground">
-                      {budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
+                      {totalSpentForBudget === 0
+                        ? 'No activity yet'
+                        : budgetDifference >= 0 ? 'Under Budget' : 'Over Budget'}
                     </span>
-                    <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                      {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
-                    </span>
+                    {totalSpentForBudget === 0 ? (
+                      <span className="text-sm font-medium tabular-nums text-muted-foreground">—</span>
+                    ) : (
+                      <span className={`text-sm font-bold tabular-nums ${budgetDifference >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                        {budgetDifference >= 0 ? '' : '−'}{formatCurrency(Math.abs(budgetDifference))}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
