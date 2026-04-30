@@ -62,13 +62,16 @@ export function InvitesManagement() {
 
   const generate = async () => {
     if (!user) return;
+    // Defense in depth: even if the UI is bypassed, server RLS rejects
+    // non-system-admins from creating new-household invites.
+    const effectiveType: InviteType = isSystemAdmin ? inviteType : "own_household";
     setCreating(true);
     const code = randomCode();
     const { error } = await supabase.from("invites").insert({
       code,
       email: emailLock.trim() || null,
       created_by: user.id,
-      household_id: inviteType === "own_household" ? profile?.household_id ?? null : null,
+      household_id: effectiveType === "own_household" ? profile?.household_id ?? null : null,
     });
     setCreating(false);
     if (error) {
