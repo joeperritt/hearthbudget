@@ -3,7 +3,7 @@ import { usePlaidLink } from 'react-plaid-link';
 import {
   ChevronLeft, ChevronRight, Check, Sparkles, Heart, Baby, PawPrint,
   Wallet, Building2, Compass, MessageSquareText, ListChecks, Loader2,
-  HelpCircle, AlertTriangle,
+  HelpCircle, AlertTriangle, Plus, Trash2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { CFP_BUCKETS, type CfpBucket } from '@/lib/cfpBuckets';
 import { STATE_OPTIONS } from '@/data/stateDefaults';
+import { BudgetBuilderStep, type BucketCategoryDraft, persistBudgetDrafts } from './BudgetBuilderStep';
 
 /* ---------- Types ---------- */
 
@@ -30,12 +31,6 @@ type IncomeEntry = {
   key: string;
   label: string;
   /** Monthly take-home (post-tax). */
-  amount: string;
-};
-
-type BucketDraft = {
-  key: string;
-  /** "" = skipped (no category will be created). */
   amount: string;
 };
 
@@ -60,40 +55,6 @@ function formatCurrency(n: number) {
   }).format(n);
 }
 
-/* ---------- Bucket → starter category metadata ---------- */
-function bucketToBudgetRow(bucket: CfpBucket, amount: number, householdId: string, sortOrder: number) {
-  if (bucket.role === 'variable') {
-    return {
-      table: 'budget_categories' as const,
-      row: {
-        household_id: householdId,
-        slug: bucket.key,
-        name: bucket.label,
-        budgeted: amount,
-        group: 'shared',
-        sort_order: sortOrder,
-        notes_required: false,
-      },
-    };
-  }
-  const fixedGroup =
-    bucket.key === 'giving' ? 'tithe'
-    : bucket.key === 'saving' ? 'savings'
-    : 'bills';
-  return {
-    table: 'fixed_expenses' as const,
-    row: {
-      household_id: householdId,
-      slug: bucket.key,
-      name: bucket.label,
-      amount,
-      group: fixedGroup,
-      sort_order: sortOrder,
-      notes_required: false,
-    },
-  };
-}
-
 /* ---------- Main component ---------- */
 
 export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps) {
@@ -114,9 +75,9 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
   const [partnerName, setPartnerName] = useState('');
   const [stateCode, setStateCode] = useState<string>('');
 
-  /* ---- Step 5: budget builder (single-page) ---- */
+  /* ---- Step 5: budget builder (multi-category per bucket) ---- */
   const [skipBudgetEntirely, setSkipBudgetEntirely] = useState(false);
-  const [bucketDrafts, setBucketDrafts] = useState<BucketDraft[]>([]);
+  const [bucketDrafts, setBucketDrafts] = useState<Record<string, BucketCategoryDraft[]>>({});
 
   /* ---- Plaid skip flag ---- */
   const [skippedPlaid, setSkippedPlaid] = useState(false);
@@ -151,16 +112,6 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
     });
   }, [hasKids, hasPets]);
 
-  /* Initialize the bucket drafts when entering Step 5 */
-  useEffect(() => {
-    if (stepId !== 'budget' || skipBudgetEntirely) return;
-    setBucketDrafts(prev => {
-      // Reconcile drafts with currently-visible buckets (preserve user input).
-      const existingByKey = new Map(prev.map(d => [d.key, d]));
-      return visibleBuckets.map(b => existingByKey.get(b.key) ?? { key: b.key, amount: '' });
-    });
-  }, [stepId, visibleBuckets, skipBudgetEntirely]);
-
   /* ---- Computed values ---- */
 
   const monthlyTakeHome = useMemo(
@@ -168,10 +119,13 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
     [incomes],
   );
 
-  const totalAllocated = useMemo(
-    () => bucketDrafts.reduce((s, d) => s + (Number(d.amount) || 0), 0),
-    [bucketDrafts],
-  );
+  const totalAllocated = useMemo(() => {
+    let total = 0;
+    for (const list of Object.values(bucketDrafts)) {
+      for (const d of list) total += Number(d.amount) || 0;
+    }
+    return total;
+  }, [bucketDrafts]);
 
   /* ---- Step nav helpers ---- */
 
@@ -191,10 +145,6 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
       .eq('id', householdId);
   }, [householdId, stewardship, hasKids, hasPets]);
 
-  // Save income to financial_profiles. We capture monthly take-home directly,
-  // so we annualize it (×12) into annual_gross_income's slot for now — the
-  // analyzer reads this as the take-home anchor. Gross income can be filled in
-  // later from the Financial Profile.
   const persistIncome = useCallback(async () => {
     if (monthlyTakeHome <= 0 || !stateCode) return;
     const { data: existing } = await supabase
@@ -206,8 +156,6 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
     const memberIncomes = incomes.map(i => ({
       profile_id: i.key === 'me' ? profile?.id ?? null : null,
       name: i.label || 'Member',
-      // Store monthly take-home × 12 as annual take-home for now; gross is
-      // optional and refined later in the Financial Profile.
       gross_income: (Number(i.amount) || 0) * 12,
       monthly_take_home: Number(i.amount) || 0,
       income_type: 'w2',
@@ -240,37 +188,7 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
 
   const persistBudget = useCallback(async () => {
     if (skipBudgetEntirely) return;
-    const filled = bucketDrafts
-      .map((d, idx) => {
-        const amt = Number(d.amount);
-        if (!d.amount || isNaN(amt) || amt <= 0) return null;
-        const bucket = CFP_BUCKETS.find(b => b.key === d.key);
-        if (!bucket) return null;
-        return bucketToBudgetRow(bucket, amt, householdId, idx);
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
-
-    const variableRows = filled.filter(f => f.table === 'budget_categories').map(f => f.row);
-    const fixedRows = filled.filter(f => f.table === 'fixed_expenses').map(f => f.row);
-
-    if (variableRows.length > 0) {
-      await supabase.from('budget_categories').insert(variableRows as any);
-    }
-    if (fixedRows.length > 0) {
-      await supabase.from('fixed_expenses').insert(fixedRows as any);
-    }
-
-    const allMappings = filled.map(f => ({
-      household_id: householdId,
-      category_slug: f.row.slug,
-      bucket_key: f.row.slug,
-      category_kind: f.table === 'budget_categories' ? 'variable' : 'fixed',
-    }));
-    if (allMappings.length > 0) {
-      await supabase
-        .from('category_bucket_map')
-        .upsert(allMappings as any, { onConflict: 'household_id,category_slug' });
-    }
+    await persistBudgetDrafts(householdId, bucketDrafts);
   }, [skipBudgetEntirely, bucketDrafts, householdId]);
 
   const finishOnboarding = useCallback(async () => {
@@ -353,7 +271,7 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
         </div>
 
         {/* Step content */}
-        <div className="max-w-xl mx-auto px-6 py-8 pb-32">
+        <div className={`max-w-xl mx-auto px-6 py-8 ${stepId === 'budget' ? 'pb-48' : 'pb-32'}`}>
           {stepId === 'welcome' && (
             <WelcomeStep firstName={profile?.display_name?.split(' ')[0] || ''} onNext={goNext} />
           )}
@@ -390,15 +308,15 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
           )}
 
           {stepId === 'budget' && (
-            <BudgetStep
+            <BudgetBuilderStep
               buckets={visibleBuckets}
               drafts={bucketDrafts}
               setDrafts={setBucketDrafts}
               monthlyTakeHome={monthlyTakeHome}
               totalAllocated={totalAllocated}
-              skipEntirely={skipBudgetEntirely}
               onSkipEntirely={() => { setSkipBudgetEntirely(true); goNext(); }}
               onComplete={goNext}
+              continueLabel="Continue to tour"
             />
           )}
 
@@ -760,174 +678,6 @@ function PlaidStep({
             Skip — I'll connect later
           </button>
         )}
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
- * Step 5 — Budget builder (single-page)
- * ============================================================ */
-function BudgetStep({
-  buckets, drafts, setDrafts,
-  monthlyTakeHome, totalAllocated, skipEntirely, onSkipEntirely, onComplete,
-}: {
-  buckets: CfpBucket[];
-  drafts: BucketDraft[];
-  setDrafts: (d: BucketDraft[] | ((prev: BucketDraft[]) => BucketDraft[])) => void;
-  monthlyTakeHome: number;
-  totalAllocated: number;
-  skipEntirely: boolean;
-  onSkipEntirely: () => void;
-  onComplete: () => void;
-}) {
-  const allocPct = monthlyTakeHome > 0 ? (totalAllocated / monthlyTakeHome) * 100 : 0;
-  const remaining = monthlyTakeHome - totalAllocated;
-  const overAllocated = totalAllocated > monthlyTakeHome;
-
-  const updateDraft = (key: string, val: string) => {
-    setDrafts(prev => prev.map(d => d.key === key ? { ...d, amount: val } : d));
-  };
-
-  return (
-    <div>
-      <div className="w-14 h-14 rounded-2xl bg-accent/15 flex items-center justify-center mb-5">
-        <Wallet size={28} className="text-accent" />
-      </div>
-      <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
-        Build your starter budget
-      </h2>
-      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-        Enter what you want to budget for each bucket. Skip the ones that don't apply —
-        no pressure to fill them all in. You can revise everything later.
-      </p>
-
-      {/* Allocation progress bar — sticky-ish at top of the list */}
-      <div className="mt-6 bg-card rounded-xl shadow-sm p-4 border border-border/60">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Allocated
-          </p>
-          <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
-            {Math.round(allocPct)}%
-          </p>
-        </div>
-        <p className="text-lg font-display font-bold text-foreground mt-1 tabular-nums">
-          {formatCurrency(totalAllocated)}
-          <span className="text-sm font-medium text-muted-foreground"> of {formatCurrency(monthlyTakeHome)}</span>
-        </p>
-        <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              overAllocated ? 'bg-destructive' : 'bg-accent'
-            }`}
-            style={{ width: `${Math.min(allocPct, 100)}%` }}
-          />
-        </div>
-        {overAllocated ? (
-          <div className="mt-2.5 flex items-start gap-1.5 text-xs text-destructive font-medium">
-            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-            <span>You've allocated {formatCurrency(totalAllocated - monthlyTakeHome)} more than your take-home.</span>
-          </div>
-        ) : remaining > 0 && totalAllocated > 0 ? (
-          <p className="text-xs text-muted-foreground mt-2.5">
-            {formatCurrency(remaining)} left to allocate
-          </p>
-        ) : null}
-      </div>
-
-      {/* Bucket cards */}
-      <div className="mt-6 space-y-3">
-        {buckets.map(b => {
-          const draft = drafts.find(d => d.key === b.key);
-          return (
-            <BucketRow
-              key={b.key}
-              bucket={b}
-              monthlyTakeHome={monthlyTakeHome}
-              amount={draft?.amount ?? ''}
-              onChange={(v) => updateDraft(b.key, v)}
-            />
-          );
-        })}
-      </div>
-
-      <div className="mt-10 flex flex-col gap-3">
-        <button
-          onClick={onComplete}
-          className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl active:scale-[0.98] transition shadow-md flex items-center justify-center gap-2"
-        >
-          Continue to tour <ChevronRight size={18} />
-        </button>
-        <button
-          onClick={onSkipEntirely}
-          className="text-sm text-muted-foreground font-medium hover:text-foreground py-2 active:scale-95 transition"
-        >
-          I'll set this up later
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function BucketRow({
-  bucket, monthlyTakeHome, amount, onChange,
-}: {
-  bucket: CfpBucket;
-  monthlyTakeHome: number;
-  amount: string;
-  onChange: (v: string) => void;
-}) {
-  const isMin = bucket.guideline_kind === 'min';
-  const guidelineDollar = monthlyTakeHome > 0
-    ? Math.round((monthlyTakeHome * bucket.guideline_pct) / 100)
-    : 0;
-  const recommendation = isMin
-    ? `Recommended: at least ${bucket.guideline_pct}% of take-home`
-    : `Recommended: no more than ${bucket.guideline_pct}% of take-home`;
-
-  return (
-    <div className="bg-card rounded-xl shadow-sm p-4 border border-border/60">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">{bucket.label}</p>
-          <p className="text-xs text-muted-foreground leading-snug mt-0.5">{bucket.description}</p>
-        </div>
-        <div className="flex items-baseline gap-1 border-b-2 border-border focus-within:border-accent shrink-0 w-32">
-          <span className="text-base font-semibold text-muted-foreground">$</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={amount}
-            onChange={e => onChange(e.target.value)}
-            className="flex-1 w-full text-base font-semibold text-foreground bg-transparent outline-none py-1 tabular-nums text-right"
-            placeholder="0"
-          />
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-        <p className="text-[11px] text-muted-foreground">
-          {recommendation}
-          {monthlyTakeHome > 0 && (
-            <> · ~{formatCurrency(guidelineDollar)}/mo</>
-          )}
-        </p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-[11px] text-accent font-medium hover:underline active:scale-95 transition"
-              aria-label={`Why ${bucket.guideline_pct}%?`}
-            >
-              <HelpCircle size={11} />
-              Why this number?
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
-            {bucket.guideline_source}
-          </TooltipContent>
-        </Tooltip>
       </div>
     </div>
   );
