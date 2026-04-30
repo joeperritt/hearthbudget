@@ -39,25 +39,27 @@ export function ContextualAskAI({
     setMessages(next);
     setLoading(true);
     try {
+      // Edge function multi-turn requires a budgetSummary; for freeform contextual
+      // chat we collapse the conversation into the `prompt` one-shot input and
+      // pass our own systemPrompt + the page context as preface text.
+      const transcript = next
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n\n');
+      const fullPrompt = `Context (the page the user is currently looking at):\n${contextPreface}\n\nConversation so far:\n${transcript}\n\nReply as the assistant. Do not prefix with "Assistant:".`;
+
       const { data, error } = await supabase.functions.invoke('budget-insights', {
-        body: {
-          chatMessages: [
-            { role: 'system', content: systemPrompt },
-            ...next,
-          ],
-          stewardshipMode: true,
-        },
+        body: { prompt: fullPrompt, systemPrompt, stewardshipMode: true },
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
-      const reply = data?.reply ?? data?.content ?? data?.message ?? "Sorry — I couldn't generate a response.";
+      const reply = data?.content ?? data?.reply ?? "Sorry — I couldn't generate a response.";
       setMessages(m => [...m, { role: 'assistant', content: String(reply) }]);
     } catch (e: any) {
       setMessages(m => [...m, { role: 'assistant', content: `Couldn't reach the AI: ${e?.message || 'unknown error'}.` }]);
     } finally {
       setLoading(false);
     }
-  }, [messages, systemPrompt]);
+  }, [messages, systemPrompt, contextPreface]);
 
   return (
     <>
