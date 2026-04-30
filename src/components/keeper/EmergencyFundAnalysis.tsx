@@ -562,6 +562,10 @@ Generate 3 insights with nextStep actions per the system instructions.`;
           ) : (
             <p className="text-xs text-muted-foreground">Tap Generate for personalized emergency fund insights.</p>
           )}
+          <ContextualAskAI
+            contextLabel="Emergency Fund Analysis"
+            contextPreface={`The user is on the Emergency Fund Analysis page.`}
+          />
         </div>
       </div>
 

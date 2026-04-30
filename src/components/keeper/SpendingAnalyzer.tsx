@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useToolState } from "@/hooks/useToolState";
 import { useAuth } from "@/hooks/useAuth";
 import { useHouseholdFlags } from "@/hooks/useHouseholdFlags";
+import { ContextualAskAI } from "./ContextualAskAI";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
@@ -518,7 +519,14 @@ export function SpendingAnalyzer({
               </div>
             )}
 
-            {/* Sticky footer */}
+            {/* Ask AI freeform — context = the whole analyzer result */}
+            <div className="px-5 pb-2">
+              <ContextualAskAI
+                contextLabel="Budget Analyzer"
+                contextPreface={`The user just ran the Budget Analyzer (CFP bucket comparison). Result summary: ${(result?.overall_summary || '').slice(0, 800)}. Buckets: ${JSON.stringify((result?.buckets || []).map((b: any) => ({ name: b.bucket_name, planned: b.bucket_planned_total, actual: b.bucket_actual_monthly_avg, status: b.guideline_status }))).slice(0, 1500)}.`}
+                className="flex justify-center"
+              />
+            </div>
             {/* Sticky footer */}
             <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-5 py-3 flex items-center justify-end gap-2">
               <Button size="sm" onClick={() => onOpenChange(false)}>

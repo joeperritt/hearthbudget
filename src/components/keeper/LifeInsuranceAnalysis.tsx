@@ -720,6 +720,10 @@ Generate exactly 3 insights with nextStep actions per the system instructions.`;
           ) : (
             !aiError && <p className="text-xs text-muted-foreground">Tap Generate for personalized life insurance insights.</p>
           )}
+          <ContextualAskAI
+            contextLabel="Life Insurance Analysis"
+            contextPreface={`The user is on the Life Insurance Analysis page.`}
+          />
         </div>
       </div>
 
