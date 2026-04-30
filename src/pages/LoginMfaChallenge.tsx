@@ -12,6 +12,7 @@ type Mode = 'totp' | 'recovery';
 export default function LoginMfaChallenge() {
   const { pendingMfa, cancelMfaChallenge, completeMfaChallenge } = useAuth();
   const [mode, setMode] = useState<Mode>('totp');
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
