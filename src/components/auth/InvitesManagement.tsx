@@ -106,7 +106,6 @@ export function InvitesManagement() {
       <div className="bg-card rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-display text-base font-semibold text-foreground">Generate invite</h3>
 
-        <div className="space-y-2">
         {isSystemAdmin ? (
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invite type</label>
