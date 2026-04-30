@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle, Smartphone, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { DisableMfaDialog } from '@/components/auth/DisableMfaDialog';
 import { useAdminMfaGraceState } from '@/components/auth/AdminMfaBanner';
+import { getTrustedDeviceToken, clearTrustedDeviceToken } from '@/lib/trustedDevice';
 
 interface SecurityViewProps {
   onBack: () => void;
