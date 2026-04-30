@@ -313,7 +313,7 @@ export function BudgetTabView({
               needs_budget_setup: false,
               budget_setup_dismissed: true,
             });
-            void homeCardsState; // satisfy linter; state read above
+            
             toast.success('Budget saved!');
             setBuilderOpen(false);
             // Soft-reload to pick up the new categories/fixed expenses.
