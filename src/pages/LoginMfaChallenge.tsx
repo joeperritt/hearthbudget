@@ -265,6 +265,18 @@ export default function LoginMfaChallenge() {
             </div>
           )}
 
+
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberDevice}
+              onChange={e => setRememberDevice(e.target.checked)}
+              disabled={submitting || isLocked}
+              className="w-4 h-4 rounded border-border text-accent focus:ring-accent/30"
+            />
+            <span>Remember this device for 60 days</span>
+          </label>
+
           <button
             type="submit"
             disabled={!canSubmit}
