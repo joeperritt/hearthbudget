@@ -124,11 +124,12 @@ interface SpendingViewProps {
   variableSpent: number;
   fixedTotal: number;
   fixedSpent: number;
+  onEditBudget?: () => void;
 }
 
 export function SpendingView({
   categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
-  totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent,
+  totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent, onEditBudget,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
 
