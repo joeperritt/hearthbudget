@@ -265,7 +265,7 @@ const Index = () => {
   }, [accounts, monthTransactions, assignedCategoryIds]);
 
   const totalPayoffs = useMemo(
-    () => monthTransactions.filter(t => accounts.some(a => a.type === 'credit_card' && a.id === t.account) && t.transactionType === 'cc-payment').reduce((s, t) => s + Math.abs(t.amount), 0),
+    () => monthTransactions.filter(t => accounts.some(a => a.type === 'credit_card' && a.id === t.account) && t.transactionType === 'cc-payment' && t.categoryId !== USER_IGNORE_CATEGORY).reduce((s, t) => s + Math.abs(t.amount), 0),
     [monthTransactions, accounts]
   );
 

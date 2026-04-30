@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { format, differenceInDays, startOfMonth, addMonths, formatDistanceToNow } from 'date-fns';
 import { ProgressBar } from './ProgressBar';
 import { Plus, Inbox, RefreshCw, CreditCard, Building2, BarChart3, ChevronDown, ChevronUp, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
-import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY } from '@/types/budget';
+import { Transaction, AccountSource, BudgetCategory, FixedExpense, CC_PAYMENT_CATEGORY, IGNORE_CATEGORY_SLUGS } from '@/types/budget';
 import { CategoryCarousel } from './CategoryCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
@@ -477,11 +477,17 @@ export function Dashboard({
   const creditAccounts = accounts.filter(a => a.type === 'credit_card');
   const checkingAccounts = accounts.filter(a => a.type === 'checking');
 
+  // Source-of-truth ignore filter — matches Index.isExcluded category-id checks.
+  // Any transaction the user (or auto-detection) marked as "ignore" must be
+  // FULLY excluded from every aggregate on the snapshot, the same way the
+  // Spending tab and Budget tab math handle them.
+  const isIgnored = (t: Transaction) => IGNORE_CATEGORY_SLUGS.has(t.categoryId);
+
   // Credit card spending by sub-account
   const creditRows = useMemo(() => {
     return creditAccounts.map(acct => {
       const spent = monthTransactions
-        .filter(t => t.account === acct.id && t.transactionType === 'expense')
+        .filter(t => t.account === acct.id && t.transactionType === 'expense' && !isIgnored(t))
         .reduce((s, t) => s + t.amount, 0);
       return { label: acct.label, value: spent };
     });
@@ -492,7 +498,7 @@ export function Dashboard({
   // CC payments (payoffs) — money going back
   const creditPayoffs = useMemo(() => {
     return monthTransactions
-      .filter(t => creditAccounts.some(a => a.id === t.account) && t.transactionType === 'cc-payment')
+      .filter(t => creditAccounts.some(a => a.id === t.account) && t.transactionType === 'cc-payment' && !isIgnored(t))
       .reduce((s, t) => s + Math.abs(t.amount), 0);
   }, [monthTransactions, creditAccounts]);
 
@@ -501,14 +507,15 @@ export function Dashboard({
   // Checking spending
   const checkingSpent = useMemo(() => {
     return monthTransactions
-      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'expense')
+      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'expense' && !isIgnored(t))
       .reduce((s, t) => s + t.amount, 0);
   }, [monthTransactions, checkingAccounts]);
 
-  // Checking deposits toward budget
+  // Checking deposits toward budget — exclude any deposit the user ignored
+  // (e.g. a paycheck that's already accounted for elsewhere).
   const checkingDeposits = useMemo(() => {
     return monthTransactions
-      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'deposit')
+      .filter(t => checkingAccounts.some(a => a.id === t.account) && t.transactionType === 'deposit' && !isIgnored(t))
       .reduce((s, t) => s + Math.abs(t.amount), 0);
   }, [monthTransactions, checkingAccounts]);
 
@@ -517,7 +524,7 @@ export function Dashboard({
   // Overall totals — gross spending across all accounts (excludes CC payments, which are internal transfers)
   const overallSpent = useMemo(() => {
     return monthTransactions
-      .filter(t => t.transactionType === 'expense')
+      .filter(t => t.transactionType === 'expense' && !isIgnored(t))
       .reduce((s, t) => s + Math.abs(t.amount), 0);
   }, [monthTransactions]);
 
@@ -525,12 +532,18 @@ export function Dashboard({
   // (checking deposits + credit card refunds/credits + CC payments received on the credit side)
   const overallDeposits = useMemo(() => {
     return monthTransactions
-      .filter(t => t.transactionType === 'deposit' || t.transactionType === 'cc-payment')
+      .filter(t => (t.transactionType === 'deposit' || t.transactionType === 'cc-payment') && !isIgnored(t))
       .reduce((s, t) => s + Math.abs(t.amount), 0);
   }, [monthTransactions]);
 
   const overallNet = overallSpent - overallDeposits;
-  const budgetDifference = totalBudget - overallNet;
+  // Over/Under Budget must match the Budget tab exactly. Use the reconciled
+  // category-level "spent" value passed in from Index (totalVariableSpent +
+  // totalFixedSpent), which already filters ignored transactions and handles
+  // transfer adjustments. Fallback to overallNet only if the prop isn't
+  // provided (legacy callers).
+  const totalSpentForBudget = totalVariableSpent + totalFixedSpent;
+  const budgetDifference = totalBudget - totalSpentForBudget;
 
   // Colors — lighter blue & gold theme
   const spentColor = 'hsl(220 42% 38%)';
