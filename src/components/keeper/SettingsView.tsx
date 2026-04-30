@@ -1382,6 +1382,14 @@ export function SettingsView({
     );
   }
 
+  // Resolve the two household member display names so the "Joe's / Katie's"
+  // labels and avatar bubbles use the actual users' names instead of
+  // hardcoded copy.
+  const primaryName = profile?.display_name || 'You';
+  const partnerName = partnerDisplayName || 'Partner';
+  const primaryInitial = (primaryName[0] || 'U').toUpperCase();
+  const partnerInitial = (partnerName[0] || 'P').toUpperCase();
+
   return (
     <>
       <div className="max-w-lg mx-auto pb-28">
@@ -1394,23 +1402,6 @@ export function SettingsView({
             {isEditableMonth ? 'Edit categories & budget amounts' : 'Past month overview'}
           </p>
         </div>
-        {scopePromptDrawer}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="max-w-lg mx-auto pb-28">
-        <div className="px-6 pt-12 safe-top">
-          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
-            <ArrowLeft size={16} /> Back
-          </button>
-          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget Planning</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
-          </p>
-        </div>
 
         <div className="px-6 mt-6 pb-6">
           {/* Profiles */}
@@ -1418,13 +1409,15 @@ export function SettingsView({
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">{primaryInitial}</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">{primaryName}</p>
               </div>
-              <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
-              </div>
+              {partnerDisplayName && (
+                <div className="flex-1 text-center">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">{partnerInitial}</div>
+                  <p className="text-sm font-medium text-foreground mt-1.5">{partnerName}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1445,8 +1438,8 @@ export function SettingsView({
           </div>
 
           {/* Content based on month */}
-          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-          {isFutureMonth && renderFutureMonth()}
+          {isPastMonth && renderReadOnlyMonth()}
+          {isEditableMonth && renderFutureMonth()}
 
           {/* Log Out */}
           <div className="mt-12 mb-8">
