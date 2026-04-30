@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { RetirementInsightsSection } from './RetirementInsightsSection';
+import { ContextualAskAI } from './ContextualAskAI';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -1438,12 +1439,18 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile, on
 
       {/* AI Insights */}
       {currentAge > 0 && (
-        <RetirementInsightsSection
-          householdId={householdId}
-          retirementPicture={retirementPicture}
-          financialProfile={financialProfile}
-          navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
-        />
+        <>
+          <RetirementInsightsSection
+            householdId={householdId}
+            retirementPicture={retirementPicture}
+            financialProfile={financialProfile}
+            navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
+          />
+          <ContextualAskAI
+            contextLabel="Retirement Planner"
+            contextPreface={`The user is on the Retirement Planner. Current age ${currentAge}. Retirement picture: ${JSON.stringify(retirementPicture).slice(0, 1500)}.`}
+          />
+        </>
       )}
 
       {/* Expense Estimator Modal */}

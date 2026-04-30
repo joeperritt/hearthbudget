@@ -6,6 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { DebtInsightsSection } from './DebtInsightsSection';
+import { ContextualAskAI } from './ContextualAskAI';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
@@ -546,6 +547,10 @@ export function DebtPayoffCalculator({ onBack, householdId, onNavigateToProfile,
             extraPayment={extraNeeded}
             financialProfile={financialProfile}
             navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
+          />
+          <ContextualAskAI
+            contextLabel="Debt Payoff Analyzer"
+            contextPreface={`The user is on the Debt Payoff Analyzer. They have ${debts.length} debts. Extra monthly payment: ${extraNeeded}. Roll forward: ${toolState.rollForward ? 'on' : 'off'}.`}
           />
         </>
       )}

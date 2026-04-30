@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import { ContextualAskAI } from './ContextualAskAI';
 import type { PlanToolId } from '@/lib/aiNavigation';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';

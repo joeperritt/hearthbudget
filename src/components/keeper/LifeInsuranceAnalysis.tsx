@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ageFromDob, yearsUntilAge } from '@/lib/ageUtils';
 import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
 import { AIInsightsList, parseAIInsights, AIInsight } from './AIInsightsList';
+import { ContextualAskAI } from './ContextualAskAI';
 import type { AINavigationHandlers, PlanToolId } from '@/lib/aiNavigation';
 
 function fmt(n: number) {
