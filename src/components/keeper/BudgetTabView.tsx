@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { AlertCircle, Info, Pencil, Sparkles, Tags } from 'lucide-react';
+import { AlertCircle, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
@@ -11,6 +11,12 @@ import { BucketMappingSheet } from './BucketMappingSheet';
 import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomeCards } from '@/hooks/useHomeCards';
+import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
+import { CFP_BUCKETS } from '@/lib/cfpBuckets';
+import { BudgetBuilderStep, persistBudgetDrafts, type BucketCategoryDraft } from './BudgetBuilderStep';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
