@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  getTrustedDeviceToken,
+  setTrustedDeviceToken,
+  clearTrustedDeviceToken,
+} from '@/lib/trustedDevice';
 
 interface Profile {
   id: string;
