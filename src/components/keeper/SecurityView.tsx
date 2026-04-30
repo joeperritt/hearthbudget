@@ -354,6 +354,18 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           )}
         </section>
 
+        {/* ===== Trusted devices section ===== */}
+        {hasVerifiedFactor && (
+          <section>
+            <h2 className="font-display text-lg font-semibold text-foreground mb-2">Trusted devices</h2>
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Devices where you chose "Remember this device" skip the two-factor prompt for 60 days.
+              Revoke any device you no longer use or trust.
+            </p>
+            <TrustedDevicesSection userId={user?.id} />
+          </section>
+        )}
+
         {/* ===== Sign-out-others section (existing) ===== */}
         <section>
           <h2 className="font-display text-lg font-semibold text-foreground mb-2">Other devices</h2>
