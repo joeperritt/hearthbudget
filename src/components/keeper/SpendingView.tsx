@@ -153,34 +153,39 @@ export function SpendingView({
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
       </div>
 
-      {/* Header row: Total Monthly Budget + Variable/Fixed summaries */}
-      <div className="px-6 mt-4 mb-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-stretch">
-        <div className="animate-fade-up mb-4 lg:mb-0" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
-          <div className="bg-primary rounded-xl p-5 shadow-lg h-full">
-            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
-            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
+      {/* Variable Budget focused summary — Spending tab is about variable spending behavior */}
+      <div className="px-6 mt-4 mb-4">
+        <div className="animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
+          <div className="bg-primary rounded-xl p-5 shadow-lg">
+            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Variable Budget</p>
+            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(variableBudget)}</p>
             <div className="mt-4">
               <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
-                <span>{formatCurrency(totalSpent)} committed</span>
-                {totalSpent > totalBudget ? (
-                  <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over budget</span>
+                <span>{formatCurrency(variableSpent)} spent</span>
+                {variableSpent > variableBudget ? (
+                  <span className="text-destructive-foreground font-semibold">-{formatCurrency(variableSpent - variableBudget)} over</span>
                 ) : (
-                  <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
+                  <span>{formatCurrency(variableBudget - variableSpent)} remaining</span>
                 )}
               </div>
               <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-accent transition-all duration-500"
-                  style={{ width: `${Math.min((totalSpent / totalBudget) * 100, 100)}%` }}
+                  style={{ width: `${variableBudget > 0 ? Math.min((variableSpent / variableBudget) * 100, 100) : 0}%` }}
                 />
               </div>
+              {(() => {
+                const now = new Date();
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const daysLeft = Math.max(0, lastDay - now.getDate());
+                return (
+                  <p className="text-[11px] text-primary-foreground/60 mt-2.5">
+                    {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left in the month
+                  </p>
+                );
+              })()}
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <SummaryCard label="Variable" budgeted={variableBudget} spent={variableSpent} delay={100} />
-          <SummaryCard label="Fixed" budgeted={fixedTotal} spent={fixedSpent} delay={150} />
         </div>
       </div>
 
