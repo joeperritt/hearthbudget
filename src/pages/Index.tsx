@@ -19,7 +19,7 @@ import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
 import { ProfileTab } from '@/components/keeper/ProfileTab';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
-// AIAdvisorView removed — replaced by contextual Ask AI buttons
+import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
 import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
@@ -155,6 +155,8 @@ const Index = () => {
   const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
+  const [askAIOpen, setAskAIOpen] = useState(false);
+  const [askAIContext, setAskAIContext] = useState<{ label: string; preface: string }>({ label: '', preface: '' });
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
