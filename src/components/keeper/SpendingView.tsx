@@ -215,7 +215,7 @@ export function SpendingView({
           ] as const).map(({ label, items }) => items.length > 0 && (
             <div key={label}>
               <SectionLabel label={label} delay={(delay++) * 40} />
-              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                 {items.map(c => (
                   <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
                     onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
@@ -233,7 +233,7 @@ export function SpendingView({
           ] as const).map(({ label, items }) => items.length > 0 && (
             <div key={label}>
               <SectionLabel label={label} delay={(delay++) * 40} />
-              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                 {items.map((e, i) => (
                   <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
                     onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />

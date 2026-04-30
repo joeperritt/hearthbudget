@@ -635,7 +635,7 @@ export function SettingsView({
             ] as const).map(({ label, items }) => items.length > 0 && (
               <div key={label} className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {items.map(c => renderCatRow(c))}
                 </div>
               </div>
@@ -660,7 +660,7 @@ export function SettingsView({
             {fixedBillsRO.length > 0 && (
               <div className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {fixedBillsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
               </div>
@@ -685,7 +685,7 @@ export function SettingsView({
             {savingsRO.length > 0 && (
               <div className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Savings</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {savingsRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
               </div>
@@ -693,7 +693,7 @@ export function SettingsView({
             {savingsVarCatsRO.length > 0 && (
               <div className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Variable Savings</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {savingsVarCatsRO.map(c => renderCatRow(c))}
                 </div>
               </div>
@@ -718,7 +718,7 @@ export function SettingsView({
             {titheRO.length > 0 && (
               <div className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fixed Tithe</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {titheRO.map(e => renderCatRow({ id: e.id, name: e.name, budgeted: e.amount }, true))}
                 </div>
               </div>
@@ -726,7 +726,7 @@ export function SettingsView({
             {givingCats.length > 0 && (
               <div className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Variable Giving</h4>
-                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                   {givingCats.map(c => renderCatRow(c))}
                 </div>
               </div>
@@ -883,7 +883,7 @@ export function SettingsView({
                       </Popover>
                     )}
                   </p>
-                  <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+                  <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                     {cats.map((c, idx) => (
                       <div key={c.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                         <div className="flex items-center gap-2">
@@ -966,7 +966,7 @@ export function SettingsView({
                   </PopoverContent>
                 </Popover>
               </h3>
-              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                 {fixedBills.map((e, idx) => (
                   <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
@@ -1048,7 +1048,7 @@ export function SettingsView({
                   </PopoverContent>
                 </Popover>
               </h3>
-              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                 {savingsBuckets.map((e) => (
                   <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
@@ -1180,7 +1180,7 @@ export function SettingsView({
                   </PopoverContent>
                 </Popover>
               </h3>
-              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+              <div className="bg-card rounded-lg shadow-sm divide-y divide-border overflow-hidden lg:bg-transparent lg:shadow-none lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
                 {titheItems.map((e) => (
                   <div key={e.id} className="px-3 py-2.5 lg:bg-card lg:rounded-lg lg:border lg:border-border/60 lg:shadow-sm lg:p-4">
                     <div className="flex items-center gap-2">
