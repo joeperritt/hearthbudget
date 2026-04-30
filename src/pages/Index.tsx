@@ -627,7 +627,19 @@ const Index = () => {
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
           <ProfileTab onSelect={tab => {
+            // 'budget-setup' jumps into the (now hidden) Budget tab
+            if (tab === 'budget-setup') { setBudgetSubView('main'); setActiveTab('budget'); return; }
+            // 'plan' menu still routes to the Plan tab
             if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
+            // Plan tools surfaced inline in More — open them under the Plan tab
+            // so the existing back-navigation lands the user on the plan menu.
+            // After the user backs out of a plan tool we route them back to More.
+            const planTools = ['emergency-fund', 'savings-goals', 'retirement', 'mortgage-analyzer', 'debt-payoff', 'life-insurance'];
+            if (planTools.includes(tab)) {
+              setPlanSubView(tab as PlanSubView);
+              setActiveTab('plan');
+              return;
+            }
             setProfileSubView(tab as ProfileSubView);
           }} householdId={householdId} />
         )}
