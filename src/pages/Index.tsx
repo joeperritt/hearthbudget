@@ -579,7 +579,7 @@ const Index = () => {
           />
         )}
 
-        {/* Budget Tab */}
+        {/* Budget Tab (now lives inside More) */}
         {activeTab === 'budget' && budgetSubView === 'main' && (
           <BudgetTabView
             categories={categories}
@@ -599,13 +599,14 @@ const Index = () => {
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
             onOpenProfile={() => {
+              if (budgetEntryFromMore) setBudgetEntryFromMore(false);
               setProfileSubView('menu');
               setActiveTab('profile');
             }}
           />
         )}
 
-        {/* Plan Tab */}
+        {/* Plan Tab (now lives inside More) */}
         {activeTab === 'plan' && planSubView === 'menu' && (
           <PlanView
             householdId={householdId}
@@ -619,10 +620,16 @@ const Index = () => {
           />
         )}
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
+          <CFPProfileView onBack={() => {
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            else setPlanSubView('menu');
+          }} householdId={householdId} initialTab={profileInitialTab} />
         )}
         {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
-          renderTool(planSubView, () => setPlanSubView('menu'))
+          renderTool(planSubView, () => {
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            else setPlanSubView('menu');
+          })
         )}
         {activeTab === 'plan' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(planSubView) && (
           renderTool(planSubView, () => setPlanSubView('calculators'))
