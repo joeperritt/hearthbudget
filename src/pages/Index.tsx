@@ -19,7 +19,7 @@ import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
 import { ProfileTab } from '@/components/keeper/ProfileTab';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
-import { AIAdvisorView } from '@/components/keeper/AIAdvisorView';
+import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
 import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
@@ -47,7 +47,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'emergency-fund' | 'savings-goals' | 'retirement'
   | 'mortgage-shopping' | 'car-loan';
 
-type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'ai-advisor' | 'trends'
+type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
 
 const Index = () => {
@@ -155,6 +155,8 @@ const Index = () => {
   const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
+  const [askAIOpen, setAskAIOpen] = useState(false);
+  const [askAIContext, setAskAIContext] = useState<{ label: string; preface: string }>({ label: '', preface: '' });
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -522,6 +524,14 @@ const Index = () => {
                 lastUpdated={insightsLastUpdated}
                 hasCached={insightsHasCached}
                 onGenerate={generateInsights}
+                onAskAI={() => {
+                  clearChat();
+                  setAskAIContext({
+                    label: `${monthLabel} budget — Home insights`,
+                    preface: `The user is on the Home tab looking at insights for ${monthLabel}. Total budget ${totalBudget.toFixed(2)}, variable spent ${totalVariableSpent.toFixed(2)} of ${totalVariableBudget.toFixed(2)}, fixed spent ${allFixedSpent.toFixed(2)} of ${totalFixedAll.toFixed(2)}.`,
+                  });
+                  setAskAIOpen(true);
+                }}
               />
             }
           />
@@ -543,6 +553,7 @@ const Index = () => {
             variableSpent={totalVariableSpent}
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
+            onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
           />
         )}
         {activeTab === 'transactions' && (
@@ -614,7 +625,10 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
-          <ProfileTab onSelect={tab => setProfileSubView(tab as ProfileSubView)} householdId={householdId} />
+          <ProfileTab onSelect={tab => {
+            if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
+            setProfileSubView(tab as ProfileSubView);
+          }} householdId={householdId} />
         )}
         {activeTab === 'profile' && profileSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => setProfileSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
@@ -622,20 +636,7 @@ const Index = () => {
         {activeTab === 'profile' && profileSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
-        {activeTab === 'profile' && profileSubView === 'ai-advisor' && (
-          <AIAdvisorView
-            bigPictureInsights={bigPictureInsights}
-            bigPictureLoading={bigPictureLoading}
-            bigPictureError={bigPictureError}
-            bigPictureLastUpdated={bigPictureLastUpdated}
-            bigPictureHasCached={bigPictureHasCached}
-            onGenerateBigPicture={generateBigPicture}
-            chatMessages={chatMessages}
-            chatLoading={chatLoading}
-            onSendMessage={sendChatMessage}
-            onBack={() => setProfileSubView('menu')}
-          />
-        )}
+        {/* AI Advisor removed — use contextual Ask AI buttons instead */}
         {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
@@ -712,6 +713,16 @@ const Index = () => {
           transferAdjustments={transferAdjustments}
         />
       )}
+
+      <AskAIChatSheet
+        open={askAIOpen}
+        onOpenChange={(o) => { setAskAIOpen(o); if (!o) clearChat(); }}
+        contextLabel={askAIContext.label}
+        contextPreface={askAIContext.preface}
+        chatMessages={chatMessages}
+        chatLoading={chatLoading}
+        onSendMessage={sendChatMessage}
+      />
     </div>
   );
 };

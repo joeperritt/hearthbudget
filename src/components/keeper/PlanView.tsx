@@ -168,39 +168,23 @@ export function PlanView({ householdId, onNavigate }: PlanViewProps) {
         <p className="text-sm text-muted-foreground mt-0.5">Your complete financial picture</p>
       </div>
 
-      {/* Financial Profile Banner */}
-      <div className="px-6 mt-6">
-        <button
-          onClick={() => onNavigate('financial-profile')}
-          className="w-full flex items-center gap-4 bg-primary rounded-xl p-4 shadow-md text-left active:scale-[0.98] transition-transform"
-        >
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${profileComplete ? 'bg-green-500/20' : 'bg-accent/20'}`}>
-            {profileComplete ? <CheckCircle2 size={22} className="text-green-400" /> : <Shield size={22} className="text-accent" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-bold ${profileComplete ? 'text-primary-foreground' : 'text-accent'}`}>
-              {profileComplete ? 'Financial Profile — Up to date' : 'Complete your Financial Profile'}
+      {/* Financial Profile lives under More now. Keep a slim "Edit profile" link for convenience. */}
+      {!profileComplete && (
+        <div className="px-6 mt-6">
+          <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 flex items-center gap-3">
+            <Shield size={18} className="text-accent shrink-0" />
+            <p className="text-xs text-foreground flex-1">
+              Some tools are locked until your Financial Profile is complete ({filled} of {total}).
             </p>
-            <p className="text-xs text-primary-foreground/70 mt-0.5">
-              {profileComplete ? 'Powering your personalized insights' : 'Required for personalized insights'}
-            </p>
-            {!profileComplete && (
-              <div className="flex items-center gap-2 mt-2">
-                <div className="flex-1 h-1.5 bg-primary-foreground/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${profilePct}%` }} />
-                </div>
-                <span className="text-[10px] text-primary-foreground/60 font-medium">{filled} of {total}</span>
-              </div>
-            )}
+            <button
+              onClick={() => onNavigate('financial-profile')}
+              className="text-xs font-semibold text-accent whitespace-nowrap active:opacity-70"
+            >
+              Edit profile
+            </button>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[10px] text-primary-foreground/60 font-medium whitespace-nowrap">
-              {profilePct}% complete{profileUpdated ? ` · ${formatLastVisited(profileUpdated)}` : ''}
-            </span>
-            <ChevronRight size={16} className="text-accent" />
-          </div>
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Financial Insights — inline list */}
       <div className="px-6 mt-6">

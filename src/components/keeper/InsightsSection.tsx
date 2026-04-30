@@ -17,9 +17,10 @@ interface InsightsSectionProps {
   lastUpdated: Date | null;
   hasCached: boolean;
   onGenerate: () => void;
+  onAskAI?: () => void;
 }
 
-export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate }: InsightsSectionProps) {
+export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate, onAskAI }: InsightsSectionProps) {
   const displayInsights = insights.slice(0, 3);
   const ageDays = lastUpdated ? differenceInDays(new Date(), lastUpdated) : 0;
   const isStale = lastUpdated && ageDays >= 7;
@@ -138,6 +139,18 @@ export function InsightsSection({ insights, loading, error, lastUpdated, hasCach
             </p>
           )}
         </>
+      )}
+
+      {onAskAI && (
+        <div className="mt-3 flex justify-center">
+          <button
+            onClick={onAskAI}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent text-xs font-semibold active:scale-[0.98] transition-transform hover:bg-accent/15"
+          >
+            <Sparkles size={13} />
+            Ask AI anything about your budget or plan
+          </button>
+        </div>
       )}
     </div>
   );
