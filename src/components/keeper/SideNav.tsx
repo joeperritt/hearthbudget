@@ -1,13 +1,11 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, CalendarDays, Compass, LogOut, MoreHorizontal } from 'lucide-react';
+import { Home, Wallet, List, LogOut, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'variable', label: 'Spending', icon: Wallet },
+  { id: 'variable', label: 'Categories', icon: Wallet },
   { id: 'transactions', label: 'Activity', icon: List },
-  { id: 'budget', label: 'Budget', icon: CalendarDays },
-  { id: 'plan', label: 'Plan', icon: Compass },
   { id: 'profile', label: 'More', icon: MoreHorizontal },
 ];
 
@@ -23,6 +21,9 @@ interface SideNavProps {
 
 export function SideNav({ activeTab, onTabChange, activeProfileItem }: SideNavProps) {
   const { signOut } = useAuth();
+  // Budget / Plan tabs live inside More now — when the user is in those, we
+  // still want More to look active in the side nav.
+  const navActive = (activeTab === 'budget' || activeTab === 'plan') ? 'profile' : activeTab;
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-[220px] bg-card/60 border-r border-border flex-col z-40 safe-top overflow-y-auto">
       <div className="px-6 pt-8 pb-6 flex items-center gap-3">
@@ -36,7 +37,7 @@ export function SideNav({ activeTab, onTabChange, activeProfileItem }: SideNavPr
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-3">Main</p>
         <div className="space-y-1">
           {tabs.map(({ id, label, icon: Icon }) => {
-            const active = activeTab === id && !activeProfileItem;
+            const active = navActive === id && !activeProfileItem;
             return (
               <button
                 key={id}
