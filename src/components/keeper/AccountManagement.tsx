@@ -24,8 +24,11 @@ export function AccountManagement() {
   const [addName, setAddName] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addPassword, setAddPassword] = useState('');
-  const [addInitial, setAddInitial] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Auto-derived initial from display name (first letter, uppercase). Falls
+  // back to email's first letter if no name is entered.
+  const derivedInitial = (addName.trim() || addEmail.trim()).charAt(0).toUpperCase() || '?';
 
   // Edit user
   const [editUserId, setEditUserId] = useState<string | null>(null);
@@ -60,7 +63,7 @@ export function AccountManagement() {
         email: addEmail.trim(),
         password: addPassword,
         display_name: addName.trim() || addEmail.trim(),
-        avatar_initial: addInitial.trim() || (addName.trim() || addEmail.trim()).charAt(0).toUpperCase(),
+        avatar_initial: derivedInitial,
       },
     });
     setSaving(false);
@@ -69,7 +72,7 @@ export function AccountManagement() {
     } else {
       toast({ title: 'User created' });
       setShowAdd(false);
-      setAddName(''); setAddEmail(''); setAddPassword(''); setAddInitial('');
+      setAddName(''); setAddEmail(''); setAddPassword('');
       fetchUsers();
     }
   };
@@ -194,24 +197,44 @@ export function AccountManagement() {
 
       {/* Add User */}
       {showAdd ? (
-        <div className="mt-3 bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
-          <div className="flex gap-2">
-            <input value={addInitial} onChange={e => setAddInitial(e.target.value)} maxLength={2} placeholder="Initial"
-              className="w-12 px-2 py-2 text-center text-sm rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" />
-            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Display Name"
-              className="flex-1 px-3 py-2 text-sm rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" autoFocus />
+        <div className="mt-3 bg-card border border-border rounded-xl p-5 space-y-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base font-semibold shrink-0">
+              {derivedInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Add a household member</p>
+              <p className="text-[11px] text-muted-foreground">They'll be able to view and edit the budget alongside you.</p>
+            </div>
           </div>
-          <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="Email" type="email"
-            className="w-full px-3 py-2 text-sm rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" />
-          <input value={addPassword} onChange={e => setAddPassword(e.target.value)} placeholder="Password" type="password"
-            className="w-full px-3 py-2 text-sm rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" />
-          <div className="flex gap-2">
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Display name</label>
+            <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="e.g. Katie"
+              className="w-full px-3 py-2.5 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" autoFocus />
+            <p className="text-[10px] text-muted-foreground">Avatar initial auto-set to "{derivedInitial}".</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Email</label>
+            <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="name@example.com" type="email"
+              className="w-full px-3 py-2.5 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Temporary password</label>
+            <input value={addPassword} onChange={e => setAddPassword(e.target.value)} placeholder="At least 8 characters" type="password"
+              className="w-full px-3 py-2.5 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-accent/30" />
+            <p className="text-[10px] text-muted-foreground">Share this with them and they can change it on first login.</p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
             <button onClick={handleAdd} disabled={saving || !addEmail.trim() || !addPassword.trim()}
-              className="flex-1 py-2 rounded-lg bg-accent text-accent-foreground text-xs font-semibold active:scale-[0.98] transition-transform disabled:opacity-50">
-              Add User
+              className="flex-1 py-2.5 rounded-lg bg-accent text-accent-foreground text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-50">
+              {saving ? 'Adding…' : 'Add User'}
             </button>
             <button onClick={() => setShowAdd(false)}
-              className="px-4 py-2 rounded-lg bg-card border border-border text-xs font-medium text-muted-foreground active:scale-[0.98] transition-transform">
+              className="px-4 py-2.5 rounded-lg bg-card border border-border text-sm font-medium text-muted-foreground active:scale-[0.98] transition-transform">
               Cancel
             </button>
           </div>

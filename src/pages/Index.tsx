@@ -17,6 +17,8 @@ import { CategoryDetail } from '@/components/keeper/CategoryDetail';
 
 import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
 import { ProfileTab } from '@/components/keeper/ProfileTab';
+import { ManageUsersView } from '@/components/keeper/ManageUsersView';
+import { PlanToolsView } from '@/components/keeper/PlanToolsView';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
 import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
@@ -48,7 +50,8 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
   | 'mortgage-shopping' | 'car-loan';
 
 type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
-  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security';
+  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security'
+  | 'manage-users' | 'plan-tools';
 
 const Index = () => {
   const {
@@ -637,31 +640,37 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
-          <ProfileTab onSelect={(tab, profileTabHint) => {
+          <ProfileTab onSelect={(tab) => {
             if (tab === 'budget-setup') {
               setBudgetEntryFromMore(true);
               setBudgetSubView('main');
               setActiveTab('budget');
               return;
             }
-            if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
-            const planTools = ['emergency-fund', 'savings-goals', 'retirement', 'mortgage-analyzer', 'debt-payoff', 'life-insurance', 'financial-profile'];
-            if (planTools.includes(tab)) {
-              // When deep-linking into Financial Profile from a locked tool,
-              // preselect the relevant FP tab so the user lands on the
-              // missing section.
-              if (tab === 'financial-profile' && profileTabHint) {
-                setProfileInitialTab(profileTabHint as ProfileTab);
-              } else {
-                setProfileInitialTab(undefined);
-              }
-              setPlanEntryFromMore(true);
-              setPlanSubView(tab as PlanSubView);
-              setActiveTab('plan');
-              return;
-            }
+            // Everything else is a sub-view inside the More tab.
             setProfileSubView(tab as ProfileSubView);
           }} householdId={householdId} />
+        )}
+        {activeTab === 'profile' && profileSubView === 'manage-users' && (
+          <ManageUsersView householdId={householdId} onBack={() => setProfileSubView('menu')} />
+        )}
+        {activeTab === 'profile' && profileSubView === 'plan-tools' && (
+          <PlanToolsView
+            householdId={householdId}
+            onBack={() => setProfileSubView('menu')}
+            onSelect={(toolId, hint) => {
+              if (toolId === 'financial-profile') {
+                setProfileInitialTab(hint as ProfileTab | undefined);
+                setPlanEntryFromMore(true);
+                setPlanSubView('financial-profile');
+                setActiveTab('plan');
+              } else {
+                setPlanEntryFromMore(true);
+                setPlanSubView(toolId as PlanSubView);
+                setActiveTab('plan');
+              }
+            }}
+          />
         )}
         {activeTab === 'profile' && profileSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => setProfileSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
