@@ -107,6 +107,11 @@ export function TransactionsView({
   // Re-apply when navigating in with a new initialFilter (e.g., from Home → Unassigned link)
   useEffect(() => { if (initialFilter) setFilter(initialFilter); }, [initialFilter]);
   const [showTransfers, setShowTransfers] = useState(true);
+  // Pagination — render the most recent N rows, reveal more in 50-row chunks.
+  // Filter changes / month switches reset back to the initial page size.
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, monthLabel, showTransfers]);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
   type SortKey = 'date' | 'amount' | 'account' | 'category';
   const [sortKey, setSortKey] = useState<SortKey>('date');
