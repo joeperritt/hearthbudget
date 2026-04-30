@@ -414,7 +414,7 @@ export function TransactionsView({
                 );
               })()}
             </div>
-            {rows.map((row, i) => {
+            {rows.slice(0, visibleCount).map((row, i) => {
               if (row.type === 'transfer') {
                 return renderTransfer(row.transfer, i);
               }
@@ -475,6 +475,19 @@ export function TransactionsView({
                 </div>
               );
             })}
+          </div>
+        )}
+        {rows.length > visibleCount && (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <button
+              onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              className="px-5 py-2 rounded-full bg-card text-foreground text-xs font-semibold shadow-sm border border-border active:scale-95 transition-transform"
+            >
+              Show 50 more
+            </button>
+            <p className="text-[10px] text-muted-foreground">
+              Showing {visibleCount} of {rows.length}
+            </p>
           </div>
         )}
       </div>
