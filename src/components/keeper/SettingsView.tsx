@@ -1366,13 +1366,15 @@ export function SettingsView({
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">{(primaryLabel[0] || 'U').toUpperCase()}</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">{primaryLabel}</p>
               </div>
-              <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
-              </div>
+              {partnerDisplayName && (
+                <div className="flex-1 text-center">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">{(partnerLabel[0] || 'P').toUpperCase()}</div>
+                  <p className="text-sm font-medium text-foreground mt-1.5">{partnerLabel}</p>
+                </div>
+              )}
             </div>
           </div>
 
