@@ -157,6 +157,10 @@ const Index = () => {
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
   const [askAIOpen, setAskAIOpen] = useState(false);
   const [askAIContext, setAskAIContext] = useState<{ label: string; preface: string }>({ label: '', preface: '' });
+  // When the user opens a Plan tool / Budget Setup *from the More tab*, we
+  // bounce them back to More on close instead of the (now hidden) Plan tab.
+  const [planEntryFromMore, setPlanEntryFromMore] = useState(false);
+  const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -554,6 +558,7 @@ const Index = () => {
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
             onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+            householdMembers={householdMembers}
           />
         )}
         {activeTab === 'transactions' && (
@@ -574,7 +579,7 @@ const Index = () => {
           />
         )}
 
-        {/* Budget Tab */}
+        {/* Budget Tab (now lives inside More) */}
         {activeTab === 'budget' && budgetSubView === 'main' && (
           <BudgetTabView
             categories={categories}
@@ -594,13 +599,14 @@ const Index = () => {
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
             onOpenProfile={() => {
+              if (budgetEntryFromMore) setBudgetEntryFromMore(false);
               setProfileSubView('menu');
               setActiveTab('profile');
             }}
           />
         )}
 
-        {/* Plan Tab */}
+        {/* Plan Tab (now lives inside More) */}
         {activeTab === 'plan' && planSubView === 'menu' && (
           <PlanView
             householdId={householdId}
@@ -614,10 +620,16 @@ const Index = () => {
           />
         )}
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setPlanSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
+          <CFPProfileView onBack={() => {
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            else setPlanSubView('menu');
+          }} householdId={householdId} initialTab={profileInitialTab} />
         )}
         {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
-          renderTool(planSubView, () => setPlanSubView('menu'))
+          renderTool(planSubView, () => {
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            else setPlanSubView('menu');
+          })
         )}
         {activeTab === 'plan' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(planSubView) && (
           renderTool(planSubView, () => setPlanSubView('calculators'))
@@ -626,7 +638,20 @@ const Index = () => {
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
           <ProfileTab onSelect={tab => {
+            if (tab === 'budget-setup') {
+              setBudgetEntryFromMore(true);
+              setBudgetSubView('main');
+              setActiveTab('budget');
+              return;
+            }
             if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
+            const planTools = ['emergency-fund', 'savings-goals', 'retirement', 'mortgage-analyzer', 'debt-payoff', 'life-insurance', 'financial-profile'];
+            if (planTools.includes(tab)) {
+              setPlanEntryFromMore(true);
+              setPlanSubView(tab as PlanSubView);
+              setActiveTab('plan');
+              return;
+            }
             setProfileSubView(tab as ProfileSubView);
           }} householdId={householdId} />
         )}

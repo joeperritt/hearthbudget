@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { GoalsInsightsSection } from './GoalsInsightsSection';
+import { ContextualAskAI } from './ContextualAskAI';
 import { ProgressBar } from './ProgressBar';
 import { ageFromDob } from '@/lib/ageUtils';
 import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
@@ -706,14 +707,20 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
 
       {/* AI Insights */}
       {goals.length > 0 && (
-        <GoalsInsightsSection
-          householdId={householdId}
-          goals={goalsForInsights}
-          financialProfile={financialProfile}
-          monthlyPoolTotal={savingsPool?.totalAvailable ?? 0}
-          allocatedMonthly={savingsPool?.allocated ?? 0}
-          navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
-        />
+        <>
+          <GoalsInsightsSection
+            householdId={householdId}
+            goals={goalsForInsights}
+            financialProfile={financialProfile}
+            monthlyPoolTotal={savingsPool?.totalAvailable ?? 0}
+            allocatedMonthly={savingsPool?.allocated ?? 0}
+            navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
+          />
+          <ContextualAskAI
+            contextLabel="Non-Retirement Goals"
+            contextPreface={`The user is on the Non-Retirement Goals planner. ${goals.length} goals. Monthly pool: ${(savingsPool?.totalAvailable ?? 0).toFixed(0)}, allocated: ${(savingsPool?.allocated ?? 0).toFixed(0)}. Goals: ${JSON.stringify(goalsForInsights).slice(0, 1200)}.`}
+          />
+        </>
       )}
 
       {/* Education Cost Estimator Modal */}

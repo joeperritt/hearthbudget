@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { formatDistanceToNow } from 'date-fns';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
+import { ContextualAskAI } from './ContextualAskAI';
 import type { PlanToolId } from '@/lib/aiNavigation';
 
 type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
@@ -561,6 +562,10 @@ Generate 3 insights with nextStep actions per the system instructions.`;
           ) : (
             <p className="text-xs text-muted-foreground">Tap Generate for personalized emergency fund insights.</p>
           )}
+          <ContextualAskAI
+            contextLabel="Emergency Fund Analysis"
+            contextPreface={`The user is on the Emergency Fund Analysis page.`}
+          />
         </div>
       </div>
 

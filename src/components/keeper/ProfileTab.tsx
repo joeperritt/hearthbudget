@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   LogOut, Building2, Compass, BarChart3, Calculator, ShieldCheck,
   Heart, Baby, PawPrint, ChevronRight, User as UserIcon, Loader2,
-  RotateCcw,
+  RotateCcw, CalendarDays, Shield, PiggyBank, Target, TrendingDown, Home,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
@@ -26,9 +26,17 @@ export type ProfileTabSelection =
   | 'financial-profile'
   | 'bank-connections'
   | 'security'
+  | 'budget-setup'
   | 'plan'
   | 'calculators'
-  | 'trends';
+  | 'trends'
+  // Plan tools surfaced inline in the More tab:
+  | 'emergency-fund'
+  | 'savings-goals'
+  | 'retirement'
+  | 'mortgage-analyzer'
+  | 'debt-payoff'
+  | 'life-insurance';
 
 interface ProfileTabProps {
   onSelect: (target: ProfileTabSelection) => void;
@@ -165,15 +173,6 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
             onChange={v => handleToggle('has_pets', v)}
           />
         </div>
-        <div className="mt-3">
-          <Tile
-            icon={UserIcon}
-            color="primary"
-            title="Financial Profile"
-            subtitle="Income, housing, debts, accounts, insurance"
-            onClick={() => onSelect('financial-profile')}
-          />
-        </div>
       </div>
 
       {/* Accounts & Connections */}
@@ -200,16 +199,68 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
         />
       </div>
 
-      {/* Tools */}
+      {/* Budget Setup — moved out of the main nav */}
       <div className="px-6 mt-6 space-y-3">
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Tools</h2>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Budget Setup</h2>
         <Tile
-          icon={Compass}
+          icon={CalendarDays}
           color="primary"
-          title="Plan"
-          subtitle="Financial insights and analyses"
-          onClick={() => onSelect('plan')}
+          title="Budget Setup"
+          subtitle="Take-home, categories, fixed bills, savings, giving"
+          onClick={() => onSelect('budget-setup')}
         />
+      </div>
+
+      {/* Financial Planning Tools — visually distinct (blue accent) */}
+      <div className="px-6 mt-6 space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider mb-1 text-blue-600">Financial Planning Tools</h2>
+        <PlanTile
+          icon={UserIcon}
+          title="Financial Profile"
+          subtitle="Income, housing, debts, accounts, insurance"
+          onClick={() => onSelect('financial-profile')}
+        />
+        <PlanTile
+          icon={Shield}
+          title="Emergency Fund"
+          subtitle="Are you prepared for the unexpected?"
+          onClick={() => onSelect('emergency-fund')}
+        />
+        <PlanTile
+          icon={PiggyBank}
+          title="Retirement Planner"
+          subtitle="Are you on track to retire?"
+          onClick={() => onSelect('retirement')}
+        />
+        <PlanTile
+          icon={Home}
+          title="Mortgage Analyzer"
+          subtitle="Analyze your current mortgage"
+          onClick={() => onSelect('mortgage-analyzer')}
+        />
+        <PlanTile
+          icon={TrendingDown}
+          title="Debt Payoff"
+          subtitle="See your path to debt freedom"
+          onClick={() => onSelect('debt-payoff')}
+        />
+        <PlanTile
+          icon={Heart}
+          title="Life Insurance"
+          subtitle="Is your family protected?"
+          onClick={() => onSelect('life-insurance')}
+        />
+        <PlanTile
+          icon={Target}
+          title="Non-Retirement Goals"
+          subtitle="Plan and track non-retirement savings goals"
+          onClick={() => onSelect('savings-goals')}
+        />
+      </div>
+
+      {/* Other Tools (renamed from "Tools") */}
+      <div className="px-6 mt-6 space-y-3">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Other Tools</h2>
         <Tile
           icon={Calculator}
           color="primary"
@@ -332,6 +383,33 @@ function Tile({
     >
       <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center`}>
         <Icon size={20} className={fg} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+    </button>
+  );
+}
+
+// Visually distinct tile for "Financial Planning Tools" section — blue accent
+// to signal these are planning-grade tools (vs. settings).
+function PlanTile({
+  icon: Icon, title, subtitle, onClick,
+}: {
+  icon: typeof Heart;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border-l-4 border-blue-500"
+    >
+      <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+        <Icon size={20} className="text-blue-600" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground">{title}</p>

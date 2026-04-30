@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToolState } from '@/hooks/useToolState';
 import { STATE_DEFAULTS, STATE_OPTIONS } from '@/data/stateDefaults';
 import { MortgageInsightsSection } from './MortgageInsightsSection';
+import { ContextualAskAI } from './ContextualAskAI';
 
 function PayoffYearSlider({ adjustedBalance, monthlyPI, monthlyRate, remainingMonths, totalInterestRemaining, payoffDate, state, setState }: {
   adjustedBalance: number;
@@ -912,6 +913,10 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
                   mortgageMode={'existing'}
                   navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
                 />
+                <ContextualAskAI
+                  contextLabel="Mortgage Analyzer"
+                  contextPreface={`The user is on the Mortgage Analyzer (existing mortgage). Loan balance ${adjustedBalance.toFixed(0)}, rate ${rate}%, monthly P&I ${pi.toFixed(0)}, escrow ${escrow.toFixed(0)}, total housing ${payment.toFixed(0)}. State: ${state.selectedState}.`}
+                />
               </>
             )}
           </>
@@ -1174,6 +1179,10 @@ export function MortgageCalculator({ planningData, onBack, householdId, shopping
         financialProfile={financialProfile}
         mortgageMode={'shopping'}
         navigationHandlers={{ onNavigateToProfile: onNavigateToProfile as any, onNavigateToBudget, onNavigateToPlanTool }}
+      />
+      <ContextualAskAI
+        contextLabel="Mortgage Shopping"
+        contextPreface={`The user is shopping a potential home in the Mortgage Calculator. Home price ${shoppingCalc.loanAmount + shoppingCalc.dp}, loan ${shoppingCalc.loanAmount}, down ${shoppingCalc.dp} (${shoppingCalc.dpPct.toFixed(1)}%), rate ${state.interestRate}%, term ${state.loanTermYears} yrs, total housing ${shoppingCalc.totalHousing.toFixed(0)}, housing ratio ${shoppingCalc.housingRatio.toFixed(1)}%, DTI ${shoppingCalc.dtiRatio.toFixed(1)}%. State: ${state.selectedState}.`}
       />
     </div>
   );
