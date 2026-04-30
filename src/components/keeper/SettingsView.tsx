@@ -474,7 +474,9 @@ export function SettingsView({
     }
   };
 
-  const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving', savings: 'Savings' };
+  const primaryLabel = profile?.display_name || 'You';
+  const partnerLabel = partnerDisplayName || 'Partner';
+  const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: `${primaryLabel}'s`, katie: `${partnerLabel}'s`, giving: 'Tithe/Giving', savings: 'Savings' };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed', savings: 'Savings', tithe: 'Tithe/Giving' };
 
   // Next month totals
