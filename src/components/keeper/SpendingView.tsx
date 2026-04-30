@@ -148,8 +148,48 @@ export function SpendingView({
 
   let delay = 0;
 
+  const renderVariable = (keyPrefix: string) => (
+    <div className="space-y-1">
+      {([
+        { label: 'Shared', items: shared },
+        { label: 'Joe', items: joe },
+        { label: 'Katie', items: katie },
+      ] as const).map(({ label, items }) => items.length > 0 && (
+        <div key={`${keyPrefix}-${label}`}>
+          <SectionLabel label={label} delay={(delay++) * 40} />
+          <div className="space-y-1">
+            {items.map(c => (
+              <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
+                onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderFixed = (keyPrefix: string) => (
+    <div className="space-y-1">
+      {([
+        { label: 'Fixed', items: bills },
+        { label: 'Savings Buckets', items: savings },
+        { label: 'Tithe / Giving', items: tithe },
+      ] as const).map(({ label, items }) => items.length > 0 && (
+        <div key={`${keyPrefix}-${label}`}>
+          <SectionLabel label={label} delay={(delay++) * 40} />
+          <div className="space-y-1">
+            {items.map((e, i) => (
+              <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
+                onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto lg:max-w-6xl">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
       </div>
@@ -190,60 +230,57 @@ export function SpendingView({
         </div>
       </div>
 
-      {/* Segmented Toggle */}
-      <div className="px-6 mb-4">
-        <div className="flex bg-card rounded-lg p-1 shadow-sm">
-          {(['variable', 'fixed'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
-                mode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              {m === 'variable' ? 'Variable' : 'Fixed'}
-            </button>
-          ))}
+      {/* Edit budget link */}
+      {onEditBudget && (
+        <div className="px-6 mb-4">
+          <button
+            onClick={onEditBudget}
+            className="w-full text-left bg-card rounded-lg p-3 shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground leading-snug">
+                Want to edit this month's budget or set up future months?{' '}
+                <span className="text-accent font-semibold">Go to Budget.</span>
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-muted-foreground/60 shrink-0" />
+          </button>
+        </div>
+      )}
+
+      {/* Mobile: segmented toggle + single panel */}
+      <div className="lg:hidden">
+        <div className="px-6 mb-4">
+          <div className="flex bg-card rounded-lg p-1 shadow-sm">
+            {(['variable', 'fixed'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  mode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                {m === 'variable' ? 'Variable' : 'Fixed'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="px-6 pb-6">
+          {mode === 'variable' ? renderVariable('m-var') : renderFixed('m-fix')}
         </div>
       </div>
 
-      {mode === 'variable' ? (
-        <div className="px-6 pb-6 space-y-1">
-          {([
-            { label: 'Shared', items: shared },
-            { label: 'Joe', items: joe },
-            { label: 'Katie', items: katie },
-          ] as const).map(({ label, items }) => items.length > 0 && (
-            <div key={label}>
-              <SectionLabel label={label} delay={(delay++) * 40} />
-              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
-                {items.map(c => (
-                  <CategoryCard key={c.id} category={c} spent={spentByCategory[c.id] || 0} transferAdj={transferAdjustments[c.id] || 0}
-                    onSelect={() => onSelectCategory(c.id)} onMoveFunds={() => onMoveFunds(c.id)} delay={(delay++) * 40} />
-                ))}
-              </div>
-            </div>
-          ))}
+      {/* Desktop: side-by-side */}
+      <div className="hidden lg:grid lg:grid-cols-2 lg:gap-8 px-6 pb-10">
+        <div>
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Variable</h2>
+          {renderVariable('d-var')}
         </div>
-      ) : (
-        <div className="px-6 pb-6 space-y-1">
-          {([
-            { label: 'Fixed', items: bills },
-            { label: 'Savings Buckets', items: savings },
-            { label: 'Tithe / Giving', items: tithe },
-          ] as const).map(({ label, items }) => items.length > 0 && (
-            <div key={label}>
-              <SectionLabel label={label} delay={(delay++) * 40} />
-              <div className="space-y-1 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-2 lg:gap-4">
-                {items.map((e, i) => (
-                  <FixedExpenseCard key={e.id} expense={e} spent={fixedSpentMap[e.id] || 0} transferAdj={transferAdjustments[e.id] || 0}
-                    onSelect={() => onSelectFixedExpense(e.id)} onMoveFunds={() => onMoveFundsFixed(e.id)} delay={(i + 1) * 40} />
-                ))}
-              </div>
-            </div>
-          ))}
+        <div>
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Fixed</h2>
+          {renderFixed('d-fix')}
         </div>
-      )}
+      </div>
     </div>
   );
 }
