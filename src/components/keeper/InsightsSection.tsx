@@ -17,9 +17,10 @@ interface InsightsSectionProps {
   lastUpdated: Date | null;
   hasCached: boolean;
   onGenerate: () => void;
+  onAskAI?: () => void;
 }
 
-export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate }: InsightsSectionProps) {
+export function InsightsSection({ insights, loading, error, lastUpdated, hasCached, onGenerate, onAskAI }: InsightsSectionProps) {
   const displayInsights = insights.slice(0, 3);
   const ageDays = lastUpdated ? differenceInDays(new Date(), lastUpdated) : 0;
   const isStale = lastUpdated && ageDays >= 7;
