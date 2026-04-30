@@ -136,14 +136,14 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
         </div>
       </div>
 
-      {/* Household preferences */}
+      {/* Household */}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Household</h2>
         <div className="bg-card rounded-xl shadow-sm divide-y divide-border">
           <FlagRow
             icon={Heart}
             label="Stewardship Mode"
-            help="Faith-informed framing across the AI advisor and the spending analyzer (10% giving guideline, gentler tone)."
+            help="Christian faith-informed framing — biblical stewardship principles, gentle tone, giving as a baseline."
             checked={flags.stewardship_mode}
             disabled={flagsLoading}
             onChange={v => handleToggle('stewardship_mode', v)}
@@ -165,42 +165,50 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
             onChange={v => handleToggle('has_pets', v)}
           />
         </div>
+        <div className="mt-3">
+          <Tile
+            icon={UserIcon}
+            color="primary"
+            title="Financial Profile"
+            subtitle="Income, housing, debts, accounts, insurance"
+            onClick={() => onSelect('financial-profile')}
+          />
+        </div>
       </div>
 
-      {/* Plan & connections */}
+      {/* Accounts & Connections */}
       <div className="px-6 mt-6 space-y-3">
-        <Tile
-          icon={UserIcon}
-          color="primary"
-          title="Financial Profile"
-          subtitle="Income, housing, debts, accounts, insurance"
-          onClick={() => onSelect('financial-profile')}
-        />
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Accounts & Connections</h2>
         <Tile
           icon={Building2}
           color="primary"
-          title="Accounts & Connections"
+          title="Bank Accounts"
           subtitle="Manage users & linked bank accounts"
           onClick={() => onSelect('bank-connections')}
         />
+      </div>
+
+      {/* Security */}
+      <div className="px-6 mt-6 space-y-3">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Security</h2>
         <Tile
           icon={ShieldCheck}
           color="primary"
-          title="Security"
-          subtitle="Password, MFA, signed-in devices"
+          title="Password, MFA & Devices"
+          subtitle="Password, MFA, trusted devices"
           onClick={() => onSelect('security')}
         />
       </div>
 
-      {/* Other tools */}
+      {/* Tools */}
       <div className="px-6 mt-6 space-y-3">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Tools</h2>
         <Tile
-          icon={Sparkles}
-          color="accent"
-          title="AI Advisor"
-          subtitle="Personalized budget insights & chat"
-          onClick={() => onSelect('ai-advisor')}
+          icon={Compass}
+          color="primary"
+          title="Plan"
+          subtitle="Financial insights and analyses"
+          onClick={() => onSelect('plan')}
         />
         <Tile
           icon={Calculator}
