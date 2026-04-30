@@ -157,6 +157,10 @@ const Index = () => {
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
   const [askAIOpen, setAskAIOpen] = useState(false);
   const [askAIContext, setAskAIContext] = useState<{ label: string; preface: string }>({ label: '', preface: '' });
+  // When the user opens a Plan tool / Budget Setup *from the More tab*, we
+  // bounce them back to More on close instead of the (now hidden) Plan tab.
+  const [planEntryFromMore, setPlanEntryFromMore] = useState(false);
+  const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
