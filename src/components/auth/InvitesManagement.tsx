@@ -31,10 +31,22 @@ export function InvitesManagement() {
   const { toast } = useToast();
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
 
-  const [inviteType, setInviteType] = useState<InviteType>("new_household");
+  // Default non-system-admins to "join my household" — they can't create
+  // brand-new household invites (server-side RLS also enforces this).
+  const [inviteType, setInviteType] = useState<InviteType>("own_household");
   const [emailLock, setEmailLock] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Detect system admin specifically (vs household admin) — only system
+  // admins can create new-household invites for beta testers.
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      setIsSystemAdmin(data?.some((r: any) => r.role === "system_admin") ?? false);
+    });
+  }, [user]);
 
   const fetchInvites = async () => {
     const { data } = await supabase.from("invites").select("*").order("created_at", { ascending: false });
@@ -50,13 +62,16 @@ export function InvitesManagement() {
 
   const generate = async () => {
     if (!user) return;
+    // Defense in depth: even if the UI is bypassed, server RLS rejects
+    // non-system-admins from creating new-household invites.
+    const effectiveType: InviteType = isSystemAdmin ? inviteType : "own_household";
     setCreating(true);
     const code = randomCode();
     const { error } = await supabase.from("invites").insert({
       code,
       email: emailLock.trim() || null,
       created_by: user.id,
-      household_id: inviteType === "own_household" ? profile?.household_id ?? null : null,
+      household_id: effectiveType === "own_household" ? profile?.household_id ?? null : null,
     });
     setCreating(false);
     if (error) {
@@ -91,26 +106,32 @@ export function InvitesManagement() {
       <div className="bg-card rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-display text-base font-semibold text-foreground">Generate invite</h3>
 
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invite type</label>
-          <div className="grid grid-cols-1 gap-2">
-            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "new_household" ? "border-accent bg-accent/5" : "border-border"}`}>
-              <input type="radio" checked={inviteType === "new_household"} onChange={() => setInviteType("new_household")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Create their own household</p>
-                <p className="text-xs text-muted-foreground">Beta tester — gets a brand-new household with seeded defaults.</p>
-              </div>
-            </label>
-            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "own_household" ? "border-accent bg-accent/5" : "border-border"}`}>
-              <input type="radio" checked={inviteType === "own_household"} onChange={() => setInviteType("own_household")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Join my household</p>
-                <p className="text-xs text-muted-foreground">Adds them as a member of your household (e.g., spouse).</p>
-              </div>
-            </label>
+        {isSystemAdmin ? (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invite type</label>
+            <div className="grid grid-cols-1 gap-2">
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "new_household" ? "border-accent bg-accent/5" : "border-border"}`}>
+                <input type="radio" checked={inviteType === "new_household"} onChange={() => setInviteType("new_household")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Create their own household</p>
+                  <p className="text-xs text-muted-foreground">Beta tester — they sign up and walk through onboarding to set up their own budget.</p>
+                </div>
+              </label>
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${inviteType === "own_household" ? "border-accent bg-accent/5" : "border-border"}`}>
+                <input type="radio" checked={inviteType === "own_household"} onChange={() => setInviteType("own_household")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Join my household</p>
+                  <p className="text-xs text-muted-foreground">Adds them as a member of your household (e.g., spouse).</p>
+                </div>
+              </label>
+            </div>
           </div>
-        </div>
-
+        ) : (
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <p className="text-sm font-semibold text-foreground">Invite to your household</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Adds them as a member of your household (e.g., spouse).</p>
+          </div>
+        )}
         <div>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Lock to email (optional)</label>
           <input type="email" value={emailLock} onChange={(e) => setEmailLock(e.target.value)}
