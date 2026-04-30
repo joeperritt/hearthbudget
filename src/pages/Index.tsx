@@ -640,29 +640,14 @@ const Index = () => {
 
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
-          <ProfileTab onSelect={(tab, profileTabHint) => {
+          <ProfileTab onSelect={(tab) => {
             if (tab === 'budget-setup') {
               setBudgetEntryFromMore(true);
               setBudgetSubView('main');
               setActiveTab('budget');
               return;
             }
-            if (tab === 'plan') { setActiveTab('plan'); setPlanSubView('menu'); return; }
-            const planTools = ['emergency-fund', 'savings-goals', 'retirement', 'mortgage-analyzer', 'debt-payoff', 'life-insurance', 'financial-profile'];
-            if (planTools.includes(tab)) {
-              // When deep-linking into Financial Profile from a locked tool,
-              // preselect the relevant FP tab so the user lands on the
-              // missing section.
-              if (tab === 'financial-profile' && profileTabHint) {
-                setProfileInitialTab(profileTabHint as ProfileTab);
-              } else {
-                setProfileInitialTab(undefined);
-              }
-              setPlanEntryFromMore(true);
-              setPlanSubView(tab as PlanSubView);
-              setActiveTab('plan');
-              return;
-            }
+            // Everything else is a sub-view inside the More tab.
             setProfileSubView(tab as ProfileSubView);
           }} householdId={householdId} />
         )}
