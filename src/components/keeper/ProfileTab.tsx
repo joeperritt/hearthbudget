@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   LogOut, Building2, Compass, BarChart3, Calculator, ShieldCheck,
   Heart, Baby, PawPrint, ChevronRight, User as UserIcon, Loader2,
-  RotateCcw,
+  RotateCcw, CalendarDays, Shield, PiggyBank, Target, TrendingDown, Home,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
@@ -26,9 +26,17 @@ export type ProfileTabSelection =
   | 'financial-profile'
   | 'bank-connections'
   | 'security'
+  | 'budget-setup'
   | 'plan'
   | 'calculators'
-  | 'trends';
+  | 'trends'
+  // Plan tools surfaced inline in the More tab:
+  | 'emergency-fund'
+  | 'savings-goals'
+  | 'retirement'
+  | 'mortgage-analyzer'
+  | 'debt-payoff'
+  | 'life-insurance';
 
 interface ProfileTabProps {
   onSelect: (target: ProfileTabSelection) => void;
