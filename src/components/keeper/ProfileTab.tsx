@@ -52,12 +52,17 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
         .eq('id', householdId);
       if (hhErr) throw hhErr;
 
-      // Clear onboarding-specific tool state if present (no-op if absent).
-      await supabase
-        .from('tool_states')
-        .delete()
-        .eq('household_id', householdId)
-        .eq('tool_name', 'onboarding');
+      // Wipe budget data so re-running onboarding starts from a clean slate.
+      // Without this, categories from prior onboarding runs accumulate as
+      // phantoms in Budget / Home tabs. Test-only tool — destructive on purpose.
+      await Promise.all([
+        supabase.from('budget_categories').delete().eq('household_id', householdId),
+        supabase.from('fixed_expenses').delete().eq('household_id', householdId),
+        supabase.from('budget_transfers').delete().eq('household_id', householdId),
+        supabase.from('budget_month_snapshots').delete().eq('household_id', householdId),
+        supabase.from('category_bucket_map').delete().eq('household_id', householdId),
+        supabase.from('tool_states').delete().eq('household_id', householdId).eq('tool_name', 'onboarding'),
+      ]);
 
       toast.success('Onboarding reset. Reload to walk through the flow.');
     } catch (e) {
