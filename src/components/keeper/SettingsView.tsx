@@ -748,24 +748,29 @@ export function SettingsView({
 
         {/* Budget Summary */}
         <div className="px-6 pb-6">
-          <div className="bg-primary rounded-xl p-5 shadow-lg">
-            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
-            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudgetRO)}</p>
+          <div className="bg-card rounded-lg shadow-sm border border-border/60 px-4 py-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Monthly Budget</p>
+              <p className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(totalBudgetRO)}</p>
+            </div>
             {isCurrentMonth && (
-              <div className="mt-4">
+              <div className="mt-2.5">
                 {(() => {
                   const totalSpentAll = varSpent + fixedSpentVal + savingsSpent + givingSpent;
                   const remaining = totalBudgetRO - totalSpentAll;
+                  const pct = totalBudgetRO > 0 ? Math.min((totalSpentAll / totalBudgetRO) * 100, 100) : 0;
                   return (
                     <>
-                      <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
+                      <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
                         <span>{formatCurrency(totalSpentAll)} spent</span>
-                        <span>{remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `-${formatCurrency(Math.abs(remaining))} over`}</span>
+                        <span className={remaining >= 0 ? '' : 'text-destructive font-medium'}>
+                          {remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `-${formatCurrency(Math.abs(remaining))} over`}
+                        </span>
                       </div>
-                      <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-accent transition-all duration-500"
-                          style={{ width: `${Math.min((totalSpentAll / totalBudgetRO) * 100, 100)}%` }}
+                          className={`h-full rounded-full transition-all duration-500 ${remaining >= 0 ? 'bg-accent' : 'bg-destructive'}`}
+                          style={{ width: `${pct}%` }}
                         />
                       </div>
                     </>
@@ -774,11 +779,9 @@ export function SettingsView({
               </div>
             )}
             {isPastMonth && summary.totalSpent !== undefined && (
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-primary-foreground/70">
-                  <span>{summary.totalTransactions || 0} transactions</span>
-                  <span>{formatCurrency(summary.totalSpent)} total spent</span>
-                </div>
+              <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+                <span>{summary.totalTransactions || 0} transactions</span>
+                <span>{formatCurrency(summary.totalSpent)} total spent</span>
               </div>
             )}
           </div>
