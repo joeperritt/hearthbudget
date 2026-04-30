@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  LogOut, Building2, Sparkles, BarChart3, Calculator, ShieldCheck,
+  LogOut, Building2, Compass, BarChart3, Calculator, ShieldCheck,
   Heart, Baby, PawPrint, ChevronRight, User as UserIcon, Loader2,
   RotateCcw,
 } from 'lucide-react';
@@ -26,7 +26,7 @@ export type ProfileTabSelection =
   | 'financial-profile'
   | 'bank-connections'
   | 'security'
-  | 'ai-advisor'
+  | 'plan'
   | 'calculators'
   | 'trends';
 
@@ -107,8 +107,8 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
   return (
     <div className="max-w-lg mx-auto">
       <div className="px-6 pt-12 safe-top">
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Profile</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Settings, household, and connections</p>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">More</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Household, accounts, security, and tools</p>
       </div>
 
       {/* Identity */}
