@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { AlertCircle, Info, Pencil, Sparkles, Tags } from 'lucide-react';
+import { AlertCircle, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
@@ -11,6 +11,12 @@ import { BucketMappingSheet } from './BucketMappingSheet';
 import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomeCards } from '@/hooks/useHomeCards';
+import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
+import { CFP_BUCKETS } from '@/lib/cfpBuckets';
+import { BudgetBuilderStep, persistBudgetDrafts, type BucketCategoryDraft } from './BudgetBuilderStep';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -58,9 +64,12 @@ export function BudgetTabView({
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const { profile } = useAuth();
-  void profile; // reserved for future household-aware UI; keep useAuth wired
+  const householdId = profile?.household_id ?? null;
   const { map: bucketMap } = useCategoryBucketMap();
+  const { update: updateHomeCards } = useHomeCards(householdId);
+  const { flags } = useHouseholdFlags(householdId);
 
   useEffect(() => {
     if (initialViewMonth) setViewMonthKey(initialViewMonth);
@@ -117,11 +126,43 @@ export function BudgetTabView({
     onUpdatePlanningData({ ...planningData, netIncome: String(val), katieNetIncome: '0' });
   };
 
+  // Empty-state: show CTA when the household has no categories AND no fixed
+  // expenses defined at all (most likely a user who took the "I'll set this
+  // up later" escape during onboarding).
+  const budgetIsEmpty = categories.length === 0 && fixedExpenses.length === 0;
+
   return (
     <div className="max-w-lg mx-auto pb-8">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
       </div>
+
+      {budgetIsEmpty && (
+        <div className="px-6 mt-4">
+          <div className="bg-card rounded-xl shadow-sm p-5 border border-accent/40">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+                <Wallet size={20} className="text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-base font-bold text-foreground">
+                  Your budget is empty
+                </p>
+                <p className="text-xs text-muted-foreground leading-snug mt-1">
+                  Set it up to start tracking spending against your monthly take-home.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setBuilderOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-semibold py-2 px-4 rounded-lg active:scale-[0.98] transition shadow-sm"
+                >
+                  Set up budget
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Take-Home, Budget Total & Surplus/Deficit */}
       <div className="px-6 mt-4">
@@ -260,6 +301,110 @@ export function BudgetTabView({
           onViewMonthChange={setViewMonthKey}
         />
       </div>
+
+      {builderOpen && householdId && (
+        <BudgetBuilderSheet
+          householdId={householdId}
+          flags={flags}
+          monthlyTakeHome={totalTakeHome}
+          onClose={() => setBuilderOpen(false)}
+          onSaved={async () => {
+            await updateHomeCards({
+              needs_budget_setup: false,
+              budget_setup_dismissed: true,
+            });
+            
+            toast.success('Budget saved!');
+            setBuilderOpen(false);
+            // Soft-reload to pick up the new categories/fixed expenses.
+            // useBudgetData doesn't expose a refetch, and this is a one-time
+            // setup action so the cost is acceptable.
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/* ============================================================
+ * Standalone budget-builder sheet — reuses Step 5 from onboarding
+ * so the user can re-enter their starter budget at any time.
+ * ============================================================ */
+function BudgetBuilderSheet({
+  householdId, flags, monthlyTakeHome, onClose, onSaved,
+}: {
+  householdId: string;
+  flags: { has_kids: boolean; has_pets: boolean };
+  monthlyTakeHome: number;
+  onClose: () => void;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, BucketCategoryDraft[]>>({});
+  const [saving, setSaving] = useState(false);
+
+  const visibleBuckets = useMemo(
+    () =>
+      CFP_BUCKETS.filter(b => {
+        if (b.key === 'kids' && !flags.has_kids) return false;
+        if (b.key === 'pets' && !flags.has_pets) return false;
+        return true;
+      }),
+    [flags.has_kids, flags.has_pets],
+  );
+
+  const totalAllocated = useMemo(() => {
+    let total = 0;
+    for (const list of Object.values(drafts)) {
+      for (const d of list) total += Number(d.amount) || 0;
+    }
+    return total;
+  }, [drafts]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await persistBudgetDrafts(householdId, drafts);
+      await onSaved();
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not save budget. Please try again.');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border safe-top">
+          <div className="max-w-xl mx-auto px-6 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Budget builder</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground active:scale-90 transition"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-xl mx-auto px-6 py-8 pb-48">
+          <BudgetBuilderStep
+            buckets={visibleBuckets}
+            drafts={drafts}
+            setDrafts={setDrafts}
+            monthlyTakeHome={monthlyTakeHome}
+            totalAllocated={totalAllocated}
+            onComplete={handleSave}
+            continueLabel={saving ? 'Saving…' : 'Save budget'}
+            title="Set up your budget"
+            intro="Add categories under each bucket — track only what matters. Skip the buckets that don't apply."
+            hideSkip
+          />
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
