@@ -101,6 +101,9 @@ export function SettingsView({
   const isPastMonth = viewMonthKey < activeMonthKey;
   const isFutureMonth = viewMonthKey > activeMonthKey;
   const isNextMonth = viewMonthKey === nextMonthKey;
+  // Current month is editable too — same UX as future months, but the scope
+  // prompt copy makes the "this month only vs. future" choice explicit.
+  const isEditableMonth = isCurrentMonth || isFutureMonth;
 
   useEffect(() => {
     onViewMonthChange?.(viewMonthKey);
@@ -110,6 +113,23 @@ export function SettingsView({
   const [snapshots, setSnapshots] = useState<MonthSnapshot[]>([]);
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [allSnapshotMonths, setAllSnapshotMonths] = useState<string[]>([]);
+
+  // Household partner display name (for replacing hardcoded "Joe / Katie" copy)
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!profile?.household_id || !profile?.user_id) return;
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .eq('household_id', profile.household_id)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const other = data.find(p => p.user_id !== profile.user_id);
+        setPartnerDisplayName(other?.display_name ?? null);
+      });
+    return () => { cancelled = true; };
+  }, [profile?.household_id, profile?.user_id]);
 
   // Fetch all snapshots once
   useEffect(() => {
@@ -454,7 +474,9 @@ export function SettingsView({
     }
   };
 
-  const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: "Joe's", katie: "Katie's", giving: 'Tithe/Giving', savings: 'Savings' };
+  const primaryLabel = profile?.display_name || 'You';
+  const partnerLabel = partnerDisplayName || 'Partner';
+  const groupLabels: Record<GroupType, string> = { shared: 'Shared', joe: `${primaryLabel}'s`, katie: `${partnerLabel}'s`, giving: 'Tithe/Giving', savings: 'Savings' };
   const fixedGroupLabels: Record<FixedGroupType, string> = { bills: 'Fixed', savings: 'Savings', tithe: 'Tithe/Giving' };
 
   // Next month totals
@@ -608,8 +630,8 @@ export function SettingsView({
           <div className="px-6 pb-4">
             {([
               { label: 'Shared', items: shared },
-              { label: "Joe's", items: joe },
-              { label: "Katie's", items: katie },
+              { label: `${primaryLabel}'s`, items: joe },
+              { label: `${partnerLabel}'s`, items: katie },
             ] as const).map(({ label, items }) => items.length > 0 && (
               <div key={label} className="mb-3">
                 <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{label}</h4>
@@ -726,24 +748,29 @@ export function SettingsView({
 
         {/* Budget Summary */}
         <div className="px-6 pb-6">
-          <div className="bg-primary rounded-xl p-5 shadow-lg">
-            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Monthly Budget</p>
-            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudgetRO)}</p>
+          <div className="bg-card rounded-lg shadow-sm border border-border/60 px-4 py-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Monthly Budget</p>
+              <p className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(totalBudgetRO)}</p>
+            </div>
             {isCurrentMonth && (
-              <div className="mt-4">
+              <div className="mt-2.5">
                 {(() => {
                   const totalSpentAll = varSpent + fixedSpentVal + savingsSpent + givingSpent;
                   const remaining = totalBudgetRO - totalSpentAll;
+                  const pct = totalBudgetRO > 0 ? Math.min((totalSpentAll / totalBudgetRO) * 100, 100) : 0;
                   return (
                     <>
-                      <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
+                      <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
                         <span>{formatCurrency(totalSpentAll)} spent</span>
-                        <span>{remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `-${formatCurrency(Math.abs(remaining))} over`}</span>
+                        <span className={remaining >= 0 ? '' : 'text-destructive font-medium'}>
+                          {remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `-${formatCurrency(Math.abs(remaining))} over`}
+                        </span>
                       </div>
-                      <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-accent transition-all duration-500"
-                          style={{ width: `${Math.min((totalSpentAll / totalBudgetRO) * 100, 100)}%` }}
+                          className={`h-full rounded-full transition-all duration-500 ${remaining >= 0 ? 'bg-accent' : 'bg-destructive'}`}
+                          style={{ width: `${pct}%` }}
                         />
                       </div>
                     </>
@@ -752,11 +779,9 @@ export function SettingsView({
               </div>
             )}
             {isPastMonth && summary.totalSpent !== undefined && (
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-primary-foreground/70">
-                  <span>{summary.totalTransactions || 0} transactions</span>
-                  <span>{formatCurrency(summary.totalSpent)} total spent</span>
-                </div>
+              <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+                <span>{summary.totalTransactions || 0} transactions</span>
+                <span>{formatCurrency(summary.totalSpent)} total spent</span>
               </div>
             )}
           </div>
@@ -823,8 +848,8 @@ export function SettingsView({
                   <select value={newCatGroup} onChange={e => setNewCatGroup(e.target.value as GroupType)}
                     className="flex-1 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30">
                     <option value="shared">Shared</option>
-                    <option value="joe">Joe's</option>
-                    <option value="katie">Katie's</option>
+                    <option value="joe">{primaryLabel}'s</option>
+                    {partnerDisplayName && <option value="katie">{partnerLabel}'s</option>}
                   </select>
                   <input type="number" value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} placeholder="$0"
                     className="w-24 px-3 py-2 rounded-lg bg-card border border-border text-sm tabular-nums text-foreground text-right focus:outline-none focus:ring-1 focus:ring-accent/30" />
@@ -1344,13 +1369,15 @@ export function SettingsView({
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">{(primaryLabel[0] || 'U').toUpperCase()}</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">{primaryLabel}</p>
               </div>
-              <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
-              </div>
+              {partnerDisplayName && (
+                <div className="flex-1 text-center">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">{(partnerLabel[0] || 'P').toUpperCase()}</div>
+                  <p className="text-sm font-medium text-foreground mt-1.5">{partnerLabel}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1371,13 +1398,21 @@ export function SettingsView({
           </div>
 
           {/* Content based on month */}
-          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-          {isFutureMonth && renderFutureMonth()}
+          {isPastMonth && renderReadOnlyMonth()}
+          {isEditableMonth && renderFutureMonth()}
         </div>
         {scopePromptDrawer}
       </>
     );
   }
+
+  // Resolve the two household member display names so the "Joe's / Katie's"
+  // labels and avatar bubbles use the actual users' names instead of
+  // hardcoded copy.
+  const primaryName = profile?.display_name || 'You';
+  const partnerName = partnerDisplayName || 'Partner';
+  const primaryInitial = (primaryName[0] || 'U').toUpperCase();
+  const partnerInitial = (partnerName[0] || 'P').toUpperCase();
 
   return (
     <>
@@ -1388,7 +1423,7 @@ export function SettingsView({
           </button>
           <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget Planning</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isFutureMonth ? 'Edit categories & budget amounts' : isCurrentMonth ? 'Current month overview' : 'Past month overview'}
+            {isEditableMonth ? 'Edit categories & budget amounts' : 'Past month overview'}
           </p>
         </div>
 
@@ -1398,13 +1433,15 @@ export function SettingsView({
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Household</h3>
             <div className="bg-card rounded-lg shadow-sm p-4 flex gap-4">
               <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">J</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Joe</p>
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-semibold">{primaryInitial}</div>
+                <p className="text-sm font-medium text-foreground mt-1.5">{primaryName}</p>
               </div>
-              <div className="flex-1 text-center">
-                <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">K</div>
-                <p className="text-sm font-medium text-foreground mt-1.5">Katie</p>
-              </div>
+              {partnerDisplayName && (
+                <div className="flex-1 text-center">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-sm font-semibold">{partnerInitial}</div>
+                  <p className="text-sm font-medium text-foreground mt-1.5">{partnerName}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1425,8 +1462,8 @@ export function SettingsView({
           </div>
 
           {/* Content based on month */}
-          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-          {isFutureMonth && renderFutureMonth()}
+          {isPastMonth && renderReadOnlyMonth()}
+          {isEditableMonth && renderFutureMonth()}
 
           {/* Log Out */}
           <div className="mt-12 mb-8">
