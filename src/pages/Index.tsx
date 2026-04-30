@@ -713,6 +713,16 @@ const Index = () => {
           transferAdjustments={transferAdjustments}
         />
       )}
+
+      <AskAIChatSheet
+        open={askAIOpen}
+        onOpenChange={(o) => { setAskAIOpen(o); if (!o) clearChat(); }}
+        contextLabel={askAIContext.label}
+        contextPreface={askAIContext.preface}
+        chatMessages={chatMessages}
+        chatLoading={chatLoading}
+        onSendMessage={sendChatMessage}
+      />
     </div>
   );
 };
