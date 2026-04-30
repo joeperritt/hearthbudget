@@ -301,6 +301,110 @@ export function BudgetTabView({
           onViewMonthChange={setViewMonthKey}
         />
       </div>
+
+      {builderOpen && householdId && (
+        <BudgetBuilderSheet
+          householdId={householdId}
+          flags={flags}
+          monthlyTakeHome={totalTakeHome}
+          onClose={() => setBuilderOpen(false)}
+          onSaved={async () => {
+            await updateHomeCards({
+              needs_budget_setup: false,
+              budget_setup_dismissed: true,
+            });
+            void homeCardsState; // satisfy linter; state read above
+            toast.success('Budget saved!');
+            setBuilderOpen(false);
+            // Soft-reload to pick up the new categories/fixed expenses.
+            // useBudgetData doesn't expose a refetch, and this is a one-time
+            // setup action so the cost is acceptable.
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/* ============================================================
+ * Standalone budget-builder sheet — reuses Step 5 from onboarding
+ * so the user can re-enter their starter budget at any time.
+ * ============================================================ */
+function BudgetBuilderSheet({
+  householdId, flags, monthlyTakeHome, onClose, onSaved,
+}: {
+  householdId: string;
+  flags: { has_kids: boolean; has_pets: boolean };
+  monthlyTakeHome: number;
+  onClose: () => void;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, BucketCategoryDraft[]>>({});
+  const [saving, setSaving] = useState(false);
+
+  const visibleBuckets = useMemo(
+    () =>
+      CFP_BUCKETS.filter(b => {
+        if (b.key === 'kids' && !flags.has_kids) return false;
+        if (b.key === 'pets' && !flags.has_pets) return false;
+        return true;
+      }),
+    [flags.has_kids, flags.has_pets],
+  );
+
+  const totalAllocated = useMemo(() => {
+    let total = 0;
+    for (const list of Object.values(drafts)) {
+      for (const d of list) total += Number(d.amount) || 0;
+    }
+    return total;
+  }, [drafts]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await persistBudgetDrafts(householdId, drafts);
+      await onSaved();
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not save budget. Please try again.');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border safe-top">
+          <div className="max-w-xl mx-auto px-6 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Budget builder</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 -m-1.5 text-muted-foreground hover:text-foreground active:scale-90 transition"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-xl mx-auto px-6 py-8 pb-48">
+          <BudgetBuilderStep
+            buckets={visibleBuckets}
+            drafts={drafts}
+            setDrafts={setDrafts}
+            monthlyTakeHome={monthlyTakeHome}
+            totalAllocated={totalAllocated}
+            onComplete={handleSave}
+            continueLabel={saving ? 'Saving…' : 'Save budget'}
+            title="Set up your budget"
+            intro="Add categories under each bucket — track only what matters. Skip the buckets that don't apply."
+            hideSkip
+          />
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
