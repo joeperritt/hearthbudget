@@ -101,6 +101,9 @@ export function SettingsView({
   const isPastMonth = viewMonthKey < activeMonthKey;
   const isFutureMonth = viewMonthKey > activeMonthKey;
   const isNextMonth = viewMonthKey === nextMonthKey;
+  // Current month is editable too — same UX as future months, but the scope
+  // prompt copy makes the "this month only vs. future" choice explicit.
+  const isEditableMonth = isCurrentMonth || isFutureMonth;
 
   useEffect(() => {
     onViewMonthChange?.(viewMonthKey);
@@ -1371,8 +1374,25 @@ export function SettingsView({
           </div>
 
           {/* Content based on month */}
-          {(isCurrentMonth || isPastMonth) && renderReadOnlyMonth()}
-          {isFutureMonth && renderFutureMonth()}
+          {isPastMonth && renderReadOnlyMonth()}
+          {isEditableMonth && renderFutureMonth()}
+        </div>
+        {scopePromptDrawer}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="max-w-lg mx-auto pb-28">
+        <div className="px-6 pt-12 safe-top">
+          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget Planning</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isEditableMonth ? 'Edit categories & budget amounts' : 'Past month overview'}
+          </p>
         </div>
         {scopePromptDrawer}
       </>
