@@ -68,7 +68,7 @@ export function BudgetTabView({
   const { profile } = useAuth();
   const householdId = profile?.household_id ?? null;
   const { map: bucketMap } = useCategoryBucketMap();
-  const { state: homeCardsState, update: updateHomeCards } = useHomeCards(householdId);
+  const { update: updateHomeCards } = useHomeCards(householdId);
   const { flags } = useHouseholdFlags(householdId);
 
   useEffect(() => {
