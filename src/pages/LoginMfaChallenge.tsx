@@ -114,6 +114,7 @@ export default function LoginMfaChallenge() {
         await callLogAttempt(true);
         // Clear any per-session recovery banner — user successfully used TOTP
         localStorage.removeItem(RECOVERY_FLAG_KEY);
+        await mintTrustIfChosen();
         await completeMfaChallenge();
       }
     } catch (e) {
