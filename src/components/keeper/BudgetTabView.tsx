@@ -126,11 +126,43 @@ export function BudgetTabView({
     onUpdatePlanningData({ ...planningData, netIncome: String(val), katieNetIncome: '0' });
   };
 
+  // Empty-state: show CTA when the household has no categories AND no fixed
+  // expenses defined at all (most likely a user who took the "I'll set this
+  // up later" escape during onboarding).
+  const budgetIsEmpty = categories.length === 0 && fixedExpenses.length === 0;
+
   return (
     <div className="max-w-lg mx-auto pb-8">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
       </div>
+
+      {budgetIsEmpty && (
+        <div className="px-6 mt-4">
+          <div className="bg-card rounded-xl shadow-sm p-5 border border-accent/40">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+                <Wallet size={20} className="text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-base font-bold text-foreground">
+                  Your budget is empty
+                </p>
+                <p className="text-xs text-muted-foreground leading-snug mt-1">
+                  Set it up to start tracking spending against your monthly take-home.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setBuilderOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-semibold py-2 px-4 rounded-lg active:scale-[0.98] transition shadow-sm"
+                >
+                  Set up budget
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Take-Home, Budget Total & Surplus/Deficit */}
       <div className="px-6 mt-4">
