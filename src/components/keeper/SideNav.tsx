@@ -12,7 +12,7 @@ const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
 ];
 
 // Kept exported for type compatibility with Index.tsx routing.
-export type ProfileSidebarItem = 'financial-profile' | 'ai-advisor' | 'calculators' | 'trends' | 'bank-connections' | 'security';
+export type ProfileSidebarItem = 'financial-profile' | 'calculators' | 'trends' | 'bank-connections' | 'security';
 
 interface SideNavProps {
   activeTab: TabId;

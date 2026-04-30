@@ -19,7 +19,7 @@ import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
 import { ProfileTab } from '@/components/keeper/ProfileTab';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
-import { AIAdvisorView } from '@/components/keeper/AIAdvisorView';
+// AIAdvisorView removed — replaced by contextual Ask AI buttons
 import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
