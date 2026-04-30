@@ -64,9 +64,12 @@ export function BudgetTabView({
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const { profile } = useAuth();
-  void profile; // reserved for future household-aware UI; keep useAuth wired
+  const householdId = profile?.household_id ?? null;
   const { map: bucketMap } = useCategoryBucketMap();
+  const { state: homeCardsState, update: updateHomeCards } = useHomeCards(householdId);
+  const { flags } = useHouseholdFlags(householdId);
 
   useEffect(() => {
     if (initialViewMonth) setViewMonthKey(initialViewMonth);
