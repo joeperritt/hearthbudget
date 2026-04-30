@@ -208,16 +208,68 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
         />
       </div>
 
-      {/* Tools */}
+      {/* Budget Setup — moved out of the main nav */}
       <div className="px-6 mt-6 space-y-3">
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Tools</h2>
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Budget Setup</h2>
         <Tile
-          icon={Compass}
+          icon={CalendarDays}
           color="primary"
-          title="Plan"
-          subtitle="Financial insights and analyses"
-          onClick={() => onSelect('plan')}
+          title="Budget Setup"
+          subtitle="Take-home, categories, fixed bills, savings, giving"
+          onClick={() => onSelect('budget-setup')}
         />
+      </div>
+
+      {/* Financial Planning Tools — visually distinct (blue accent) */}
+      <div className="px-6 mt-6 space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider mb-1 text-blue-600">Financial Planning Tools</h2>
+        <PlanTile
+          icon={UserIcon}
+          title="Financial Profile"
+          subtitle="Income, housing, debts, accounts, insurance"
+          onClick={() => onSelect('financial-profile')}
+        />
+        <PlanTile
+          icon={Shield}
+          title="Emergency Fund"
+          subtitle="Are you prepared for the unexpected?"
+          onClick={() => onSelect('emergency-fund')}
+        />
+        <PlanTile
+          icon={PiggyBank}
+          title="Retirement Planner"
+          subtitle="Are you on track to retire?"
+          onClick={() => onSelect('retirement')}
+        />
+        <PlanTile
+          icon={Home}
+          title="Mortgage Analyzer"
+          subtitle="Analyze your current mortgage"
+          onClick={() => onSelect('mortgage-analyzer')}
+        />
+        <PlanTile
+          icon={TrendingDown}
+          title="Debt Payoff"
+          subtitle="See your path to debt freedom"
+          onClick={() => onSelect('debt-payoff')}
+        />
+        <PlanTile
+          icon={Heart}
+          title="Life Insurance"
+          subtitle="Is your family protected?"
+          onClick={() => onSelect('life-insurance')}
+        />
+        <PlanTile
+          icon={Target}
+          title="Non-Retirement Goals"
+          subtitle="Plan and track non-retirement savings goals"
+          onClick={() => onSelect('savings-goals')}
+        />
+      </div>
+
+      {/* Other Tools (renamed from "Tools") */}
+      <div className="px-6 mt-6 space-y-3">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Other Tools</h2>
         <Tile
           icon={Calculator}
           color="primary"
