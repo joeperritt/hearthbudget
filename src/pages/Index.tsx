@@ -524,6 +524,14 @@ const Index = () => {
                 lastUpdated={insightsLastUpdated}
                 hasCached={insightsHasCached}
                 onGenerate={generateInsights}
+                onAskAI={() => {
+                  clearChat();
+                  setAskAIContext({
+                    label: `${monthLabel} budget — Home insights`,
+                    preface: `The user is on the Home tab looking at insights for ${monthLabel}. Total budget ${totalBudget.toFixed(2)}, variable spent ${totalVariableSpent.toFixed(2)} of ${totalVariableBudget.toFixed(2)}, fixed spent ${allFixedSpent.toFixed(2)} of ${totalFixedAll.toFixed(2)}.`,
+                  });
+                  setAskAIOpen(true);
+                }}
               />
             }
           />
