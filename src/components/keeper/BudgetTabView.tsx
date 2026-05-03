@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
-import { AlertCircle, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { filterForMonth } from '@/hooks/useBudgetData';
@@ -51,6 +51,7 @@ interface BudgetTabViewProps {
   onUpdatePlanningData: (data: Record<string, string>) => void;
   initialViewMonth?: string;
   onOpenProfile?: () => void;
+  onBack?: () => void;
 }
 
 export function BudgetTabView({
@@ -59,7 +60,7 @@ export function BudgetTabView({
   onAddCategoryForMonth, onAddFixedExpenseForMonth,
   onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
-  planningData, onUpdatePlanningData, initialViewMonth, onOpenProfile,
+  planningData, onUpdatePlanningData, initialViewMonth, onOpenProfile, onBack,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
@@ -134,6 +135,11 @@ export function BudgetTabView({
   return (
     <div className="max-w-lg mx-auto pb-8">
       <div className="px-6 pt-12 safe-top">
+        {onBack && (
+          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-3 active:scale-95 transition-transform">
+            <ArrowLeft size={16} /> Back
+          </button>
+        )}
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
       </div>
 
