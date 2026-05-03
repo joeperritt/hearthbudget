@@ -238,6 +238,7 @@ export function TransactionsView({
     ...accounts.map(a => ({ id: a.id, label: a.label })),
     { id: 'manual', label: 'Manual' },
     ...(transfers.length > 0 ? [{ id: 'budget-transfers' as Filter, label: 'Budget Transfers' }] : []),
+    ...(categoryFilterId ? [{ id: filter, label: nameFor(categoryFilterId) }] : []),
   ];
 
   const renderTransfer = (tr: BudgetTransfer, i: number) => (
