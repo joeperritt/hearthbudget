@@ -273,7 +273,7 @@ export function BudgetTabView({
           </div>
         </div>
 
-        {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
           <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
