@@ -368,14 +368,33 @@ export function TransactionsView({
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-6 pt-12 pb-4 safe-top flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
+      <div className="px-6 pt-12 pb-2 safe-top flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Activity</h1>
         <button
           onClick={onAddTransaction}
           className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
         >
           <Plus size={16} strokeWidth={2.5} />
           Add Transaction
+        </button>
+      </div>
+
+      {/* Month navigator */}
+      <div className="px-4 pb-3 flex items-center justify-between">
+        <button
+          onClick={() => stepMonth(-1)}
+          aria-label="Previous month"
+          className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <p className="font-display text-base font-semibold text-foreground">{monthLabel}</p>
+        <button
+          onClick={() => stepMonth(1)}
+          aria-label="Next month"
+          className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform"
+        >
+          <ChevronRight size={20} />
         </button>
       </div>
 
