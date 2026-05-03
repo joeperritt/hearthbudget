@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS } from '@/types/budget';
-import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { filterForMonth } from '@/hooks/useBudgetData';
 import { getTransactionAmountPresentation } from '@/lib/transactionAmountDisplay';
 import { AppAccount } from '@/hooks/useAccounts';
 import { toast } from 'sonner';
@@ -23,11 +24,11 @@ function formatCurrency(n: number) {
 type Filter = 'all' | 'manual' | 'unassigned' | 'budget-transfers' | 'transfers-hidden' | string;
 
 interface TransactionsViewProps {
-  transactions: Transaction[];
-  transfers?: BudgetTransfer[];
+  allTransactions: Transaction[];
+  allTransfers?: BudgetTransfer[];
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
-  monthLabel: string;
+  initialMonth: string; // YYYY-MM
   onAddTransaction: () => void;
   onDeleteTransaction: (id: string) => void | Promise<void>;
   onEditTransaction: (tx: Transaction, splitSiblings?: Transaction[]) => void;
@@ -101,17 +102,46 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
 }
 
 export function TransactionsView({
-  transactions, transfers = [], categories, fixedExpenses, monthLabel, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [], initialFilter,
+  allTransactions, allTransfers = [], categories: allCategories, fixedExpenses: allFixedExpenses,
+  initialMonth, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [], initialFilter,
 }: TransactionsViewProps) {
+  // Internal month browsing — initialized from the household's active month.
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+  useEffect(() => { setViewMonth(initialMonth); }, [initialMonth]);
+
+  const monthLabel = useMemo(() => {
+    try {
+      const [y, m] = viewMonth.split('-').map(Number);
+      return format(new Date(y, m - 1, 1), 'MMMM yyyy');
+    } catch { return viewMonth; }
+  }, [viewMonth]);
+
+  const stepMonth = (delta: number) => {
+    const [y, m] = viewMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const transactions = useMemo(
+    () => allTransactions.filter(t => t.budgetMonth === viewMonth),
+    [allTransactions, viewMonth]
+  );
+  const transfers = useMemo(
+    () => allTransfers.filter(t => t.date.startsWith(viewMonth)),
+    [allTransfers, viewMonth]
+  );
+  const categories = useMemo(() => filterForMonth(allCategories, viewMonth), [allCategories, viewMonth]);
+  const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, viewMonth), [allFixedExpenses, viewMonth]);
+
   const [filter, setFilter] = useState<Filter>(initialFilter ?? 'all');
   // Re-apply when navigating in with a new initialFilter (e.g., from Home → Unassigned link)
   useEffect(() => { if (initialFilter) setFilter(initialFilter); }, [initialFilter]);
   const [showTransfers, setShowTransfers] = useState(true);
   // Pagination — render the most recent N rows, reveal more in 50-row chunks.
-  // Filter changes / month switches reset back to the initial page size.
+  // Resets on filter change, month switch, or transfer toggle.
   const PAGE_SIZE = 50;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, monthLabel, showTransfers]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, viewMonth, showTransfers]);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
   type SortKey = 'date' | 'amount' | 'account' | 'category';
   const [sortKey, setSortKey] = useState<SortKey>('date');
@@ -338,14 +368,33 @@ export function TransactionsView({
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="px-6 pt-12 pb-4 safe-top flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
+      <div className="px-6 pt-12 pb-2 safe-top flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Activity</h1>
         <button
           onClick={onAddTransaction}
           className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all"
         >
           <Plus size={16} strokeWidth={2.5} />
           Add Transaction
+        </button>
+      </div>
+
+      {/* Month navigator */}
+      <div className="px-4 pb-3 flex items-center justify-between">
+        <button
+          onClick={() => stepMonth(-1)}
+          aria-label="Previous month"
+          className="p-2 -ml-2 text-muted-foreground active:scale-95 transition-transform"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <p className="font-display text-base font-semibold text-foreground">{monthLabel}</p>
+        <button
+          onClick={() => stepMonth(1)}
+          aria-label="Next month"
+          className="p-2 -mr-2 text-muted-foreground active:scale-95 transition-transform"
+        >
+          <ChevronRight size={20} />
         </button>
       </div>
 

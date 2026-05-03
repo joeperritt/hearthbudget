@@ -29,6 +29,7 @@ import { BudgetTabView } from '@/components/keeper/BudgetTabView';
 import { PlanView } from '@/components/keeper/PlanView';
 
 import { CalculatorsList } from '@/components/keeper/CalculatorsList';
+import { OtherToolsView } from '@/components/keeper/OtherToolsView';
 import { MortgageCalculator } from '@/components/keeper/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/keeper/DebtPayoffCalculator';
 import { CarLoanCalculator } from '@/components/keeper/CarLoanCalculator';
@@ -51,7 +52,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
 
 type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security'
-  | 'manage-users' | 'plan-tools';
+  | 'manage-users' | 'plan-tools' | 'other-tools';
 
 const Index = () => {
   const {
@@ -566,11 +567,11 @@ const Index = () => {
         )}
         {activeTab === 'transactions' && (
           <TransactionsView
-            transactions={monthTransactions}
-            transfers={monthTransfers}
-            categories={activeMonthCategories}
-            fixedExpenses={activeMonthFixedExpenses}
-            monthLabel={monthLabel}
+            allTransactions={transactions}
+            allTransfers={transfers}
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            initialMonth={activeMonth}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
             onEditTransaction={(tx, splitSiblings) => {
@@ -601,6 +602,11 @@ const Index = () => {
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
+            onBack={budgetEntryFromMore ? () => {
+              setBudgetEntryFromMore(false);
+              setActiveTab('profile');
+              setProfileSubView('menu');
+            } : undefined}
             onOpenProfile={() => {
               if (budgetEntryFromMore) setBudgetEntryFromMore(false);
               setProfileSubView('menu');
@@ -679,18 +685,24 @@ const Index = () => {
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
         {/* AI Advisor removed — use contextual Ask AI buttons instead */}
+        {activeTab === 'profile' && profileSubView === 'other-tools' && (
+          <OtherToolsView
+            onBack={() => setProfileSubView('menu')}
+            onSelect={(t) => setProfileSubView(t as ProfileSubView)}
+          />
+        )}
         {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
-            onBack={() => setProfileSubView('menu')}
+            onBack={() => setProfileSubView('other-tools')}
           />
         )}
         {activeTab === 'profile' && profileSubView === 'calculators' && (
           <CalculatorsList
-            onBack={() => setProfileSubView('menu')}
+            onBack={() => setProfileSubView('other-tools')}
             onSelectCalculator={(calc) => setProfileSubView(calc as ProfileSubView)}
           />
         )}
