@@ -198,7 +198,7 @@ export function TransactionsView({
   const shouldRenderTransfers =
     filter === 'budget-transfers'
       ? true
-      : filter === 'unassigned' || filter === 'manual'
+      : filter === 'unassigned' || filter === 'manual' || categoryFilterId
         ? false
         : showTransfers;
   const transferRows: TransferRow[] = shouldRenderTransfers
