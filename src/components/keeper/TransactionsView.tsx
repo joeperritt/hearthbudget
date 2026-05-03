@@ -177,6 +177,7 @@ export function TransactionsView({
   // Unassigned should ONLY surface real transactions awaiting categorization.
   // Budget transfers (internal accounting moves) live in a separate `transfers` array
   // and are intentionally excluded from txRows when the unassigned or budget-transfers filters are active.
+  const categoryFilterId = filter.startsWith('category:') ? filter.slice('category:'.length) : null;
   const filtered = filter === 'all'
     ? transactions
     : filter === 'manual'
@@ -185,7 +186,9 @@ export function TransactionsView({
         ? transactions.filter(t => t.categoryId === 'unassigned')
         : filter === 'budget-transfers'
           ? [] // budget transfers are not transactions; render only transferRows below
-          : transactions.filter(t => t.account === filter);
+          : categoryFilterId
+            ? transactions.filter(t => t.categoryId === categoryFilterId)
+            : transactions.filter(t => t.account === filter);
   const txRows = groupSplitTransactions(filtered);
 
   // Show transfers when:
@@ -195,7 +198,7 @@ export function TransactionsView({
   const shouldRenderTransfers =
     filter === 'budget-transfers'
       ? true
-      : filter === 'unassigned' || filter === 'manual'
+      : filter === 'unassigned' || filter === 'manual' || categoryFilterId
         ? false
         : showTransfers;
   const transferRows: TransferRow[] = shouldRenderTransfers
@@ -235,6 +238,7 @@ export function TransactionsView({
     ...accounts.map(a => ({ id: a.id, label: a.label })),
     { id: 'manual', label: 'Manual' },
     ...(transfers.length > 0 ? [{ id: 'budget-transfers' as Filter, label: 'Budget Transfers' }] : []),
+    ...(categoryFilterId ? [{ id: filter, label: nameFor(categoryFilterId) }] : []),
   ];
 
   const renderTransfer = (tr: BudgetTransfer, i: number) => (

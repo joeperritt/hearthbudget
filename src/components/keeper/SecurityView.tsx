@@ -236,8 +236,9 @@ export function SecurityView({ onBack }: SecurityViewProps) {
         <section>
           <h2 className="font-display text-lg font-semibold text-foreground mb-2">Two-factor authentication</h2>
           <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-            Add a second step at sign-in using an authenticator app (Google Authenticator, 1Password, Authy, etc.).
-            We'll also generate one-time recovery codes in case you lose access to your device.
+            We recommend an authenticator app (Google Authenticator, 1Password, Authy, etc.) — codes
+            stay on your device and keep working even if your email is compromised. We'll also generate
+            one-time recovery codes in case you lose access.
           </p>
 
           {grace.needsMfa && grace.inGrace && !hasVerifiedFactor && enroll.status === 'idle' && (
@@ -347,8 +348,8 @@ export function SecurityView({ onBack }: SecurityViewProps) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Enable two-factor authentication</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Set up an authenticator app</p>
+                <p className="text-sm font-semibold text-foreground">Set up authenticator app (recommended)</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Strongest option — codes generated on your device</p>
               </div>
             </button>
           )}
