@@ -566,11 +566,11 @@ const Index = () => {
         )}
         {activeTab === 'transactions' && (
           <TransactionsView
-            transactions={monthTransactions}
-            transfers={monthTransfers}
-            categories={activeMonthCategories}
-            fixedExpenses={activeMonthFixedExpenses}
-            monthLabel={monthLabel}
+            allTransactions={transactions}
+            allTransfers={transfers}
+            categories={categories}
+            fixedExpenses={fixedExpenses}
+            initialMonth={activeMonth}
             onAddTransaction={() => setShowAddTransaction(true)}
             onDeleteTransaction={deleteTransaction}
             onEditTransaction={(tx, splitSiblings) => {
