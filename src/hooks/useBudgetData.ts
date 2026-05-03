@@ -176,7 +176,7 @@ export function useBudgetData() {
       autoTransitionDone.current = true;
       (async () => {
         const snapshotData = buildSnapshotData(activeMonth, categories, fixedExpenses);
-        await supabase.from('budget_month_snapshots' as any).insert(snapshotData as any);
+        await supabase.from('budget_month_snapshots' as any).upsert(snapshotData as any, { onConflict: 'household_id,month' });
         await supabase.from('households').update({ active_month: currentCalendarMonth } as any).eq('id', householdId);
         setActiveMonth(currentCalendarMonth);
       })();
