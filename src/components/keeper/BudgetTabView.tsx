@@ -156,7 +156,14 @@ export function BudgetTabView({
             <ArrowLeft size={16} /> Back
           </button>
         )}
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
+          {isPastMonth && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {(() => { const [y, m] = viewMonthKey.split('-').map(Number); return format(new Date(y, m - 1, 1), 'MMM yyyy'); })()} · Closed
+            </span>
+          )}
+        </div>
       </div>
 
       {budgetIsEmpty && (
