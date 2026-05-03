@@ -80,6 +80,22 @@ export function BudgetTabView({
     return total > 0 ? formatWithCommas(String(total)) : '';
   });
 
+  const activeMonthKey = format(currentMonth, 'yyyy-MM');
+  const isPastMonth = viewMonthKey < activeMonthKey;
+  const [pastSnapshot, setPastSnapshot] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!isPastMonth || !householdId) { setPastSnapshot(null); return; }
+    let cancelled = false;
+    supabase.from('budget_month_snapshots' as any)
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('month', viewMonthKey)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setPastSnapshot(data); });
+    return () => { cancelled = true; };
+  }, [isPastMonth, householdId, viewMonthKey]);
+
   useEffect(() => {
     setViewMonthKey(format(currentMonth, 'yyyy-MM'));
   }, [currentMonth]);
