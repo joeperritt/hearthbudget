@@ -685,18 +685,24 @@ const Index = () => {
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
         {/* AI Advisor removed — use contextual Ask AI buttons instead */}
+        {activeTab === 'profile' && profileSubView === 'other-tools' && (
+          <OtherToolsView
+            onBack={() => setProfileSubView('menu')}
+            onSelect={(t) => setProfileSubView(t as ProfileSubView)}
+          />
+        )}
         {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
-            onBack={() => setProfileSubView('menu')}
+            onBack={() => setProfileSubView('other-tools')}
           />
         )}
         {activeTab === 'profile' && profileSubView === 'calculators' && (
           <CalculatorsList
-            onBack={() => setProfileSubView('menu')}
+            onBack={() => setProfileSubView('other-tools')}
             onSelectCalculator={(calc) => setProfileSubView(calc as ProfileSubView)}
           />
         )}
