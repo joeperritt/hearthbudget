@@ -539,7 +539,18 @@ export function SettingsView({
         id: e.id, name: e.name, amount: e.amount || 0, group: e.group || 'bills',
       }));
       summary = currentSnapshot.transactions_summary || {};
-      // Past months don't have per-category spending in snapshot — show budgeted only
+      // Per-category spend lives on the snapshot now (added 2026-05). Older
+      // snapshots may be missing this; rows just won't show progress in that case.
+      spent = (summary as any).spentByCategory || {};
+      // Build transfer adjustments from the snapshotted transfers list.
+      const snapTransfers: Array<{ fromCategoryId: string; toCategoryId: string; amount: number }> =
+        ((currentSnapshot as any).transfers as any[]) || [];
+      const tMap: Record<string, number> = {};
+      snapTransfers.forEach(t => {
+        tMap[t.fromCategoryId] = (tMap[t.fromCategoryId] || 0) - t.amount;
+        tMap[t.toCategoryId] = (tMap[t.toCategoryId] || 0) + t.amount;
+      });
+      transfers = tMap;
     } else if (isPastMonth && !currentSnapshot) {
       return (
         <div className="px-6 mt-6">
