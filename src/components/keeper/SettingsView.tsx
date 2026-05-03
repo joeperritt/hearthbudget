@@ -794,10 +794,48 @@ export function SettingsView({
                 })()}
               </div>
             )}
-            {isPastMonth && summary.totalSpent !== undefined && (
-              <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-                <span>{summary.totalTransactions || 0} transactions</span>
-                <span>{formatCurrency(summary.totalSpent)} total spent</span>
+            {isPastMonth && (
+              <div className="mt-2.5 space-y-1">
+                {(() => {
+                  const s: any = summary || {};
+                  const gross = typeof s.grossSpent === 'number'
+                    ? s.grossSpent
+                    : Object.values(spent).reduce((acc: number, v: any) => acc + Math.max(0, Number(v) || 0), 0);
+                  const refunds = typeof s.refundsTotal === 'number' ? s.refundsTotal : 0;
+                  const net = typeof s.netSpent === 'number' ? s.netSpent : (typeof s.totalSpent === 'number' ? s.totalSpent : gross + refunds);
+                  const remaining = totalBudgetRO - net;
+                  const pct = totalBudgetRO > 0 ? Math.min((Math.max(0, net) / totalBudgetRO) * 100, 100) : 0;
+                  return (
+                    <>
+                      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                        <span>Spent</span>
+                        <span className="font-medium text-foreground">{formatCurrency(gross)}</span>
+                      </div>
+                      {refunds < 0 && (
+                        <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                          <span>Refunds</span>
+                          <span>-{formatCurrency(Math.abs(refunds))}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-[11px] tabular-nums pt-0.5 border-t border-border/50">
+                        <span className="text-muted-foreground">Net</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(net)}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] tabular-nums">
+                        <span className="text-muted-foreground">{summary.totalTransactions || 0} transactions</span>
+                        <span className={remaining >= 0 ? 'text-muted-foreground' : 'text-destructive font-medium'}>
+                          {remaining >= 0 ? `${formatCurrency(remaining)} under` : `-${formatCurrency(Math.abs(remaining))} over`}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-1">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${remaining >= 0 ? 'bg-accent' : 'bg-destructive'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
