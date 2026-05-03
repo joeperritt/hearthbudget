@@ -29,10 +29,15 @@ interface MonthSnapshot {
   month: string;
   categories: any[];
   fixed_expenses: any[];
+  transfers?: any[];
   transactions_summary: {
     totalTransactions?: number;
     totalExpenses?: number;
     totalSpent?: number;
+    grossSpent?: number;
+    refundsTotal?: number;
+    netSpent?: number;
+    spentByCategory?: Record<string, number>;
   };
   created_at: string;
 }
