@@ -493,7 +493,7 @@ export function useBudgetData() {
 
     // Snapshot current month using shared helper
     const snapshotData = buildSnapshotData(activeMonth, categories, fixedExpenses);
-    await supabase.from('budget_month_snapshots' as any).insert(snapshotData as any);
+    await supabase.from('budget_month_snapshots' as any).upsert(snapshotData as any, { onConflict: 'household_id,month' });
 
     // Update categories and fixed expenses to new amounts
     await updateCategories(nextCats);
