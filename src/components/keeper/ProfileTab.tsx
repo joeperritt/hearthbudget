@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  LogOut, Building2, BarChart3, Calculator, ShieldCheck,
+  LogOut, Building2, Wrench, ShieldCheck,
   ChevronRight, Loader2, RotateCcw, CalendarDays, Users, Compass,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,7 @@ export type ProfileTabSelection =
   | 'security'
   | 'budget-setup'
   | 'plan-tools'
+  | 'other-tools'
   | 'calculators'
   | 'trends'
   // Plan tools surfaced as deep-links from PlanToolsView:
@@ -124,18 +125,10 @@ export function ProfileTab({ onSelect, householdId }: ProfileTabProps) {
 
         <Tile
           accent="neutral"
-          icon={Calculator}
-          title="Calculators"
-          subtitle="Generic financial calculators"
-          onClick={() => onSelect('calculators')}
-        />
-
-        <Tile
-          accent="neutral"
-          icon={BarChart3}
-          title="Trends"
-          subtitle="Month over month spending comparison"
-          onClick={() => onSelect('trends')}
+          icon={Wrench}
+          title="Other Tools"
+          subtitle="Calculators and spending trends"
+          onClick={() => onSelect('other-tools')}
         />
       </div>
 
