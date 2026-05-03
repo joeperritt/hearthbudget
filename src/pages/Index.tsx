@@ -29,6 +29,7 @@ import { BudgetTabView } from '@/components/keeper/BudgetTabView';
 import { PlanView } from '@/components/keeper/PlanView';
 
 import { CalculatorsList } from '@/components/keeper/CalculatorsList';
+import { OtherToolsView } from '@/components/keeper/OtherToolsView';
 import { MortgageCalculator } from '@/components/keeper/MortgageCalculator';
 import { DebtPayoffCalculator } from '@/components/keeper/DebtPayoffCalculator';
 import { CarLoanCalculator } from '@/components/keeper/CarLoanCalculator';
@@ -51,7 +52,7 @@ type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
 
 type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
   | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security'
-  | 'manage-users' | 'plan-tools';
+  | 'manage-users' | 'plan-tools' | 'other-tools';
 
 const Index = () => {
   const {
