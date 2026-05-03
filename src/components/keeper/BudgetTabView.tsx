@@ -215,13 +215,14 @@ export function BudgetTabView({
               <input
                 type="text"
                 inputMode="decimal"
-                value={takeHomeInput}
+                value={isPastMonth ? (pastSnapshot ? formatWithCommas(String(((pastSnapshot as any)?.transactions_summary?.takeHome) ?? totalTakeHome)) : takeHomeInput) : takeHomeInput}
                 onChange={handleTakeHomeChange}
                 onBlur={handleTakeHomeBlur}
                 placeholder="0"
-                className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-b border-amber-400/60 outline-none focus:border-amber-500 transition-colors py-0.5"
+                disabled={isPastMonth}
+                className={`w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-b outline-none transition-colors py-0.5 ${isPastMonth ? 'border-transparent opacity-70' : 'border-amber-400/60 focus:border-amber-500'}`}
               />
-              <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />
+              {!isPastMonth && <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />}
             </div>
           </div>
           <div className="flex justify-between items-center">
