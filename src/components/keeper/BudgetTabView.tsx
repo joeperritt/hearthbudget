@@ -80,6 +80,22 @@ export function BudgetTabView({
     return total > 0 ? formatWithCommas(String(total)) : '';
   });
 
+  const activeMonthKey = format(currentMonth, 'yyyy-MM');
+  const isPastMonth = viewMonthKey < activeMonthKey;
+  const [pastSnapshot, setPastSnapshot] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!isPastMonth || !householdId) { setPastSnapshot(null); return; }
+    let cancelled = false;
+    supabase.from('budget_month_snapshots' as any)
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('month', viewMonthKey)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setPastSnapshot(data); });
+    return () => { cancelled = true; };
+  }, [isPastMonth, householdId, viewMonthKey]);
+
   useEffect(() => {
     setViewMonthKey(format(currentMonth, 'yyyy-MM'));
   }, [currentMonth]);
@@ -140,7 +156,14 @@ export function BudgetTabView({
             <ArrowLeft size={16} /> Back
           </button>
         )}
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Budget</h1>
+          {isPastMonth && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {(() => { const [y, m] = viewMonthKey.split('-').map(Number); return format(new Date(y, m - 1, 1), 'MMM yyyy'); })()} · Closed
+            </span>
+          )}
+        </div>
       </div>
 
       {budgetIsEmpty && (
@@ -192,13 +215,14 @@ export function BudgetTabView({
               <input
                 type="text"
                 inputMode="decimal"
-                value={takeHomeInput}
+                value={isPastMonth ? (pastSnapshot ? formatWithCommas(String(((pastSnapshot as any)?.transactions_summary?.takeHome) ?? totalTakeHome)) : takeHomeInput) : takeHomeInput}
                 onChange={handleTakeHomeChange}
                 onBlur={handleTakeHomeBlur}
                 placeholder="0"
-                className="w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-b border-amber-400/60 outline-none focus:border-amber-500 transition-colors py-0.5"
+                disabled={isPastMonth}
+                className={`w-24 text-right text-sm font-semibold tabular-nums text-foreground bg-transparent border-b outline-none transition-colors py-0.5 ${isPastMonth ? 'border-transparent opacity-70' : 'border-amber-400/60 focus:border-amber-500'}`}
               />
-              <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />
+              {!isPastMonth && <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />}
             </div>
           </div>
           <div className="flex justify-between items-center">
@@ -249,7 +273,7 @@ export function BudgetTabView({
           </div>
         </div>
 
-        {mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
           <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
