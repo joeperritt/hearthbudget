@@ -4,7 +4,7 @@ import { ArrowLeft, RefreshCw, Link2, Trash2, Plus, X, CreditCard, Landmark, Pig
 import { toast } from 'sonner';
 import { usePlaidLink } from 'react-plaid-link';
 import { useAuth } from '@/hooks/useAuth';
-import { AccountManagement } from './AccountManagement';
+
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -162,7 +162,6 @@ function ItemSyncStatus({ item, onReconnected }: { item: PlaidItem; onReconnecte
 
 
 export function BankConnectionView({ onBack }: BankConnectionViewProps) {
-  const { isAdmin } = useAuth();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkedItems, setLinkedItems] = useState<PlaidItem[]>([]);
   const [cardholders, setCardholders] = useState<Cardholder[]>([]);
@@ -346,13 +345,11 @@ export function BankConnectionView({ onBack }: BankConnectionViewProps) {
         <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-4 active:scale-95 transition-transform">
           <ArrowLeft size={16} /> Back
         </button>
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Accounts & Connections</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage users & linked bank accounts</p>
+        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Bank Accounts</h1>
+        <p className="text-sm text-muted-foreground mt-1">Linked banks, sync, and cardholder mapping</p>
       </div>
 
       <div className="px-6 mt-6 space-y-6">
-        {/* Admin Account Management */}
-        {isAdmin && <AccountManagement />}
         {/* Connect */}
         <button onClick={createLinkToken} className="w-full flex items-center gap-4 bg-accent text-accent-foreground rounded-lg p-4 shadow-sm active:scale-[0.98] transition-transform">
           <Link2 size={20} />
