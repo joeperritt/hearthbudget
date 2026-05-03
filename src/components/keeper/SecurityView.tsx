@@ -348,8 +348,8 @@ export function SecurityView({ onBack }: SecurityViewProps) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Enable two-factor authentication</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Set up an authenticator app</p>
+                <p className="text-sm font-semibold text-foreground">Set up authenticator app (recommended)</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Strongest option — codes generated on your device</p>
               </div>
             </button>
           )}
