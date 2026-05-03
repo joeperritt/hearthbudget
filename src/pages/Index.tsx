@@ -551,8 +551,14 @@ const Index = () => {
             transactions={monthTransactions}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
-            onSelectCategory={setSelectedCategoryId}
-            onSelectFixedExpense={setSelectedFixedExpenseId}
+            onSelectCategory={(id) => {
+              setActivityInitialFilter(`category:${id}`);
+              setActiveTab('transactions');
+            }}
+            onSelectFixedExpense={(id) => {
+              setActivityInitialFilter(`category:${id}`);
+              setActiveTab('transactions');
+            }}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
