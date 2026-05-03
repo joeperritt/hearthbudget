@@ -129,6 +129,7 @@ export function useBudgetData() {
     const monthTxns = transactions.filter(t => t.budgetMonth === month);
     const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
 
+    // Per-category spend uses positive amounts only (refunds offset within category).
     const spentByCategory: Record<string, number> = {};
     monthTxns
       .filter(t => t.transactionType === 'expense' && !t.categoryId.startsWith('ignore-'))
@@ -136,10 +137,20 @@ export function useBudgetData() {
         spentByCategory[t.categoryId] = (spentByCategory[t.categoryId] || 0) + t.amount;
       });
 
+    // Gross spend (positive expense rows only) vs refunds (negative expense rows).
+    // Net = gross + refunds. Show all three so users see the real picture instead
+    // of one collapsed "totalSpent" number that hides large refunds/reversals.
+    const grossSpent = expenseTxns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const refundsTotal = expenseTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0); // negative
+    const netSpent = grossSpent + refundsTotal;
+
     const summary = {
       totalTransactions: monthTxns.length,
       totalExpenses: expenseTxns.length,
-      totalSpent: expenseTxns.reduce((s, t) => s + t.amount, 0),
+      totalSpent: netSpent,        // backward compat
+      grossSpent,                  // positive expense rows
+      refundsTotal,                // negative expense rows (signed, ≤ 0)
+      netSpent,
       spentByCategory,
     };
 
