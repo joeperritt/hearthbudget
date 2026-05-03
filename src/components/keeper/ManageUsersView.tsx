@@ -1,12 +1,8 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Heart, Baby, PawPrint, Loader2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { ArrowLeft, Heart, Baby, PawPrint } from 'lucide-react';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
 import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AccountManagement } from '@/components/keeper/AccountManagement';
-import { InvitesManagement } from '@/components/auth/InvitesManagement';
 
 interface Props {
   householdId: string | null;
@@ -14,26 +10,7 @@ interface Props {
 }
 
 export function ManageUsersView({ householdId, onBack }: Props) {
-  const { profile } = useAuth();
   const { flags, loading: flagsLoading, updateFlag } = useHouseholdFlags(householdId);
-
-  const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
-  const [savingName, setSavingName] = useState(false);
-  useEffect(() => { setDisplayName(profile?.display_name ?? ''); }, [profile?.display_name]);
-
-  const saveDisplayName = async () => {
-    const trimmed = displayName.trim();
-    if (!profile?.id || !trimmed || trimmed === profile.display_name) return;
-    setSavingName(true);
-    const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('id', profile.id);
-    setSavingName(false);
-    if (error) {
-      toast.error('Could not update name');
-      setDisplayName(profile.display_name ?? '');
-    } else {
-      toast.success('Name updated');
-    }
-  };
 
   const handleToggle = async (key: 'stewardship_mode' | 'has_kids' | 'has_pets', value: boolean) => {
     try { await updateFlag(key, value); } catch { toast.error('Could not save change'); }
@@ -52,28 +29,8 @@ export function ManageUsersView({ householdId, onBack }: Props) {
       </div>
 
       <div className="px-6 mt-6 space-y-6">
-        {/* Your display name (inline edit) */}
-        <div className="bg-card rounded-xl shadow-sm p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-display text-sm font-bold">
-              {profile?.avatar_initial || 'U'}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Your display name</p>
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              onBlur={saveDisplayName}
-              placeholder="Your name"
-              className="w-full text-sm font-semibold text-foreground bg-transparent outline-none border-b border-transparent focus:border-amber-400 transition-colors py-0.5"
-            />
-          </div>
-          {savingName && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
-        </div>
-
-        {/* Household members + Add User + Invites — managed inside AccountManagement */}
+        {/* Household members + Add User + Invites — managed inside AccountManagement.
+            Display-name editing happens INLINE on each user row (single source of truth). */}
         <AccountManagement />
 
         {/* Household-shared toggles */}
