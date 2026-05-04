@@ -18,6 +18,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { DisableMfaDialog } from '@/components/auth/DisableMfaDialog';
 import { useAdminMfaGraceState } from '@/components/auth/AdminMfaBanner';
 import { getTrustedDeviceToken, clearTrustedDeviceToken } from '@/lib/trustedDevice';
+import { ChangePasswordDialog } from '@/components/auth/ChangePasswordDialog';
 
 interface SecurityViewProps {
   onBack: () => void;
