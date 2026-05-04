@@ -624,6 +624,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mfa_email_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          purpose: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          purpose: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          purpose?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mfa_trusted_devices: {
         Row: {
           created_at: string
@@ -1001,6 +1040,54 @@ export type Database = {
           },
         ]
       }
+      user_mfa_email_factors: {
+        Row: {
+          created_at: string
+          disabled_at: string | null
+          enrolled_at: string
+          updated_at: string
+          user_id: string
+          verified_email: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string | null
+          enrolled_at?: string
+          updated_at?: string
+          user_id: string
+          verified_email: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string | null
+          enrolled_at?: string
+          updated_at?: string
+          user_id?: string
+          verified_email?: string
+        }
+        Relationships: []
+      }
+      user_mfa_method_pref: {
+        Row: {
+          last_used_method: string | null
+          preferred_method: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_used_method?: string | null
+          preferred_method?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_used_method?: string | null
+          preferred_method?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_mfa_recovery_codes: {
         Row: {
           code_hash: string
@@ -1106,6 +1193,10 @@ export type Database = {
         }
         Returns: number
       }
+      revoke_all_trusted_devices: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
         Returns: Json
@@ -1118,7 +1209,7 @@ export type Database = {
         | "system_admin"
         | "household_admin"
         | "household_member"
-      mfa_attempt_type: "totp" | "recovery_code"
+      mfa_attempt_type: "totp" | "recovery_code" | "email_code"
       mfa_audit_event:
         | "enroll_started"
         | "enroll_verified"
@@ -1128,6 +1219,12 @@ export type Database = {
         | "disabled"
         | "recovery_code_used"
         | "recovery_codes_regenerated"
+        | "email_enroll_started"
+        | "email_enroll_verified"
+        | "email_enroll_failed"
+        | "email_disabled"
+        | "method_pref_changed"
+        | "trusted_devices_revoked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1262,7 +1359,7 @@ export const Constants = {
         "household_admin",
         "household_member",
       ],
-      mfa_attempt_type: ["totp", "recovery_code"],
+      mfa_attempt_type: ["totp", "recovery_code", "email_code"],
       mfa_audit_event: [
         "enroll_started",
         "enroll_verified",
@@ -1272,6 +1369,12 @@ export const Constants = {
         "disabled",
         "recovery_code_used",
         "recovery_codes_regenerated",
+        "email_enroll_started",
+        "email_enroll_verified",
+        "email_enroll_failed",
+        "email_disabled",
+        "method_pref_changed",
+        "trusted_devices_revoked",
       ],
     },
   },
