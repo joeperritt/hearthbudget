@@ -481,6 +481,8 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           void refreshFactors();
         }}
       />
+
+      <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
     </div>
   );
 }
