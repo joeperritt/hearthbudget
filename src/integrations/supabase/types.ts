@@ -1209,7 +1209,7 @@ export type Database = {
         | "system_admin"
         | "household_admin"
         | "household_member"
-      mfa_attempt_type: "totp" | "recovery_code" | "email_code"
+      mfa_attempt_type: "totp" | "recovery_code" | "email_code" | "password"
       mfa_audit_event:
         | "enroll_started"
         | "enroll_verified"
@@ -1359,7 +1359,7 @@ export const Constants = {
         "household_admin",
         "household_member",
       ],
-      mfa_attempt_type: ["totp", "recovery_code", "email_code"],
+      mfa_attempt_type: ["totp", "recovery_code", "email_code", "password"],
       mfa_audit_event: [
         "enroll_started",
         "enroll_verified",

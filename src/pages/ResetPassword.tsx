@@ -52,8 +52,11 @@ export default function ResetPassword() {
       setError(updErr.message);
       return;
     }
-    // Notify user via email (security notice)
-    await supabase.functions.invoke("send-password-changed-email").catch(() => {});
+    // Centralized post-password-change wrapper: revokes trusted devices,
+    // audit-logs, sends security notice email.
+    await supabase.functions.invoke("mfa-on-password-change", {
+      body: { reason: "reset" },
+    }).catch(() => {});
     setLoading(false);
     setDone(true);
     setTimeout(() => navigate("/"), 2000);
