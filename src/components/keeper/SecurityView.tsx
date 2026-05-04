@@ -52,6 +52,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const [regenerating, setRegenerating] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [disableOpen, setDisableOpen] = useState(false);
+  const [changePwOpen, setChangePwOpen] = useState(false);
   const grace = useAdminMfaGraceState();
 
   useEffect(() => {
