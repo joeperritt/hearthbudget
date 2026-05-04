@@ -357,6 +357,32 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           )}
         </section>
 
+        {/* ===== Password section ===== */}
+        <section>
+          <h2 className="font-display text-lg font-semibold text-foreground mb-2">Password</h2>
+          <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+            Change the password used to sign in. Choose at least 12 characters with a mix of upper
+            and lowercase letters and numbers. Changing your password signs you out of all trusted
+            devices.
+          </p>
+
+          <button
+            onClick={() => setChangePwOpen(true)}
+            className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border"
+          >
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Lock size={20} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Change password</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Requires your current password
+                {hasVerifiedFactor ? ' and a two-factor code' : ''}.
+              </p>
+            </div>
+          </button>
+        </section>
+
         {/* ===== Trusted devices section ===== */}
         {hasVerifiedFactor && (
           <section>
