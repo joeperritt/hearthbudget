@@ -134,6 +134,29 @@ Deno.serve(async (req) => {
             }
           );
         }
+
+        // If the password was changed by an admin, fire the centralized
+        // post-password-change wrapper: revoke trusted devices, audit-log,
+        // and send a security notice email to the user.
+        if (password) {
+          try {
+            await fetch(`${supabaseUrl}/functions/v1/mfa-on-password-change`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-internal-secret": supabaseServiceKey,
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                reason: "admin_reset",
+                target_user_id: user_id,
+                actor_user_id: caller.id,
+              }),
+            });
+          } catch (e) {
+            console.error("mfa-on-password-change invoke failed (admin path)", e);
+          }
+        }
       }
 
       // Update profile
