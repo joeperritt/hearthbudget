@@ -1,0 +1,1 @@
+ALTER TYPE public.mfa_attempt_type ADD VALUE IF NOT EXISTS 'password';
