@@ -184,13 +184,13 @@ serve(async (req) => {
 
     // Build messages
     const activeSystemPrompt = customSystemPrompt
-      || (cacheKind === "big_picture" ? BIG_PICTURE_PROMPT : cacheKind === "home" ? HOME_PROMPT : null);
+      || (cacheKind === "big_picture" ? BIG_PICTURE_PROMPT_FULL : cacheKind === "home" ? HOME_PROMPT_FULL : null);
 
     let messages: Array<{ role: string; content: string }>;
 
     if (prompt && typeof prompt === "string") {
       messages = [
-        { role: "system", content: customSystemPrompt || HOME_PROMPT },
+        { role: "system", content: customSystemPrompt || HOME_PROMPT_FULL },
         { role: "user", content: prompt },
       ];
     } else if (budgetSummary) {
@@ -198,8 +198,8 @@ serve(async (req) => {
       // Chat uses the dedicated CHAT_PROMPT (cross-domain, reactive, multi-turn).
       // Cacheable modes use their respective prompts. Fallback to HOME_PROMPT.
       const sysPrompt = isChat
-        ? CHAT_PROMPT
-        : (activeSystemPrompt || HOME_PROMPT);
+        ? CHAT_PROMPT_FULL
+        : (activeSystemPrompt || HOME_PROMPT_FULL);
       const stewardshipNote = `stewardshipMode is ${stewardshipMode ? "true" : "false"}.`;
       messages = isChat
         ? [
