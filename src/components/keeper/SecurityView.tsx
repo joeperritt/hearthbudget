@@ -536,6 +536,28 @@ export function SecurityView({ onBack }: SecurityViewProps) {
         }}
       />
 
+      <DisableEmailMfaDialog
+        open={disableEmailOpen}
+        onOpenChange={setDisableEmailOpen}
+        hasTotp={hasVerifiedFactor}
+        verifiedEmail={emailFactor?.verified_email ?? ''}
+        onDisabled={() => {
+          setEmailFactor(null);
+          void refreshFactors();
+        }}
+      />
+
+      <EmailMfaEnrollDialog
+        open={emailEnrollOpen}
+        onOpenChange={setEmailEnrollOpen}
+        currentEmail={user?.email ?? ''}
+        hasExistingFactor={hasVerifiedFactor}
+        onEnrolled={(codes) => {
+          void refreshFactors();
+          if (codes) setEnroll({ status: 'codes', codes });
+        }}
+      />
+
       <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
     </div>
   );
