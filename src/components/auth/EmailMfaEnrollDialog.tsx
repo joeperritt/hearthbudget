@@ -159,14 +159,6 @@ export function EmailMfaEnrollDialog({
               </div>
             </div>
 
-            <div className="rounded-md border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-foreground">
-              <p className="font-semibold mb-1">Heads up — email codes are less secure</p>
-              <p className="opacity-80">
-                If your email account is ever compromised, an attacker can read the code. An
-                authenticator app keeps the code on your device and is much stronger.
-              </p>
-            </div>
-
             {error && <p className="text-xs text-destructive text-center" role="alert">{error}</p>}
 
             <div className="flex gap-2 pt-1">
