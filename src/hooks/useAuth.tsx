@@ -38,7 +38,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function detectMfaChallenge(): Promise<PendingMfa | null> {
   // If session AAL is aal1 but the user has a verified TOTP factor, they must
   // complete the MFA challenge before any authenticated route renders — UNLESS
-  // this device has a valid trusted-device token (60-day "remember this device").
+  // this device has a valid trusted-device token (30-day "remember this device").
   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (!aalData) return null;
   const { currentLevel, nextLevel } = aalData;

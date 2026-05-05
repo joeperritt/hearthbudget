@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
 import { AISuggestionCard } from './AISuggestionCard';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 import { AppAccount } from '@/hooks/useAccounts';
+import { filterForMonth } from '@/hooks/useBudgetData';
 
 type TxMode = 'variable' | 'fixed' | 'ignore';
 
@@ -47,7 +48,7 @@ function deriveMode(categoryId: string, transactionType: string, fixedExpenses: 
   return 'variable';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories, fixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {} }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories: allCategories, fixedExpenses: allFixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {} }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -91,6 +92,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       setOriginalIgnoreType(['transfer', 'cc-payment', 'deposit', 'income', 'prior-month'].includes(transaction.transactionType) ? transaction.transactionType : null);
     }
   }, [transaction?.id]);
+
+  // Filter categories/fixed expenses to whichever month the user has selected
+  // for this transaction (defaults to its existing budgetMonth, falls back to
+  // activeMonth). Past-month transactions need that month's category set, not
+  // the currently-viewed month's.
+  const effectiveMonth = budgetMonth || transaction?.budgetMonth || activeMonth;
+  const categories = useMemo(() => filterForMonth(allCategories, effectiveMonth), [allCategories, effectiveMonth]);
+  const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, effectiveMonth), [allFixedExpenses, effectiveMonth]);
 
   if (!transaction) return null;
 

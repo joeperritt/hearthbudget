@@ -274,7 +274,7 @@ export default function LoginMfaChallenge() {
               disabled={submitting || isLocked}
               className="w-4 h-4 rounded border-border text-accent focus:ring-accent/30"
             />
-            <span>Remember this device for 60 days</span>
+            <span>Remember this device for 30 days</span>
           </label>
 
           <button

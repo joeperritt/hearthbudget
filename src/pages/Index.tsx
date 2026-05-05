@@ -738,8 +738,8 @@ const Index = () => {
         transaction={editingTransaction}
         open={!!editingTransaction}
         onOpenChange={open => { if (!open) { setEditingTransaction(null); setEditingSplitSiblings([]); } }}
-        categories={activeMonthCategories}
-        fixedExpenses={activeMonthFixedExpenses}
+        categories={categories}
+        fixedExpenses={fixedExpenses}
         activeMonth={activeMonth}
         monthTransactions={monthTransactions}
         splitSiblings={editingSplitSiblings}
