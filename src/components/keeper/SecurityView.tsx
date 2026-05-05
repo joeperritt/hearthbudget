@@ -49,11 +49,14 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   // MFA state
   const [mfaLoading, setMfaLoading] = useState(true);
   const [hasVerifiedFactor, setHasVerifiedFactor] = useState(false);
+  const [emailFactor, setEmailFactor] = useState<{ verified_email: string } | null>(null);
   const [enroll, setEnroll] = useState<EnrollState>({ status: 'idle' });
   const [regenOpen, setRegenOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [disableOpen, setDisableOpen] = useState(false);
+  const [disableEmailOpen, setDisableEmailOpen] = useState(false);
+  const [emailEnrollOpen, setEmailEnrollOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
   const grace = useAdminMfaGraceState();
 
@@ -67,6 +70,14 @@ export function SecurityView({ onBack }: SecurityViewProps) {
     if (!error) {
       const verified = (data?.totp ?? []).some((f) => f.status === 'verified');
       setHasVerifiedFactor(verified);
+    }
+    if (user?.id) {
+      const { data: ef } = await supabase
+        .from('user_mfa_email_factors')
+        .select('verified_email, disabled_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setEmailFactor(ef && !ef.disabled_at ? { verified_email: ef.verified_email } : null);
     }
     setMfaLoading(false);
   };
