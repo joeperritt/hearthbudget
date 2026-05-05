@@ -152,8 +152,17 @@ Deno.serve(async (req) => {
       await userClient.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
     }
 
-    // 5. Wipe recovery codes (service role required — RLS blocks direct delete)
-    await admin.from("user_mfa_recovery_codes").delete().eq("user_id", userId);
+    // 5. Wipe recovery codes ONLY if no other factor remains (email MFA still
+    // active means codes should stay valid for the remaining factor).
+    const { data: emailFactor } = await admin
+      .from("user_mfa_email_factors")
+      .select("disabled_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const stillHasEmail = emailFactor && !emailFactor.disabled_at;
+    if (!stillHasEmail) {
+      await admin.from("user_mfa_recovery_codes").delete().eq("user_id", userId);
+    }
 
     // 6. Audit log
     await admin.from("mfa_audit_log").insert({
