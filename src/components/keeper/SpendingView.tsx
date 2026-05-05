@@ -201,25 +201,25 @@ export function SpendingView({
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">{monthLabel} Budget</h1>
       </div>
 
-      {/* Variable Budget focused summary — Spending tab is about variable spending behavior */}
+      {/* Total Budget summary — variable + fixed combined for the whole month picture */}
       <div className="px-6 mt-4 mb-4">
         <div className="animate-fade-up" style={{ animationDelay: '50ms', animationFillMode: 'both' }}>
           <div className="bg-primary rounded-xl p-5 shadow-lg">
-            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Variable Budget</p>
-            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(variableBudget)}</p>
+            <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wide">Total Budget</p>
+            <p className="text-3xl font-display font-bold text-primary-foreground mt-1">{formatCurrency(totalBudget)}</p>
             <div className="mt-4">
               <div className="flex justify-between text-xs text-primary-foreground/70 mb-1.5">
-                <span>{formatCurrency(variableSpent)} spent</span>
-                {variableSpent > variableBudget ? (
-                  <span className="text-destructive-foreground font-semibold">-{formatCurrency(variableSpent - variableBudget)} over</span>
+                <span>{formatCurrency(totalSpent)} spent</span>
+                {totalSpent > totalBudget ? (
+                  <span className="text-destructive-foreground font-semibold">-{formatCurrency(totalSpent - totalBudget)} over</span>
                 ) : (
-                  <span>{formatCurrency(variableBudget - variableSpent)} remaining</span>
+                  <span>{formatCurrency(totalBudget - totalSpent)} remaining</span>
                 )}
               </div>
               <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-accent transition-all duration-500"
-                  style={{ width: `${variableBudget > 0 ? Math.min((variableSpent / variableBudget) * 100, 100) : 0}%` }}
+                  style={{ width: `${totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0}%` }}
                 />
               </div>
               {(() => {
