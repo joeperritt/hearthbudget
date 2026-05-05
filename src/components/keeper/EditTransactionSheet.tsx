@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
 import { AISuggestionCard } from './AISuggestionCard';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 import { AppAccount } from '@/hooks/useAccounts';
+import { filterForMonth } from '@/hooks/useBudgetData';
 
 type TxMode = 'variable' | 'fixed' | 'ignore';
 
