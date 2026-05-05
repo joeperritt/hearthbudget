@@ -160,7 +160,16 @@ export function SecurityView({ onBack }: SecurityViewProps) {
 
     void logAudit('enroll_verified', { factor_id: enroll.factorId });
 
-    // Generate recovery codes via edge function
+    // If user already has another verified factor (email), recovery codes
+    // already exist and don't need to be regenerated.
+    if (emailFactor) {
+      setHasVerifiedFactor(true);
+      setEnroll({ status: 'idle' });
+      toast({ title: 'Authenticator app enabled' });
+      return;
+    }
+
+    // Generate recovery codes via edge function (first factor enrollment)
     const { data: regenData, error: regenErr } = await supabase.functions.invoke(
       'mfa-regenerate-recovery-codes',
       { body: {} },
