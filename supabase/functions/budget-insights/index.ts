@@ -72,6 +72,23 @@ If the household data is incomplete (fewer than 30 days of transactions OR fewer
 
 Format your response as a JSON array of insight objects, each with "type" (one of: warning, encouragement, tip, giving, savings), "title" (5 words or less), and "body" (2–3 sentences max referencing real numbers).`;
 
+// Shared rule appended to every prompt: Keeper does NOT receive real-time
+// account balances from Plaid — only transactions. The AI must never refer to
+// "your balance" / "checking balance" / "available balance" because those
+// numbers don't exist in our data and saying so is factually wrong.
+const NO_BALANCE_RULE = `
+
+CRITICAL — never use the word "balance" in reference to checking, savings, or credit accounts. Keeper does NOT receive real-time bank account balances — only transactions. Saying "your checking balance is low" or "your account balance" is factually wrong and will mislead the household. Frame everything in terms of activity and budget, never bank balances:
+- "spent $X this month" — never "your balance is $X"
+- "$X remaining in [budget category]" — never "$X left in your account"
+- "$X under/over budget"
+- "$X left of your monthly take-home allocated"
+The only exceptions are explicit balances the user has entered into their financial profile (mortgage balance, debt balance, emergency fund balance, retirement balance, investment balance) — those are user-entered and safe to reference. Bank account balances are never available to you.`;
+
+const HOME_PROMPT_FULL = HOME_PROMPT + NO_BALANCE_RULE;
+const CHAT_PROMPT_FULL = CHAT_PROMPT + NO_BALANCE_RULE;
+const BIG_PICTURE_PROMPT_FULL = BIG_PICTURE_PROMPT + NO_BALANCE_RULE;
+
 const RATE_LIMIT_MS = 60 * 60 * 1000; // 1 hour
 
 serve(async (req) => {
