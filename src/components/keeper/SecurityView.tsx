@@ -304,78 +304,110 @@ export function SecurityView({ onBack }: SecurityViewProps) {
               onDownload={() => downloadCodes(enroll.codes)}
               onDone={() => setEnroll({ status: 'idle' })}
             />
-          ) : hasVerifiedFactor ? (
+          ) : (
             <div className="space-y-3">
-              <div className="bg-card rounded-lg p-5 shadow-sm border border-border flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={20} className="text-accent" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Two-factor is on</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Your account requires a 6-digit code at sign-in.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setRegenOpen(true)}
-                disabled={regenerating}
-                className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border disabled:opacity-60"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  {regenerating ? (
-                    <Loader2 size={20} className="text-primary animate-spin" />
-                  ) : (
-                    <RefreshCw size={20} className="text-primary" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Regenerate recovery codes</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Invalidates your current codes and creates 10 new ones.
-                  </p>
-                </div>
-              </button>
-
-              <div className="pt-2">
-                <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                  Disabling 2FA lowers the security of your account. You'll only need your password to sign in.
-                </p>
-                <button
-                  onClick={() => setDisableOpen(true)}
-                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border"
-                >
-                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                    <ShieldOff size={20} className="text-destructive" />
+              {/* TOTP factor card */}
+              {hasVerifiedFactor ? (
+                <div className="bg-card rounded-lg p-4 shadow-sm border border-border flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={20} className="text-accent" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-destructive">Disable two-factor authentication</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Authenticator app <span className="text-[10px] uppercase tracking-wide text-accent ml-1">Recommended · On</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Codes generated on your device.</p>
+                    <button
+                      onClick={() => setDisableOpen(true)}
+                      className="text-xs text-destructive font-medium mt-2 hover:underline"
+                    >
+                      Disable authenticator app
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={startEnroll}
+                  disabled={enroll.status === 'enrolling'}
+                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border disabled:opacity-60"
+                >
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                    {enroll.status === 'enrolling' ? (
+                      <Loader2 size={20} className="text-accent animate-spin" />
+                    ) : (
+                      <KeyRound size={20} className="text-accent" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      Set up authenticator app <span className="text-[10px] uppercase tracking-wide text-accent ml-1">Recommended</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Strongest option — codes generated on your device.</p>
+                  </div>
+                </button>
+              )}
+
+              {/* Email factor card */}
+              {emailFactor ? (
+                <div className="bg-card rounded-lg p-4 shadow-sm border border-border flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Mail size={20} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      Email codes <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-1">Less secure · On</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 break-all">Sent to {emailFactor.verified_email}</p>
+                    <button
+                      onClick={() => setDisableEmailOpen(true)}
+                      className="text-xs text-destructive font-medium mt-2 hover:underline"
+                    >
+                      Disable email codes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEmailEnrollOpen(true)}
+                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Mail size={20} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      Set up email codes <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-1">Alternative · Less secure</span>
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Requires your password and a current 6-digit code.
+                      Use only if you can't install an authenticator app — anyone with email access can read the code.
                     </p>
                   </div>
                 </button>
-              </div>
+              )}
+
+              {/* Recovery codes — only if any factor enrolled */}
+              {(hasVerifiedFactor || emailFactor) && (
+                <button
+                  onClick={() => setRegenOpen(true)}
+                  disabled={regenerating}
+                  className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border disabled:opacity-60"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    {regenerating ? (
+                      <Loader2 size={20} className="text-primary animate-spin" />
+                    ) : (
+                      <RefreshCw size={20} className="text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Regenerate recovery codes</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Invalidates your current codes and creates 10 new ones.
+                    </p>
+                  </div>
+                </button>
+              )}
             </div>
-          ) : (
-            <button
-              onClick={startEnroll}
-              disabled={enroll.status === 'enrolling'}
-              className="w-full flex items-center gap-4 bg-card rounded-lg p-4 shadow-sm text-left active:scale-[0.98] transition-transform border border-border disabled:opacity-60"
-            >
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                {enroll.status === 'enrolling' ? (
-                  <Loader2 size={20} className="text-accent animate-spin" />
-                ) : (
-                  <KeyRound size={20} className="text-accent" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Set up authenticator app (recommended)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Strongest option — codes generated on your device</p>
-              </div>
-            </button>
           )}
         </section>
 
