@@ -93,15 +93,15 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     }
   }, [transaction?.id]);
 
-  if (!transaction) return null;
-
   // Filter categories/fixed expenses to whichever month the user has selected
   // for this transaction (defaults to its existing budgetMonth, falls back to
   // activeMonth). Past-month transactions need that month's category set, not
   // the currently-viewed month's.
-  const effectiveMonth = budgetMonth || transaction.budgetMonth || activeMonth;
+  const effectiveMonth = budgetMonth || transaction?.budgetMonth || activeMonth;
   const categories = useMemo(() => filterForMonth(allCategories, effectiveMonth), [allCategories, effectiveMonth]);
   const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, effectiveMonth), [allFixedExpenses, effectiveMonth]);
+
+  if (!transaction) return null;
 
   const isUnassigned = transaction.categoryId === 'unassigned' && transaction.transactionType === 'expense';
   const showAISuggestion = isUnassigned && !suggestionDismissed;
