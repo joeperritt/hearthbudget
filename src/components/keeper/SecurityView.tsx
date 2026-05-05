@@ -438,7 +438,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
         </section>
 
         {/* ===== Trusted devices section ===== */}
-        {hasVerifiedFactor && (
+        {(hasVerifiedFactor || emailFactor) && (
           <section>
             <h2 className="font-display text-lg font-semibold text-foreground mb-2">Trusted devices</h2>
             <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
