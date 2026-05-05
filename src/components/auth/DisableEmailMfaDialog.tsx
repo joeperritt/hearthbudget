@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Mail, Smartphone } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -39,6 +39,15 @@ export function DisableEmailMfaDialog({ open, onOpenChange, hasTotp, verifiedEma
     if (!next) reset();
     onOpenChange(next);
   };
+
+  // Auto-send the email code when dialog opens directly into verify step
+  // (i.e. user has email-only MFA — no method picker shown).
+  useEffect(() => {
+    if (open && !hasTotp && step === 'verify' && method === 'email' && !sentTo && !sending) {
+      void sendCode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const sendCode = async () => {
     setSending(true);
