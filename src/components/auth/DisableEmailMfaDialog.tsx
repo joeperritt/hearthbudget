@@ -40,6 +40,15 @@ export function DisableEmailMfaDialog({ open, onOpenChange, hasTotp, verifiedEma
     onOpenChange(next);
   };
 
+  // Auto-send the email code when dialog opens directly into verify step
+  // (i.e. user has email-only MFA — no method picker shown).
+  useEffect(() => {
+    if (open && !hasTotp && step === 'verify' && method === 'email' && !sentTo && !sending) {
+      void sendCode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const sendCode = async () => {
     setSending(true);
     setError(null);
