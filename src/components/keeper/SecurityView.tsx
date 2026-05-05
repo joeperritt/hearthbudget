@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle, Smartphone, X, Lock } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, LogOut, Loader2, Copy, Download, RefreshCw, KeyRound, Check, AlertTriangle, Smartphone, X, Lock, Mail } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { DisableMfaDialog } from '@/components/auth/DisableMfaDialog';
+import { DisableEmailMfaDialog } from '@/components/auth/DisableEmailMfaDialog';
+import { EmailMfaEnrollDialog } from '@/components/auth/EmailMfaEnrollDialog';
 import { useAdminMfaGraceState } from '@/components/auth/AdminMfaBanner';
 import { getTrustedDeviceToken, clearTrustedDeviceToken } from '@/lib/trustedDevice';
 import { ChangePasswordDialog } from '@/components/auth/ChangePasswordDialog';
