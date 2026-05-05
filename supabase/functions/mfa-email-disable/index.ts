@@ -146,6 +146,13 @@ Deno.serve(async (req) => {
       .eq("user_id", userId);
     await admin.rpc("revoke_all_trusted_devices", { _user_id: userId });
 
+    // If no TOTP factor remains either, wipe recovery codes (no factor to recover from).
+    const { data: factors2 } = await userClient.auth.mfa.listFactors();
+    const hasTotpLeft = (factors2?.totp ?? []).some((f) => f.status === "verified");
+    if (!hasTotpLeft) {
+      await admin.from("user_mfa_recovery_codes").delete().eq("user_id", userId);
+    }
+
     await admin.from("mfa_audit_log").insert({
       user_id: userId, event: "email_disabled", ip_address: ip, user_agent: ua,
       metadata: { step_up_method: method },
