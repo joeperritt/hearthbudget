@@ -265,7 +265,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
             one-time recovery codes in case you lose access.
           </p>
 
-          {grace.needsMfa && grace.inGrace && !hasVerifiedFactor && enroll.status === 'idle' && (
+          {grace.needsMfa && grace.inGrace && !hasVerifiedFactor && !emailFactor && enroll.status === 'idle' && (
             <div className="mb-4 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 flex items-start gap-3">
               <AlertTriangle size={16} className="text-accent shrink-0 mt-0.5" />
               <div className="text-xs leading-relaxed text-foreground">
