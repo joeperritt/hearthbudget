@@ -1,7 +1,7 @@
 // Mint a trusted-device token for the authenticated user.
 // Called from the client AFTER a successful MFA verification when the user
 // checked "Remember this device". Returns the plaintext token (shown once);
-// the server only stores a SHA-256 hash. Default lifetime: 60 days.
+// the server only stores a SHA-256 hash. Default lifetime: 30 days.
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
@@ -15,7 +15,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const TRUST_DAYS = 60;
+const TRUST_DAYS = 30;
 
 async function sha256Hex(input: string): Promise<string> {
   const bytes = new TextEncoder().encode(input);

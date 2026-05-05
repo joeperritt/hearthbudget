@@ -442,7 +442,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
           <section>
             <h2 className="font-display text-lg font-semibold text-foreground mb-2">Trusted devices</h2>
             <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-              Devices where you chose "Remember this device" skip the two-factor prompt for 60 days.
+              Devices where you chose "Remember this device" skip the two-factor prompt for 30 days.
               Revoke any device you no longer use or trust.
             </p>
             <TrustedDevicesSection userId={user?.id} />
@@ -808,7 +808,7 @@ export function TrustedDevicesSection({ userId }: { userId: string | null | unde
     return (
       <div className="bg-card rounded-lg p-4 shadow-sm border border-border">
         <p className="text-xs text-muted-foreground">
-          No trusted devices yet. Check "Remember this device for 60 days" the next time you sign in
+          No trusted devices yet. Check "Remember this device for 30 days" the next time you sign in
           to skip the two-factor prompt on a personal device.
         </p>
       </div>
