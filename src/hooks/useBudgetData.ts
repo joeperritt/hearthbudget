@@ -62,6 +62,7 @@ function dbToTx(row: Record<string, unknown>): Transaction {
     enteredBy: row.entered_by as string | null,
     budgetMonth: (row.budget_month as string) || '',
     source: row.plaid_transaction_id ? 'plaid' : 'manual',
+    originalDescription: (row.original_description as string | null) ?? null,
   };
 }
 
