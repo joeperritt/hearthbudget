@@ -16,8 +16,18 @@ interface Profile {
 }
 
 interface PendingMfa {
-  factorId: string;
+  // Account email (for header copy "Signed in as ...").
   email: string;
+  // TOTP factor id, if user has a verified Supabase TOTP factor.
+  totpFactorId: string | null;
+  // Whether the user has an active email MFA factor.
+  hasEmail: boolean;
+  // Snapshot of the email the codes will be sent to (from user_mfa_email_factors).
+  emailSnapshot: string | null;
+  // Current auth.users.email — compared with snapshot to detect stale enrollment.
+  currentEmail: string;
+  // 'totp' | 'email' | null — drives default tab when both are enrolled.
+  lastUsedMethod: 'totp' | 'email' | null;
 }
 
 interface AuthContextType {
