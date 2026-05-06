@@ -6,7 +6,7 @@
 // last_sync_attempt_at, last_successful_sync_at, last_sync_error so the UI can
 // surface health to users.
 
-import { buildTransactionDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
+import { buildTransactionDescription, extractOriginalDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
 // matching.ts lives next to this file in supabase/functions/_shared/
 
 const PLAID_SYNC_MUTATION_ERROR = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
