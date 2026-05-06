@@ -995,6 +995,7 @@ export type Database = {
           id: string
           is_transfer_to_savings: boolean
           notes: string
+          original_description: string | null
           plaid_transaction_id: string | null
           transaction_type: string
         }
@@ -1011,6 +1012,7 @@ export type Database = {
           id?: string
           is_transfer_to_savings?: boolean
           notes?: string
+          original_description?: string | null
           plaid_transaction_id?: string | null
           transaction_type?: string
         }
@@ -1027,6 +1029,7 @@ export type Database = {
           id?: string
           is_transfer_to_savings?: boolean
           notes?: string
+          original_description?: string | null
           plaid_transaction_id?: string | null
           transaction_type?: string
         }

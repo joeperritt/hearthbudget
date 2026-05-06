@@ -6,7 +6,7 @@
 // last_sync_attempt_at, last_successful_sync_at, last_sync_error so the UI can
 // surface health to users.
 
-import { buildTransactionDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
+import { buildTransactionDescription, extractOriginalDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
 // matching.ts lives next to this file in supabase/functions/_shared/
 
 const PLAID_SYNC_MUTATION_ERROR = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
@@ -35,6 +35,7 @@ type ImportedTransactionRow = {
     household_id: string;
     date: string;
     description: string;
+    original_description: string | null;
     notes: string;
     amount: number;
     category_slug: string;
@@ -373,6 +374,7 @@ async function syncOneItem(
     }
     const finalAmount = isCredit && plaidAmount > 0 ? -plaidAmount : plaidAmount;
     const description = buildTransactionDescription(tx);
+    const originalDescription = extractOriginalDescription(tx);
 
     // Auto-detect routing for inter-account transfers and CC payments is INTENTIONALLY DISABLED
     // (per product decision 2026-04-27). Joe wants every Plaid-synced row to land in Unassigned
@@ -399,6 +401,7 @@ async function syncOneItem(
         household_id: householdId,
         date: tx.date as string,
         description,
+        original_description: originalDescription,
         notes: "",
         amount: finalAmount,
         category_slug: categorySlug,
