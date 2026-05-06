@@ -374,6 +374,7 @@ async function syncOneItem(
     }
     const finalAmount = isCredit && plaidAmount > 0 ? -plaidAmount : plaidAmount;
     const description = buildTransactionDescription(tx);
+    const originalDescription = extractOriginalDescription(tx);
 
     // Auto-detect routing for inter-account transfers and CC payments is INTENTIONALLY DISABLED
     // (per product decision 2026-04-27). Joe wants every Plaid-synced row to land in Unassigned
@@ -400,6 +401,7 @@ async function syncOneItem(
         household_id: householdId,
         date: tx.date as string,
         description,
+        original_description: originalDescription,
         notes: "",
         amount: finalAmount,
         category_slug: categorySlug,
