@@ -37,6 +37,8 @@ export interface Transaction {
   enteredBy?: string | null;
   budgetMonth: string;
   source: TransactionSource;
+  /** Raw bank-statement text from Plaid (e.g. "TST* CANTINA 76 - CO"). Null for manual entries. */
+  originalDescription?: string | null;
 }
 
 // A split transaction creates multiple TransactionSplit entries under one parent
