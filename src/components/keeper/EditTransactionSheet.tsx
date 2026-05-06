@@ -286,6 +286,12 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
               <span className="text-xs text-muted-foreground uppercase">Merchant</span>
               <span className="text-sm font-medium text-foreground">{transaction.description || '—'}</span>
             </div>
+            {transaction.originalDescription && transaction.originalDescription.trim() && transaction.originalDescription.trim().toLowerCase() !== (transaction.description || '').trim().toLowerCase() && (
+              <div className="flex justify-between gap-3">
+                <span className="text-[10px] text-muted-foreground/70 uppercase shrink-0">Bank statement</span>
+                <span className="text-[11px] text-muted-foreground text-right break-all">{transaction.originalDescription}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-xs text-muted-foreground uppercase">Amount</span>
               <span className="text-sm font-medium tabular-nums text-foreground">
