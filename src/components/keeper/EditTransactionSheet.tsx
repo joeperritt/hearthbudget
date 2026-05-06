@@ -100,6 +100,15 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const effectiveMonth = budgetMonth || transaction?.budgetMonth || activeMonth;
   const categories = useMemo(() => filterForMonth(allCategories, effectiveMonth), [allCategories, effectiveMonth]);
   const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, effectiveMonth), [allFixedExpenses, effectiveMonth]);
+  // Progress bars / "spent / left" must reflect the effective month's spend, not the
+  // currently-viewed active month. Fall back to monthTransactions when allTransactions
+  // wasn't supplied (preserves prior behavior).
+  const effectiveMonthTransactions = useMemo(() => {
+    if (allTransactions && allTransactions.length) {
+      return allTransactions.filter(t => (t.budgetMonth || activeMonth) === effectiveMonth);
+    }
+    return monthTransactions;
+  }, [allTransactions, monthTransactions, effectiveMonth, activeMonth]);
 
   if (!transaction) return null;
 
