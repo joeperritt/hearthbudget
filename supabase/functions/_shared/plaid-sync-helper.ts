@@ -35,6 +35,7 @@ type ImportedTransactionRow = {
     household_id: string;
     date: string;
     description: string;
+    original_description: string | null;
     notes: string;
     amount: number;
     category_slug: string;
