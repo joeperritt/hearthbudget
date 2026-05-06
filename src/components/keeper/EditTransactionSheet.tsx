@@ -100,6 +100,15 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   const effectiveMonth = budgetMonth || transaction?.budgetMonth || activeMonth;
   const categories = useMemo(() => filterForMonth(allCategories, effectiveMonth), [allCategories, effectiveMonth]);
   const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, effectiveMonth), [allFixedExpenses, effectiveMonth]);
+  // Progress bars / "spent / left" must reflect the effective month's spend, not the
+  // currently-viewed active month. Fall back to monthTransactions when allTransactions
+  // wasn't supplied (preserves prior behavior).
+  const effectiveMonthTransactions = useMemo(() => {
+    if (allTransactions && allTransactions.length) {
+      return allTransactions.filter(t => (t.budgetMonth || activeMonth) === effectiveMonth);
+    }
+    return monthTransactions;
+  }, [allTransactions, monthTransactions, effectiveMonth, activeMonth]);
 
   if (!transaction) return null;
 
@@ -394,7 +403,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={transaction.amount} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[variableCategoryId] || 0} />
+              <CategoryBudgetMini categoryId={variableCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={effectiveMonthTransactions} pendingAmount={transaction.amount} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[variableCategoryId] || 0} />
             </div>
           )}
 
@@ -438,7 +447,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                   </optgroup>
                 )}
               </select>
-              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={monthTransactions} pendingAmount={transaction.amount} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[fixedCategoryId] || 0} />
+              <CategoryBudgetMini categoryId={fixedCategoryId} categories={categories} fixedExpenses={fixedExpenses} transactions={effectiveMonthTransactions} pendingAmount={transaction.amount} excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]} transferAdjustment={transferAdjustments[fixedCategoryId] || 0} />
             </div>
           )}
 
@@ -461,7 +470,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
                 fixedExpenses={fixedExpenses}
                 lines={splitLines}
                 onChange={setSplitLines}
-                transactions={monthTransactions}
+                transactions={effectiveMonthTransactions}
                 excludeTransactionIds={splitSiblings.length > 1 ? splitSiblings.map(s => s.id) : [transaction.id]}
                 transferAdjustments={transferAdjustments}
               />
