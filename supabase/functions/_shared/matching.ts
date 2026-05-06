@@ -80,31 +80,44 @@ export function findLegacyTransactionGroup(
   target: { amount: number; date: string; description: string }
 ): LegacyTransactionCandidate[] | null {
   const datedCandidates = candidates.filter((candidate) => isWithinDateWindow(candidate.date, target.date));
+
+  // 1. Description-similar group sum (legacy behavior — preferred when names match)
   const similarDescriptionCandidates = datedCandidates.filter((candidate) =>
     descriptionsLookSimilar(candidate.description, target.description)
   );
 
-  const groupedByCreatedAt = new Map<string, LegacyTransactionCandidate[]>();
-  for (const candidate of similarDescriptionCandidates) {
-    const key = candidate.created_at || candidate.id;
-    const group = groupedByCreatedAt.get(key) || [];
-    group.push(candidate);
-    groupedByCreatedAt.set(key, group);
-  }
-
-  const rankedGroups = Array.from(groupedByCreatedAt.values()).sort((left, right) => {
-    const leftTime = Date.parse(left[0]?.created_at || "") || 0;
-    const rightTime = Date.parse(right[0]?.created_at || "") || 0;
-    return rightTime - leftTime;
-  });
-
-  for (const group of rankedGroups) {
-    const totalAmount = group.reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
-    if (amountsMatch(totalAmount, target.amount)) {
-      return group;
+  const groupByCreatedAt = (rows: LegacyTransactionCandidate[]) => {
+    const m = new Map<string, LegacyTransactionCandidate[]>();
+    for (const row of rows) {
+      const key = row.created_at || row.id;
+      const group = m.get(key) || [];
+      group.push(row);
+      m.set(key, group);
     }
+    return Array.from(m.values()).sort((left, right) => {
+      const lt = Date.parse(left[0]?.created_at || "") || 0;
+      const rt = Date.parse(right[0]?.created_at || "") || 0;
+      return rt - lt;
+    });
+  };
+
+  for (const group of groupByCreatedAt(similarDescriptionCandidates)) {
+    const totalAmount = group.reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+    if (amountsMatch(totalAmount, target.amount)) return group;
   }
 
+  // 2. NEW: same-created_at group sum across ALL date+account-window candidates,
+  // even when descriptions differ. Catches the case where a user manually split a
+  // Plaid charge under a different vendor name (e.g. they typed "Salsarita's"
+  // for a Cantina 76 charge that Plaid later sent as "76 Gas Stations").
+  // Splits are inserted in a single batch, so created_at is a strong grouping key.
+  for (const group of groupByCreatedAt(datedCandidates)) {
+    if (group.length < 2) continue; // singletons handled by exact-amount fallback below
+    const totalAmount = group.reduce((sum, row) => sum + Math.abs(Number(row.amount) || 0), 0);
+    if (amountsMatch(totalAmount, target.amount)) return group;
+  }
+
+  // 3. Exact-amount single-row fallback
   const exactAmountFallback = datedCandidates.filter((candidate) => amountsMatch(candidate.amount, target.amount));
   if (exactAmountFallback.length === 1) {
     return [exactAmountFallback[0]];
