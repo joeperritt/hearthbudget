@@ -798,11 +798,16 @@ export function SettingsView({
               <div className="mt-2.5 space-y-1">
                 {(() => {
                   const s: any = summary || {};
-                  const gross = typeof s.grossSpent === 'number'
-                    ? s.grossSpent
-                    : Object.values(spent).reduce((acc: number, v: any) => acc + Math.max(0, Number(v) || 0), 0);
+                  // Derive gross/net consistently. If snapshot lacks gross/net
+                  // fields (older snapshots), fall back to spentByCategory which
+                  // already excludes ignore-* rows — and use that SAME source for
+                  // both gross and net so the math reconciles. The legacy
+                  // totalSpent field can be inconsistent with spentByCategory
+                  // (different inclusion rules), so we don't mix them.
+                  const spentSum = Object.values(spent).reduce((acc: number, v: any) => acc + Math.max(0, Number(v) || 0), 0);
+                  const gross = typeof s.grossSpent === 'number' ? s.grossSpent : spentSum;
                   const refunds = typeof s.refundsTotal === 'number' ? s.refundsTotal : 0;
-                  const net = typeof s.netSpent === 'number' ? s.netSpent : (typeof s.totalSpent === 'number' ? s.totalSpent : gross + refunds);
+                  const net = typeof s.netSpent === 'number' ? s.netSpent : gross + refunds;
                   const remaining = totalBudgetRO - net;
                   const pct = totalBudgetRO > 0 ? Math.min((Math.max(0, net) / totalBudgetRO) * 100, 100) : 0;
                   return (
