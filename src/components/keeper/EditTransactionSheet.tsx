@@ -110,6 +110,21 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
     return monthTransactions;
   }, [allTransactions, monthTransactions, effectiveMonth, activeMonth]);
 
+  // TEMP debug — remove after verifying Issue 1 fix
+  useEffect(() => {
+    if (transaction?.id) {
+      console.log('[EditTx]', {
+        txId: transaction.id,
+        txBudgetMonth: transaction.budgetMonth,
+        activeMonth,
+        budgetMonthState: budgetMonth,
+        effectiveMonth,
+        allTxCount: allTransactions?.length ?? 0,
+        effectiveCount: effectiveMonthTransactions.length,
+      });
+    }
+  }, [transaction?.id, effectiveMonth, effectiveMonthTransactions.length, activeMonth, budgetMonth, allTransactions?.length]);
+
   if (!transaction) return null;
 
   const isUnassigned = transaction.categoryId === 'unassigned' && transaction.transactionType === 'expense';
