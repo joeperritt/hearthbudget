@@ -139,18 +139,19 @@ export function useBudgetData() {
       });
 
     // Gross spend (positive expense rows only) vs refunds (negative expense rows).
-    // Net = gross + refunds. Show all three so users see the real picture instead
-    // of one collapsed "totalSpent" number that hides large refunds/reversals.
-    const grossSpent = expenseTxns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-    const refundsTotal = expenseTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0); // negative
+    // EXCLUDE ignore-* category rows so a misrouted CC payment / transfer doesn't
+    // show up as a giant refund on the closed-month summary.
+    const realExpenses = expenseTxns.filter(t => !t.categoryId.startsWith('ignore-'));
+    const grossSpent = realExpenses.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const refundsTotal = realExpenses.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0); // negative
     const netSpent = grossSpent + refundsTotal;
 
     const summary = {
       totalTransactions: monthTxns.length,
       totalExpenses: expenseTxns.length,
-      totalSpent: netSpent,        // backward compat
-      grossSpent,                  // positive expense rows
-      refundsTotal,                // negative expense rows (signed, ≤ 0)
+      totalSpent: netSpent,        // backward compat (now consistent w/ netSpent)
+      grossSpent,                  // positive expense rows (excl. ignore-*)
+      refundsTotal,                // negative expense rows (excl. ignore-*, signed ≤ 0)
       netSpent,
       spentByCategory,
     };
