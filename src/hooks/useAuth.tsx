@@ -16,8 +16,18 @@ interface Profile {
 }
 
 interface PendingMfa {
-  factorId: string;
+  // Account email (for header copy "Signed in as ...").
   email: string;
+  // TOTP factor id, if user has a verified Supabase TOTP factor.
+  totpFactorId: string | null;
+  // Whether the user has an active email MFA factor.
+  hasEmail: boolean;
+  // Snapshot of the email the codes will be sent to (from user_mfa_email_factors).
+  emailSnapshot: string | null;
+  // Current auth.users.email — compared with snapshot to detect stale enrollment.
+  currentEmail: string;
+  // 'totp' | 'email' | null — drives default tab when both are enrolled.
+  lastUsedMethod: 'totp' | 'email' | null;
 }
 
 interface AuthContextType {
@@ -36,49 +46,81 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function detectMfaChallenge(): Promise<PendingMfa | null> {
-  // If session AAL is aal1 but the user has a verified TOTP factor, they must
-  // complete the MFA challenge before any authenticated route renders — UNLESS
-  // this device has a valid trusted-device token (30-day "remember this device").
-  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (!aalData) return null;
-  const { currentLevel, nextLevel } = aalData;
-  if (currentLevel === 'aal2' || nextLevel !== 'aal2') return null;
-
-  const { data: factorsData } = await supabase.auth.mfa.listFactors();
-  const verifiedTotp = factorsData?.totp?.find(f => f.status === 'verified');
-  if (!verifiedTotp) return null;
-
+  // Determine which factors (if any) require a challenge before authenticated
+  // routes render. Two factor types:
+  //   - TOTP: native Supabase factor (drives AAL upgrades).
+  //   - Email: custom factor stored in user_mfa_email_factors. AAL stays at
+  //     aal1 even after success — we use the recoveryBypass-style gate.
   const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  const user = userData.user;
+  if (!user) return null;
+  const userId = user.id;
+  const currentEmail = user.email ?? '';
 
-  // Trusted-device short-circuit. If a stored token validates, skip the MFA gate
-  // and rotate the token. Any failure path falls through to showing the prompt.
-  if (userId) {
-    const token = getTrustedDeviceToken(userId);
-    if (token) {
-      try {
-        const { data: trustData } = await supabase.functions.invoke(
-          'mfa-check-trusted-device',
-          { body: { token } },
-        );
-        if (trustData?.trusted && typeof trustData.token === 'string') {
-          setTrustedDeviceToken(userId, trustData.token);
-          return null; // device is trusted; bypass MFA
-        }
-        // Server says no — purge stale local token to avoid retry storms.
-        if (trustData && trustData.trusted === false) {
-          clearTrustedDeviceToken(userId);
-        }
-      } catch (e) {
-        console.warn('trusted-device check failed', e);
-        // Fail closed: still show MFA prompt.
+  // Look up TOTP factor.
+  const { data: factorsData } = await supabase.auth.mfa.listFactors();
+  const verifiedTotp = factorsData?.totp?.find(f => f.status === 'verified') ?? null;
+
+  // Look up email factor.
+  const { data: emailFactor } = await supabase
+    .from('user_mfa_email_factors')
+    .select('verified_email, disabled_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const hasEmail = !!emailFactor && !emailFactor.disabled_at;
+  const emailSnapshot = hasEmail ? (emailFactor!.verified_email as string) : null;
+
+  // If user has TOTP, also honor AAL — if already aal2, we're done.
+  if (verifiedTotp) {
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalData && aalData.currentLevel === 'aal2') {
+      // TOTP already satisfied for this session.
+      return null;
+    }
+  } else if (!hasEmail) {
+    // No factors enrolled at all — nothing to gate on.
+    return null;
+  }
+
+  // Trusted-device short-circuit. Applies to either method.
+  const token = getTrustedDeviceToken(userId);
+  if (token) {
+    try {
+      const { data: trustData } = await supabase.functions.invoke(
+        'mfa-check-trusted-device',
+        { body: { token } },
+      );
+      if (trustData?.trusted && typeof trustData.token === 'string') {
+        setTrustedDeviceToken(userId, trustData.token);
+        return null; // device is trusted; bypass MFA
       }
+      if (trustData && trustData.trusted === false) {
+        clearTrustedDeviceToken(userId);
+      }
+    } catch (e) {
+      console.warn('trusted-device check failed', e);
     }
   }
 
+  // Fetch last_used_method preference (best-effort).
+  let lastUsedMethod: 'totp' | 'email' | null = null;
+  try {
+    const { data: pref } = await supabase
+      .from('user_mfa_method_pref')
+      .select('last_used_method')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const lum = pref?.last_used_method;
+    if (lum === 'totp' || lum === 'email') lastUsedMethod = lum;
+  } catch { /* table may not exist yet */ }
+
   return {
-    factorId: verifiedTotp.id,
-    email: userData.user?.email ?? '',
+    email: currentEmail,
+    totpFactorId: verifiedTotp?.id ?? null,
+    hasEmail,
+    emailSnapshot,
+    currentEmail,
+    lastUsedMethod,
   };
 }
 
