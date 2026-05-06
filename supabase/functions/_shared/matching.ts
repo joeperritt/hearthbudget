@@ -49,11 +49,30 @@ function isWithinDateWindow(left: string, right: string, windowDays = 3): boolea
   return Math.abs(leftTime - rightTime) <= windowDays * DAY_MS;
 }
 
-export function buildTransactionDescription(tx: Record<string, unknown>): string {
-  const merchantName = (tx.merchant_name as string) || "";
-  const txName = (tx.name as string) || "";
+// Strip common POS-aggregator prefixes (Toast "TST*", Square "SQ *", "SP *", etc.)
+// and trailing state codes (" - CO") so a fallback to raw `name` reads cleanly.
+export function cleanRawDescription(value: string): string {
+  if (!value) return "";
+  let v = value.trim();
+  v = v.replace(/^(TST\*|SQ ?\*|SP ?\*|PY ?\*|PAYPAL ?\*|IZ ?\*)\s*/i, "");
+  v = v.replace(/\s+-\s+[A-Z]{2}\s*$/, "");
+  v = v.replace(/\s{2,}/g, " ").trim();
+  return v;
+}
 
-  return merchantName.toLowerCase() === "venmo" && txName ? txName : (merchantName || txName);
+export function buildTransactionDescription(tx: Record<string, unknown>): string {
+  const merchantName = ((tx.merchant_name as string) || "").trim();
+  const txName = ((tx.name as string) || "").trim();
+  const rawCleaned = cleanRawDescription(txName);
+
+  // Venmo: prefer raw `name` since merchant_name is always "Venmo"
+  if (merchantName.toLowerCase() === "venmo" && txName) return rawCleaned || txName;
+  return merchantName || rawCleaned || txName;
+}
+
+export function extractOriginalDescription(tx: Record<string, unknown>): string | null {
+  const orig = (tx.original_description as string) || (tx.name as string) || "";
+  return orig ? orig.trim() : null;
 }
 
 export function findLegacyTransactionGroup(
