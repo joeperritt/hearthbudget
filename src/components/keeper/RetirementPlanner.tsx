@@ -229,7 +229,7 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
         </div>
       </div>
 
-      {/* Inputs */}
+      {/* Inputs (read-only — sourced from Financial Profile) */}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Your numbers</h2>
         <div className="bg-card rounded-xl shadow-sm border border-border/40 p-4 space-y-4">
@@ -250,27 +250,20 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
               <p className="text-xs text-muted-foreground">Roth balance</p>
               <p className="font-semibold text-foreground">{fmt(metrics.roth)}</p>
             </div>
+            <div className="col-span-2">
+              <p className="text-xs text-muted-foreground">Annual retirement savings (sum of monthly contributions × 12)</p>
+              <p className="font-semibold text-foreground">{fmt(metrics.annualContribution)}</p>
+            </div>
           </div>
-          {(metrics.grossIncome === 0 || metrics.primaryAge === null) && (
-            <button
-              onClick={() => onNavigateToProfile?.('income')}
-              className="text-xs font-semibold text-accent active:opacity-70"
-            >
-              Complete Financial Profile →
-            </button>
-          )}
-          <div>
-            <Label htmlFor="annual-contrib" className="text-xs">Annual retirement savings (incl. employer match)</Label>
-            <Input
-              id="annual-contrib"
-              inputMode="decimal"
-              placeholder="e.g. 18000"
-              value={state.annualContribution}
-              onChange={e => setState({ annualContribution: e.target.value })}
-              className="mt-1"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">Used to compare your savings rate against the 15% guideline.</p>
-          </div>
+          <button
+            onClick={() => onNavigateToProfile?.('accounts')}
+            className="text-xs font-semibold text-accent active:opacity-70"
+          >
+            Edit in Financial Profile → Accounts
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            All values above are read from your Financial Profile. Update them there to refresh this analysis.
+          </p>
         </div>
       </div>
 
