@@ -639,13 +639,13 @@ const Index = () => {
         )}
         {activeTab === 'plan' && planSubView === 'financial-profile' && (
           <CFPProfileView onBack={() => {
-            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('plan-tools'); }
             else setPlanSubView('menu');
           }} householdId={householdId} initialTab={profileInitialTab} />
         )}
         {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
           renderTool(planSubView, () => {
-            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('menu'); }
+            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('plan-tools'); }
             else setPlanSubView('menu');
           })
         )}
