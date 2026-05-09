@@ -118,6 +118,7 @@ interface ProfileData {
   debts: Debt[];
   non_retirement_investments: number;
   non_retirement_per_member: Record<string, number>;
+  non_retirement_intent: Record<string, 'retirement' | 'other_goals'>;
   retirement_balance: number;
   retirement_balance_per_member: Record<string, number>;
   roth_retirement_balance: number;
@@ -155,6 +156,7 @@ const DEFAULT_PROFILE: ProfileData = {
   debts: [],
   non_retirement_investments: 0,
   non_retirement_per_member: {},
+  non_retirement_intent: {},
   monthly_additions_per_key: {},
   retirement_balance: 0,
   retirement_balance_per_member: {},
@@ -384,6 +386,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
           })) : [],
           non_retirement_investments: Number(savedProfile.non_retirement_investments) || 0,
           non_retirement_per_member: savedProfile.non_retirement_per_member || {},
+          non_retirement_intent: savedProfile.non_retirement_intent || {},
           retirement_balance: Number(savedProfile.retirement_balance) || 0,
           retirement_balance_per_member: savedProfile.retirement_balance_per_member || {},
           roth_retirement_balance: Number(savedProfile.roth_retirement_balance) || 0,
@@ -451,6 +454,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
       non_retirement_per_member: profileData.non_retirement_per_member,
+      non_retirement_intent: profileData.non_retirement_intent,
       total_investment_balance: profileData.non_retirement_investments + profileData.retirement_balance + profileData.roth_retirement_balance,
       retirement_balance: profileData.retirement_balance,
       retirement_balance_per_member: profileData.retirement_balance_per_member,
