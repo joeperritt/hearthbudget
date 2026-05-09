@@ -165,6 +165,11 @@ export function PlanView({ householdId, onNavigate, onBack }: PlanViewProps) {
     <div className="max-w-lg mx-auto pb-32">
       {/* Header */}
       <div className="px-6 pt-12 safe-top">
+        {onBack && (
+          <button onClick={onBack} className="flex items-center gap-1 text-accent text-sm font-medium mb-3 active:scale-95 transition-transform">
+            <ArrowLeft size={16} /> Back
+          </button>
+        )}
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Financial Plan</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Your complete financial picture</p>
       </div>
