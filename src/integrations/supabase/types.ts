@@ -22,7 +22,7 @@ export type Database = {
           id: string
           insights: Json
           kind: string
-          month: string | null
+          month: string
           updated_at: string
         }
         Insert: {
@@ -32,7 +32,7 @@ export type Database = {
           id?: string
           insights?: Json
           kind: string
-          month?: string | null
+          month?: string
           updated_at?: string
         }
         Update: {
@@ -42,7 +42,7 @@ export type Database = {
           id?: string
           insights?: Json
           kind?: string
-          month?: string | null
+          month?: string
           updated_at?: string
         }
         Relationships: [
