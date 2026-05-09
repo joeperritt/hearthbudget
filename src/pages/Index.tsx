@@ -551,14 +551,8 @@ const Index = () => {
             transactions={monthTransactions}
             spentByCategory={spentByCategory}
             transferAdjustments={transferAdjustments}
-            onSelectCategory={(id) => {
-              setActivityInitialFilter(`category:${id}`);
-              setActiveTab('transactions');
-            }}
-            onSelectFixedExpense={(id) => {
-              setActivityInitialFilter(`category:${id}`);
-              setActiveTab('transactions');
-            }}
+            onSelectCategory={(id) => setSelectedCategoryId(id)}
+            onSelectFixedExpense={(id) => setSelectedFixedExpenseId(id)}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
@@ -608,11 +602,15 @@ const Index = () => {
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
-            onBack={budgetEntryFromMore ? () => {
-              setBudgetEntryFromMore(false);
-              setActiveTab('profile');
-              setProfileSubView('menu');
-            } : undefined}
+            onBack={() => {
+              if (budgetEntryFromMore) {
+                setBudgetEntryFromMore(false);
+                setActiveTab('profile');
+                setProfileSubView('menu');
+              } else {
+                setActiveTab('dashboard');
+              }
+            }}
             onOpenProfile={() => {
               if (budgetEntryFromMore) setBudgetEntryFromMore(false);
               setProfileSubView('menu');
@@ -626,6 +624,7 @@ const Index = () => {
           <PlanView
             householdId={householdId}
             onNavigate={(target) => setPlanSubView(target as PlanSubView)}
+            onBack={() => { setActiveTab('profile'); setProfileSubView('menu'); }}
           />
         )}
         {activeTab === 'plan' && planSubView === 'calculators' && (

@@ -16,6 +16,11 @@ Your scope is strictly this month's budget. Surface 3–5 specific, actionable i
 - Giving and savings intentionality this month: are giving and savings categories funded as planned? Flag if drifting.
 - Month-over-month changes when prior month data is provided — name the categories that moved most.
 
+CRITICAL — calibrate framing to the day of month, which is provided to you as todayDayOfMonth (1–31) and todayPhase ("early" days 1–10, "mid" days 11–24, "late" days 25–end). Most households do not pay every fixed bill on the 1st, so do not treat the month like a finished ledger early on:
+- early phase (days 1–10): be informational and forward-looking. Frame missing fixed bills as "coming up this month" rather than "missing." Do NOT flag unpaid fixed bills as warnings yet. Do NOT urge the user to act on month-to-date underspending. Celebrate intent and clarity of plan.
+- mid phase (days 11–24): track spending vs. budget normally. Flag clear category overruns. Soft-flag fixed bills that are typically paid by mid-month and are still unpaid, but do not catastrophize.
+- late phase (days 25–end): now treat unpaid fixed obligations as actionable warnings. Push for end-of-month reconciliation, unassigned cleanup, and confirming giving/savings transfers happened.
+
 Do NOT surface long-term planning concerns. Do not comment on emergency fund adequacy, life insurance coverage, retirement progress, asset allocation, or any strategic/multi-year topic. Those live on the Plan tab and are out of scope here.
 
 Be warm, concise, and direct. Reference real dollar amounts and category names from the data — never generic advice. Celebrate wins. When stewardshipMode is true, let biblical principles of stewardship, generosity, and contentment inform your tone naturally (never preachy). When false, keep it secular and professional.
@@ -189,8 +194,12 @@ serve(async (req) => {
     let messages: Array<{ role: string; content: string }>;
 
     if (prompt && typeof prompt === "string") {
+      const now = new Date();
+      const day = now.getUTCDate();
+      const phase = day <= 10 ? "early" : day <= 24 ? "mid" : "late";
+      const dayNote = `\n\nFor reference, today is day ${day} of the current real-world month (phase: ${phase}). If you reference month-to-date progress, calibrate framing accordingly.`;
       messages = [
-        { role: "system", content: customSystemPrompt || HOME_PROMPT_FULL },
+        { role: "system", content: (customSystemPrompt || HOME_PROMPT_FULL) + dayNote },
         { role: "user", content: prompt },
       ];
     } else if (budgetSummary) {
@@ -201,14 +210,27 @@ serve(async (req) => {
         ? CHAT_PROMPT_FULL
         : (activeSystemPrompt || HOME_PROMPT_FULL);
       const stewardshipNote = `stewardshipMode is ${stewardshipMode ? "true" : "false"}.`;
+
+      // Day-of-month framing — only meaningful when the active month is the
+      // real-world current month. For past/future months, omit so the model
+      // doesn't apply early/mid/late phase logic to a closed or future period.
+      const now = new Date();
+      const realCurrentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      const activeIsCurrent = typeof budgetSummary.currentMonth === "string" && budgetSummary.currentMonth === realCurrentMonth;
+      const day = now.getUTCDate();
+      const phase = day <= 10 ? "early" : day <= 24 ? "mid" : "late";
+      const dayNote = activeIsCurrent
+        ? `todayDayOfMonth is ${day}. todayPhase is "${phase}". The active budget month IS the real-world current month, so apply phase-aware framing.`
+        : `The active budget month is NOT the real-world current month — it is a past or future month being reviewed. Do NOT apply early/mid/late day-of-month framing; treat the month as a complete or planning-only period.`;
+
       messages = isChat
         ? [
-            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}` },
+            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}\n\n${dayNote}` },
             { role: "user", content: `The current active budget month is ${month}. Here is the household's data (current month budget + long-term financial profile) for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
             ...chatMessages,
           ]
         : [
-            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}` },
+            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}\n\n${dayNote}` },
             { role: "user", content: `The current active budget month is ${month}. Here is the data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
           ];
     } else {
