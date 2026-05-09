@@ -24,6 +24,7 @@ interface PriorMonthData {
 }
 
 interface BudgetSummary {
+  currentMonthKey: string;
   currentMonth: string;
   daysRemaining: number;
   totalBudget: number;
@@ -290,6 +291,7 @@ async function buildBudgetSummary(
   }
 
   return {
+    currentMonthKey: activeMonth,
     currentMonth: format(new Date(activeMonth + '-01'), 'MMMM yyyy'),
     daysRemaining,
     totalBudget,

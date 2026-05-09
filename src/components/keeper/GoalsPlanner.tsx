@@ -304,17 +304,21 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
   const savingsPool = useMemo(() => {
     if (!financialProfile) return null;
     const additions = (financialProfile.monthly_additions_per_key || {}) as Record<string, number>;
+    const nqBalances = (financialProfile.non_retirement_per_member || {}) as Record<string, number>;
+    const nqIntent = (financialProfile.non_retirement_intent || {}) as Record<string, string>;
     // Non-Retirement Goals additions from Savings section
     const savingsNonret = Number(additions['savings_nonret']) || 0;
-    // "For Non-Retirement Goals" from all NQ accounts (joint + per-member)
+    // "For Non-Retirement Goals" from NQ accounts explicitly marked for other goals.
     let nqNonRet = 0;
     Object.entries(additions).forEach(([key, val]) => {
-      if (key.endsWith('_nonret') && key.startsWith('nq_')) nqNonRet += (Number(val) || 0);
+      const match = key.match(/^nq_(.+)_nonret$/);
+      if (match && nqIntent[match[1]] !== 'retirement') nqNonRet += (Number(val) || 0);
     });
+    const otherGoalBalance = Object.entries(nqBalances).reduce((s, [key, val]) => s + (nqIntent[key] === 'retirement' ? 0 : Number(val) || 0), 0);
     const totalAvailable = savingsNonret + nqNonRet;
     const allocated = goals.reduce((s, g) => s + (Number(g.monthlyContribution) || 0), 0);
     const surplus = totalAvailable - allocated;
-    return { totalAvailable, allocated, surplus, hasData: totalAvailable > 0 };
+    return { totalAvailable, allocated, surplus, otherGoalBalance, hasData: totalAvailable > 0 || otherGoalBalance > 0 };
   }, [financialProfile, goals]);
 
   if (!loaded) {
@@ -350,6 +354,10 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Monthly Non-Retirement Savings</span>
                 <span className="font-semibold text-foreground tabular-nums">{fmt(savingsPool.totalAvailable)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">NQ for Other Goals</span>
+                <span className="font-semibold text-foreground tabular-nums">{fmt(savingsPool.otherGoalBalance)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Allocated to Goals</span>

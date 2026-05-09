@@ -118,6 +118,7 @@ interface ProfileData {
   debts: Debt[];
   non_retirement_investments: number;
   non_retirement_per_member: Record<string, number>;
+  non_retirement_intent: Record<string, 'retirement' | 'other_goals'>;
   retirement_balance: number;
   retirement_balance_per_member: Record<string, number>;
   roth_retirement_balance: number;
@@ -155,6 +156,7 @@ const DEFAULT_PROFILE: ProfileData = {
   debts: [],
   non_retirement_investments: 0,
   non_retirement_per_member: {},
+  non_retirement_intent: {},
   monthly_additions_per_key: {},
   retirement_balance: 0,
   retirement_balance_per_member: {},
@@ -384,6 +386,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
           })) : [],
           non_retirement_investments: Number(savedProfile.non_retirement_investments) || 0,
           non_retirement_per_member: savedProfile.non_retirement_per_member || {},
+          non_retirement_intent: savedProfile.non_retirement_intent || {},
           retirement_balance: Number(savedProfile.retirement_balance) || 0,
           retirement_balance_per_member: savedProfile.retirement_balance_per_member || {},
           roth_retirement_balance: Number(savedProfile.roth_retirement_balance) || 0,
@@ -451,6 +454,7 @@ export function CFPProfileView({ onBack, householdId, initialTab, onNavigateToTo
       debts: profileData.debts,
       non_retirement_investments: profileData.non_retirement_investments,
       non_retirement_per_member: profileData.non_retirement_per_member,
+      non_retirement_intent: profileData.non_retirement_intent,
       total_investment_balance: profileData.non_retirement_investments + profileData.retirement_balance + profileData.roth_retirement_balance,
       retirement_balance: profileData.retirement_balance,
       retirement_balance_per_member: profileData.retirement_balance_per_member,
@@ -1512,6 +1516,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
   const jointNqRet = Number(profile.monthly_additions_per_key['nq_joint_retirement'] || 0);
   const jointNqNonret = Number(profile.monthly_additions_per_key['nq_joint_nonret'] || 0);
   const jointMonthly = jointNqRet + jointNqNonret;
+  const getNqIntent = (key: string): 'retirement' | 'other_goals' =>
+    profile.non_retirement_intent[key] === 'retirement' ? 'retirement' : 'other_goals';
+  const setNqIntent = (key: string, value: 'retirement' | 'other_goals') =>
+    update('non_retirement_intent', { ...profile.non_retirement_intent, [key]: value });
 
   // Investment member sections: joint first, then members in order
   const investmentSections: { key: string; label: string; isJoint: boolean; pid?: string }[] = [];
@@ -1603,6 +1611,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                   >
                     <div>
                       <span className="text-sm font-medium text-foreground">Joint Non-Qualified</span>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{getNqIntent('joint') === 'retirement' ? 'For retirement' : 'For other goals'}</p>
                       <InfoPopover text="Jointly held brokerage or taxable investment accounts shared between household members. Not tax-advantaged." />
                     </div>
                     <div className="flex items-center gap-3">
@@ -1630,6 +1639,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                             setTimeout(() => update('non_retirement_investments', total), 0);
                           }}
                         />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Intent</label>
+                        <NqIntentSelect value={getNqIntent('joint')} onChange={v => setNqIntent('joint', v)} />
                       </div>
                       <div>
                         <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
@@ -1663,6 +1676,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                   <div>
                     <span className="text-sm font-medium text-foreground">{sec.label}</span>
                     <span className="text-[10px] text-muted-foreground ml-1.5">NQ · Pre-Tax · Roth</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{getNqIntent(pid) === 'retirement' ? 'NQ for retirement' : 'NQ for other goals'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
@@ -1696,6 +1710,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                             setTimeout(() => update('non_retirement_investments', total), 0);
                           }}
                         />
+                      </div>
+                      <div className="mt-2">
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Intent</label>
+                        <NqIntentSelect value={getNqIntent(pid)} onChange={v => setNqIntent(pid, v)} />
                       </div>
                       <label className="text-[10px] text-muted-foreground mb-1 block mt-2">Monthly Additions</label>
                       <div className="grid grid-cols-2 gap-3">
@@ -1777,6 +1795,36 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function NqIntentSelect({
+  value,
+  onChange,
+}: {
+  value: 'retirement' | 'other_goals';
+  onChange: (value: 'retirement' | 'other_goals') => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {[
+        { value: 'retirement' as const, label: 'For retirement' },
+        { value: 'other_goals' as const, label: 'For other goals' },
+      ].map(option => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+            value === option.value
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border bg-background text-muted-foreground'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }

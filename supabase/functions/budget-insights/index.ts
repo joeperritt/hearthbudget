@@ -113,6 +113,8 @@ serve(async (req) => {
     } = body || {};
     // Home insights cache is month-scoped; big_picture is household-wide ('').
     const cacheMonth = mode === 'home' ? (typeof monthParam === 'string' ? monthParam : '') : '';
+    const traceId = crypto.randomUUID().slice(0, 8);
+    console.log(`[budget-insights:${traceId}] request`, JSON.stringify({ mode, cacheKindHint: mode, cacheMonth, forceRefresh, hasBudgetSummary: !!budgetSummary, isChat: !!(chatMessages && chatMessages.length > 0), hasPrompt: typeof prompt === 'string' }));
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
@@ -176,18 +178,19 @@ serve(async (req) => {
       const cachedRow = cached as { insights: unknown; generated_at: string } | null;
       if (cachedRow) {
         const age = Date.now() - new Date(cachedRow.generated_at).getTime();
-        if (!forceRefresh || age < RATE_LIMIT_MS) {
-          // Return cache if not forcing OR rate limit window not elapsed
+        if (!forceRefresh) {
+          // Return cache unless the user explicitly requested a fresh generation.
           return new Response(
             JSON.stringify({
               content: typeof cachedRow.insights === "string" ? cachedRow.insights : JSON.stringify(cachedRow.insights),
               generatedAt: cachedRow.generated_at,
               cached: true,
-              rateLimited: forceRefresh && age < RATE_LIMIT_MS,
+              rateLimited: false,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+        console.log(`[budget-insights:${traceId}] bypassing cache for explicit refresh`, JSON.stringify({ cacheKind, cacheMonth, ageMs: age, rateLimitMs: RATE_LIMIT_MS }));
       }
     }
 
@@ -208,6 +211,7 @@ serve(async (req) => {
       ];
     } else if (budgetSummary) {
       const month = budgetSummary.currentMonth || "the current month";
+      const monthKey = typeof budgetSummary.currentMonthKey === "string" ? budgetSummary.currentMonthKey : (typeof monthParam === "string" ? monthParam : "");
       // Chat uses the dedicated CHAT_PROMPT (cross-domain, reactive, multi-turn).
       // Cacheable modes use their respective prompts. Fallback to HOME_PROMPT.
       const sysPrompt = isChat
@@ -220,12 +224,26 @@ serve(async (req) => {
       // doesn't apply early/mid/late phase logic to a closed or future period.
       const now = new Date();
       const realCurrentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-      const activeIsCurrent = typeof budgetSummary.currentMonth === "string" && budgetSummary.currentMonth === realCurrentMonth;
+      const activeIsCurrent = monthKey === realCurrentMonth;
       const day = now.getUTCDate();
       const phase = day <= 10 ? "early" : day <= 24 ? "mid" : "late";
       const dayNote = activeIsCurrent
-        ? `todayDayOfMonth is ${day}. todayPhase is "${phase}". The active budget month IS the real-world current month, so apply phase-aware framing.`
-        : `The active budget month is NOT the real-world current month — it is a past or future month being reviewed. Do NOT apply early/mid/late day-of-month framing; treat the month as a complete or planning-only period.`;
+        ? `todayDayOfMonth is ${day}. todayPhase is "${phase}". activeMonthKey is ${monthKey}. The active budget month IS the real-world current month, so apply phase-aware framing. If todayPhase is "early", fixed bills with paid=false are upcoming, not overdue; do not title any insight "unpaid", "missing", or "overdue" because of bill payment timing.`
+        : `activeMonthKey is ${monthKey || "unknown"}. The active budget month is NOT the real-world current month — it is a past or future month being reviewed. Do NOT create urgent or warning insights about unpaid fixed bills for this closed/future month. Only mention unpaid fixed obligations neutrally as reconciliation context if the user is explicitly reviewing that month.`;
+
+      console.log(`[budget-insights:${traceId}] prompt trace`, JSON.stringify({
+        cacheKind,
+        cacheMonth,
+        month,
+        monthKey,
+        realCurrentMonth,
+        activeIsCurrent,
+        day,
+        phase,
+        forceRefresh,
+        systemPromptPreview: `${sysPrompt}\n\n${stewardshipNote}\n\n${dayNote}`.slice(0, 2500),
+        userPromptPreview: `The current active budget month is ${month}. Here is the data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}`.slice(0, 2500),
+      }));
 
       messages = isChat
         ? [
@@ -263,6 +281,7 @@ serve(async (req) => {
     }
 
     const content = result.content || "";
+    console.log(`[budget-insights:${traceId}] response trace`, JSON.stringify({ cacheKind, cacheMonth, contentPreview: content.slice(0, 2500) }));
     const generatedAt = new Date().toISOString();
 
     // Persist to cache
