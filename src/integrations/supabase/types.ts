@@ -351,6 +351,7 @@ export type Database = {
           mortgage_pi: number | null
           mortgage_rate: number | null
           mortgage_statement_month: string | null
+          non_retirement_intent: Json
           non_retirement_investments: number | null
           non_retirement_per_member: Json
           renters_insurance: boolean | null
@@ -391,6 +392,7 @@ export type Database = {
           mortgage_pi?: number | null
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
+          non_retirement_intent?: Json
           non_retirement_investments?: number | null
           non_retirement_per_member?: Json
           renters_insurance?: boolean | null
@@ -431,6 +433,7 @@ export type Database = {
           mortgage_pi?: number | null
           mortgage_rate?: number | null
           mortgage_statement_month?: string | null
+          non_retirement_intent?: Json
           non_retirement_investments?: number | null
           non_retirement_per_member?: Json
           renters_insurance?: boolean | null
