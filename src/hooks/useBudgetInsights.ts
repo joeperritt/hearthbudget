@@ -352,20 +352,31 @@ export function useBudgetInsights(
   const [chatLoading, setChatLoading] = useState(false);
   const insightsRef = useRef<Insight[]>([]);
 
-  // Load cached insights on mount / household change. NO auto-generation.
+  // Load cached insights on mount / household / activeMonth change. NO auto-generation.
+  // Home insights are scoped to the active month; big_picture is household-wide.
   useEffect(() => {
-    if (!householdId) return;
+    if (!householdId || !activeMonth) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('ai_insights_cache')
-        .select('insights, generated_at, kind')
-        .eq('household_id', householdId)
-        .in('kind', ['home', 'big_picture']);
+      const [homeRes, bpRes] = await Promise.all([
+        supabase
+          .from('ai_insights_cache')
+          .select('insights, generated_at')
+          .eq('household_id', householdId)
+          .eq('kind', 'home')
+          .eq('month', activeMonth)
+          .maybeSingle(),
+        supabase
+          .from('ai_insights_cache')
+          .select('insights, generated_at')
+          .eq('household_id', householdId)
+          .eq('kind', 'big_picture')
+          .eq('month', '')
+          .maybeSingle(),
+      ]);
       if (cancelled) return;
-      const rows = (data || []) as { insights: unknown; generated_at: string; kind: string }[];
-      const homeRow = rows.find(r => r.kind === 'home');
-      const bpRow = rows.find(r => r.kind === 'big_picture');
+      const homeRow = homeRes.data as { insights: unknown; generated_at: string } | null;
+      const bpRow = bpRes.data as { insights: unknown; generated_at: string } | null;
       if (homeRow) {
         const parsed = parseInsights(homeRow.insights);
         setInsights(parsed);
@@ -373,6 +384,9 @@ export function useBudgetInsights(
         setLastUpdated(new Date(homeRow.generated_at));
         setHasCached(true);
       } else {
+        setInsights([]);
+        insightsRef.current = [];
+        setLastUpdated(null);
         setHasCached(false);
       }
       if (bpRow) {
@@ -385,7 +399,7 @@ export function useBudgetInsights(
       }
     })();
     return () => { cancelled = true; };
-  }, [householdId]);
+  }, [householdId, activeMonth]);
 
   const getSummary = useCallback(() => buildBudgetSummary(
     activeMonth, categories, fixedExpenses, monthTransactions,
@@ -402,6 +416,7 @@ export function useBudgetInsights(
         body: {
           budgetSummary: summaryData,
           mode: 'home',
+          month: activeMonth,
           stewardshipMode: true,
           forceRefresh: true,
         },

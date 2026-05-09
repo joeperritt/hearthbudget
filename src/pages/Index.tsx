@@ -165,6 +165,7 @@ const Index = () => {
   // bounce them back to More on close instead of the (now hidden) Plan tab.
   const [planEntryFromMore, setPlanEntryFromMore] = useState(false);
   const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
+  const [budgetEntryFromSpending, setBudgetEntryFromSpending] = useState(false);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
@@ -561,7 +562,7 @@ const Index = () => {
             variableSpent={totalVariableSpent}
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
-            onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+            onEditBudget={() => { setBudgetEntryFromSpending(true); setBudgetSubView('main'); setActiveTab('budget'); }}
             householdMembers={householdMembers}
           />
         )}
@@ -603,7 +604,10 @@ const Index = () => {
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
             onBack={() => {
-              if (budgetEntryFromMore) {
+              if (budgetEntryFromSpending) {
+                setBudgetEntryFromSpending(false);
+                setActiveTab('variable');
+              } else if (budgetEntryFromMore) {
                 setBudgetEntryFromMore(false);
                 setActiveTab('profile');
                 setProfileSubView('menu');

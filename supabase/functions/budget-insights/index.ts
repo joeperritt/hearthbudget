@@ -109,7 +109,10 @@ serve(async (req) => {
       mode,
       stewardshipMode = true,
       forceRefresh = false,
+      month: monthParam,
     } = body || {};
+    // Home insights cache is month-scoped; big_picture is household-wide ('').
+    const cacheMonth = mode === 'home' ? (typeof monthParam === 'string' ? monthParam : '') : '';
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
@@ -167,6 +170,7 @@ serve(async (req) => {
         .select("insights, generated_at")
         .eq("household_id", householdId)
         .eq("kind", cacheKind)
+        .eq("month", cacheMonth)
         .maybeSingle();
 
       const cachedRow = cached as { insights: unknown; generated_at: string } | null;
@@ -277,10 +281,11 @@ serve(async (req) => {
           {
             household_id: householdId,
             kind: cacheKind,
+            month: cacheMonth,
             insights: parsedInsights as never,
             generated_at: generatedAt,
           } as never,
-          { onConflict: "household_id,kind" }
+          { onConflict: "household_id,kind,month" }
         );
       if (upsertErr) console.error("ai_insights_cache upsert error:", upsertErr);
     }

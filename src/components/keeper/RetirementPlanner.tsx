@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Info, CheckCircle2, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToolState } from '@/hooks/useToolState';
 import { ageFromDob } from '@/lib/ageUtils';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ContextualAskAI } from './ContextualAskAI';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
 import { formatDistanceToNow } from 'date-fns';
@@ -83,10 +80,6 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsUpdated, setInsightsUpdated] = useState<Date | null>(null);
 
-  const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'retirement-planner', {
-    annualContribution: '',  // total household $ saved per year incl. employer match
-  });
-
   useEffect(() => {
     if (!householdId) { setProfileLoading(false); return; }
     (async () => {
@@ -112,7 +105,21 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     const nonRet = Number(fp.non_retirement_investments) || 0;
     const totalRetirement = preTax + roth;
 
-    const annualContribution = Number(state.annualContribution) || 0;
+    // Sum monthly retirement contributions across all members + joint, ×12 for annual.
+    const additions: Record<string, number> = (fp.monthly_additions_per_key && typeof fp.monthly_additions_per_key === 'object')
+      ? fp.monthly_additions_per_key
+      : {};
+    let monthlyContribution = 0;
+    for (const [key, val] of Object.entries(additions)) {
+      const v = Number(val) || 0;
+      if (v <= 0) continue;
+      // Pre-tax / Roth (per member): pretax_<id>, roth_<id>
+      // Non-qualified retirement allocations: nq_<id>_retirement, nq_joint_retirement
+      if (key.startsWith('pretax_') || key.startsWith('roth_') || key.endsWith('_retirement')) {
+        monthlyContribution += v;
+      }
+    }
+    const annualContribution = monthlyContribution * 12;
     const savingsRate = grossIncome > 0 ? annualContribution / grossIncome : 0;
 
     const salaryMultiple = grossIncome > 0 ? totalRetirement / grossIncome : 0;
@@ -124,7 +131,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       grossIncome, primaryAge, preTax, roth, nonRet, totalRetirement,
       annualContribution, savingsRate, salaryMultiple, ageTarget, rothShare,
     };
-  }, [profile, state.annualContribution]);
+  }, [profile]);
 
   const fetchInsights = useCallback(async () => {
     setInsightsLoading(true);
@@ -173,7 +180,7 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
     }
   }, [metrics, householdId]);
 
-  if (profileLoading || !toolStateLoaded) {
+  if (profileLoading) {
     return (
       <div className="max-w-lg mx-auto px-6 pt-12 safe-top">
         <div className="animate-pulse space-y-4">
@@ -219,7 +226,7 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
         </div>
       </div>
 
-      {/* Inputs */}
+      {/* Inputs (read-only — sourced from Financial Profile) */}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Your numbers</h2>
         <div className="bg-card rounded-xl shadow-sm border border-border/40 p-4 space-y-4">
@@ -240,27 +247,20 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
               <p className="text-xs text-muted-foreground">Roth balance</p>
               <p className="font-semibold text-foreground">{fmt(metrics.roth)}</p>
             </div>
+            <div className="col-span-2">
+              <p className="text-xs text-muted-foreground">Annual retirement savings (sum of monthly contributions × 12)</p>
+              <p className="font-semibold text-foreground">{fmt(metrics.annualContribution)}</p>
+            </div>
           </div>
-          {(metrics.grossIncome === 0 || metrics.primaryAge === null) && (
-            <button
-              onClick={() => onNavigateToProfile?.('income')}
-              className="text-xs font-semibold text-accent active:opacity-70"
-            >
-              Complete Financial Profile →
-            </button>
-          )}
-          <div>
-            <Label htmlFor="annual-contrib" className="text-xs">Annual retirement savings (incl. employer match)</Label>
-            <Input
-              id="annual-contrib"
-              inputMode="decimal"
-              placeholder="e.g. 18000"
-              value={state.annualContribution}
-              onChange={e => setState({ annualContribution: e.target.value })}
-              className="mt-1"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">Used to compare your savings rate against the 15% guideline.</p>
-          </div>
+          <button
+            onClick={() => onNavigateToProfile?.('accounts')}
+            className="text-xs font-semibold text-accent active:opacity-70"
+          >
+            Edit in Financial Profile → Accounts
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            All values above are read from your Financial Profile. Update them there to refresh this analysis.
+          </p>
         </div>
       </div>
 
