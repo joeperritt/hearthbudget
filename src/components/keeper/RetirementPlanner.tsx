@@ -102,8 +102,12 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
 
     const preTax = Number(fp.retirement_balance) || 0;
     const roth = Number(fp.roth_retirement_balance) || 0;
-    const nonRet = Number(fp.non_retirement_investments) || 0;
-    const totalRetirement = preTax + roth;
+    const nonRetByKey: Record<string, number> = (fp.non_retirement_per_member && typeof fp.non_retirement_per_member === 'object') ? fp.non_retirement_per_member : {};
+    const nonRetIntent: Record<string, string> = (fp.non_retirement_intent && typeof fp.non_retirement_intent === 'object') ? fp.non_retirement_intent : {};
+    const nonRetRetirement = Object.entries(nonRetByKey).reduce((s, [key, val]) => s + (nonRetIntent[key] === 'retirement' ? Number(val) || 0 : 0), 0);
+    const nonRetOther = Object.entries(nonRetByKey).reduce((s, [key, val]) => s + (nonRetIntent[key] === 'retirement' ? 0 : Number(val) || 0), 0);
+    const nonRet = nonRetRetirement + nonRetOther;
+    const totalRetirement = preTax + roth + nonRetRetirement;
 
     // Sum monthly retirement contributions across all members + joint, ×12 for annual.
     const additions: Record<string, number> = (fp.monthly_additions_per_key && typeof fp.monthly_additions_per_key === 'object')
@@ -114,8 +118,8 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       const v = Number(val) || 0;
       if (v <= 0) continue;
       // Pre-tax / Roth (per member): pretax_<id>, roth_<id>
-      // Non-qualified retirement allocations: nq_<id>_retirement, nq_joint_retirement
-      if (key.startsWith('pretax_') || key.startsWith('roth_') || key.endsWith('_retirement')) {
+      const nqMatch = key.match(/^nq_(.+)_retirement$/);
+      if (key.startsWith('pretax_') || key.startsWith('roth_') || (nqMatch && nonRetIntent[nqMatch[1]] === 'retirement')) {
         monthlyContribution += v;
       }
     }
@@ -128,7 +132,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     const rothShare = totalRetirement > 0 ? roth / totalRetirement : 0;
 
     return {
-      grossIncome, primaryAge, preTax, roth, nonRet, totalRetirement,
+      grossIncome, primaryAge, preTax, roth, nonRet, nonRetRetirement, nonRetOther, totalRetirement,
       annualContribution, savingsRate, salaryMultiple, ageTarget, rothShare,
     };
   }, [profile]);
