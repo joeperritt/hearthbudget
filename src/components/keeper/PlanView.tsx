@@ -47,7 +47,7 @@ function formatLastVisited(dateStr: string | undefined): string {
   }
 }
 
-export function PlanView({ householdId, onNavigate }: PlanViewProps) {
+export function PlanView({ householdId, onNavigate, onBack }: PlanViewProps) {
   const [financialProfile, setFinancialProfile] = useState<any>(null);
   const [toolStates, setToolStates] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
