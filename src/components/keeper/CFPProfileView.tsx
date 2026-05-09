@@ -1676,6 +1676,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                   <div>
                     <span className="text-sm font-medium text-foreground">{sec.label}</span>
                     <span className="text-[10px] text-muted-foreground ml-1.5">NQ · Pre-Tax · Roth</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{getNqIntent(pid) === 'retirement' ? 'NQ for retirement' : 'NQ for other goals'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
@@ -1709,6 +1710,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                             setTimeout(() => update('non_retirement_investments', total), 0);
                           }}
                         />
+                      </div>
+                      <div className="mt-2">
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Intent</label>
+                        <NqIntentSelect value={getNqIntent(pid)} onChange={v => setNqIntent(pid, v)} />
                       </div>
                       <label className="text-[10px] text-muted-foreground mb-1 block mt-2">Monthly Additions</label>
                       <div className="grid grid-cols-2 gap-3">
