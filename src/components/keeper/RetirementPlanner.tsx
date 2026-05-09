@@ -104,7 +104,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       const fromSources = sources.reduce((a: number, src: any) => a + (Number(src.amount) || 0), 0);
       return s + (fromSources > 0 ? fromSources : Number(m.gross_income) || 0);
     }, 0);
-    const ages = members.map(m => m.dob ? ageFromDob(m.dob) : null).filter((a): a is number => a !== null);
+    const ages = members.map(m => m.dob ? ageFromDob(m.dob) : undefined).filter((a): a is number => typeof a === 'number');
     const primaryAge = ages.length > 0 ? Math.min(...ages) : null;
 
     const preTax = Number(fp.retirement_balance) || 0;
