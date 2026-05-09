@@ -1516,6 +1516,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
   const jointNqRet = Number(profile.monthly_additions_per_key['nq_joint_retirement'] || 0);
   const jointNqNonret = Number(profile.monthly_additions_per_key['nq_joint_nonret'] || 0);
   const jointMonthly = jointNqRet + jointNqNonret;
+  const getNqIntent = (key: string): 'retirement' | 'other_goals' =>
+    profile.non_retirement_intent[key] === 'retirement' ? 'retirement' : 'other_goals';
+  const setNqIntent = (key: string, value: 'retirement' | 'other_goals') =>
+    update('non_retirement_intent', { ...profile.non_retirement_intent, [key]: value });
 
   // Investment member sections: joint first, then members in order
   const investmentSections: { key: string; label: string; isJoint: boolean; pid?: string }[] = [];
@@ -1607,6 +1611,7 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                   >
                     <div>
                       <span className="text-sm font-medium text-foreground">Joint Non-Qualified</span>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{getNqIntent('joint') === 'retirement' ? 'For retirement' : 'For other goals'}</p>
                       <InfoPopover text="Jointly held brokerage or taxable investment accounts shared between household members. Not tax-advantaged." />
                     </div>
                     <div className="flex items-center gap-3">
@@ -1634,6 +1639,10 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
                             setTimeout(() => update('non_retirement_investments', total), 0);
                           }}
                         />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Intent</label>
+                        <NqIntentSelect value={getNqIntent('joint')} onChange={v => setNqIntent('joint', v)} />
                       </div>
                       <div>
                         <label className="text-[10px] text-muted-foreground mb-1 block">Monthly Additions</label>
