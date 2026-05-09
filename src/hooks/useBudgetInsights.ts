@@ -416,6 +416,7 @@ export function useBudgetInsights(
         body: {
           budgetSummary: summaryData,
           mode: 'home',
+          month: activeMonth,
           stewardshipMode: true,
           forceRefresh: true,
         },
