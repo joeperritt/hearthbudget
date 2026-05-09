@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info, Lock } from 'lucide-react';
+import { Shield, PiggyBank, Target, TrendingDown, Home, Heart, ChevronRight, CheckCircle2, Info, Lock, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
@@ -8,6 +8,7 @@ type InsightToolId = 'mortgage-analyzer' | 'debt-payoff' | 'life-insurance' | 'e
 interface PlanViewProps {
   householdId: string | null;
   onNavigate: (target: string) => void;
+  onBack?: () => void;
 }
 
 function getProfileCompleteness(profile: any): { complete: boolean; filled: number; total: number } {
