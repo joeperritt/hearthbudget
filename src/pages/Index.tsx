@@ -553,7 +553,6 @@ const Index = () => {
             transferAdjustments={transferAdjustments}
             onSelectCategory={(id) => setSelectedCategoryId(id)}
             onSelectFixedExpense={(id) => setSelectedFixedExpenseId(id)}
-            }}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
             monthLabel={monthLabel}
