@@ -183,7 +183,7 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
     }
   }, [metrics, householdId]);
 
-  if (profileLoading || !toolStateLoaded) {
+  if (profileLoading) {
     return (
       <div className="max-w-lg mx-auto px-6 pt-12 safe-top">
         <div className="animate-pulse space-y-4">
