@@ -281,10 +281,11 @@ serve(async (req) => {
           {
             household_id: householdId,
             kind: cacheKind,
+            month: cacheMonth,
             insights: parsedInsights as never,
             generated_at: generatedAt,
           } as never,
-          { onConflict: "household_id,kind" }
+          { onConflict: "household_id,kind,month" }
         );
       if (upsertErr) console.error("ai_insights_cache upsert error:", upsertErr);
     }
