@@ -602,11 +602,15 @@ const Index = () => {
             planningData={planningData}
             onUpdatePlanningData={updatePlanningData}
             initialViewMonth={budgetTargetMonth}
-            onBack={budgetEntryFromMore ? () => {
-              setBudgetEntryFromMore(false);
-              setActiveTab('profile');
-              setProfileSubView('menu');
-            } : undefined}
+            onBack={() => {
+              if (budgetEntryFromMore) {
+                setBudgetEntryFromMore(false);
+                setActiveTab('profile');
+                setProfileSubView('menu');
+              } else {
+                setActiveTab('dashboard');
+              }
+            }}
             onOpenProfile={() => {
               if (budgetEntryFromMore) setBudgetEntryFromMore(false);
               setProfileSubView('menu');
