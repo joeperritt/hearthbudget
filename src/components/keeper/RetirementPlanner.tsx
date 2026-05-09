@@ -160,8 +160,8 @@ Return ONLY the JSON array, no markdown, no prose.`;
 
 - Combined annual gross income: ${fmt(metrics.grossIncome)}
 - Primary (youngest) member age: ${metrics.primaryAge ?? 'unknown'}
-- Total retirement balance: ${fmt(metrics.totalRetirement)} (Pre-tax ${fmt(metrics.preTax)}, Roth ${fmt(metrics.roth)})
-- Non-retirement investments: ${fmt(metrics.nonRet)}
+- Total retirement-intended balance: ${fmt(metrics.totalRetirement)} (Pre-tax ${fmt(metrics.preTax)}, Roth ${fmt(metrics.roth)}, non-qualified marked for retirement ${fmt(metrics.nonRetRetirement)})
+- Non-qualified marked for other goals: ${fmt(metrics.nonRetOther)}
 - Reported annual retirement contribution (incl. employer match): ${fmt(metrics.annualContribution)}
 - Computed savings rate: ${(metrics.savingsRate * 100).toFixed(1)}% (guideline: 15%)
 - Computed salary multiple: ${metrics.salaryMultiple.toFixed(2)}x ${metrics.ageTarget ? `(guideline target ${metrics.ageTarget.mult.toFixed(1)}x ${metrics.ageTarget.label})` : ''}
@@ -250,6 +250,14 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
             <div>
               <p className="text-xs text-muted-foreground">Roth balance</p>
               <p className="font-semibold text-foreground">{fmt(metrics.roth)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">NQ for retirement</p>
+              <p className="font-semibold text-foreground">{fmt(metrics.nonRetRetirement)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">NQ for other goals</p>
+              <p className="font-semibold text-foreground">{fmt(metrics.nonRetOther)}</p>
             </div>
             <div className="col-span-2">
               <p className="text-xs text-muted-foreground">Annual retirement savings (sum of monthly contributions × 12)</p>
