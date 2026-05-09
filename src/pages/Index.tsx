@@ -620,6 +620,7 @@ const Index = () => {
           <PlanView
             householdId={householdId}
             onNavigate={(target) => setPlanSubView(target as PlanSubView)}
+            onBack={() => { setActiveTab('profile'); setProfileSubView('menu'); }}
           />
         )}
         {activeTab === 'plan' && planSubView === 'calculators' && (
