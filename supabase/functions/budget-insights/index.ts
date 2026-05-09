@@ -206,14 +206,27 @@ serve(async (req) => {
         ? CHAT_PROMPT_FULL
         : (activeSystemPrompt || HOME_PROMPT_FULL);
       const stewardshipNote = `stewardshipMode is ${stewardshipMode ? "true" : "false"}.`;
+
+      // Day-of-month framing — only meaningful when the active month is the
+      // real-world current month. For past/future months, omit so the model
+      // doesn't apply early/mid/late phase logic to a closed or future period.
+      const now = new Date();
+      const realCurrentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      const activeIsCurrent = typeof budgetSummary.currentMonth === "string" && budgetSummary.currentMonth === realCurrentMonth;
+      const day = now.getUTCDate();
+      const phase = day <= 10 ? "early" : day <= 24 ? "mid" : "late";
+      const dayNote = activeIsCurrent
+        ? `todayDayOfMonth is ${day}. todayPhase is "${phase}". The active budget month IS the real-world current month, so apply phase-aware framing.`
+        : `The active budget month is NOT the real-world current month — it is a past or future month being reviewed. Do NOT apply early/mid/late day-of-month framing; treat the month as a complete or planning-only period.`;
+
       messages = isChat
         ? [
-            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}` },
+            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}\n\n${dayNote}` },
             { role: "user", content: `The current active budget month is ${month}. Here is the household's data (current month budget + long-term financial profile) for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
             ...chatMessages,
           ]
         : [
-            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}` },
+            { role: "system", content: `${sysPrompt}\n\n${stewardshipNote}\n\n${dayNote}` },
             { role: "user", content: `The current active budget month is ${month}. Here is the data for ${month}:\n${JSON.stringify(budgetSummary, null, 2)}` },
           ];
     } else {
