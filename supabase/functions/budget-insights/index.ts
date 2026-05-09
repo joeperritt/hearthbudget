@@ -194,8 +194,12 @@ serve(async (req) => {
     let messages: Array<{ role: string; content: string }>;
 
     if (prompt && typeof prompt === "string") {
+      const now = new Date();
+      const day = now.getUTCDate();
+      const phase = day <= 10 ? "early" : day <= 24 ? "mid" : "late";
+      const dayNote = `\n\nFor reference, today is day ${day} of the current real-world month (phase: ${phase}). If you reference month-to-date progress, calibrate framing accordingly.`;
       messages = [
-        { role: "system", content: customSystemPrompt || HOME_PROMPT_FULL },
+        { role: "system", content: (customSystemPrompt || HOME_PROMPT_FULL) + dayNote },
         { role: "user", content: prompt },
       ];
     } else if (budgetSummary) {
