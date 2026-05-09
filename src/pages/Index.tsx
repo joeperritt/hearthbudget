@@ -165,6 +165,7 @@ const Index = () => {
   // bounce them back to More on close instead of the (now hidden) Plan tab.
   const [planEntryFromMore, setPlanEntryFromMore] = useState(false);
   const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
+  const [budgetEntryFromSpending, setBudgetEntryFromSpending] = useState(false);
 
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
