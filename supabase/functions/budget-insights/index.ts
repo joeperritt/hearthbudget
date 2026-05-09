@@ -113,6 +113,8 @@ serve(async (req) => {
     } = body || {};
     // Home insights cache is month-scoped; big_picture is household-wide ('').
     const cacheMonth = mode === 'home' ? (typeof monthParam === 'string' ? monthParam : '') : '';
+    const traceId = crypto.randomUUID().slice(0, 8);
+    console.log(`[budget-insights:${traceId}] request`, JSON.stringify({ mode, cacheKindHint: mode, cacheMonth, forceRefresh, hasBudgetSummary: !!budgetSummary, isChat: !!(chatMessages && chatMessages.length > 0), hasPrompt: typeof prompt === 'string' }));
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
@@ -176,18 +178,19 @@ serve(async (req) => {
       const cachedRow = cached as { insights: unknown; generated_at: string } | null;
       if (cachedRow) {
         const age = Date.now() - new Date(cachedRow.generated_at).getTime();
-        if (!forceRefresh || age < RATE_LIMIT_MS) {
-          // Return cache if not forcing OR rate limit window not elapsed
+        if (!forceRefresh) {
+          // Return cache unless the user explicitly requested a fresh generation.
           return new Response(
             JSON.stringify({
               content: typeof cachedRow.insights === "string" ? cachedRow.insights : JSON.stringify(cachedRow.insights),
               generatedAt: cachedRow.generated_at,
               cached: true,
-              rateLimited: forceRefresh && age < RATE_LIMIT_MS,
+              rateLimited: false,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+        console.log(`[budget-insights:${traceId}] bypassing cache for explicit refresh`, JSON.stringify({ cacheKind, cacheMonth, ageMs: age, rateLimitMs: RATE_LIMIT_MS }));
       }
     }
 
