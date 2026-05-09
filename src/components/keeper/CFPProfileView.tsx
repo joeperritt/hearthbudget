@@ -1799,6 +1799,36 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
   );
 }
 
+function NqIntentSelect({
+  value,
+  onChange,
+}: {
+  value: 'retirement' | 'other_goals';
+  onChange: (value: 'retirement' | 'other_goals') => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {[
+        { value: 'retirement' as const, label: 'For retirement' },
+        { value: 'other_goals' as const, label: 'For other goals' },
+      ].map(option => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+            value === option.value
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border bg-background text-muted-foreground'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function InfoPopover({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
