@@ -562,7 +562,7 @@ const Index = () => {
             variableSpent={totalVariableSpent}
             fixedTotal={totalFixedAll}
             fixedSpent={allFixedSpent}
-            onEditBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
+            onEditBudget={() => { setBudgetEntryFromSpending(true); setBudgetSubView('main'); setActiveTab('budget'); }}
             householdMembers={householdMembers}
           />
         )}
