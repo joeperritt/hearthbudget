@@ -83,10 +83,6 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsUpdated, setInsightsUpdated] = useState<Date | null>(null);
 
-  const { state, setState, loaded: toolStateLoaded } = useToolState(householdId, 'retirement-planner', {
-    annualContribution: '',  // total household $ saved per year incl. employer match
-  });
-
   useEffect(() => {
     if (!householdId) { setProfileLoading(false); return; }
     (async () => {
@@ -112,7 +108,21 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
     const nonRet = Number(fp.non_retirement_investments) || 0;
     const totalRetirement = preTax + roth;
 
-    const annualContribution = Number(state.annualContribution) || 0;
+    // Sum monthly retirement contributions across all members + joint, ×12 for annual.
+    const additions: Record<string, number> = (fp.monthly_additions_per_key && typeof fp.monthly_additions_per_key === 'object')
+      ? fp.monthly_additions_per_key
+      : {};
+    let monthlyContribution = 0;
+    for (const [key, val] of Object.entries(additions)) {
+      const v = Number(val) || 0;
+      if (v <= 0) continue;
+      // Pre-tax / Roth (per member): pretax_<id>, roth_<id>
+      // Non-qualified retirement allocations: nq_<id>_retirement, nq_joint_retirement
+      if (key.startsWith('pretax_') || key.startsWith('roth_') || key.endsWith('_retirement')) {
+        monthlyContribution += v;
+      }
+    }
+    const annualContribution = monthlyContribution * 12;
     const savingsRate = grossIncome > 0 ? annualContribution / grossIncome : 0;
 
     const salaryMultiple = grossIncome > 0 ? totalRetirement / grossIncome : 0;
@@ -124,7 +134,7 @@ export function RetirementPlanner({ onBack, householdId, onNavigateToProfile }: 
       grossIncome, primaryAge, preTax, roth, nonRet, totalRetirement,
       annualContribution, savingsRate, salaryMultiple, ageTarget, rothShare,
     };
-  }, [profile, state.annualContribution]);
+  }, [profile]);
 
   const fetchInsights = useCallback(async () => {
     setInsightsLoading(true);
