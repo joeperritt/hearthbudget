@@ -170,6 +170,7 @@ serve(async (req) => {
         .select("insights, generated_at")
         .eq("household_id", householdId)
         .eq("kind", cacheKind)
+        .eq("month", cacheMonth)
         .maybeSingle();
 
       const cachedRow = cached as { insights: unknown; generated_at: string } | null;
