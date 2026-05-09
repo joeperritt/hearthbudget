@@ -109,7 +109,10 @@ serve(async (req) => {
       mode,
       stewardshipMode = true,
       forceRefresh = false,
+      month: monthParam,
     } = body || {};
+    // Home insights cache is month-scoped; big_picture is household-wide ('').
+    const cacheMonth = mode === 'home' ? (typeof monthParam === 'string' ? monthParam : '') : '';
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
