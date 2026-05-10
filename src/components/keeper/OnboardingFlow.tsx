@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { CFP_BUCKETS } from '@/lib/cfpBuckets';
 import { STATE_OPTIONS } from '@/data/stateDefaults';
 import { BudgetBuilderStep, type BucketCategoryDraft, persistBudgetDrafts } from './BudgetBuilderStep';
+import { MfaSetupStep } from './MfaSetupStep';
 
 /* ---------- Types ---------- */
 
