@@ -722,7 +722,7 @@ export function EnrollPanel(props: {
   );
 }
 
-function RecoveryCodesPanel(props: {
+export function RecoveryCodesPanel(props: {
   codes: string[];
   copiedAll: boolean;
   onCopyAll: () => void;
