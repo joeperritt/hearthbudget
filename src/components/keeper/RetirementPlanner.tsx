@@ -5,6 +5,7 @@ import { ageFromDob } from '@/lib/ageUtils';
 import { ContextualAskAI } from './ContextualAskAI';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
 import { formatDistanceToNow } from 'date-fns';
+import { hasUnclassifiedNq } from '@/lib/nqIntent';
 
 interface RetirementPlannerProps {
   onBack: () => void;
