@@ -38,6 +38,7 @@ const STEPS = [
   'income',
   'plaid',
   'budget',
+  'mfa',
   'tour',
 ] as const;
 
