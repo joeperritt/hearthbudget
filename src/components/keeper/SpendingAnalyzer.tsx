@@ -10,6 +10,7 @@ import { useToolState } from "@/hooks/useToolState";
 import { useAuth } from "@/hooks/useAuth";
 import { useHouseholdFlags } from "@/hooks/useHouseholdFlags";
 import { ContextualAskAI } from "./ContextualAskAI";
+import { GuidelinesCitationsDialog } from "./GuidelinesCitationsDialog";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
@@ -231,8 +232,19 @@ export function SpendingAnalyzer({
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                We compare your monthly budget to CFP guidelines using the
-                category-to-bucket mappings you set.
+                We compare your monthly budget to CFP guidelines{" "}
+                <GuidelinesCitationsDialog
+                  trigger={
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 text-accent font-semibold underline underline-offset-2 hover:opacity-80"
+                    >
+                      <Info className="w-3 h-3" />
+                      <span>About these guidelines</span>
+                    </button>
+                  }
+                />{" "}
+                using the category-to-bucket mappings you set.
                 {result.diagnostics && result.diagnostics.mapped_categories < result.diagnostics.total_categories && (
                   <> {result.diagnostics.total_categories - result.diagnostics.mapped_categories} unmapped category
                     {result.diagnostics.total_categories - result.diagnostics.mapped_categories === 1 ? "" : "s"} were skipped.</>
