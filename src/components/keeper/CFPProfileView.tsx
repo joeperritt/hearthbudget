@@ -1531,8 +1531,18 @@ function AccountsTab({ profile, update, members }: { profile: ProfileData; updat
     investmentSections.push({ key: m.profile_id, label: m.name || `Member ${i + 1}`, isJoint: false, pid: m.profile_id });
   });
 
+  const showNqBanner = hasUnclassifiedNq(profile);
+
   return (
     <div className="space-y-5">
+      {showNqBanner && (
+        <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 flex items-start gap-3">
+          <Info size={18} className="text-accent shrink-0 mt-0.5" />
+          <p className="text-xs text-foreground/90 leading-relaxed">
+            We added a way to designate taxable accounts. Please mark each as <strong>For Retirement</strong> or <strong>For Other Goals</strong> so your planning tools can use them correctly.
+          </p>
+        </div>
+      )}
       {/* ═══ SAVINGS SECTION ═══ */}
       <div>
         <h2 className="font-display text-base font-bold text-foreground mb-2">Savings</h2>
