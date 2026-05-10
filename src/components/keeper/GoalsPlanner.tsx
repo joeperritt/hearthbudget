@@ -12,6 +12,7 @@ import { GoalsInsightsSection } from './GoalsInsightsSection';
 import { ContextualAskAI } from './ContextualAskAI';
 import { ProgressBar } from './ProgressBar';
 import { ageFromDob } from '@/lib/ageUtils';
+import { hasUnclassifiedNq } from '@/lib/nqIntent';
 import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
 
 function fmt(n: number) {
