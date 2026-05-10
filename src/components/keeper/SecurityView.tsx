@@ -606,6 +606,10 @@ export function SecurityView({ onBack }: SecurityViewProps) {
         onDisabled={() => {
           setEmailFactor(null);
           void refreshFactors();
+          if (reenrollChain) {
+            setReenrollChain(false);
+            setEmailEnrollOpen(true);
+          }
         }}
       />
 
