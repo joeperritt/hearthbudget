@@ -10,6 +10,7 @@ import { useToolState } from "@/hooks/useToolState";
 import { useAuth } from "@/hooks/useAuth";
 import { useHouseholdFlags } from "@/hooks/useHouseholdFlags";
 import { ContextualAskAI } from "./ContextualAskAI";
+import { GuidelinesCitationsDialog } from "./GuidelinesCitationsDialog";
 
 const LOADING_MESSAGES = [
   "Reading your category-to-bucket mappings…",
