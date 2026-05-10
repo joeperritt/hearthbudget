@@ -334,21 +334,19 @@ async function syncOneItem(
   }
 
   const resolveAccount = (tx: Record<string, unknown>, fallback: string): string => {
-    const owner = ((tx.account_owner as string) || "").toLowerCase();
-    const txName = ((tx.name as string) || "").toLowerCase();
-    const searchText = owner || txName;
     const plaidAccountId = tx.account_id as string;
     const plaidAcc = (item.plaid_accounts || []).find(
       (a: any) => a.plaid_account_id === plaidAccountId,
     );
-    if (plaidAcc && cardholderMap[plaidAcc.id]) {
-      for (const holder of cardholderMap[plaidAcc.id]) {
-        if (holder.patterns.some((p) => searchText.includes(p.toLowerCase()))) {
-          return holder.slug;
-        }
-      }
-    }
-    return fallback;
+    const rules = (plaidAcc && cardholderMap[plaidAcc.id]) || [];
+    return resolveCardholder(
+      {
+        account_owner: (tx.account_owner as string | null) ?? null,
+        name: (tx.name as string | null) ?? null,
+      },
+      rules,
+      fallback,
+    );
   };
 
   const mapImportedTransaction = (tx: Record<string, unknown>): ImportedTransactionRow | null => {
