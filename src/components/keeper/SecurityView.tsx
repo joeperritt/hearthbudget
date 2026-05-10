@@ -58,7 +58,29 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const [disableEmailOpen, setDisableEmailOpen] = useState(false);
   const [emailEnrollOpen, setEmailEnrollOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
+  // True after user clicks "Re-enroll": after disable succeeds, auto-open enroll.
+  const [reenrollChain, setReenrollChain] = useState(false);
+  // Dismiss state for "use authenticator instead" suggestion banner.
+  const TOTP_NUDGE_KEY = 'keeper.security.totpNudgeDismissed';
+  const [totpNudgeDismissed, setTotpNudgeDismissed] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem(TOTP_NUDGE_KEY) === '1',
+  );
+  const dismissTotpNudge = () => {
+    localStorage.setItem(TOTP_NUDGE_KEY, '1');
+    setTotpNudgeDismissed(true);
+  };
   const grace = useAdminMfaGraceState();
+
+  const emailSnapshotStale = !!(
+    emailFactor &&
+    user?.email &&
+    emailFactor.verified_email.toLowerCase() !== user.email.toLowerCase()
+  );
+
+  const startReenroll = () => {
+    setReenrollChain(true);
+    setDisableEmailOpen(true);
+  };
 
   useEffect(() => {
     void refreshFactors();
@@ -347,22 +369,64 @@ export function SecurityView({ onBack }: SecurityViewProps) {
 
               {/* Email factor card */}
               {emailFactor ? (
-                <div className="bg-card rounded-lg p-4 shadow-sm border border-border flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Mail size={20} className="text-primary" />
+                <div className="bg-card rounded-lg p-4 shadow-sm border border-border space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Mail size={20} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        Email codes <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-1">Less secure · On</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 break-all">Sent to {emailFactor.verified_email}</p>
+                      <button
+                        onClick={() => setDisableEmailOpen(true)}
+                        className="text-xs text-destructive font-medium mt-2 hover:underline"
+                      >
+                        Disable email codes
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      Email codes <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-1">Less secure · On</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 break-all">Sent to {emailFactor.verified_email}</p>
-                    <button
-                      onClick={() => setDisableEmailOpen(true)}
-                      className="text-xs text-destructive font-medium mt-2 hover:underline"
-                    >
-                      Disable email codes
-                    </button>
-                  </div>
+
+                  {emailSnapshotStale && (
+                    <div className="rounded-md bg-accent/10 border border-accent/30 p-3 flex items-start gap-2">
+                      <AlertTriangle size={14} className="text-accent shrink-0 mt-0.5" />
+                      <div className="text-xs leading-relaxed text-foreground flex-1">
+                        <p>
+                          Codes are sent to <strong className="break-all">{emailFactor.verified_email}</strong>, not your
+                          current account email <strong className="break-all">{user?.email}</strong>.
+                        </p>
+                        <button
+                          onClick={startReenroll}
+                          className="text-accent font-semibold mt-1 hover:underline"
+                        >
+                          Re-enroll to update →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!hasVerifiedFactor && !totpNudgeDismissed && (
+                    <div className="rounded-md bg-accent/10 border border-accent/30 p-3 flex items-start gap-2">
+                      <ShieldCheck size={14} className="text-accent shrink-0 mt-0.5" />
+                      <div className="text-xs leading-relaxed text-foreground flex-1">
+                        <p>Authenticator apps are stronger — switch when you can.</p>
+                        <button
+                          onClick={startEnroll}
+                          className="text-accent font-semibold mt-1 hover:underline"
+                        >
+                          Set up authenticator →
+                        </button>
+                      </div>
+                      <button
+                        onClick={dismissTotpNudge}
+                        aria-label="Dismiss"
+                        className="text-muted-foreground hover:text-foreground shrink-0"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -542,6 +606,10 @@ export function SecurityView({ onBack }: SecurityViewProps) {
         onDisabled={() => {
           setEmailFactor(null);
           void refreshFactors();
+          if (reenrollChain) {
+            setReenrollChain(false);
+            setEmailEnrollOpen(true);
+          }
         }}
       />
 
@@ -563,7 +631,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
 
 // ===== Sub-components =====
 
-function EnrollPanel(props: {
+export function EnrollPanel(props: {
   qr: string;
   secret: string;
   code: string;
@@ -654,7 +722,7 @@ function EnrollPanel(props: {
   );
 }
 
-function RecoveryCodesPanel(props: {
+export function RecoveryCodesPanel(props: {
   codes: string[];
   copiedAll: boolean;
   onCopyAll: () => void;
