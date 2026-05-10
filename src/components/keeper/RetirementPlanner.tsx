@@ -5,6 +5,7 @@ import { ageFromDob } from '@/lib/ageUtils';
 import { ContextualAskAI } from './ContextualAskAI';
 import { AIInsightsList, parseAIInsights, type AIInsight } from './AIInsightsList';
 import { formatDistanceToNow } from 'date-fns';
+import { hasUnclassifiedNq } from '@/lib/nqIntent';
 
 interface RetirementPlannerProps {
   onBack: () => void;
@@ -230,7 +231,17 @@ Generate exactly 3 benchmark-comparison insights per the system instructions.`;
         </div>
       </div>
 
-      {/* Inputs (read-only — sourced from Financial Profile) */}
+      {/* NQ unclassified notice */}
+      {hasUnclassifiedNq(profile) && (
+        <div className="px-6 mt-3">
+          <button
+            onClick={() => onNavigateToProfile?.('accounts')}
+            className="w-full text-left rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-foreground/85 active:opacity-70"
+          >
+            Some non-qualified balances aren't designated yet. <span className="text-accent font-semibold">Designate now →</span>
+          </button>
+        </div>
+      )}
       <div className="px-6 mt-6">
         <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Your numbers</h2>
         <div className="bg-card rounded-xl shadow-sm border border-border/40 p-4 space-y-4">

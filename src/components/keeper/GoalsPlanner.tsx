@@ -12,6 +12,7 @@ import { GoalsInsightsSection } from './GoalsInsightsSection';
 import { ContextualAskAI } from './ContextualAskAI';
 import { ProgressBar } from './ProgressBar';
 import { ageFromDob } from '@/lib/ageUtils';
+import { hasUnclassifiedNq } from '@/lib/nqIntent';
 import { EducationCostEstimator, EducationDependent } from './EducationCostEstimator';
 
 function fmt(n: number) {
@@ -345,7 +346,16 @@ export function GoalsPlanner({ onBack, householdId, onNavigateToProfile, onNavig
         </div>
       </div>
 
-      {/* Savings Pool Card */}
+      {hasUnclassifiedNq(financialProfile) && (
+        <div className="px-6 mt-3">
+          <button
+            onClick={() => onNavigateToProfile?.('accounts')}
+            className="w-full text-left rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-foreground/85 active:opacity-70"
+          >
+            Some non-qualified balances aren't designated yet. <span className="text-accent font-semibold">Designate now →</span>
+          </button>
+        </div>
+      )}
       <div className="mx-6 mt-5">
         {savingsPool && savingsPool.hasData ? (
           <div className="bg-card rounded-xl shadow-sm p-4">

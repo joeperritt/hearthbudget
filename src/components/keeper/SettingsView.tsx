@@ -158,6 +158,70 @@ export function SettingsView({
     [snapshots, viewMonthKey]
   );
 
+  // For past months, ALWAYS recompute spend from live transactions when
+  // available — historical snapshot summaries (especially older ones) can be
+  // stale or inconsistent (e.g. legacy totalSpent computed differently than
+  // spentByCategory). Live recomputation matches the same rules used by the
+  // current month and the snapshot writer in useBudgetData.
+  const [pastMonthTxns, setPastMonthTxns] = useState<Transaction[]>([]);
+  useEffect(() => {
+    if (!isPastMonth || !profile?.household_id) {
+      setPastMonthTxns([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from('transactions')
+      .select('*')
+      .eq('household_id', profile.household_id)
+      .eq('budget_month', viewMonthKey)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setPastMonthTxns(
+          data.map((r: any) => ({
+            id: r.id,
+            date: r.date,
+            description: r.description,
+            notes: r.notes || '',
+            amount: Number(r.amount),
+            categoryId: r.category_slug,
+            account: r.account,
+            isTransferToSavings: r.is_transfer_to_savings,
+            transactionType: r.transaction_type,
+            enteredBy: r.entered_by,
+            budgetMonth: r.budget_month || '',
+            source: r.plaid_transaction_id ? 'plaid' : 'manual',
+            originalDescription: r.original_description ?? null,
+          })) as Transaction[]
+        );
+      });
+    return () => { cancelled = true; };
+  }, [isPastMonth, viewMonthKey, profile?.household_id]);
+
+  // Recomputed past-month summary from live transactions (when present).
+  const pastMonthLive = useMemo(() => {
+    if (!isPastMonth || pastMonthTxns.length === 0) return null;
+    const expense = pastMonthTxns.filter(t => t.transactionType === 'expense' && !t.categoryId.startsWith('ignore-'));
+    const spentByCat: Record<string, number> = {};
+    expense.forEach(t => { spentByCat[t.categoryId] = (spentByCat[t.categoryId] || 0) + t.amount; });
+    const grossSpent = expense.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const refundsTotal = expense.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+    const netSpent = grossSpent + refundsTotal;
+    return {
+      spentByCategory: spentByCat,
+      summary: {
+        totalTransactions: pastMonthTxns.length,
+        totalExpenses: expense.length,
+        totalSpent: netSpent,
+        grossSpent,
+        refundsTotal,
+        netSpent,
+        spentByCategory: spentByCat,
+      },
+    };
+  }, [isPastMonth, pastMonthTxns]);
+
+
   // View tab for read-only modes
   const [viewTab, setViewTab] = useState<ViewTab>('variable');
 
@@ -543,10 +607,15 @@ export function SettingsView({
       fixed = (currentSnapshot.fixed_expenses || []).map((e: any) => ({
         id: e.id, name: e.name, amount: e.amount || 0, group: e.group || 'bills',
       }));
-      summary = currentSnapshot.transactions_summary || {};
-      // Per-category spend lives on the snapshot now (added 2026-05). Older
-      // snapshots may be missing this; rows just won't show progress in that case.
-      spent = (summary as any).spentByCategory || {};
+      // Prefer live recompute (matches current-month rules + reflects edits/refunds);
+      // fall back to snapshot summary fields when no live transactions exist.
+      if (pastMonthLive) {
+        summary = pastMonthLive.summary;
+        spent = pastMonthLive.spentByCategory;
+      } else {
+        summary = currentSnapshot.transactions_summary || {};
+        spent = (summary as any).spentByCategory || {};
+      }
       // Build transfer adjustments from the snapshotted transfers list.
       const snapTransfers: Array<{ fromCategoryId: string; toCategoryId: string; amount: number }> =
         ((currentSnapshot as any).transfers as any[]) || [];
