@@ -58,7 +58,29 @@ export function SecurityView({ onBack }: SecurityViewProps) {
   const [disableEmailOpen, setDisableEmailOpen] = useState(false);
   const [emailEnrollOpen, setEmailEnrollOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
+  // True after user clicks "Re-enroll": after disable succeeds, auto-open enroll.
+  const [reenrollChain, setReenrollChain] = useState(false);
+  // Dismiss state for "use authenticator instead" suggestion banner.
+  const TOTP_NUDGE_KEY = 'keeper.security.totpNudgeDismissed';
+  const [totpNudgeDismissed, setTotpNudgeDismissed] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem(TOTP_NUDGE_KEY) === '1',
+  );
+  const dismissTotpNudge = () => {
+    localStorage.setItem(TOTP_NUDGE_KEY, '1');
+    setTotpNudgeDismissed(true);
+  };
   const grace = useAdminMfaGraceState();
+
+  const emailSnapshotStale = !!(
+    emailFactor &&
+    user?.email &&
+    emailFactor.verified_email.toLowerCase() !== user.email.toLowerCase()
+  );
+
+  const startReenroll = () => {
+    setReenrollChain(true);
+    setDisableEmailOpen(true);
+  };
 
   useEffect(() => {
     void refreshFactors();
