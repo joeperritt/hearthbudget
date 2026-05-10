@@ -315,8 +315,12 @@ export function OnboardingFlow({ householdId, onComplete }: OnboardingFlowProps)
               totalAllocated={totalAllocated}
               onSkipEntirely={() => { setSkipBudgetEntirely(true); goNext(); }}
               onComplete={goNext}
-              continueLabel="Continue to tour"
+              continueLabel="Continue"
             />
+          )}
+
+          {stepId === 'mfa' && (
+            <MfaSetupStep onDone={goNext} />
           )}
 
           {stepId === 'tour' && (
