@@ -7,6 +7,7 @@
 // surface health to users.
 
 import { buildTransactionDescription, extractOriginalDescription, findLegacyTransactionGroup, type LegacyTransactionCandidate } from "./matching.ts";
+import { resolveCardholder } from "./cardholder-matcher.ts";
 // matching.ts lives next to this file in supabase/functions/_shared/
 
 const PLAID_SYNC_MUTATION_ERROR = "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
