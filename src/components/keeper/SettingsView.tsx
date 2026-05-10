@@ -607,10 +607,15 @@ export function SettingsView({
       fixed = (currentSnapshot.fixed_expenses || []).map((e: any) => ({
         id: e.id, name: e.name, amount: e.amount || 0, group: e.group || 'bills',
       }));
-      summary = currentSnapshot.transactions_summary || {};
-      // Per-category spend lives on the snapshot now (added 2026-05). Older
-      // snapshots may be missing this; rows just won't show progress in that case.
-      spent = (summary as any).spentByCategory || {};
+      // Prefer live recompute (matches current-month rules + reflects edits/refunds);
+      // fall back to snapshot summary fields when no live transactions exist.
+      if (pastMonthLive) {
+        summary = pastMonthLive.summary;
+        spent = pastMonthLive.spentByCategory;
+      } else {
+        summary = currentSnapshot.transactions_summary || {};
+        spent = (summary as any).spentByCategory || {};
+      }
       // Build transfer adjustments from the snapshotted transfers list.
       const snapTransfers: Array<{ fromCategoryId: string; toCategoryId: string; amount: number }> =
         ((currentSnapshot as any).transfers as any[]) || [];
