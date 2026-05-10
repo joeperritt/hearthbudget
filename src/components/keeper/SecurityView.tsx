@@ -631,7 +631,7 @@ export function SecurityView({ onBack }: SecurityViewProps) {
 
 // ===== Sub-components =====
 
-function EnrollPanel(props: {
+export function EnrollPanel(props: {
   qr: string;
   secret: string;
   code: string;
