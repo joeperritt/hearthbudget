@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Trash2, Shield, Check, Info, ChevronDown } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ageFromDob, ageToDobApprox, formatDob } from '@/lib/ageUtils';
+import { hasUnclassifiedNq } from '@/lib/nqIntent';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
