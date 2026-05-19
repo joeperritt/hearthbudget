@@ -7,7 +7,7 @@ interface MoveFundsSheetProps {
   onOpenChange: (open: boolean) => void;
   categories: BudgetCategory[];
   fixedExpenses?: FixedExpense[];
-  fromCategoryId: string;
+  fromCategoryId?: string;
   onMove: (transfer: Omit<BudgetTransfer, 'id'>) => void;
   monthTransactions?: Transaction[];
   transferAdjustments?: Record<string, number>;
