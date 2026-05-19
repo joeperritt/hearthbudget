@@ -154,6 +154,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
+  const [moveFundsGlobalOpen, setMoveFundsGlobalOpen] = useState(false);
   const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
