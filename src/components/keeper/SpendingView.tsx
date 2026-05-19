@@ -132,7 +132,7 @@ interface SpendingViewProps {
 }
 
 export function SpendingView({
-  categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
+  categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, onOpenTransfer, monthLabel,
   totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent, onEditBudget, householdMembers,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
