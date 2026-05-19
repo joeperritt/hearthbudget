@@ -210,9 +210,26 @@ export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses =
         <form onSubmit={handleSubmit} className="space-y-4 mt-4 pb-8">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From</label>
-            <div className="w-full mt-1 px-3 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
-              {fromItem?.name || 'Unknown'}
-            </div>
+            {fromIsLocked ? (
+              <div className="w-full mt-1 px-3 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
+                {fromItem?.name || 'Unknown'}
+              </div>
+            ) : (
+              <select
+                value={pickedFromId}
+                onChange={e => {
+                  setPickedFromId(e.target.value);
+                  // If the To picker matches the new From, clear it.
+                  if (toCategoryId === e.target.value) setToCategoryId('');
+                }}
+                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="">Select category…</option>
+                {allItems.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">To</label>
