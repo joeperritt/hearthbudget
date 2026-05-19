@@ -779,6 +779,17 @@ const Index = () => {
         />
       )}
 
+      {/* Global Transfer Between Buckets — no preset From, user picks both. */}
+      <MoveFundsSheet
+        open={moveFundsGlobalOpen}
+        onOpenChange={setMoveFundsGlobalOpen}
+        categories={activeMonthCategories}
+        fixedExpenses={activeMonthFixedExpenses}
+        onMove={addTransfer}
+        monthTransactions={monthTransactions}
+        transferAdjustments={transferAdjustments}
+      />
+
       <AskAIChatSheet
         open={askAIOpen}
         onOpenChange={(o) => { setAskAIOpen(o); if (!o) clearChat(); }}
