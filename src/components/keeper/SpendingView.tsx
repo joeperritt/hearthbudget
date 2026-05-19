@@ -118,6 +118,8 @@ interface SpendingViewProps {
   onSelectFixedExpense: (id: string) => void;
   onMoveFunds: (fromCategoryId: string) => void;
   onMoveFundsFixed: (fromFixedId: string) => void;
+  /** Opens MoveFunds with no preselected source (global transfer entry point). */
+  onOpenTransfer?: () => void;
   monthLabel: string;
   totalBudget: number;
   variableBudget: number;
