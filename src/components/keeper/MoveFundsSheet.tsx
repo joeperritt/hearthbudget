@@ -154,32 +154,50 @@ function TransferBar({ label, stats, delta }: TransferBarProps) {
 export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses = [], fromCategoryId, onMove, monthTransactions = [], transferAdjustments = {} }: MoveFundsSheetProps) {
   const [toCategoryId, setToCategoryId] = useState('');
   const [amount, setAmount] = useState('');
+  // When no `fromCategoryId` is supplied (e.g. the global "Transfer Between
+  // Buckets" entry point), let the user pick the source too.
+  const [pickedFromId, setPickedFromId] = useState('');
+  const effectiveFromId = fromCategoryId || pickedFromId;
+  const fromIsLocked = !!fromCategoryId;
+
+  // Reset internal selections whenever the sheet closes/reopens or the preset
+  // changes, so a fresh open never carries stale state.
+  useEffect(() => {
+    if (!open) {
+      setToCategoryId('');
+      setAmount('');
+      setPickedFromId('');
+    }
+  }, [open, fromCategoryId]);
 
   const allItems = [
     ...categories.map(c => ({ id: c.id, name: c.name })),
     ...fixedExpenses.map(e => ({ id: e.id, name: e.name })),
   ];
-  const otherItems = allItems.filter(c => c.id !== fromCategoryId);
-  const fromItem = allItems.find(c => c.id === fromCategoryId);
+  const otherItems = allItems.filter(c => c.id !== effectiveFromId);
+  const fromItem = allItems.find(c => c.id === effectiveFromId);
 
   const amt = parseFloat(amount) || 0;
 
-  const fromStats = getBucketStats(fromCategoryId, categories, fixedExpenses, monthTransactions, transferAdjustments[fromCategoryId] || 0);
+  const fromStats = effectiveFromId
+    ? getBucketStats(effectiveFromId, categories, fixedExpenses, monthTransactions, transferAdjustments[effectiveFromId] || 0)
+    : null;
   const toStats = toCategoryId
     ? getBucketStats(toCategoryId, categories, fixedExpenses, monthTransactions, transferAdjustments[toCategoryId] || 0)
     : null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!toCategoryId || amt <= 0) return;
+    if (!effectiveFromId || !toCategoryId || amt <= 0) return;
     onMove({
       date: new Date().toISOString().slice(0, 10),
-      fromCategoryId,
+      fromCategoryId: effectiveFromId,
       toCategoryId,
       amount: amt,
     });
     setAmount('');
     setToCategoryId('');
+    setPickedFromId('');
     onOpenChange(false);
   };
 
