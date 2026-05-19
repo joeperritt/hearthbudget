@@ -257,6 +257,20 @@ export function SpendingView({
         </div>
       )}
 
+      {/* Global "Transfer Between Buckets" entry point — saves the user from
+          having to drill into a single bucket to start a move. */}
+      {onOpenTransfer && (
+        <div className="px-6 mb-4">
+          <button
+            onClick={onOpenTransfer}
+            className="w-full bg-accent text-accent-foreground rounded-lg p-3 shadow-sm flex items-center justify-center gap-2 text-sm font-semibold active:scale-[0.99] transition-transform"
+          >
+            <ArrowLeftRight size={16} strokeWidth={2.5} />
+            Transfer Between Buckets
+          </button>
+        </div>
+      )}
+
       {/* Mobile: segmented toggle + single panel */}
       <div className="lg:hidden">
         <div className="px-6 mb-4">
