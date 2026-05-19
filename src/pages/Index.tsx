@@ -557,6 +557,7 @@ const Index = () => {
             onSelectFixedExpense={(id) => setSelectedFixedExpenseId(id)}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
+            onOpenTransfer={() => setMoveFundsGlobalOpen(true)}
             monthLabel={monthLabel}
             totalBudget={totalBudget}
             variableBudget={totalVariableBudget}
