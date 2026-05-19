@@ -177,13 +177,24 @@ export function TransactionsView({
   // Unassigned should ONLY surface real transactions awaiting categorization.
   // Budget transfers (internal accounting moves) live in a separate `transfers` array
   // and are intentionally excluded from txRows when the unassigned or budget-transfers filters are active.
+  // Mirror the Home-page unassigned rule: a row only counts as "unassigned" when
+  // categoryId === 'unassigned' AND it isn't excluded for budget purposes
+  // (income, deposit, transfer, cc-payment, prior-month, or user-ignored).
+  const isExcluded = (t: Transaction) =>
+    t.isTransferToSavings
+    || t.transactionType === 'income'
+    || t.transactionType === 'deposit'
+    || t.transactionType === 'cc-payment'
+    || t.transactionType === 'transfer'
+    || IGNORE_CATEGORY_SLUGS.has(t.categoryId);
+
   const categoryFilterId = filter.startsWith('category:') ? filter.slice('category:'.length) : null;
   const filtered = filter === 'all'
     ? transactions
     : filter === 'manual'
       ? transactions.filter(t => t.source === 'manual')
       : filter === 'unassigned'
-        ? transactions.filter(t => t.categoryId === 'unassigned')
+        ? transactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t))
         : filter === 'budget-transfers'
           ? [] // budget transfers are not transactions; render only transferRows below
           : categoryFilterId
