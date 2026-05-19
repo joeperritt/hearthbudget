@@ -185,6 +185,14 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       const { data: profile } = await supabase.from('profiles').select('household_id').eq('user_id', user.id).single();
       if (!profile) { setSaving(false); return; }
 
+      // Preserve the parent transaction's direction so a deposit split correctly
+      // ADDS funds back to each chosen bucket instead of being recorded as expense.
+      // `expense` with positive amount → adds to spent. `deposit` against a real
+      // category → subtracts from spent (= adds back to remaining budget) via the
+      // deposit-add-back logic in `Index.tsx`.
+      const parentIsDeposit = transaction.transactionType === 'deposit' || transaction.transactionType === 'income' || transaction.amount < 0;
+      const splitTxType = parentIsDeposit ? 'deposit' : 'expense';
+
       const splitRows = splitLines
         .filter(l => parseFloat(l.amount) > 0)
         .map(l => ({
@@ -196,7 +204,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
           category_slug: l.categoryId,
           account: transaction.account,
           is_transfer_to_savings: false,
-          transaction_type: 'expense',
+          transaction_type: splitTxType,
           entered_by: user.id,
           budget_month: budgetMonth,
         }));

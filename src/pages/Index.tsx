@@ -154,6 +154,7 @@ const Index = () => {
   const [selectedFixedExpenseId, setSelectedFixedExpenseId] = useState<string | null>(null);
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
+  const [moveFundsGlobalOpen, setMoveFundsGlobalOpen] = useState(false);
   const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
@@ -556,6 +557,7 @@ const Index = () => {
             onSelectFixedExpense={(id) => setSelectedFixedExpenseId(id)}
             onMoveFunds={id => setMoveFundsCategoryId(id)}
             onMoveFundsFixed={id => setMoveFundsFixedId(id)}
+            onOpenTransfer={() => setMoveFundsGlobalOpen(true)}
             monthLabel={monthLabel}
             totalBudget={totalBudget}
             variableBudget={totalVariableBudget}
@@ -776,6 +778,17 @@ const Index = () => {
           transferAdjustments={transferAdjustments}
         />
       )}
+
+      {/* Global Transfer Between Buckets — no preset From, user picks both. */}
+      <MoveFundsSheet
+        open={moveFundsGlobalOpen}
+        onOpenChange={setMoveFundsGlobalOpen}
+        categories={activeMonthCategories}
+        fixedExpenses={activeMonthFixedExpenses}
+        onMove={addTransfer}
+        monthTransactions={monthTransactions}
+        transferAdjustments={transferAdjustments}
+      />
 
       <AskAIChatSheet
         open={askAIOpen}

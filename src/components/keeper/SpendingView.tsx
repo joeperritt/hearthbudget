@@ -118,6 +118,8 @@ interface SpendingViewProps {
   onSelectFixedExpense: (id: string) => void;
   onMoveFunds: (fromCategoryId: string) => void;
   onMoveFundsFixed: (fromFixedId: string) => void;
+  /** Opens MoveFunds with no preselected source (global transfer entry point). */
+  onOpenTransfer?: () => void;
   monthLabel: string;
   totalBudget: number;
   variableBudget: number;
@@ -130,7 +132,7 @@ interface SpendingViewProps {
 }
 
 export function SpendingView({
-  categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, monthLabel,
+  categories, fixedExpenses, transactions, spentByCategory, transferAdjustments, onSelectCategory, onSelectFixedExpense, onMoveFunds, onMoveFundsFixed, onOpenTransfer, monthLabel,
   totalBudget, variableBudget, variableSpent, fixedTotal, fixedSpent, onEditBudget, householdMembers,
 }: SpendingViewProps) {
   const [mode, setMode] = useState<'variable' | 'fixed'>('variable');
@@ -251,6 +253,20 @@ export function SpendingView({
               </p>
             </div>
             <ChevronRight size={16} className="text-muted-foreground/60 shrink-0" />
+          </button>
+        </div>
+      )}
+
+      {/* Global "Transfer Between Buckets" entry point — saves the user from
+          having to drill into a single bucket to start a move. */}
+      {onOpenTransfer && (
+        <div className="px-6 mb-4">
+          <button
+            onClick={onOpenTransfer}
+            className="w-full bg-accent text-accent-foreground rounded-lg p-3 shadow-sm flex items-center justify-center gap-2 text-sm font-semibold active:scale-[0.99] transition-transform"
+          >
+            <ArrowLeftRight size={16} strokeWidth={2.5} />
+            Transfer Between Buckets
           </button>
         </div>
       )}

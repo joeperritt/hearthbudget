@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BudgetCategory, BudgetTransfer, FixedExpense, Transaction, DEPOSIT_CATEGORY, INCOME_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
@@ -7,7 +7,7 @@ interface MoveFundsSheetProps {
   onOpenChange: (open: boolean) => void;
   categories: BudgetCategory[];
   fixedExpenses?: FixedExpense[];
-  fromCategoryId: string;
+  fromCategoryId?: string;
   onMove: (transfer: Omit<BudgetTransfer, 'id'>) => void;
   monthTransactions?: Transaction[];
   transferAdjustments?: Record<string, number>;
@@ -154,32 +154,50 @@ function TransferBar({ label, stats, delta }: TransferBarProps) {
 export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses = [], fromCategoryId, onMove, monthTransactions = [], transferAdjustments = {} }: MoveFundsSheetProps) {
   const [toCategoryId, setToCategoryId] = useState('');
   const [amount, setAmount] = useState('');
+  // When no `fromCategoryId` is supplied (e.g. the global "Transfer Between
+  // Buckets" entry point), let the user pick the source too.
+  const [pickedFromId, setPickedFromId] = useState('');
+  const effectiveFromId = fromCategoryId || pickedFromId;
+  const fromIsLocked = !!fromCategoryId;
+
+  // Reset internal selections whenever the sheet closes/reopens or the preset
+  // changes, so a fresh open never carries stale state.
+  useEffect(() => {
+    if (!open) {
+      setToCategoryId('');
+      setAmount('');
+      setPickedFromId('');
+    }
+  }, [open, fromCategoryId]);
 
   const allItems = [
     ...categories.map(c => ({ id: c.id, name: c.name })),
     ...fixedExpenses.map(e => ({ id: e.id, name: e.name })),
   ];
-  const otherItems = allItems.filter(c => c.id !== fromCategoryId);
-  const fromItem = allItems.find(c => c.id === fromCategoryId);
+  const otherItems = allItems.filter(c => c.id !== effectiveFromId);
+  const fromItem = allItems.find(c => c.id === effectiveFromId);
 
   const amt = parseFloat(amount) || 0;
 
-  const fromStats = getBucketStats(fromCategoryId, categories, fixedExpenses, monthTransactions, transferAdjustments[fromCategoryId] || 0);
+  const fromStats = effectiveFromId
+    ? getBucketStats(effectiveFromId, categories, fixedExpenses, monthTransactions, transferAdjustments[effectiveFromId] || 0)
+    : null;
   const toStats = toCategoryId
     ? getBucketStats(toCategoryId, categories, fixedExpenses, monthTransactions, transferAdjustments[toCategoryId] || 0)
     : null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!toCategoryId || amt <= 0) return;
+    if (!effectiveFromId || !toCategoryId || amt <= 0) return;
     onMove({
       date: new Date().toISOString().slice(0, 10),
-      fromCategoryId,
+      fromCategoryId: effectiveFromId,
       toCategoryId,
       amount: amt,
     });
     setAmount('');
     setToCategoryId('');
+    setPickedFromId('');
     onOpenChange(false);
   };
 
@@ -192,9 +210,26 @@ export function MoveFundsSheet({ open, onOpenChange, categories, fixedExpenses =
         <form onSubmit={handleSubmit} className="space-y-4 mt-4 pb-8">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From</label>
-            <div className="w-full mt-1 px-3 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
-              {fromItem?.name || 'Unknown'}
-            </div>
+            {fromIsLocked ? (
+              <div className="w-full mt-1 px-3 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
+                {fromItem?.name || 'Unknown'}
+              </div>
+            ) : (
+              <select
+                value={pickedFromId}
+                onChange={e => {
+                  setPickedFromId(e.target.value);
+                  // If the To picker matches the new From, clear it.
+                  if (toCategoryId === e.target.value) setToCategoryId('');
+                }}
+                className="w-full mt-1 px-3 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="">Select category…</option>
+                {allItems.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">To</label>

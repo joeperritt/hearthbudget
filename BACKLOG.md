@@ -186,3 +186,9 @@ Inputs: Gemini API cost per generation call (~$0.0013), Plaid per-item monthly c
 ### OTP Expiry — Accepted Linter Warning
 
 Cannot change OTP expiry via Lovable Cloud (not an exposed setting). Accepted as low risk. MFA is already enforced for admins and email OTP is a fallback only. Revisit if Plaid compliance reviewers flag it during security policy review (due September 25, 2026).
+
+## Data audit
+
+### Wealthfront -$791 row on Dog category (May 2026)
+
+Identified during the May 2026 Dog-category math investigation. Transaction is stored as `transaction_type='expense'` with `amount=-791` on the `dog` slug, which currently nets `spentByCategory[dog]` down to **-$582.70**. This is almost certainly a misclassified inflow (Plaid sync of a Wealthfront deposit, or a manual entry that should be a deposit/transfer). Combined with $657.70 of legitimate transfers out of Dog this month, the per-bucket card displays `-$582.70 of -$582.70`. Action: open the row in Activity → reclassify it (likely Ignore → auto-deposit, or split it across buckets as a deposit add-back) so Dog's math resolves naturally. Code-side accounting is correct given the input data.
