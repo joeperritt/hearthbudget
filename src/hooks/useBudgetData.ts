@@ -620,10 +620,87 @@ export function useBudgetData() {
     await updateCategories(nextCats);
     await updateFixedExpenses(nextFixed);
 
+    // Promote any overrides that targeted the new active month onto the base.
+    await promoteOverridesForMonth(nextMonth);
+
     // Update active_month on household
     await supabase.from('households').update({ active_month: nextMonth } as any).eq('id', householdId);
     setActiveMonth(nextMonth);
-  }, [householdId, activeMonth, categories, fixedExpenses, buildSnapshotData, updateCategories, updateFixedExpenses]);
+  }, [householdId, activeMonth, categories, fixedExpenses, buildSnapshotData, updateCategories, updateFixedExpenses, promoteOverridesForMonth]);
+
+  /**
+   * Targeted move: convert a variable category row into a fixed expense row
+   * (or vice versa) using a single delete + insert pair on each table.
+   * Avoids the "wipe and rewrite" race in updateCategories/updateFixedExpenses
+   * that caused brand-new categories to disappear when toggled.
+   */
+  const moveCategoryToFixed = useCallback(async (
+    slug: string, fixedGroup: FixedExpense['group'],
+  ) => {
+    if (!householdId) return;
+    const cat = categories.find(c => c.id === slug);
+    if (!cat) return;
+    const sortOrder = fixedExpenses.length;
+    const newFixed: FixedExpense = {
+      id: cat.id,
+      name: cat.name,
+      amount: cat.budgeted,
+      group: fixedGroup,
+      notesRequired: cat.notesRequired,
+      startMonth: cat.startMonth ?? null,
+      endMonth: cat.endMonth ?? null,
+    };
+    // Optimistic local update
+    setCategories(prev => prev.filter(c => c.id !== slug));
+    setFixedExpenses(prev => [...prev, newFixed]);
+    // DB ops: insert into fixed first so we never have zero rows for the slug
+    await supabase.from('fixed_expenses').insert({
+      household_id: householdId,
+      slug: newFixed.id,
+      name: newFixed.name,
+      amount: newFixed.amount,
+      group: newFixed.group,
+      sort_order: sortOrder,
+      notes_required: newFixed.notesRequired ?? false,
+      start_month: newFixed.startMonth,
+      end_month: newFixed.endMonth,
+    } as any);
+    await supabase.from('budget_categories').delete()
+      .eq('household_id', householdId).eq('slug', slug);
+  }, [householdId, categories, fixedExpenses]);
+
+  const moveFixedToCategory = useCallback(async (
+    slug: string, group: BudgetCategory['group'],
+  ) => {
+    if (!householdId) return;
+    const exp = fixedExpenses.find(e => e.id === slug);
+    if (!exp) return;
+    const sortOrder = categories.length;
+    const newCat: BudgetCategory = {
+      id: exp.id,
+      name: exp.name,
+      budgeted: exp.amount,
+      group,
+      notesRequired: exp.notesRequired,
+      startMonth: exp.startMonth ?? null,
+      endMonth: exp.endMonth ?? null,
+    };
+    setFixedExpenses(prev => prev.filter(e => e.id !== slug));
+    setCategories(prev => [...prev, newCat]);
+    await supabase.from('budget_categories').insert({
+      household_id: householdId,
+      slug: newCat.id,
+      name: newCat.name,
+      budgeted: newCat.budgeted,
+      group: newCat.group,
+      sort_order: sortOrder,
+      notes_required: newCat.notesRequired ?? false,
+      start_month: newCat.startMonth,
+      end_month: newCat.endMonth,
+    } as any);
+    await supabase.from('fixed_expenses').delete()
+      .eq('household_id', householdId).eq('slug', slug);
+  }, [householdId, categories, fixedExpenses]);
 
   const updatePlanningData = useCallback(async (data: Record<string, string>) => {
     if (!householdId) return;
