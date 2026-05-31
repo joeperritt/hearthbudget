@@ -295,11 +295,14 @@ export function useBudgetData() {
       (async () => {
         const snapshotData = buildSnapshotData(activeMonth, categories, fixedExpenses);
         await supabase.from('budget_month_snapshots' as any).upsert(snapshotData as any, { onConflict: 'household_id,month' });
+        // Promote any overrides scheduled for the new active month onto the
+        // base rows so editing them mid-month behaves as normal again.
+        await promoteOverridesForMonth(currentCalendarMonth);
         await supabase.from('households').update({ active_month: currentCalendarMonth } as any).eq('id', householdId);
         setActiveMonth(currentCalendarMonth);
       })();
     }
-  }, [householdId, activeMonth, loading, categories, fixedExpenses, buildSnapshotData]);
+  }, [householdId, activeMonth, loading, categories, fixedExpenses, buildSnapshotData, promoteOverridesForMonth]);
 
   // Real-time subscriptions
   useEffect(() => {
