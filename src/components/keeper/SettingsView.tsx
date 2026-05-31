@@ -434,9 +434,16 @@ export function SettingsView({
   const saveNextCatEdit = (id: string) => {
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
-      const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
-      setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
-      onUpdateCategories(updated);
+      if (isFutureMonth && onSetMonthAmountOverride) {
+        // Future month: write a per-month override so prior/current months
+        // keep their original amount.
+        setNextCats(prev => prev.map(c => c.id === id ? { ...c, budgeted: v } : c));
+        void onSetMonthAmountOverride('category', id, viewMonthKey, v);
+      } else {
+        const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
+        setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
+        onUpdateCategories(updated);
+      }
     }
     setEditingId(null);
   };
@@ -444,9 +451,14 @@ export function SettingsView({
   const saveNextFixedEdit = (id: string) => {
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
-      const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
-      setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
-      onUpdateFixedExpenses(updated);
+      if (isFutureMonth && onSetMonthAmountOverride) {
+        setNextFixed(prev => prev.map(e => e.id === id ? { ...e, amount: v } : e));
+        void onSetMonthAmountOverride('fixed', id, viewMonthKey, v);
+      } else {
+        const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
+        setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
+        onUpdateFixedExpenses(updated);
+      }
     }
     setEditingId(null);
   };
