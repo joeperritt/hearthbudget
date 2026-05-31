@@ -63,6 +63,8 @@ const Index = () => {
     addCategoryForMonth, addFixedExpenseForMonth,
     removeCategoryFromMonth, removeFixedExpenseFromMonth,
     planningData, updatePlanningData,
+    monthAmountOverrides, setMonthAmountOverride,
+    moveCategoryToFixed, moveFixedToCategory,
   } = useBudgetData();
 
   const { accounts } = useAccounts();
