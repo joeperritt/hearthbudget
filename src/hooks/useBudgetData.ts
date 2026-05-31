@@ -249,13 +249,17 @@ export function useBudgetData() {
     for (const r of rows) {
       if (r.kind === 'category') {
         ops.push(
-          supabase.from('budget_categories').update({ budgeted: Number(r.amount) } as any)
-            .eq('household_id', householdId).eq('slug', r.slug)
+          Promise.resolve(
+            supabase.from('budget_categories').update({ budgeted: Number(r.amount) } as any)
+              .eq('household_id', householdId).eq('slug', r.slug)
+          )
         );
       } else if (r.kind === 'fixed') {
         ops.push(
-          supabase.from('fixed_expenses').update({ amount: Number(r.amount) } as any)
-            .eq('household_id', householdId).eq('slug', r.slug)
+          Promise.resolve(
+            supabase.from('fixed_expenses').update({ amount: Number(r.amount) } as any)
+              .eq('household_id', householdId).eq('slug', r.slug)
+          )
         );
       }
     }
