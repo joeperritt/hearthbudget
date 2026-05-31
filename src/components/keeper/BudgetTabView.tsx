@@ -5,7 +5,7 @@ import { SettingsView } from './SettingsView';
 import { AlertCircle, ArrowLeft, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { filterForMonth } from '@/hooks/useBudgetData';
+import { filterForMonth, applyOverridesToCategories, applyOverridesToFixed, type MonthAmountOverrides } from '@/hooks/useBudgetData';
 import { SpendingAnalyzer } from './SpendingAnalyzer';
 import { BucketMappingSheet } from './BucketMappingSheet';
 import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
