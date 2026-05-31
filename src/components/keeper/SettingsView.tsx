@@ -497,75 +497,72 @@ export function SettingsView({
 
   const toggleTitheType = (id: string, currentlyFixed: boolean) => {
     if (currentlyFixed) {
+      // Move from fixed tithe → variable giving category
       const item = nextFixed.find(e => e.id === id);
       if (!item) return;
+      // Optimistic local update so the row stays visible on the next render
       const newCat: BudgetCategory = {
-        id: item.id,
-        name: item.name,
-        budgeted: item.amount,
-        group: 'giving',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, budgeted: item.amount, group: 'giving',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextFixed(prev => prev.filter(e => e.id !== id));
       setNextCats(prev => [...prev, newCat]);
-      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
-      onUpdateCategories([...categories, newCat]);
+      if (onMoveFixedToCategory) {
+        void onMoveFixedToCategory(id, 'giving');
+      } else {
+        // Legacy fallback (kept for safety, but races with updateCategories scan)
+        onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+        onUpdateCategories([...categories, newCat]);
+      }
     } else {
       const item = nextCats.find(c => c.id === id);
       if (!item) return;
       const newExp: FixedExpense = {
-        id: item.id,
-        name: item.name,
-        amount: item.budgeted,
-        group: 'tithe',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, amount: item.budgeted, group: 'tithe',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextCats(prev => prev.filter(c => c.id !== id));
       setNextFixed(prev => [...prev, newExp]);
-      onUpdateCategories(categories.filter(c => c.id !== id));
-      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      if (onMoveCategoryToFixed) {
+        void onMoveCategoryToFixed(id, 'tithe');
+      } else {
+        onUpdateCategories(categories.filter(c => c.id !== id));
+        onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      }
     }
   };
 
   const toggleSavingsType = (id: string, currentlyFixed: boolean) => {
     if (currentlyFixed) {
-      // Move from fixed savings to variable savings category
       const item = nextFixed.find(e => e.id === id);
       if (!item) return;
       const newCat: BudgetCategory = {
-        id: item.id,
-        name: item.name,
-        budgeted: item.amount,
-        group: 'savings' as any,
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, budgeted: item.amount, group: 'savings',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextFixed(prev => prev.filter(e => e.id !== id));
       setNextCats(prev => [...prev, newCat]);
-      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
-      onUpdateCategories([...categories, newCat]);
+      if (onMoveFixedToCategory) {
+        void onMoveFixedToCategory(id, 'savings');
+      } else {
+        onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+        onUpdateCategories([...categories, newCat]);
+      }
     } else {
-      // Move from variable savings category to fixed savings
       const item = nextCats.find(c => c.id === id);
       if (!item) return;
       const newExp: FixedExpense = {
-        id: item.id,
-        name: item.name,
-        amount: item.budgeted,
-        group: 'savings',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, amount: item.budgeted, group: 'savings',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextCats(prev => prev.filter(c => c.id !== id));
       setNextFixed(prev => [...prev, newExp]);
-      onUpdateCategories(categories.filter(c => c.id !== id));
-      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      if (onMoveCategoryToFixed) {
+        void onMoveCategoryToFixed(id, 'savings');
+      } else {
+        onUpdateCategories(categories.filter(c => c.id !== id));
+        onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      }
     }
   };
 
