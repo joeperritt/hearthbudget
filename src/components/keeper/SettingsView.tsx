@@ -68,13 +68,16 @@ interface SettingsViewProps {
   onRemoveFixedExpenseFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
   onBack: () => void;
   unassignedCount?: number;
-  // Current month spending data
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   monthTransactions?: Transaction[];
-  /** When true, renders inline without header/back button/logout */
   embedded?: boolean;
   onViewMonthChange?: (month: string) => void;
+  activeMonth?: string;
+  monthAmountOverrides?: MonthAmountOverrides;
+  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
+  onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
+  onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
@@ -91,9 +94,14 @@ export function SettingsView({
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
   embedded = false,
   onViewMonthChange,
+  activeMonth: activeMonthProp,
+  monthAmountOverrides = {},
+  onSetMonthAmountOverride,
+  onMoveCategoryToFixed,
+  onMoveFixedToCategory,
 }: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
-  const activeMonthKey = format(currentMonth, 'yyyy-MM');
+  const activeMonthKey = activeMonthProp || format(currentMonth, 'yyyy-MM');
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthKey = format(nextMonth, 'yyyy-MM');
 
