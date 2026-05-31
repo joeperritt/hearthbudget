@@ -50,6 +50,11 @@ interface BudgetTabViewProps {
   planningData: Record<string, string>;
   onUpdatePlanningData: (data: Record<string, string>) => void;
   initialViewMonth?: string;
+  activeMonth?: string;
+  monthAmountOverrides?: MonthAmountOverrides;
+  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
+  onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
+  onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
   onOpenProfile?: () => void;
   onBack?: () => void;
 }
@@ -60,7 +65,10 @@ export function BudgetTabView({
   onAddCategoryForMonth, onAddFixedExpenseForMonth,
   onRemoveCategoryFromMonth, onRemoveFixedExpenseFromMonth,
   unassignedCount, spentByCategory, transferAdjustments, monthTransactions,
-  planningData, onUpdatePlanningData, initialViewMonth, onOpenProfile, onBack,
+  planningData, onUpdatePlanningData, initialViewMonth,
+  activeMonth, monthAmountOverrides = {},
+  onSetMonthAmountOverride, onMoveCategoryToFixed, onMoveFixedToCategory,
+  onOpenProfile, onBack,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
