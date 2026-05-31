@@ -7,7 +7,7 @@ import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
-import { filterForMonth } from '@/hooks/useBudgetData';
+import { filterForMonth, applyOverridesToCategories, applyOverridesToFixed, type MonthAmountOverrides } from '@/hooks/useBudgetData';
 import {
   Drawer,
   DrawerContent,
