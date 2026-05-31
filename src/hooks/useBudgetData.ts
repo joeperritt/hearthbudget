@@ -48,6 +48,40 @@ export function filterForMonth<T extends { startMonth?: string | null; endMonth?
   return items.filter(item => isActiveForMonth(item, month));
 }
 
+/**
+ * Per-month amount override map.
+ * Keyed by `${kind}:${slug}:${month}` → amount.
+ * Used to scope budget amount edits to a single month without overwriting
+ * the base `budgeted` / `amount` value that other months rely on.
+ */
+export type MonthAmountOverrides = Record<string, number>;
+
+function overrideKey(kind: 'category' | 'fixed', slug: string, month: string) {
+  return `${kind}:${slug}:${month}`;
+}
+
+/** Look up the effective amount for a given item & month. Returns base if no override exists. */
+export function resolveAmountForMonth(
+  kind: 'category' | 'fixed',
+  slug: string,
+  month: string,
+  baseAmount: number,
+  overrides: MonthAmountOverrides,
+): number {
+  const k = overrideKey(kind, slug, month);
+  return Object.prototype.hasOwnProperty.call(overrides, k) ? overrides[k] : baseAmount;
+}
+
+/** Apply per-month overrides to a list of categories so `.budgeted` reflects the month-scoped amount. */
+export function applyOverridesToCategories(cats: BudgetCategory[], month: string, overrides: MonthAmountOverrides): BudgetCategory[] {
+  return cats.map(c => ({ ...c, budgeted: resolveAmountForMonth('category', c.id, month, c.budgeted, overrides) }));
+}
+
+/** Apply per-month overrides to a list of fixed expenses so `.amount` reflects the month-scoped amount. */
+export function applyOverridesToFixed(items: FixedExpense[], month: string, overrides: MonthAmountOverrides): FixedExpense[] {
+  return items.map(e => ({ ...e, amount: resolveAmountForMonth('fixed', e.id, month, e.amount, overrides) }));
+}
+
 function dbToTx(row: Record<string, unknown>): Transaction {
   return {
     id: row.id as string,
@@ -84,6 +118,7 @@ export function useBudgetData() {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
+  const [monthAmountOverrides, setMonthAmountOverrides] = useState<MonthAmountOverrides>({});
   const [activeMonth, setActiveMonth] = useState<string>('');
   const [planningData, setPlanningData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -93,12 +128,13 @@ export function useBudgetData() {
   const fetchAll = useCallback(async () => {
     if (!householdId) return;
 
-    const [catRes, fixRes, txRes, trRes, hhRes] = await Promise.all([
+    const [catRes, fixRes, txRes, trRes, hhRes, ovRes] = await Promise.all([
       supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('fixed_expenses').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
       supabase.from('budget_transfers').select('*').eq('household_id', householdId),
       supabase.from('households').select('*').eq('id', householdId).single(),
+      supabase.from('budget_amount_overrides' as any).select('*').eq('household_id', householdId),
     ]);
 
     if (catRes.data) setCategories(catRes.data.map(r => dbToCat(r as unknown as Record<string, unknown>)));
@@ -111,6 +147,13 @@ export function useBudgetData() {
       if (hh.planning_data && typeof hh.planning_data === 'object') {
         setPlanningData(hh.planning_data as Record<string, string>);
       }
+    }
+    if (ovRes.data) {
+      const map: MonthAmountOverrides = {};
+      for (const row of ovRes.data as any[]) {
+        map[`${row.kind}:${row.slug}:${row.month}`] = Number(row.amount);
+      }
+      setMonthAmountOverrides(map);
     }
 
     if (initialLoad.current) {

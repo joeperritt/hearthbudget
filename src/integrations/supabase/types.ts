@@ -76,6 +76,39 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_amount_overrides: {
+        Row: {
+          amount: number
+          created_at: string
+          household_id: string
+          id: string
+          kind: string
+          month: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          household_id: string
+          id?: string
+          kind: string
+          month: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          kind?: string
+          month?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       budget_categories: {
         Row: {
           budgeted: number
