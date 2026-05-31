@@ -343,6 +343,11 @@ export function BudgetTabView({
           monthTransactions={monthTransactions}
           embedded
           onViewMonthChange={setViewMonthKey}
+          activeMonth={activeMonth}
+          monthAmountOverrides={monthAmountOverrides}
+          onSetMonthAmountOverride={onSetMonthAmountOverride}
+          onMoveCategoryToFixed={onMoveCategoryToFixed}
+          onMoveFixedToCategory={onMoveFixedToCategory}
         />
       </div>
 
