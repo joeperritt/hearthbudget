@@ -7,7 +7,7 @@ import { format, addMonths, subMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { ProgressBar } from './ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
-import { filterForMonth } from '@/hooks/useBudgetData';
+import { filterForMonth, applyOverridesToCategories, applyOverridesToFixed, type MonthAmountOverrides } from '@/hooks/useBudgetData';
 import {
   Drawer,
   DrawerContent,
@@ -68,13 +68,16 @@ interface SettingsViewProps {
   onRemoveFixedExpenseFromMonth?: (slug: string, month: string, scope: ScopeChoice) => Promise<void>;
   onBack: () => void;
   unassignedCount?: number;
-  // Current month spending data
   spentByCategory?: Record<string, number>;
   transferAdjustments?: Record<string, number>;
   monthTransactions?: Transaction[];
-  /** When true, renders inline without header/back button/logout */
   embedded?: boolean;
   onViewMonthChange?: (month: string) => void;
+  activeMonth?: string;
+  monthAmountOverrides?: MonthAmountOverrides;
+  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
+  onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
+  onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
@@ -91,9 +94,14 @@ export function SettingsView({
   spentByCategory = {}, transferAdjustments = {}, monthTransactions = [],
   embedded = false,
   onViewMonthChange,
+  activeMonth: activeMonthProp,
+  monthAmountOverrides = {},
+  onSetMonthAmountOverride,
+  onMoveCategoryToFixed,
+  onMoveFixedToCategory,
 }: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
-  const activeMonthKey = format(currentMonth, 'yyyy-MM');
+  const activeMonthKey = activeMonthProp || format(currentMonth, 'yyyy-MM');
   const nextMonth = addMonths(currentMonth, 1);
   const nextMonthKey = format(nextMonth, 'yyyy-MM');
 
@@ -248,14 +256,20 @@ export function SettingsView({
   const [showScopePrompt, setShowScopePrompt] = useState(false);
   const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
 
-  // Filter categories and fixed expenses by the currently viewed month
-  const monthFilteredCats = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
-  const monthFilteredFixed = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+  // Filter categories and fixed expenses by the currently viewed month,
+  // applying per-month overrides so future-month amount edits show through.
+  const monthFilteredCats = useMemo(
+    () => applyOverridesToCategories(filterForMonth(categories, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [categories, viewMonthKey, monthAmountOverrides],
+  );
+  const monthFilteredFixed = useMemo(
+    () => applyOverridesToFixed(filterForMonth(fixedExpenses, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [fixedExpenses, viewMonthKey, monthAmountOverrides],
+  );
 
   const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => monthFilteredCats.map(c => ({ ...c })));
   const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => monthFilteredFixed.map(e => ({ ...e })));
 
-  // Reset next cats/fixed when categories change
   // Reset next cats/fixed when categories or viewed month change
   useEffect(() => {
     setNextCats(monthFilteredCats.map(c => ({ ...c })));
@@ -420,9 +434,16 @@ export function SettingsView({
   const saveNextCatEdit = (id: string) => {
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
-      const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
-      setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
-      onUpdateCategories(updated);
+      if (isFutureMonth && onSetMonthAmountOverride) {
+        // Future month: write a per-month override so prior/current months
+        // keep their original amount.
+        setNextCats(prev => prev.map(c => c.id === id ? { ...c, budgeted: v } : c));
+        void onSetMonthAmountOverride('category', id, viewMonthKey, v);
+      } else {
+        const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
+        setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
+        onUpdateCategories(updated);
+      }
     }
     setEditingId(null);
   };
@@ -430,9 +451,14 @@ export function SettingsView({
   const saveNextFixedEdit = (id: string) => {
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
-      const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
-      setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
-      onUpdateFixedExpenses(updated);
+      if (isFutureMonth && onSetMonthAmountOverride) {
+        setNextFixed(prev => prev.map(e => e.id === id ? { ...e, amount: v } : e));
+        void onSetMonthAmountOverride('fixed', id, viewMonthKey, v);
+      } else {
+        const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
+        setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
+        onUpdateFixedExpenses(updated);
+      }
     }
     setEditingId(null);
   };
@@ -471,75 +497,72 @@ export function SettingsView({
 
   const toggleTitheType = (id: string, currentlyFixed: boolean) => {
     if (currentlyFixed) {
+      // Move from fixed tithe → variable giving category
       const item = nextFixed.find(e => e.id === id);
       if (!item) return;
+      // Optimistic local update so the row stays visible on the next render
       const newCat: BudgetCategory = {
-        id: item.id,
-        name: item.name,
-        budgeted: item.amount,
-        group: 'giving',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, budgeted: item.amount, group: 'giving',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextFixed(prev => prev.filter(e => e.id !== id));
       setNextCats(prev => [...prev, newCat]);
-      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
-      onUpdateCategories([...categories, newCat]);
+      if (onMoveFixedToCategory) {
+        void onMoveFixedToCategory(id, 'giving');
+      } else {
+        // Legacy fallback (kept for safety, but races with updateCategories scan)
+        onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+        onUpdateCategories([...categories, newCat]);
+      }
     } else {
       const item = nextCats.find(c => c.id === id);
       if (!item) return;
       const newExp: FixedExpense = {
-        id: item.id,
-        name: item.name,
-        amount: item.budgeted,
-        group: 'tithe',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, amount: item.budgeted, group: 'tithe',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextCats(prev => prev.filter(c => c.id !== id));
       setNextFixed(prev => [...prev, newExp]);
-      onUpdateCategories(categories.filter(c => c.id !== id));
-      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      if (onMoveCategoryToFixed) {
+        void onMoveCategoryToFixed(id, 'tithe');
+      } else {
+        onUpdateCategories(categories.filter(c => c.id !== id));
+        onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      }
     }
   };
 
   const toggleSavingsType = (id: string, currentlyFixed: boolean) => {
     if (currentlyFixed) {
-      // Move from fixed savings to variable savings category
       const item = nextFixed.find(e => e.id === id);
       if (!item) return;
       const newCat: BudgetCategory = {
-        id: item.id,
-        name: item.name,
-        budgeted: item.amount,
-        group: 'savings' as any,
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, budgeted: item.amount, group: 'savings',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextFixed(prev => prev.filter(e => e.id !== id));
       setNextCats(prev => [...prev, newCat]);
-      onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
-      onUpdateCategories([...categories, newCat]);
+      if (onMoveFixedToCategory) {
+        void onMoveFixedToCategory(id, 'savings');
+      } else {
+        onUpdateFixedExpenses(fixedExpenses.filter(e => e.id !== id));
+        onUpdateCategories([...categories, newCat]);
+      }
     } else {
-      // Move from variable savings category to fixed savings
       const item = nextCats.find(c => c.id === id);
       if (!item) return;
       const newExp: FixedExpense = {
-        id: item.id,
-        name: item.name,
-        amount: item.budgeted,
-        group: 'savings',
-        notesRequired: item.notesRequired,
-        startMonth: item.startMonth,
-        endMonth: item.endMonth,
+        id: item.id, name: item.name, amount: item.budgeted, group: 'savings',
+        notesRequired: item.notesRequired, startMonth: item.startMonth, endMonth: item.endMonth,
       };
       setNextCats(prev => prev.filter(c => c.id !== id));
       setNextFixed(prev => [...prev, newExp]);
-      onUpdateCategories(categories.filter(c => c.id !== id));
-      onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      if (onMoveCategoryToFixed) {
+        void onMoveCategoryToFixed(id, 'savings');
+      } else {
+        onUpdateCategories(categories.filter(c => c.id !== id));
+        onUpdateFixedExpenses([...fixedExpenses, newExp]);
+      }
     }
   };
 
