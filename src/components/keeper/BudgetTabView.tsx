@@ -108,8 +108,14 @@ export function BudgetTabView({
     setViewMonthKey(format(currentMonth, 'yyyy-MM'));
   }, [currentMonth]);
 
-  const monthCategories = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
-  const monthFixedExpenses = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+  const monthCategories = useMemo(
+    () => applyOverridesToCategories(filterForMonth(categories, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [categories, viewMonthKey, monthAmountOverrides],
+  );
+  const monthFixedExpenses = useMemo(
+    () => applyOverridesToFixed(filterForMonth(fixedExpenses, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [fixedExpenses, viewMonthKey, monthAmountOverrides],
+  );
 
   // Use the live input value for real-time surplus calculation
   const totalTakeHome = parseNumeric(takeHomeInput);
