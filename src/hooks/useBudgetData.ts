@@ -168,12 +168,14 @@ export function useBudgetData() {
 
   // Shared helper: build snapshot data for a given month
   const buildSnapshotData = useCallback((month: string, cats: BudgetCategory[], fixed: FixedExpense[]) => {
-    const monthCategories = filterForMonth(cats, month);
-    const monthFixedExpenses = filterForMonth(fixed, month);
+    // Apply per-month amount overrides so the closed snapshot reflects the
+    // amounts that were actually budgeted for that month (not whatever the
+    // base row currently says).
+    const resolvedCats = applyOverridesToCategories(filterForMonth(cats, month), month, monthAmountOverrides);
+    const resolvedFixed = applyOverridesToFixed(filterForMonth(fixed, month), month, monthAmountOverrides);
     const monthTxns = transactions.filter(t => t.budgetMonth === month);
     const expenseTxns = monthTxns.filter(t => t.transactionType === 'expense');
 
-    // Per-category spend uses positive amounts only (refunds offset within category).
     const spentByCategory: Record<string, number> = {};
     monthTxns
       .filter(t => t.transactionType === 'expense' && !t.categoryId.startsWith('ignore-'))
@@ -181,20 +183,17 @@ export function useBudgetData() {
         spentByCategory[t.categoryId] = (spentByCategory[t.categoryId] || 0) + t.amount;
       });
 
-    // Gross spend (positive expense rows only) vs refunds (negative expense rows).
-    // EXCLUDE ignore-* category rows so a misrouted CC payment / transfer doesn't
-    // show up as a giant refund on the closed-month summary.
     const realExpenses = expenseTxns.filter(t => !t.categoryId.startsWith('ignore-'));
     const grossSpent = realExpenses.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-    const refundsTotal = realExpenses.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0); // negative
+    const refundsTotal = realExpenses.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
     const netSpent = grossSpent + refundsTotal;
 
     const summary = {
       totalTransactions: monthTxns.length,
       totalExpenses: expenseTxns.length,
-      totalSpent: netSpent,        // backward compat (now consistent w/ netSpent)
-      grossSpent,                  // positive expense rows (excl. ignore-*)
-      refundsTotal,                // negative expense rows (excl. ignore-*, signed ≤ 0)
+      totalSpent: netSpent,
+      grossSpent,
+      refundsTotal,
       netSpent,
       spentByCategory,
     };
@@ -204,12 +203,82 @@ export function useBudgetData() {
     return {
       household_id: householdId!,
       month,
-      categories: monthCategories,
-      fixed_expenses: monthFixedExpenses,
+      categories: resolvedCats,
+      fixed_expenses: resolvedFixed,
       transactions_summary: summary,
       transfers: monthTransfers,
     };
-  }, [householdId, transactions, transfers]);
+  }, [householdId, transactions, transfers, monthAmountOverrides]);
+
+  /** Write a per-month amount override (used when editing a future month). */
+  const setMonthAmountOverride = useCallback(async (
+    kind: 'category' | 'fixed', slug: string, month: string, amount: number,
+  ) => {
+    if (!householdId) return;
+    const key = `${kind}:${slug}:${month}`;
+    // Optimistic local update so the UI reflects the change immediately
+    setMonthAmountOverrides(prev => ({ ...prev, [key]: amount }));
+    const { error } = await supabase
+      .from('budget_amount_overrides' as any)
+      .upsert({ household_id: householdId, kind, slug, month, amount } as any, {
+        onConflict: 'household_id,kind,slug,month',
+      });
+    if (error) {
+      // Revert on failure
+      setMonthAmountOverrides(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      throw error;
+    }
+  }, [householdId]);
+
+  /** Promote any overrides for `month` onto the base row, then delete them. */
+  const promoteOverridesForMonth = useCallback(async (month: string) => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from('budget_amount_overrides' as any)
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('month', month);
+    const rows = (data as any[]) || [];
+    if (!rows.length) return;
+
+    const ops: Promise<unknown>[] = [];
+    for (const r of rows) {
+      if (r.kind === 'category') {
+        ops.push(
+          supabase.from('budget_categories').update({ budgeted: Number(r.amount) } as any)
+            .eq('household_id', householdId).eq('slug', r.slug)
+        );
+      } else if (r.kind === 'fixed') {
+        ops.push(
+          supabase.from('fixed_expenses').update({ amount: Number(r.amount) } as any)
+            .eq('household_id', householdId).eq('slug', r.slug)
+        );
+      }
+    }
+    await Promise.all(ops);
+    await supabase
+      .from('budget_amount_overrides' as any)
+      .delete()
+      .eq('household_id', householdId)
+      .eq('month', month);
+
+    setMonthAmountOverrides(prev => {
+      const next = { ...prev };
+      for (const r of rows) delete next[`${r.kind}:${r.slug}:${r.month}`];
+      return next;
+    });
+    // Refetch so base amounts in memory match the new baseline
+    const [cRes, fRes] = await Promise.all([
+      supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order'),
+      supabase.from('fixed_expenses').select('*').eq('household_id', householdId).order('sort_order'),
+    ]);
+    if (cRes.data) setCategories(cRes.data.map(r => dbToCat(r as unknown as Record<string, unknown>)));
+    if (fRes.data) setFixedExpenses(fRes.data.map(r => dbToFixed(r as unknown as Record<string, unknown>)));
+  }, [householdId]);
 
   // Auto month transition: on first load, if activeMonth is behind current calendar month,
   // automatically snapshot and advance to the current month
