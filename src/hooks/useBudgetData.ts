@@ -118,6 +118,7 @@ export function useBudgetData() {
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
+  const [monthAmountOverrides, setMonthAmountOverrides] = useState<MonthAmountOverrides>({});
   const [activeMonth, setActiveMonth] = useState<string>('');
   const [planningData, setPlanningData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -127,12 +128,13 @@ export function useBudgetData() {
   const fetchAll = useCallback(async () => {
     if (!householdId) return;
 
-    const [catRes, fixRes, txRes, trRes, hhRes] = await Promise.all([
+    const [catRes, fixRes, txRes, trRes, hhRes, ovRes] = await Promise.all([
       supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('fixed_expenses').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
       supabase.from('budget_transfers').select('*').eq('household_id', householdId),
       supabase.from('households').select('*').eq('id', householdId).single(),
+      supabase.from('budget_amount_overrides' as any).select('*').eq('household_id', householdId),
     ]);
 
     if (catRes.data) setCategories(catRes.data.map(r => dbToCat(r as unknown as Record<string, unknown>)));
@@ -145,6 +147,13 @@ export function useBudgetData() {
       if (hh.planning_data && typeof hh.planning_data === 'object') {
         setPlanningData(hh.planning_data as Record<string, string>);
       }
+    }
+    if (ovRes.data) {
+      const map: MonthAmountOverrides = {};
+      for (const row of ovRes.data as any[]) {
+        map[`${row.kind}:${row.slug}:${row.month}`] = Number(row.amount);
+      }
+      setMonthAmountOverrides(map);
     }
 
     if (initialLoad.current) {
