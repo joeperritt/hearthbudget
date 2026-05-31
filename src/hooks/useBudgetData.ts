@@ -48,6 +48,40 @@ export function filterForMonth<T extends { startMonth?: string | null; endMonth?
   return items.filter(item => isActiveForMonth(item, month));
 }
 
+/**
+ * Per-month amount override map.
+ * Keyed by `${kind}:${slug}:${month}` → amount.
+ * Used to scope budget amount edits to a single month without overwriting
+ * the base `budgeted` / `amount` value that other months rely on.
+ */
+export type MonthAmountOverrides = Record<string, number>;
+
+function overrideKey(kind: 'category' | 'fixed', slug: string, month: string) {
+  return `${kind}:${slug}:${month}`;
+}
+
+/** Look up the effective amount for a given item & month. Returns base if no override exists. */
+export function resolveAmountForMonth(
+  kind: 'category' | 'fixed',
+  slug: string,
+  month: string,
+  baseAmount: number,
+  overrides: MonthAmountOverrides,
+): number {
+  const k = overrideKey(kind, slug, month);
+  return Object.prototype.hasOwnProperty.call(overrides, k) ? overrides[k] : baseAmount;
+}
+
+/** Apply per-month overrides to a list of categories so `.budgeted` reflects the month-scoped amount. */
+export function applyOverridesToCategories(cats: BudgetCategory[], month: string, overrides: MonthAmountOverrides): BudgetCategory[] {
+  return cats.map(c => ({ ...c, budgeted: resolveAmountForMonth('category', c.id, month, c.budgeted, overrides) }));
+}
+
+/** Apply per-month overrides to a list of fixed expenses so `.amount` reflects the month-scoped amount. */
+export function applyOverridesToFixed(items: FixedExpense[], month: string, overrides: MonthAmountOverrides): FixedExpense[] {
+  return items.map(e => ({ ...e, amount: resolveAmountForMonth('fixed', e.id, month, e.amount, overrides) }));
+}
+
 function dbToTx(row: Record<string, unknown>): Transaction {
   return {
     id: row.id as string,
