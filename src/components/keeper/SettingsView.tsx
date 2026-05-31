@@ -256,14 +256,20 @@ export function SettingsView({
   const [showScopePrompt, setShowScopePrompt] = useState(false);
   const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
 
-  // Filter categories and fixed expenses by the currently viewed month
-  const monthFilteredCats = useMemo(() => filterForMonth(categories, viewMonthKey), [categories, viewMonthKey]);
-  const monthFilteredFixed = useMemo(() => filterForMonth(fixedExpenses, viewMonthKey), [fixedExpenses, viewMonthKey]);
+  // Filter categories and fixed expenses by the currently viewed month,
+  // applying per-month overrides so future-month amount edits show through.
+  const monthFilteredCats = useMemo(
+    () => applyOverridesToCategories(filterForMonth(categories, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [categories, viewMonthKey, monthAmountOverrides],
+  );
+  const monthFilteredFixed = useMemo(
+    () => applyOverridesToFixed(filterForMonth(fixedExpenses, viewMonthKey), viewMonthKey, monthAmountOverrides),
+    [fixedExpenses, viewMonthKey, monthAmountOverrides],
+  );
 
   const [nextCats, setNextCats] = useState<BudgetCategory[]>(() => monthFilteredCats.map(c => ({ ...c })));
   const [nextFixed, setNextFixed] = useState<FixedExpense[]>(() => monthFilteredFixed.map(e => ({ ...e })));
 
-  // Reset next cats/fixed when categories change
   // Reset next cats/fixed when categories or viewed month change
   useEffect(() => {
     setNextCats(monthFilteredCats.map(c => ({ ...c })));
