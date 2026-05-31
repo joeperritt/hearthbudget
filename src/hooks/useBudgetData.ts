@@ -729,5 +729,9 @@ export function useBudgetData() {
     removeFixedExpenseFromMonth,
     startNewMonth,
     updatePlanningData,
+    monthAmountOverrides,
+    setMonthAmountOverride,
+    moveCategoryToFixed,
+    moveFixedToCategory,
   };
 }
