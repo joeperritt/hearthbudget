@@ -101,6 +101,8 @@ export function SettingsView({
   onSetMonthAmountOverride,
   onMoveCategoryToFixed,
   onMoveFixedToCategory,
+  onSetCategoryNotesRequired,
+  onSetFixedNotesRequired,
 }: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
   const activeMonthKey = activeMonthProp || format(currentMonth, 'yyyy-MM');
