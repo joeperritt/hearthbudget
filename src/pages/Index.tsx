@@ -65,6 +65,7 @@ const Index = () => {
     planningData, updatePlanningData,
     monthAmountOverrides, setMonthAmountOverride,
     moveCategoryToFixed, moveFixedToCategory,
+    setCategoryNotesRequired, setFixedNotesRequired,
   } = useBudgetData();
 
   const { accounts } = useAccounts();
@@ -612,6 +613,8 @@ const Index = () => {
             onSetMonthAmountOverride={setMonthAmountOverride}
             onMoveCategoryToFixed={moveCategoryToFixed}
             onMoveFixedToCategory={moveFixedToCategory}
+            onSetCategoryNotesRequired={setCategoryNotesRequired}
+            onSetFixedNotesRequired={setFixedNotesRequired}
             onBack={() => {
               if (budgetEntryFromSpending) {
                 setBudgetEntryFromSpending(false);

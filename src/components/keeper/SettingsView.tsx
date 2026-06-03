@@ -78,6 +78,8 @@ interface SettingsViewProps {
   onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
+  onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
+  onSetFixedNotesRequired?: (slug: string, value: boolean) => Promise<void>;
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
@@ -99,6 +101,8 @@ export function SettingsView({
   onSetMonthAmountOverride,
   onMoveCategoryToFixed,
   onMoveFixedToCategory,
+  onSetCategoryNotesRequired,
+  onSetFixedNotesRequired,
 }: SettingsViewProps) {
   const { isAdmin, signOut, profile } = useAuth();
   const activeMonthKey = activeMonthProp || format(currentMonth, 'yyyy-MM');
@@ -353,9 +357,19 @@ export function SettingsView({
   };
 
   const toggleNotesRequired = (id: string) => {
-    const updated = categories.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c);
-    onUpdateCategories(updated);
-    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c));
+    // Compute the next value from current state so we don't depend on the
+    // stale `categories` prop (which may not yet reflect a just-moved row).
+    const current = nextCats.find(c => c.id === id) ?? categories.find(c => c.id === id);
+    const nextValue = !(current?.notesRequired ?? false);
+    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: nextValue } : c));
+    if (onSetCategoryNotesRequired) {
+      void onSetCategoryNotesRequired(id, nextValue);
+    } else {
+      // Legacy fallback — wipe-and-rewrite path. Avoid when the targeted
+      // helper is available because it deletes rows missing from `categories`.
+      const updated = categories.map(c => c.id === id ? { ...c, notesRequired: nextValue } : c);
+      onUpdateCategories(updated);
+    }
   };
 
   const addFixedExpense = (group: FixedGroupType) => {
@@ -426,9 +440,15 @@ export function SettingsView({
   };
 
   const toggleFixedNotesRequired = (id: string) => {
-    const updated = fixedExpenses.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e);
-    onUpdateFixedExpenses(updated);
-    setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e));
+    const current = nextFixed.find(e => e.id === id) ?? fixedExpenses.find(e => e.id === id);
+    const nextValue = !(current?.notesRequired ?? false);
+    setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: nextValue } : e));
+    if (onSetFixedNotesRequired) {
+      void onSetFixedNotesRequired(id, nextValue);
+    } else {
+      const updated = fixedExpenses.map(e => e.id === id ? { ...e, notesRequired: nextValue } : e);
+      onUpdateFixedExpenses(updated);
+    }
   };
 
   const saveNextCatEdit = (id: string) => {

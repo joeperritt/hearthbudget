@@ -55,6 +55,8 @@ interface BudgetTabViewProps {
   onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
+  onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
+  onSetFixedNotesRequired?: (slug: string, value: boolean) => Promise<void>;
   onOpenProfile?: () => void;
   onBack?: () => void;
 }
@@ -68,6 +70,7 @@ export function BudgetTabView({
   planningData, onUpdatePlanningData, initialViewMonth,
   activeMonth, monthAmountOverrides = {},
   onSetMonthAmountOverride, onMoveCategoryToFixed, onMoveFixedToCategory,
+  onSetCategoryNotesRequired, onSetFixedNotesRequired,
   onOpenProfile, onBack,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
@@ -319,6 +322,8 @@ export function BudgetTabView({
           onSetMonthAmountOverride={onSetMonthAmountOverride}
           onMoveCategoryToFixed={onMoveCategoryToFixed}
           onMoveFixedToCategory={onMoveFixedToCategory}
+          onSetCategoryNotesRequired={onSetCategoryNotesRequired}
+          onSetFixedNotesRequired={onSetFixedNotesRequired}
         />
       </div>
 
