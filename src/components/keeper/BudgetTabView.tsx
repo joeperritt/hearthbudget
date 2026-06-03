@@ -55,6 +55,8 @@ interface BudgetTabViewProps {
   onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
+  onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
+  onSetFixedNotesRequired?: (slug: string, value: boolean) => Promise<void>;
   onOpenProfile?: () => void;
   onBack?: () => void;
 }
