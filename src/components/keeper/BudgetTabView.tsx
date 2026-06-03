@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
 import { AlertCircle, ArrowLeft, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
