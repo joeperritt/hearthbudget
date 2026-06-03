@@ -755,5 +755,7 @@ export function useBudgetData() {
     setMonthAmountOverride,
     moveCategoryToFixed,
     moveFixedToCategory,
+    setCategoryNotesRequired,
+    setFixedNotesRequired,
   };
 }
