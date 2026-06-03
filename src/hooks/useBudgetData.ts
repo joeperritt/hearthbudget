@@ -210,29 +210,115 @@ export function useBudgetData() {
     };
   }, [householdId, transactions, transfers, monthAmountOverrides]);
 
-  /** Write a per-month amount override (used when editing a future month). */
+  /**
+   * Write a per-month amount override (used when editing a future month).
+   *
+   * scope:
+   *  - 'month-only' (default): pin just `month` via an override row.
+   *  - 'month-and-future': set `month` and every later month to `amount`.
+   *    Pins every month from activeMonth..(month-1) at its currently-displayed
+   *    amount, updates the base row to `amount`, and deletes any overrides at
+   *    or after `month` so they inherit the new base. Past (closed) months
+   *    are unaffected — they read from `budget_month_snapshots`.
+   */
   const setMonthAmountOverride = useCallback(async (
     kind: 'category' | 'fixed', slug: string, month: string, amount: number,
+    scope: 'month-only' | 'month-and-future' = 'month-only',
   ) => {
     if (!householdId) return;
-    const key = `${kind}:${slug}:${month}`;
-    // Optimistic local update so the UI reflects the change immediately
-    setMonthAmountOverrides(prev => ({ ...prev, [key]: amount }));
-    const { error } = await supabase
-      .from('budget_amount_overrides' as any)
-      .upsert({ household_id: householdId, kind, slug, month, amount } as any, {
-        onConflict: 'household_id,kind,slug,month',
-      });
-    if (error) {
-      // Revert on failure
-      setMonthAmountOverrides(prev => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      throw error;
+
+    if (scope === 'month-only') {
+      const key = `${kind}:${slug}:${month}`;
+      setMonthAmountOverrides(prev => ({ ...prev, [key]: amount }));
+      const { error } = await supabase
+        .from('budget_amount_overrides' as any)
+        .upsert({ household_id: householdId, kind, slug, month, amount } as any, {
+          onConflict: 'household_id,kind,slug,month',
+        });
+      if (error) {
+        setMonthAmountOverrides(prev => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        throw error;
+      }
+      return;
     }
-  }, [householdId]);
+
+    // scope === 'month-and-future'
+    const items = kind === 'category' ? categories : fixedExpenses;
+    const base = items.find(i => i.id === slug);
+    const baseAmount = base ? (kind === 'category' ? (base as BudgetCategory).budgeted : (base as FixedExpense).amount) : 0;
+
+    // Pin every month from activeMonth..(month-1) at its currently-displayed
+    // amount so the base change doesn't bleed backwards into the active or
+    // intermediate months.
+    const pinRows: { household_id: string; kind: string; slug: string; month: string; amount: number }[] = [];
+    if (activeMonth && activeMonth < month) {
+      const [ay, am] = activeMonth.split('-').map(Number);
+      const [vy, vm] = month.split('-').map(Number);
+      let y = ay, m = am;
+      while (y < vy || (y === vy && m < vm)) {
+        const key = `${y}-${String(m).padStart(2, '0')}`;
+        const existing = monthAmountOverrides[`${kind}:${slug}:${key}`];
+        const pinAmount = existing !== undefined ? existing : baseAmount;
+        pinRows.push({ household_id: householdId, kind, slug, month: key, amount: pinAmount });
+        m += 1;
+        if (m > 12) { m = 1; y += 1; }
+      }
+    }
+
+    // Optimistic local: pin prior months, clear overrides at or after `month`
+    setMonthAmountOverrides(prev => {
+      const next: MonthAmountOverrides = {};
+      const prefix = `${kind}:${slug}:`;
+      for (const [k, v] of Object.entries(prev)) {
+        if (k.startsWith(prefix) && k.substring(prefix.length) >= month) continue;
+        next[k] = v;
+      }
+      for (const r of pinRows) next[`${r.kind}:${r.slug}:${r.month}`] = r.amount;
+      return next;
+    });
+
+    // Optimistic base update
+    if (kind === 'category') {
+      setCategories(prev => prev.map(c => c.id === slug ? { ...c, budgeted: amount } : c));
+    } else {
+      setFixedExpenses(prev => prev.map(e => e.id === slug ? { ...e, amount: amount } : e));
+    }
+
+    try {
+      if (pinRows.length) {
+        const { error: pinErr } = await supabase
+          .from('budget_amount_overrides' as any)
+          .upsert(pinRows as any, { onConflict: 'household_id,kind,slug,month' });
+        if (pinErr) throw pinErr;
+      }
+      const { error: delErr } = await supabase
+        .from('budget_amount_overrides' as any)
+        .delete()
+        .eq('household_id', householdId)
+        .eq('kind', kind)
+        .eq('slug', slug)
+        .gte('month', month);
+      if (delErr) throw delErr;
+      if (kind === 'category') {
+        const { error: bErr } = await supabase
+          .from('budget_categories').update({ budgeted: amount } as any)
+          .eq('household_id', householdId).eq('slug', slug);
+        if (bErr) throw bErr;
+      } else {
+        const { error: bErr } = await supabase
+          .from('fixed_expenses').update({ amount: amount } as any)
+          .eq('household_id', householdId).eq('slug', slug);
+        if (bErr) throw bErr;
+      }
+    } catch (e) {
+      await fetchAll();
+      throw e;
+    }
+  }, [householdId, categories, fixedExpenses, activeMonth, monthAmountOverrides, fetchAll]);
 
   /** Promote any overrides for `month` onto the base row, then delete them. */
   const promoteOverridesForMonth = useCallback(async (month: string) => {
