@@ -425,6 +425,21 @@ export function SettingsView({
       }
       setPendingDelete(null);
     }
+
+    if (scopeAction === 'edit' && pendingEdit && onSetMonthAmountOverride) {
+      // Optimistic local update so the row reflects the new amount immediately
+      if (pendingEdit.kind === 'category') {
+        setNextCats(prev => prev.map(c => c.id === pendingEdit.id ? { ...c, budgeted: pendingEdit.amount } : c));
+      } else {
+        setNextFixed(prev => prev.map(e => e.id === pendingEdit.id ? { ...e, amount: pendingEdit.amount } : e));
+      }
+      try {
+        await onSetMonthAmountOverride(pendingEdit.kind, pendingEdit.id, viewMonthKey, pendingEdit.amount, scope);
+      } catch (e) {
+        console.error('Failed to save amount', e);
+      }
+      setPendingEdit(null);
+    }
   };
 
   // Scoped delete handlers
