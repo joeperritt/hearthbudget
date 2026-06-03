@@ -52,7 +52,7 @@ interface BudgetTabViewProps {
   initialViewMonth?: string;
   activeMonth?: string;
   monthAmountOverrides?: MonthAmountOverrides;
-  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
+  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number, scope?: 'month-only' | 'month-and-future') => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
   onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
