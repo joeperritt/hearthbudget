@@ -1496,12 +1496,18 @@ export function SettingsView({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {scopeAction === 'add' ? 'Apply to which months?' : `Remove "${pendingDelete?.name}"?`}
+            {scopeAction === 'add'
+              ? 'Apply to which months?'
+              : scopeAction === 'edit'
+                ? `Update "${pendingEdit?.name}" amount`
+                : `Remove "${pendingDelete?.name}"?`}
           </DrawerTitle>
           <DrawerDescription>
             {scopeAction === 'add'
               ? `Where should this ${pendingAdd?.type === 'category' ? 'category' : 'item'} be added?`
-              : `From which months should this be removed?`}
+              : scopeAction === 'edit'
+                ? `Apply the new amount to which months?`
+                : `From which months should this be removed?`}
           </DrawerDescription>
         </DrawerHeader>
         <div className="px-4 pb-6 space-y-2">
@@ -1518,7 +1524,7 @@ export function SettingsView({
             {isCurrentMonth ? 'This month and all future months' : `${viewMonthShortLabel} and all future months`}
           </button>
           <button
-            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); }}
+            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); setPendingEdit(null); }}
             className="w-full py-2 text-sm text-muted-foreground font-medium"
           >
             Cancel
