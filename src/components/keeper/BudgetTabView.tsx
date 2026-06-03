@@ -277,28 +277,8 @@ export function BudgetTabView({
             </span>
           </div>
         </div>
-
-        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
-          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
-                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
-              </div>
-              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
-                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
-              </p>
-              <button
-                type="button"
-                onClick={() => setMappingOpen(true)}
-                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
-              >
-                Map them now →
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
 
       <SpendingAnalyzer
         open={analyzerOpen}
