@@ -257,8 +257,9 @@ export function SettingsView({
   // Scope prompt state
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ kind: 'category' | 'fixed'; id: string; amount: number; name: string } | null>(null);
   const [showScopePrompt, setShowScopePrompt] = useState(false);
-  const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
+  const [scopeAction, setScopeAction] = useState<'add' | 'delete' | 'edit'>('add');
 
   // Filter categories and fixed expenses by the currently viewed month,
   // applying per-month overrides so future-month amount edits show through.
