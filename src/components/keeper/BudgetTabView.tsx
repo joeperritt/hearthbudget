@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BudgetCategory, FixedExpense, Transaction } from '@/types/budget';
+import { BudgetCategory, FixedExpense, GIVING_VARIABLE_CATEGORY, Transaction } from '@/types/budget';
 import { format } from 'date-fns';
 import { SettingsView } from './SettingsView';
 import { AlertCircle, ArrowLeft, Info, Pencil, Sparkles, Tags, Wallet, X } from 'lucide-react';
@@ -120,10 +120,19 @@ export function BudgetTabView({
   // Use the live input value for real-time surplus calculation
   const totalTakeHome = parseNumeric(takeHomeInput);
 
-  // Budget totals — sum ALL categories and fixed expenses
-  const allCategoriesTotal = monthCategories.reduce((s, c) => s + c.budgeted, 0);
-  const fixedTotal = monthFixedExpenses.reduce((s, e) => s + e.amount, 0);
-  const budgetTotal = allCategoriesTotal + fixedTotal;
+  // Breakdown by group — mirrors SettingsView footer logic so users see the
+  // same numbers in both places.
+  const savingsVarCats = monthCategories.filter(c => c.group === 'savings');
+  const givingVarCats = monthCategories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
+  const nonGivingCats = monthCategories.filter(c => c.group !== 'giving' && c.group !== 'savings' && c.id !== GIVING_VARIABLE_CATEGORY);
+  const variableTotal = nonGivingCats.reduce((s, c) => s + c.budgeted, 0);
+  const fixedBills = monthFixedExpenses.filter(e => e.group === 'bills');
+  const savingsBuckets = monthFixedExpenses.filter(e => e.group === 'savings');
+  const titheItems = monthFixedExpenses.filter(e => e.group === 'tithe');
+  const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
+  const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0) + savingsVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const titheTotal = titheItems.reduce((s, e) => s + e.amount, 0) + givingVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
   // Surplus = take-home minus budget total, nothing else
   const surplus = totalTakeHome - budgetTotal;
@@ -239,8 +248,24 @@ export function BudgetTabView({
               {!isPastMonth && <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />}
             </div>
           </div>
+          <div className="border-t border-border pt-2 flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Variable</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(variableTotal)}</span>
+          </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Budget Total</span>
+            <span className="text-sm text-muted-foreground">Fixed</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(fixedTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Savings Buckets</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(savingsTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Tithe/Giving</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheTotal)}</span>
+          </div>
+          <div className="border-t border-border pt-2 flex justify-between items-center">
+            <span className="text-sm font-semibold text-foreground">Total Budget</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{fmt(budgetTotal)}</span>
           </div>
           <div className="border-t border-border pt-2 flex justify-between items-center">
@@ -251,63 +276,9 @@ export function BudgetTabView({
               {isSurplus ? '+' : '-'}{fmt(Math.abs(surplus))}
             </span>
           </div>
-
-          {/* Anchor Map / Analyze inside the card so the analysis is visibly
-              tied to the month's take-home and budget totals shown above. */}
-          <div className="border-t border-border pt-3 mt-1">
-            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
-              Compare {(() => {
-                // Parse YYYY-MM as a LOCAL date — `new Date('2026-04-01')` is
-                // UTC midnight, which renders as the prior month in negative
-                // timezones (off-by-one bug).
-                const [y, m] = viewMonthKey.split('-').map(Number);
-                return format(new Date(y, m - 1, 1), 'MMMM');
-              })()}'s budget to CFP guidelines.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border"
-                onClick={() => setMappingOpen(true)}
-              >
-                <Tags className="w-4 h-4 mr-1.5" />
-                {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                onClick={() => setAnalyzerOpen(true)}
-              >
-                <Sparkles className="w-4 h-4 mr-1.5" />
-                Analyze budget
-              </Button>
-            </div>
-          </div>
         </div>
-
-        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
-          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
-                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
-              </div>
-              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
-                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
-              </p>
-              <button
-                type="button"
-                onClick={() => setMappingOpen(true)}
-                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
-              >
-                Map them now →
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
 
       <SpendingAnalyzer
         open={analyzerOpen}
@@ -350,6 +321,61 @@ export function BudgetTabView({
           onMoveFixedToCategory={onMoveFixedToCategory}
         />
       </div>
+
+      {/* CFP guidelines comparison — pushed to the bottom so the month-specific
+          totals stay at the top where the user lands. */}
+      <div className="px-6 mt-6">
+        <div className="bg-card rounded-xl shadow-sm p-4">
+          <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+            Compare {(() => {
+              const [y, m] = viewMonthKey.split('-').map(Number);
+              return format(new Date(y, m - 1, 1), 'MMMM');
+            })()}'s budget to CFP guidelines.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border"
+              onClick={() => setMappingOpen(true)}
+            >
+              <Tags className="w-4 h-4 mr-1.5" />
+              {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              onClick={() => setAnalyzerOpen(true)}
+            >
+              <Sparkles className="w-4 h-4 mr-1.5" />
+              Analyze budget
+            </Button>
+          </div>
+        </div>
+
+        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
+              </div>
+              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
+                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMappingOpen(true)}
+                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
+              >
+                Map them now →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
 
       {builderOpen && householdId && (
         <BudgetBuilderSheet
