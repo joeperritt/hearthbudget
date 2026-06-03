@@ -70,6 +70,7 @@ export function BudgetTabView({
   planningData, onUpdatePlanningData, initialViewMonth,
   activeMonth, monthAmountOverrides = {},
   onSetMonthAmountOverride, onMoveCategoryToFixed, onMoveFixedToCategory,
+  onSetCategoryNotesRequired, onSetFixedNotesRequired,
   onOpenProfile, onBack,
 }: BudgetTabViewProps) {
   const [viewMonthKey, setViewMonthKey] = useState(() => initialViewMonth || format(currentMonth, 'yyyy-MM'));
