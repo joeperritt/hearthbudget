@@ -342,6 +342,61 @@ export function BudgetTabView({
         />
       </div>
 
+      {/* CFP guidelines comparison — pushed to the bottom so the month-specific
+          totals stay at the top where the user lands. */}
+      <div className="px-6 mt-6">
+        <div className="bg-card rounded-xl shadow-sm p-4">
+          <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+            Compare {(() => {
+              const [y, m] = viewMonthKey.split('-').map(Number);
+              return format(new Date(y, m - 1, 1), 'MMMM');
+            })()}'s budget to CFP guidelines.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border"
+              onClick={() => setMappingOpen(true)}
+            >
+              <Tags className="w-4 h-4 mr-1.5" />
+              {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              onClick={() => setAnalyzerOpen(true)}
+            >
+              <Sparkles className="w-4 h-4 mr-1.5" />
+              Analyze budget
+            </Button>
+          </div>
+        </div>
+
+        {!isPastMonth && mappingStats.total > 0 && mappingStats.unmapped > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                {mappingStats.unmapped} of {mappingStats.total} categories aren't mapped to a CFP bucket yet
+              </div>
+              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 mt-0.5 leading-snug">
+                Mapping powers the budget analyzer. Unmapped categories are skipped from the rollup.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMappingOpen(true)}
+                className="mt-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2"
+              >
+                Map them now →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+
       {builderOpen && householdId && (
         <BudgetBuilderSheet
           householdId={householdId}
