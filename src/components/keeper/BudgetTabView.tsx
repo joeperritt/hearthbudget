@@ -120,10 +120,19 @@ export function BudgetTabView({
   // Use the live input value for real-time surplus calculation
   const totalTakeHome = parseNumeric(takeHomeInput);
 
-  // Budget totals — sum ALL categories and fixed expenses
-  const allCategoriesTotal = monthCategories.reduce((s, c) => s + c.budgeted, 0);
-  const fixedTotal = monthFixedExpenses.reduce((s, e) => s + e.amount, 0);
-  const budgetTotal = allCategoriesTotal + fixedTotal;
+  // Breakdown by group — mirrors SettingsView footer logic so users see the
+  // same numbers in both places.
+  const savingsVarCats = monthCategories.filter(c => c.group === 'savings');
+  const givingVarCats = monthCategories.filter(c => c.group === 'giving' || c.id === GIVING_VARIABLE_CATEGORY);
+  const nonGivingCats = monthCategories.filter(c => c.group !== 'giving' && c.group !== 'savings' && c.id !== GIVING_VARIABLE_CATEGORY);
+  const variableTotal = nonGivingCats.reduce((s, c) => s + c.budgeted, 0);
+  const fixedBills = monthFixedExpenses.filter(e => e.group === 'bills');
+  const savingsBuckets = monthFixedExpenses.filter(e => e.group === 'savings');
+  const titheItems = monthFixedExpenses.filter(e => e.group === 'tithe');
+  const fixedTotal = fixedBills.reduce((s, e) => s + e.amount, 0);
+  const savingsTotal = savingsBuckets.reduce((s, e) => s + e.amount, 0) + savingsVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const titheTotal = titheItems.reduce((s, e) => s + e.amount, 0) + givingVarCats.reduce((s, c) => s + c.budgeted, 0);
+  const budgetTotal = variableTotal + fixedTotal + savingsTotal + titheTotal;
 
   // Surplus = take-home minus budget total, nothing else
   const surplus = totalTakeHome - budgetTotal;
