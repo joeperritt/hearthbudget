@@ -1441,33 +1441,10 @@ export function SettingsView({
           </div>
         )}
 
-        {/* Budget Summary */}
-        <div className="px-6">
-          <div className="bg-card rounded-lg shadow-sm px-4 py-3 mb-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Variable Total</span>
-              <span className="font-medium tabular-nums">{fmtWhole(variableTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Fixed</span>
-              <span className="font-medium tabular-nums">{formatCurrency(fixedTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Savings Buckets</span>
-              <span className="font-medium tabular-nums">{formatCurrency(savingsTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Tithe/Giving</span>
-              <span className="font-medium tabular-nums">{formatCurrency(titheTotal)}</span>
-            </div>
-            <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm">
-              <span className="font-semibold text-foreground">Total Budget</span>
-              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(budgetTotal)}</span>
-            </div>
-          </div>
+        {/* Budget summary moved to the top card in BudgetTabView so it sits
+            next to the take-home input and recalculates as the user navigates
+            between months. */}
 
-          {/* Month transitions happen automatically on the 1st */}
-        </div>
       </>
     );
   }
