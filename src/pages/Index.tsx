@@ -65,6 +65,7 @@ const Index = () => {
     planningData, updatePlanningData,
     monthAmountOverrides, setMonthAmountOverride,
     moveCategoryToFixed, moveFixedToCategory,
+    setCategoryNotesRequired, setFixedNotesRequired,
   } = useBudgetData();
 
   const { accounts } = useAccounts();
