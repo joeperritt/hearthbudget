@@ -78,6 +78,8 @@ interface SettingsViewProps {
   onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
+  onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
+  onSetFixedNotesRequired?: (slug: string, value: boolean) => Promise<void>;
 }
 
 type GroupType = 'shared' | 'joe' | 'katie' | 'giving' | 'savings';
