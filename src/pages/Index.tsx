@@ -613,6 +613,8 @@ const Index = () => {
             onSetMonthAmountOverride={setMonthAmountOverride}
             onMoveCategoryToFixed={moveCategoryToFixed}
             onMoveFixedToCategory={moveFixedToCategory}
+            onSetCategoryNotesRequired={setCategoryNotesRequired}
+            onSetFixedNotesRequired={setFixedNotesRequired}
             onBack={() => {
               if (budgetEntryFromSpending) {
                 setBudgetEntryFromSpending(false);
