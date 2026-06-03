@@ -75,7 +75,7 @@ interface SettingsViewProps {
   onViewMonthChange?: (month: string) => void;
   activeMonth?: string;
   monthAmountOverrides?: MonthAmountOverrides;
-  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number) => Promise<void>;
+  onSetMonthAmountOverride?: (kind: 'category' | 'fixed', slug: string, month: string, amount: number, scope?: 'month-only' | 'month-and-future') => Promise<void>;
   onMoveCategoryToFixed?: (slug: string, fixedGroup: 'bills' | 'savings' | 'tithe') => Promise<void>;
   onMoveFixedToCategory?: (slug: string, group: BudgetCategory['group']) => Promise<void>;
   onSetCategoryNotesRequired?: (slug: string, value: boolean) => Promise<void>;
@@ -257,8 +257,9 @@ export function SettingsView({
   // Scope prompt state
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<{ kind: 'category' | 'fixed'; id: string; amount: number; name: string } | null>(null);
   const [showScopePrompt, setShowScopePrompt] = useState(false);
-  const [scopeAction, setScopeAction] = useState<'add' | 'delete'>('add');
+  const [scopeAction, setScopeAction] = useState<'add' | 'delete' | 'edit'>('add');
 
   // Filter categories and fixed expenses by the currently viewed month,
   // applying per-month overrides so future-month amount edits show through.
@@ -424,6 +425,21 @@ export function SettingsView({
       }
       setPendingDelete(null);
     }
+
+    if (scopeAction === 'edit' && pendingEdit && onSetMonthAmountOverride) {
+      // Optimistic local update so the row reflects the new amount immediately
+      if (pendingEdit.kind === 'category') {
+        setNextCats(prev => prev.map(c => c.id === pendingEdit.id ? { ...c, budgeted: pendingEdit.amount } : c));
+      } else {
+        setNextFixed(prev => prev.map(e => e.id === pendingEdit.id ? { ...e, amount: pendingEdit.amount } : e));
+      }
+      try {
+        await onSetMonthAmountOverride(pendingEdit.kind, pendingEdit.id, viewMonthKey, pendingEdit.amount, scope);
+      } catch (e) {
+        console.error('Failed to save amount', e);
+      }
+      setPendingEdit(null);
+    }
   };
 
   // Scoped delete handlers
@@ -455,10 +471,12 @@ export function SettingsView({
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
       if (isFutureMonth && onSetMonthAmountOverride) {
-        // Future month: write a per-month override so prior/current months
-        // keep their original amount.
-        setNextCats(prev => prev.map(c => c.id === id ? { ...c, budgeted: v } : c));
-        void onSetMonthAmountOverride('category', id, viewMonthKey, v);
+        // Future month: ask whether to apply to just this month or this month
+        // and all future months, so the user can choose the scope explicitly.
+        const cat = nextCats.find(c => c.id === id) ?? categories.find(c => c.id === id);
+        setPendingEdit({ kind: 'category', id, amount: v, name: cat?.name ?? '' });
+        setScopeAction('edit');
+        setShowScopePrompt(true);
       } else {
         const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
         setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
@@ -472,8 +490,10 @@ export function SettingsView({
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
       if (isFutureMonth && onSetMonthAmountOverride) {
-        setNextFixed(prev => prev.map(e => e.id === id ? { ...e, amount: v } : e));
-        void onSetMonthAmountOverride('fixed', id, viewMonthKey, v);
+        const exp = nextFixed.find(e => e.id === id) ?? fixedExpenses.find(e => e.id === id);
+        setPendingEdit({ kind: 'fixed', id, amount: v, name: exp?.name ?? '' });
+        setScopeAction('edit');
+        setShowScopePrompt(true);
       } else {
         const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
         setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
@@ -1476,12 +1496,18 @@ export function SettingsView({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {scopeAction === 'add' ? 'Apply to which months?' : `Remove "${pendingDelete?.name}"?`}
+            {scopeAction === 'add'
+              ? 'Apply to which months?'
+              : scopeAction === 'edit'
+                ? `Update "${pendingEdit?.name}" amount`
+                : `Remove "${pendingDelete?.name}"?`}
           </DrawerTitle>
           <DrawerDescription>
             {scopeAction === 'add'
               ? `Where should this ${pendingAdd?.type === 'category' ? 'category' : 'item'} be added?`
-              : `From which months should this be removed?`}
+              : scopeAction === 'edit'
+                ? `Apply the new amount to which months?`
+                : `From which months should this be removed?`}
           </DrawerDescription>
         </DrawerHeader>
         <div className="px-4 pb-6 space-y-2">
@@ -1498,7 +1524,7 @@ export function SettingsView({
             {isCurrentMonth ? 'This month and all future months' : `${viewMonthShortLabel} and all future months`}
           </button>
           <button
-            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); }}
+            onClick={() => { setShowScopePrompt(false); setPendingAdd(null); setPendingDelete(null); setPendingEdit(null); }}
             className="w-full py-2 text-sm text-muted-foreground font-medium"
           >
             Cancel
