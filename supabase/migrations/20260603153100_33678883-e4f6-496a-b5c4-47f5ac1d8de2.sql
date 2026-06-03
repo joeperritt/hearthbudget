@@ -1,0 +1,2 @@
+ALTER TABLE public.budget_categories DROP CONSTRAINT IF EXISTS budget_categories_group_check;
+ALTER TABLE public.budget_categories ADD CONSTRAINT budget_categories_group_check CHECK ("group" = ANY (ARRAY['shared'::text, 'joe'::text, 'katie'::text, 'giving'::text, 'savings'::text]));
