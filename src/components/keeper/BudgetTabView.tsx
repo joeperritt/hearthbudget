@@ -248,8 +248,24 @@ export function BudgetTabView({
               {!isPastMonth && <Pencil className="w-3 h-3 text-amber-500 flex-shrink-0" />}
             </div>
           </div>
+          <div className="border-t border-border pt-2 flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Variable</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(variableTotal)}</span>
+          </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Budget Total</span>
+            <span className="text-sm text-muted-foreground">Fixed</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(fixedTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Savings Buckets</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(savingsTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Tithe/Giving</span>
+            <span className="text-sm font-medium tabular-nums text-foreground">{fmt(titheTotal)}</span>
+          </div>
+          <div className="border-t border-border pt-2 flex justify-between items-center">
+            <span className="text-sm font-semibold text-foreground">Total Budget</span>
             <span className="text-sm font-semibold tabular-nums text-foreground">{fmt(budgetTotal)}</span>
           </div>
           <div className="border-t border-border pt-2 flex justify-between items-center">
@@ -259,40 +275,6 @@ export function BudgetTabView({
             <span className={`text-sm font-bold tabular-nums ${isSurplus ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
               {isSurplus ? '+' : '-'}{fmt(Math.abs(surplus))}
             </span>
-          </div>
-
-          {/* Anchor Map / Analyze inside the card so the analysis is visibly
-              tied to the month's take-home and budget totals shown above. */}
-          <div className="border-t border-border pt-3 mt-1">
-            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
-              Compare {(() => {
-                // Parse YYYY-MM as a LOCAL date — `new Date('2026-04-01')` is
-                // UTC midnight, which renders as the prior month in negative
-                // timezones (off-by-one bug).
-                const [y, m] = viewMonthKey.split('-').map(Number);
-                return format(new Date(y, m - 1, 1), 'MMMM');
-              })()}'s budget to CFP guidelines.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border"
-                onClick={() => setMappingOpen(true)}
-              >
-                <Tags className="w-4 h-4 mr-1.5" />
-                {mappingStats.unmapped > 0 ? 'Map categories' : 'Edit mapping'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                onClick={() => setAnalyzerOpen(true)}
-              >
-                <Sparkles className="w-4 h-4 mr-1.5" />
-                Analyze budget
-              </Button>
-            </div>
           </div>
         </div>
 
