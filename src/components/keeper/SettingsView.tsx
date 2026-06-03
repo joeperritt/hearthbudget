@@ -357,9 +357,19 @@ export function SettingsView({
   };
 
   const toggleNotesRequired = (id: string) => {
-    const updated = categories.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c);
-    onUpdateCategories(updated);
-    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: !c.notesRequired } : c));
+    // Compute the next value from current state so we don't depend on the
+    // stale `categories` prop (which may not yet reflect a just-moved row).
+    const current = nextCats.find(c => c.id === id) ?? categories.find(c => c.id === id);
+    const nextValue = !(current?.notesRequired ?? false);
+    setNextCats(cats => cats.map(c => c.id === id ? { ...c, notesRequired: nextValue } : c));
+    if (onSetCategoryNotesRequired) {
+      void onSetCategoryNotesRequired(id, nextValue);
+    } else {
+      // Legacy fallback — wipe-and-rewrite path. Avoid when the targeted
+      // helper is available because it deletes rows missing from `categories`.
+      const updated = categories.map(c => c.id === id ? { ...c, notesRequired: nextValue } : c);
+      onUpdateCategories(updated);
+    }
   };
 
   const addFixedExpense = (group: FixedGroupType) => {
