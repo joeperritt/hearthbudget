@@ -702,6 +702,28 @@ export function useBudgetData() {
       .eq('household_id', householdId).eq('slug', slug);
   }, [householdId, categories, fixedExpenses]);
 
+  // Targeted notes_required toggles — avoid the wipe-and-rewrite path in
+  // updateCategories / updateFixedExpenses, which would delete any rows not
+  // in the stale props list (e.g. a category that was just moved between
+  // fixed and variable groups on the previous tick).
+  const setCategoryNotesRequired = useCallback(async (slug: string, value: boolean) => {
+    if (!householdId) return;
+    setCategories(prev => prev.map(c => c.id === slug ? { ...c, notesRequired: value } : c));
+    await supabase.from('budget_categories')
+      .update({ notes_required: value } as any)
+      .eq('household_id', householdId)
+      .eq('slug', slug);
+  }, [householdId]);
+
+  const setFixedNotesRequired = useCallback(async (slug: string, value: boolean) => {
+    if (!householdId) return;
+    setFixedExpenses(prev => prev.map(e => e.id === slug ? { ...e, notesRequired: value } : e));
+    await supabase.from('fixed_expenses')
+      .update({ notes_required: value } as any)
+      .eq('household_id', householdId)
+      .eq('slug', slug);
+  }, [householdId]);
+
   const updatePlanningData = useCallback(async (data: Record<string, string>) => {
     if (!householdId) return;
     setPlanningData(data);
