@@ -322,6 +322,8 @@ export function BudgetTabView({
           onSetMonthAmountOverride={onSetMonthAmountOverride}
           onMoveCategoryToFixed={onMoveCategoryToFixed}
           onMoveFixedToCategory={onMoveFixedToCategory}
+          onSetCategoryNotesRequired={onSetCategoryNotesRequired}
+          onSetFixedNotesRequired={onSetFixedNotesRequired}
         />
       </div>
 
