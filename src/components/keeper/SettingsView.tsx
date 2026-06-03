@@ -456,10 +456,12 @@ export function SettingsView({
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
       if (isFutureMonth && onSetMonthAmountOverride) {
-        // Future month: write a per-month override so prior/current months
-        // keep their original amount.
-        setNextCats(prev => prev.map(c => c.id === id ? { ...c, budgeted: v } : c));
-        void onSetMonthAmountOverride('category', id, viewMonthKey, v);
+        // Future month: ask whether to apply to just this month or this month
+        // and all future months, so the user can choose the scope explicitly.
+        const cat = nextCats.find(c => c.id === id) ?? categories.find(c => c.id === id);
+        setPendingEdit({ kind: 'category', id, amount: v, name: cat?.name ?? '' });
+        setScopeAction('edit');
+        setShowScopePrompt(true);
       } else {
         const updated = categories.map(c => c.id === id ? { ...c, budgeted: v } : c);
         setNextCats(filterForMonth(updated, viewMonthKey).map(c => ({ ...c })));
@@ -473,8 +475,10 @@ export function SettingsView({
     const v = parseFloat(editValue);
     if (!isNaN(v)) {
       if (isFutureMonth && onSetMonthAmountOverride) {
-        setNextFixed(prev => prev.map(e => e.id === id ? { ...e, amount: v } : e));
-        void onSetMonthAmountOverride('fixed', id, viewMonthKey, v);
+        const exp = nextFixed.find(e => e.id === id) ?? fixedExpenses.find(e => e.id === id);
+        setPendingEdit({ kind: 'fixed', id, amount: v, name: exp?.name ?? '' });
+        setScopeAction('edit');
+        setShowScopePrompt(true);
       } else {
         const updated = fixedExpenses.map(e => e.id === id ? { ...e, amount: v } : e);
         setNextFixed(filterForMonth(updated, viewMonthKey).map(e => ({ ...e })));
