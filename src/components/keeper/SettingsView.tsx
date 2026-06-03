@@ -440,9 +440,15 @@ export function SettingsView({
   };
 
   const toggleFixedNotesRequired = (id: string) => {
-    const updated = fixedExpenses.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e);
-    onUpdateFixedExpenses(updated);
-    setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: !e.notesRequired } : e));
+    const current = nextFixed.find(e => e.id === id) ?? fixedExpenses.find(e => e.id === id);
+    const nextValue = !(current?.notesRequired ?? false);
+    setNextFixed(exps => exps.map(e => e.id === id ? { ...e, notesRequired: nextValue } : e));
+    if (onSetFixedNotesRequired) {
+      void onSetFixedNotesRequired(id, nextValue);
+    } else {
+      const updated = fixedExpenses.map(e => e.id === id ? { ...e, notesRequired: nextValue } : e);
+      onUpdateFixedExpenses(updated);
+    }
   };
 
   const saveNextCatEdit = (id: string) => {
