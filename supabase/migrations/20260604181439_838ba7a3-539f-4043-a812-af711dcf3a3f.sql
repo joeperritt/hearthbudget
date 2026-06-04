@@ -1,0 +1,3 @@
+DELETE FROM public.transactions WHERE id IN ('445d1eb2-8234-41be-a4d0-10f11604daee','0ec0444f-7bed-4399-837f-eb42f2306009');
+UPDATE public.transactions SET plaid_transaction_id = 'a5Dzyz5o91S5zoevbEybT5Rg469Q8PHjN908Q' WHERE id = 'acf74fea-c656-4885-bce1-0cf610e0242c' AND plaid_transaction_id IS NULL;
+UPDATE public.transactions SET plaid_transaction_id = 'xKmxVxKE4JF0KQX5gz4gs1LbO5KPQzcRPJ7e6' WHERE id = '8db0aa8a-0cf0-4244-9aba-b92f3ef145cf' AND plaid_transaction_id IS NULL;
