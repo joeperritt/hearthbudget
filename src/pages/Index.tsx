@@ -197,7 +197,6 @@ const Index = () => {
   );
 
   const activeMonthCategories = useMemo(
-  const activeMonthCategories = useMemo(
     () => applyOverridesToCategories(filterForMonth(categories, monthKey), monthKey, monthAmountOverrides),
     [categories, monthKey, monthAmountOverrides]
   );
