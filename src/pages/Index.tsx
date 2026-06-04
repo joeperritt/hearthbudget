@@ -197,13 +197,14 @@ const Index = () => {
   );
 
   const activeMonthCategories = useMemo(
-    () => filterForMonth(categories, monthKey),
-    [categories, monthKey]
+  const activeMonthCategories = useMemo(
+    () => applyOverridesToCategories(filterForMonth(categories, monthKey), monthKey, monthAmountOverrides),
+    [categories, monthKey, monthAmountOverrides]
   );
 
   const activeMonthFixedExpenses = useMemo(
-    () => filterForMonth(fixedExpenses, monthKey),
-    [fixedExpenses, monthKey]
+    () => applyOverridesToFixed(filterForMonth(fixedExpenses, monthKey), monthKey, monthAmountOverrides),
+    [fixedExpenses, monthKey, monthAmountOverrides]
   );
 
   const monthTransfers = useMemo(
