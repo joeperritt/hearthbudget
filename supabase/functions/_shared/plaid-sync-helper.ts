@@ -507,6 +507,108 @@ async function syncOneItem(
       deduped.push(row);
     }
 
+    // ───── Group-level legacy dedup ─────
+    // The per-row matcher above handles the simple cases: a single Plaid charge
+    // matches a single manual row, OR a single Plaid charge matches a group of
+    // manual splits that sum to it. It does NOT handle the inverse: the user
+    // splits a charge manually (e.g. $20 + $78.11 = $98.11) and Plaid later
+    // posts that same charge as multiple line items with a different breakdown
+    // (e.g. $19.46 + $78.65 = $98.11). Individually the amounts don't match,
+    // but the group totals do. Detect that here and pair them 1:1, preserving
+    // the user's categorization on the legacy rows while attaching the Plaid
+    // IDs so we never re-import.
+    if (deduped.length > 0) {
+      const norm = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+      const similar = (a: string, b: string) => {
+        const na = norm(a), nb = norm(b);
+        if (!na || !nb) return false;
+        return na === nb || na.includes(nb) || nb.includes(na);
+      };
+      const consumed = new Set<number>();
+      const pairedLegacyIds: string[] = [];
+
+      for (let i = 0; i < deduped.length; i++) {
+        if (consumed.has(i)) continue;
+        const seed = deduped[i];
+        if (!seed.plaid_transaction_id) continue;
+
+        // Cluster sibling Plaid rows in this batch by account + similar description + ±3 days
+        const seedDate = Date.parse(`${seed.date}T00:00:00Z`);
+        const cluster: number[] = [i];
+        for (let j = i + 1; j < deduped.length; j++) {
+          if (consumed.has(j)) continue;
+          const other = deduped[j];
+          if (other.account !== seed.account) continue;
+          if (!other.plaid_transaction_id) continue;
+          const od = Date.parse(`${other.date}T00:00:00Z`);
+          if (Math.abs(od - seedDate) > 3 * 24 * 60 * 60 * 1000) continue;
+          if (!similar(seed.description, other.description)) continue;
+          cluster.push(j);
+        }
+
+        const clusterSum = cluster.reduce((s, idx) => s + Math.abs(Number(deduped[idx].amount) || 0), 0);
+        const dates = cluster.map((idx) => deduped[idx].date).sort();
+        const minDate = new Date(`${dates[0]}T00:00:00Z`); minDate.setDate(minDate.getDate() - 3);
+        const maxDate = new Date(`${dates[dates.length - 1]}T00:00:00Z`); maxDate.setDate(maxDate.getDate() + 3);
+
+        const { data: legacyCandidates } = await serviceClient
+          .from("transactions")
+          .select("id, amount, date, description, account, plaid_transaction_id, created_at")
+          .eq("household_id", seed.household_id)
+          .eq("account", seed.account)
+          .gte("date", minDate.toISOString().slice(0, 10))
+          .lte("date", maxDate.toISOString().slice(0, 10))
+          .is("plaid_transaction_id", null)
+          .limit(100);
+
+        if (!legacyCandidates || legacyCandidates.length === 0) continue;
+
+        // Keep only legacy rows whose description looks similar to anything in the cluster
+        const relevant = legacyCandidates.filter((c: any) =>
+          cluster.some((idx) => similar(deduped[idx].description, c.description as string))
+        );
+        if (relevant.length === 0) continue;
+
+        // Group by created_at and look for a group whose count + sum match the cluster
+        const groups = new Map<string, any[]>();
+        for (const row of relevant) {
+          const key = (row.created_at as string) || (row.id as string);
+          const arr = groups.get(key) || [];
+          arr.push(row);
+          groups.set(key, arr);
+        }
+
+        let match: any[] | null = null;
+        for (const grp of groups.values()) {
+          if (grp.length !== cluster.length) continue;
+          if (pairedLegacyIds.some((id) => grp.find((g) => g.id === id))) continue;
+          const sum = grp.reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0);
+          if (Math.abs(sum - clusterSum) < 0.005) { match = grp; break; }
+        }
+        if (!match) continue;
+
+        // Pair 1:1 by index — preserve legacy amount/description/category, just
+        // attach the Plaid ID so future syncs skip these rows.
+        for (let k = 0; k < cluster.length; k++) {
+          const plaidRow = deduped[cluster[k]];
+          const legacyRow = match[k];
+          await serviceClient
+            .from("transactions")
+            .update({ plaid_transaction_id: plaidRow.plaid_transaction_id })
+            .eq("id", legacyRow.id);
+          pairedLegacyIds.push(legacyRow.id);
+          consumed.add(cluster[k]);
+          modifiedHere += 1;
+        }
+      }
+
+      if (consumed.size > 0) {
+        const remaining = deduped.filter((_, idx) => !consumed.has(idx));
+        deduped.length = 0;
+        deduped.push(...remaining);
+      }
+    }
+
     if (deduped.length > 0) {
       const { error: insertError } = await serviceClient.from("transactions").insert(deduped);
       if (insertError) {
@@ -515,6 +617,7 @@ async function syncOneItem(
       }
       addedHere += deduped.length;
     }
+
 
     return { added: addedHere, modified: modifiedHere, insertFailed: false };
   };
