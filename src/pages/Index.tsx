@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useAccounts } from '@/hooks/useAccounts';
-import { filterForMonth, useBudgetData } from '@/hooks/useBudgetData';
+import { filterForMonth, useBudgetData, applyOverridesToCategories, applyOverridesToFixed } from '@/hooks/useBudgetData';
 import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
