@@ -761,6 +761,7 @@ const Index = () => {
         accounts={accounts}
         allTransactions={transactions}
         transferAdjustments={transferAdjustments}
+        monthAmountOverrides={monthAmountOverrides}
       />
 
       {moveFundsCategoryId && (
