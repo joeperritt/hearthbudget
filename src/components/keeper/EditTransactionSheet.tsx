@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 import { AppAccount } from '@/hooks/useAccounts';
-import { filterForMonth } from '@/hooks/useBudgetData';
+import { filterForMonth, applyOverridesToCategories, applyOverridesToFixed, type MonthAmountOverrides } from '@/hooks/useBudgetData';
 
 type TxMode = 'variable' | 'fixed' | 'ignore';
 
@@ -36,6 +36,7 @@ interface EditTransactionSheetProps {
   accounts?: AppAccount[];
   allTransactions?: Transaction[];
   transferAdjustments?: Record<string, number>;
+  monthAmountOverrides?: MonthAmountOverrides;
 }
 
 function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
@@ -48,7 +49,7 @@ function deriveMode(categoryId: string, transactionType: string, fixedExpenses: 
   return 'variable';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories: allCategories, fixedExpenses: allFixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {} }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories: allCategories, fixedExpenses: allFixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {}, monthAmountOverrides = {} }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
@@ -98,8 +99,8 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
   // activeMonth). Past-month transactions need that month's category set, not
   // the currently-viewed month's.
   const effectiveMonth = budgetMonth || transaction?.budgetMonth || activeMonth;
-  const categories = useMemo(() => filterForMonth(allCategories, effectiveMonth), [allCategories, effectiveMonth]);
-  const fixedExpenses = useMemo(() => filterForMonth(allFixedExpenses, effectiveMonth), [allFixedExpenses, effectiveMonth]);
+  const categories = useMemo(() => applyOverridesToCategories(filterForMonth(allCategories, effectiveMonth), effectiveMonth, monthAmountOverrides), [allCategories, effectiveMonth, monthAmountOverrides]);
+  const fixedExpenses = useMemo(() => applyOverridesToFixed(filterForMonth(allFixedExpenses, effectiveMonth), effectiveMonth, monthAmountOverrides), [allFixedExpenses, effectiveMonth, monthAmountOverrides]);
   // Progress bars / "spent / left" must reflect the effective month's spend, not the
   // currently-viewed active month. Fall back to monthTransactions when allTransactions
   // wasn't supplied (preserves prior behavior).
