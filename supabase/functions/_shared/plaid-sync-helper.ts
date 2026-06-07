@@ -690,8 +690,9 @@ async function syncOneItem(
         const noteMsg = `Charge amount changed from $${groupSum.toFixed(2)} to $${plaidAmount.toFixed(2)}. Rebalance the original split to match.`;
         driftRows.push({
           ...row,
-          // New Plaid ID so we don't clash with the one we just attached above.
-          plaid_transaction_id: `${row.plaid_transaction_id}__drift`,
+          // Real Plaid ID is now on the first split row; mark the adjustment
+          // as manual so future syncs don't try to dedup against it.
+          plaid_transaction_id: null,
           amount: Number(delta.toFixed(2)),
           category_slug: "unassigned",
           notes: noteMsg,
