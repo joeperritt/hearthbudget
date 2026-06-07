@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { SplitEditor, SplitLine } from './SplitEditor';
 import { CategoryBudgetMini } from './CategoryBudgetMini';
 import { AppAccount } from '@/hooks/useAccounts';
-import { filterForMonth } from '@/hooks/useBudgetData';
+import { filterForMonth, applyOverridesToCategories, applyOverridesToFixed, type MonthAmountOverrides } from '@/hooks/useBudgetData';
 
 type TxMode = 'variable' | 'fixed' | 'ignore';
 
