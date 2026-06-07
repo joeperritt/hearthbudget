@@ -609,6 +609,108 @@ async function syncOneItem(
       }
     }
 
+    // ───── Amount-drift detection for manually-split charges ─────
+    // The user split a charge manually (e.g. dinner $131.01 = $81.01 dates +
+    // $50 tithe). When the merchant later adds a tip, Plaid posts the same
+    // charge with a different total (e.g. $157.01). Per-row and group-level
+    // matchers above require exact sums, so they miss this. Instead of
+    // creating a brand-new "Unassigned $157.01" row that duplicates the
+    // already-categorized split, insert ONLY the delta as an unassigned
+    // adjustment row. The user sees it on Home with a note explaining the
+    // change and can edit the original split to rebalance.
+    if (deduped.length > 0) {
+      const norm = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+      const similar = (a: string, b: string) => {
+        const na = norm(a), nb = norm(b);
+        if (!na || !nb) return false;
+        return na === nb || na.includes(nb) || nb.includes(na);
+      };
+      const driftConsumed = new Set<number>();
+      const driftRows: any[] = [];
+
+      for (let i = 0; i < deduped.length; i++) {
+        const row = deduped[i];
+        if (!row.plaid_transaction_id) continue;
+        const plaidAmount = Math.abs(Number(row.amount) || 0);
+        if (plaidAmount <= 0) continue;
+
+        const txDate = new Date(row.date as string);
+        const dateMin = new Date(txDate); dateMin.setDate(dateMin.getDate() - 3);
+        const dateMax = new Date(txDate); dateMax.setDate(dateMax.getDate() + 3);
+        const { data: legacyCandidates } = await serviceClient
+          .from("transactions")
+          .select("id, amount, date, description, account, plaid_transaction_id, created_at")
+          .eq("household_id", row.household_id)
+          .eq("account", row.account)
+          .gte("date", dateMin.toISOString().slice(0, 10))
+          .lte("date", dateMax.toISOString().slice(0, 10))
+          .is("plaid_transaction_id", null)
+          .limit(100);
+        if (!legacyCandidates || legacyCandidates.length === 0) continue;
+
+        const relevant = legacyCandidates.filter((c: any) =>
+          similar(row.description as string, c.description as string)
+        );
+        if (relevant.length === 0) continue;
+
+        // Group manual splits by created_at — splits inserted together share it.
+        const groups = new Map<string, any[]>();
+        for (const r of relevant) {
+          const key = (r.created_at as string) || (r.id as string);
+          const arr = groups.get(key) || [];
+          arr.push(r);
+          groups.set(key, arr);
+        }
+
+        // Prefer the largest multi-row group; only act when there's clearly
+        // an existing manual split to preserve.
+        let bestGroup: any[] | null = null;
+        for (const grp of groups.values()) {
+          if (grp.length < 2) continue;
+          if (!bestGroup || grp.length > bestGroup.length) bestGroup = grp;
+        }
+        if (!bestGroup) continue;
+
+        const groupSum = bestGroup.reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0);
+        const delta = plaidAmount - groupSum;
+        // Skip if effectively equal (group-level matcher would have caught it).
+        if (Math.abs(delta) < 0.01) continue;
+        // Sanity guard: only treat as drift if delta is within 50% of the
+        // original — protects against unrelated charges with the same merchant.
+        if (Math.abs(delta) > groupSum * 0.5) continue;
+
+        // Attach the Plaid ID to the first split row so future syncs won't
+        // re-import this charge, and replace the row in `deduped` with a
+        // smaller adjustment row that surfaces the difference as unassigned.
+        await serviceClient
+          .from("transactions")
+          .update({ plaid_transaction_id: row.plaid_transaction_id })
+          .eq("id", bestGroup[0].id);
+
+        const noteMsg = `Charge amount changed from $${groupSum.toFixed(2)} to $${plaidAmount.toFixed(2)}. Rebalance the original split to match.`;
+        driftRows.push({
+          ...row,
+          // New Plaid ID so we don't clash with the one we just attached above.
+          plaid_transaction_id: `${row.plaid_transaction_id}__drift`,
+          amount: Number(delta.toFixed(2)),
+          category_slug: "unassigned",
+          notes: noteMsg,
+        });
+        driftConsumed.add(i);
+        modifiedHere += 1;
+      }
+
+      if (driftConsumed.size > 0) {
+        const remaining: any[] = [];
+        for (let i = 0; i < deduped.length; i++) {
+          if (!driftConsumed.has(i)) remaining.push(deduped[i]);
+        }
+        deduped.length = 0;
+        deduped.push(...remaining, ...driftRows);
+      }
+    }
+
+
     if (deduped.length > 0) {
       const { error: insertError } = await serviceClient.from("transactions").insert(deduped);
       if (insertError) {
