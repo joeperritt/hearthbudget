@@ -49,7 +49,7 @@ function deriveMode(categoryId: string, transactionType: string, fixedExpenses: 
   return 'variable';
 }
 
-export function EditTransactionSheet({ transaction, open, onOpenChange, categories: allCategories, fixedExpenses: allFixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {} }: EditTransactionSheetProps) {
+export function EditTransactionSheet({ transaction, open, onOpenChange, categories: allCategories, fixedExpenses: allFixedExpenses, activeMonth, monthTransactions = [], splitSiblings = [], accounts = [], allTransactions = [], transferAdjustments = {}, monthAmountOverrides = {} }: EditTransactionSheetProps) {
   const [mode, setMode] = useState<TxMode>('variable');
   const [variableCategoryId, setVariableCategoryId] = useState('unassigned');
   const [fixedCategoryId, setFixedCategoryId] = useState('');
