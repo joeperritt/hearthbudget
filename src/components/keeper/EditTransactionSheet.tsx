@@ -36,6 +36,7 @@ interface EditTransactionSheetProps {
   accounts?: AppAccount[];
   allTransactions?: Transaction[];
   transferAdjustments?: Record<string, number>;
+  monthAmountOverrides?: MonthAmountOverrides;
 }
 
 function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
