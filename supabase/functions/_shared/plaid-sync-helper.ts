@@ -687,12 +687,18 @@ async function syncOneItem(
           .update({ plaid_transaction_id: row.plaid_transaction_id })
           .eq("id", bestGroup[0].id);
 
-        const noteMsg = `Charge amount changed from $${groupSum.toFixed(2)} to $${plaidAmount.toFixed(2)}. Rebalance the original split to match.`;
+        const noteMsg = `Charge amount changed from $${groupSum.toFixed(2)} to $${plaidAmount.toFixed(2)} — assign this remainder.`;
+        // Match the existing split group's description/date/account so the UI
+        // groups this adjustment line into the same split. The user can then
+        // open the original split and reallocate the delta in place.
+        const anchor = bestGroup[0];
         driftRows.push({
           ...row,
-          // Real Plaid ID is now on the first split row; mark the adjustment
-          // as manual so future syncs don't try to dedup against it.
           plaid_transaction_id: null,
+          description: anchor.description,
+          date: anchor.date,
+          account: anchor.account,
+          created_at: anchor.created_at,
           amount: Number(delta.toFixed(2)),
           category_slug: "unassigned",
           notes: noteMsg,
