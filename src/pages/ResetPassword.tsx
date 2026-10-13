@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isPasswordPwned, validatePassword } from "@/lib/passwordSecurity";
-import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -32,31 +30,18 @@ export default function ResetPassword() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const check = useMemo(() => validatePassword(password), [password]);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!check.ok) { setError(check.issues[0]); return; }
+    if (password.length < 8) { setError("At least 8 characters"); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
     setLoading(true);
-    const pwned = await isPasswordPwned(password);
-    if (pwned) {
-      setLoading(false);
-      setError("This password has appeared in a known data breach. Please choose another.");
-      return;
-    }
     const { error: updErr } = await supabase.auth.updateUser({ password });
     if (updErr) {
       setLoading(false);
       setError(updErr.message);
       return;
     }
-    // Centralized post-password-change wrapper: revokes trusted devices,
-    // audit-logs, sends security notice email.
-    await supabase.functions.invoke("mfa-on-password-change", {
-      body: { reason: "reset" },
-    }).catch(() => {});
     setLoading(false);
     setDone(true);
     setTimeout(() => navigate("/"), 2000);
@@ -87,7 +72,6 @@ export default function ResetPassword() {
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">New password</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" className="auth-input mt-1" />
-                <PasswordStrengthMeter password={password} />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Confirm password</label>

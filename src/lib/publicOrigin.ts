@@ -1,15 +1,10 @@
-// Returns the public-facing origin for outbound auth links (password reset, email verify, invites).
-// Lovable preview/editor hosts require Lovable login, so links pointing there break for end users.
-// Always route to the production custom domain when we detect a Lovable-hosted origin.
+// Origin used for outbound auth links (password reset). Uses the current site origin.
 export function getPublicOrigin(): string {
-  if (typeof window === "undefined") return "https://keeperbudget.com";
+  if (typeof window === "undefined") return "https://hearthbudget.lovable.app";
   const host = window.location.hostname;
-  if (
-    host.endsWith("lovableproject.com") ||
-    host.endsWith("lovable.app") ||
-    host.includes("id-preview--")
-  ) {
-    return "https://keeperbudget.com";
+  // Preview/editor hosts require Lovable login, so route those links to the published app.
+  if (host.includes("id-preview--") || host.endsWith("lovableproject.com")) {
+    return "https://hearthbudget.lovable.app";
   }
   return window.location.origin;
 }

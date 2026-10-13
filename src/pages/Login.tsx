@@ -1,9 +1,6 @@
-import { useRef, useState, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
 import { useAuth } from '@/hooks/useAuth';
-
-const TURNSTILE_SITE_KEY = '0x4AAAAAADB5OO8QdBIkaJ9K';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -11,22 +8,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!captchaToken) {
-      setError('Please complete the security check.');
-      return;
-    }
     setLoading(true);
-    const { error } = await signIn(email, password, captchaToken);
+    const { error } = await signIn(email, password);
     if (error) {
       setError(error);
-      turnstileRef.current?.reset();
-      setCaptchaToken('');
     }
     setLoading(false);
   };
@@ -78,20 +67,9 @@ export default function Login() {
             <p className="text-xs text-destructive text-center">{error}</p>
           )}
 
-          <div className="flex justify-center">
-            <Turnstile
-              ref={turnstileRef}
-              siteKey={TURNSTILE_SITE_KEY}
-              onSuccess={setCaptchaToken}
-              onError={() => setCaptchaToken('')}
-              onExpire={() => setCaptchaToken('')}
-              options={{ theme: 'light', size: 'flexible' }}
-            />
-          </div>
-
           <button
             type="submit"
-            disabled={loading || !captchaToken}
+            disabled={loading}
             className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50"
           >
             {loading ? 'Signing in…' : 'Log In'}
@@ -99,7 +77,6 @@ export default function Login() {
 
           <div className="flex items-center justify-between text-xs pt-1">
             <Link to="/forgot-password" className="text-accent">Forgot password?</Link>
-            <Link to="/signup" className="text-accent">Create account</Link>
           </div>
         </form>
 
