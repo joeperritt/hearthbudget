@@ -17,8 +17,6 @@ import { CategoryDetail } from '@/components/keeper/CategoryDetail';
 
 import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
 import { ProfileTab } from '@/components/keeper/ProfileTab';
-import { ManageUsersView } from '@/components/keeper/ManageUsersView';
-import { PlanToolsView } from '@/components/keeper/PlanToolsView';
 import { SettingsView } from '@/components/keeper/SettingsView';
 import { InsightsSection } from '@/components/keeper/InsightsSection';
 import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
@@ -26,33 +24,9 @@ import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
 import { BudgetTabView } from '@/components/keeper/BudgetTabView';
-import { PlanView } from '@/components/keeper/PlanView';
 
-import { CalculatorsList } from '@/components/keeper/CalculatorsList';
-import { OtherToolsView } from '@/components/keeper/OtherToolsView';
-import { MortgageCalculator } from '@/components/keeper/MortgageCalculator';
-import { DebtPayoffCalculator } from '@/components/keeper/DebtPayoffCalculator';
-import { CarLoanCalculator } from '@/components/keeper/CarLoanCalculator';
-import { TaxWithholdingCalculator } from '@/components/keeper/TaxWithholdingCalculator';
-import { RetirementPlanner } from '@/components/keeper/RetirementPlanner';
-import { CFPProfileView } from '@/components/keeper/CFPProfileView';
-import { GoalsPlanner } from '@/components/keeper/GoalsPlanner';
-import { EmergencyFundAnalysis } from '@/components/keeper/EmergencyFundAnalysis';
-import { LifeInsuranceAnalysis } from '@/components/keeper/LifeInsuranceAnalysis';
-import { AdminMfaBanner } from '@/components/auth/AdminMfaBanner';
-import { OnboardingFlow } from '@/components/keeper/OnboardingFlow';
-import { PostOnboardingCards } from '@/components/keeper/PostOnboardingCards';
 
-type ProfileTab = 'profile' | 'income' | 'housing' | 'debts' | 'accounts' | 'insurance';
-
-type PlanSubView = 'menu' | 'financial-profile' | 'calculators'
-  | 'mortgage-analyzer' | 'debt-payoff' | 'tax-estimator' | 'life-insurance'
-  | 'emergency-fund' | 'savings-goals' | 'retirement'
-  | 'mortgage-shopping' | 'car-loan';
-
-type ProfileSubView = 'menu' | 'financial-profile' | 'settings' | 'bank-connections' | 'trends'
-  | 'calculators' | 'mortgage-shopping' | 'car-loan' | 'tax-estimator' | 'security'
-  | 'manage-users' | 'plan-tools' | 'other-tools';
+type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security';
 
 const Index = () => {
   const {
@@ -72,9 +46,6 @@ const Index = () => {
   const { user } = useAuth();
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
-  // Onboarding gate. `null` = unknown (still loading), `true` = show app,
-  // `false` = render the OnboardingFlow on top of everything else.
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   useEffect(() => {
     if (!householdId || !user) return;
     supabase
@@ -91,22 +62,6 @@ const Index = () => {
         });
       });
   }, [householdId, user]);
-
-  // Pull onboarding_completed once the household is known.
-  useEffect(() => {
-    if (!householdId) return;
-    let cancelled = false;
-    supabase
-      .from('households')
-      .select('onboarding_completed')
-      .eq('id', householdId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        setOnboardingCompleted(data?.onboarding_completed ?? true);
-      });
-    return () => { cancelled = true; };
-  }, [householdId]);
 
   // On-open fallback sync: if the most recent successful sync for this household
   // is more than 4 hours old (or never), kick off a background sync. We don't
@@ -158,16 +113,11 @@ const Index = () => {
   const [moveFundsCategoryId, setMoveFundsCategoryId] = useState<string | null>(null);
   const [moveFundsFixedId, setMoveFundsFixedId] = useState<string | null>(null);
   const [moveFundsGlobalOpen, setMoveFundsGlobalOpen] = useState(false);
-  const [planSubView, setPlanSubView] = useState<PlanSubView>('menu');
-  const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [profileSubView, setProfileSubView] = useState<ProfileSubView>('menu');
   const [budgetSubView, setBudgetSubView] = useState<'main' | 'settings'>('main');
   const [budgetTargetMonth, setBudgetTargetMonth] = useState<string | undefined>(undefined);
   const [askAIOpen, setAskAIOpen] = useState(false);
   const [askAIContext, setAskAIContext] = useState<{ label: string; preface: string }>({ label: '', preface: '' });
-  // When the user opens a Plan tool / Budget Setup *from the More tab*, we
-  // bounce them back to More on close instead of the (now hidden) Plan tab.
-  const [planEntryFromMore, setPlanEntryFromMore] = useState(false);
   const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
   const [budgetEntryFromSpending, setBudgetEntryFromSpending] = useState(false);
 
@@ -316,7 +266,6 @@ const Index = () => {
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     if (tab === 'profile') setProfileSubView('menu');
-    if (tab === 'plan') setPlanSubView('menu');
     if (tab === 'budget') setBudgetSubView('main');
   };
 
@@ -347,28 +296,6 @@ const Index = () => {
     }, 200);
   }, [transactions]);
 
-  // Helper to navigate to insight/calculator tool from Plan or More
-  const navigateToTool = (tool: string, fromTab: 'plan' | 'profile') => {
-    if (fromTab === 'plan') {
-      setPlanSubView(tool as PlanSubView);
-    } else {
-      setProfileSubView(tool as ProfileSubView);
-    }
-  };
-
-  // Navigate to Financial Profile with a specific tab open
-  const navigateToProfile = useCallback((tab?: ProfileTab) => {
-    setProfileInitialTab(tab);
-    setPlanSubView('financial-profile');
-    setActiveTab('plan');
-  }, []);
-
-  // Navigate to a calculator/tool
-  const navigateToCalculator = useCallback((toolId: string) => {
-    setPlanSubView(toolId as PlanSubView);
-    setActiveTab('plan');
-  }, []);
-
   // Navigate to Budget tab with a specific month preselected
   const navigateToBudget = useCallback((monthKey: string) => {
     setBudgetTargetMonth(monthKey);
@@ -376,30 +303,13 @@ const Index = () => {
     setActiveTab('budget');
   }, []);
 
-  // Helper to get back target for tools
-  const getToolBackTarget = (fromTab: 'plan' | 'profile', parent: string) => {
-    if (fromTab === 'plan') return () => setPlanSubView(parent as PlanSubView);
-    return () => setProfileSubView(parent as ProfileSubView);
-  };
-
-  if (loading || !activeMonth || onboardingCompleted === null) {
+  if (loading || !activeMonth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
           <span className="text-primary-foreground font-display text-lg font-bold">K</span>
         </div>
       </div>
-    );
-  }
-
-  // Onboarding takes over the entire screen until completed. The rest of the
-  // app stays mounted underneath but is visually covered by the fixed overlay.
-  if (onboardingCompleted === false && householdId) {
-    return (
-      <OnboardingFlow
-        householdId={householdId}
-        onComplete={() => setOnboardingCompleted(true)}
-      />
     );
   }
 
@@ -452,34 +362,6 @@ const Index = () => {
     }
   }
 
-  // Render a tool component based on tool id, with back navigation
-  const renderTool = (toolId: string, onBack: () => void) => {
-    switch (toolId) {
-      case 'mortgage-analyzer':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToCalculator={navigateToCalculator} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'debt-payoff':
-        return <DebtPayoffCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'tax-estimator':
-        return <TaxWithholdingCalculator onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} />;
-      case 'life-insurance':
-        return <LifeInsuranceAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'emergency-fund':
-        return <EmergencyFundAnalysis onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} householdMembers={householdMembers} />;
-      case 'savings-goals':
-        return <GoalsPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'retirement':
-        return <RetirementPlanner onBack={onBack} householdId={householdId} onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'mortgage-shopping':
-        return <MortgageCalculator planningData={planningData} onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} onNavigateToBudget={navigateToBudget} onNavigateToPlanTool={(t) => navigateToCalculator(t)} />;
-      case 'car-loan':
-        return <CarLoanCalculator onBack={onBack} householdId={householdId} shoppingOnly onNavigateToProfile={navigateToProfile} />;
-      case 'financial-profile':
-        return <CFPProfileView onBack={onBack} householdId={householdId} initialTab={profileInitialTab} />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SideNav
@@ -489,10 +371,6 @@ const Index = () => {
         onSelectProfileItem={(item) => { setActiveTab('profile'); setProfileSubView(item as ProfileSubView); }}
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
-        <AdminMfaBanner
-          hidden={activeTab === 'profile' && profileSubView === 'security'}
-          onOpenSecurity={() => { setActiveTab('profile'); setProfileSubView('security'); }}
-        />
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'dashboard' && (
           <Dashboard
@@ -522,13 +400,6 @@ const Index = () => {
               setActivityInitialFilter(undefined);
               setActiveTab('transactions');
             }}
-            topBanner={
-              <PostOnboardingCards
-                householdId={householdId}
-                onOpenBudget={() => { setBudgetSubView('main'); setActiveTab('budget'); }}
-                onOpenAccounts={() => { setProfileSubView('bank-connections'); setActiveTab('profile'); }}
-              />
-            }
             insightsSection={
               <InsightsSection
                 insights={insights}
@@ -635,36 +506,6 @@ const Index = () => {
           />
         )}
 
-        {/* Plan Tab (now lives inside More) */}
-        {activeTab === 'plan' && planSubView === 'menu' && (
-          <PlanView
-            householdId={householdId}
-            onNavigate={(target) => setPlanSubView(target as PlanSubView)}
-            onBack={() => { setActiveTab('profile'); setProfileSubView('menu'); }}
-          />
-        )}
-        {activeTab === 'plan' && planSubView === 'calculators' && (
-          <CalculatorsList
-            onBack={() => setPlanSubView('menu')}
-            onSelectCalculator={(calc) => setPlanSubView(calc as PlanSubView)}
-          />
-        )}
-        {activeTab === 'plan' && planSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => {
-            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('plan-tools'); }
-            else setPlanSubView('menu');
-          }} householdId={householdId} initialTab={profileInitialTab} />
-        )}
-        {activeTab === 'plan' && ['mortgage-analyzer', 'debt-payoff', 'life-insurance', 'emergency-fund', 'savings-goals', 'retirement'].includes(planSubView) && (
-          renderTool(planSubView, () => {
-            if (planEntryFromMore) { setPlanEntryFromMore(false); setActiveTab('profile'); setProfileSubView('plan-tools'); }
-            else setPlanSubView('menu');
-          })
-        )}
-        {activeTab === 'plan' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(planSubView) && (
-          renderTool(planSubView, () => setPlanSubView('calculators'))
-        )}
-
         {/* More Tab */}
         {activeTab === 'profile' && profileSubView === 'menu' && (
           <ProfileTab onSelect={(tab) => {
@@ -678,57 +519,18 @@ const Index = () => {
             setProfileSubView(tab as ProfileSubView);
           }} householdId={householdId} />
         )}
-        {activeTab === 'profile' && profileSubView === 'manage-users' && (
-          <ManageUsersView householdId={householdId} onBack={() => setProfileSubView('menu')} />
-        )}
-        {activeTab === 'profile' && profileSubView === 'plan-tools' && (
-          <PlanToolsView
-            householdId={householdId}
-            onBack={() => setProfileSubView('menu')}
-            onSelect={(toolId, hint) => {
-              if (toolId === 'financial-profile') {
-                setProfileInitialTab(hint as ProfileTab | undefined);
-                setPlanEntryFromMore(true);
-                setPlanSubView('financial-profile');
-                setActiveTab('plan');
-              } else {
-                setPlanEntryFromMore(true);
-                setPlanSubView(toolId as PlanSubView);
-                setActiveTab('plan');
-              }
-            }}
-          />
-        )}
-        {activeTab === 'profile' && profileSubView === 'financial-profile' && (
-          <CFPProfileView onBack={() => setProfileSubView('menu')} householdId={householdId} initialTab={profileInitialTab} />
-        )}
         {activeTab === 'profile' && profileSubView === 'bank-connections' && (
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
         {/* AI Advisor removed — use contextual Ask AI buttons instead */}
-        {activeTab === 'profile' && profileSubView === 'other-tools' && (
-          <OtherToolsView
-            onBack={() => setProfileSubView('menu')}
-            onSelect={(t) => setProfileSubView(t as ProfileSubView)}
-          />
-        )}
         {activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
             spentByCategory={spentByCategory}
-            onBack={() => setProfileSubView('other-tools')}
+            onBack={() => setProfileSubView('menu')}
           />
-        )}
-        {activeTab === 'profile' && profileSubView === 'calculators' && (
-          <CalculatorsList
-            onBack={() => setProfileSubView('other-tools')}
-            onSelectCalculator={(calc) => setProfileSubView(calc as ProfileSubView)}
-          />
-        )}
-        {activeTab === 'profile' && ['mortgage-shopping', 'car-loan', 'tax-estimator'].includes(profileSubView) && (
-          renderTool(profileSubView, () => setProfileSubView('calculators'))
         )}
         {activeTab === 'profile' && profileSubView === 'security' && (
           <SecurityView onBack={() => setProfileSubView('menu')} />
