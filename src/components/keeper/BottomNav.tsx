@@ -1,17 +1,17 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, MoreHorizontal } from 'lucide-react';
+import { Home, Wallet, MoreHorizontal } from 'lucide-react';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
-  { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'variable', label: 'Categories', icon: Wallet },
-  { id: 'transactions', label: 'Activity', icon: List },
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'dashboard', label: 'Budget', icon: Wallet },
   { id: 'profile', label: 'More', icon: MoreHorizontal },
 ];
 
 export function BottomNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (t: TabId) => void }) {
   // Budget and Plan tabs live inside the More tab now, but a user can still
   // be "on" them via internal navigation — highlight More in those cases.
-  const navActive = (activeTab === 'budget' || activeTab === 'plan') ? 'profile' : activeTab;
+  const navActive = (activeTab === 'budget' || activeTab === 'plan') ? 'profile'
+    : (activeTab === 'variable' || activeTab === 'transactions') ? 'dashboard' : activeTab;
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border safe-bottom z-50">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-1">

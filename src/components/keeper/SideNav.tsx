@@ -1,11 +1,10 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, List, LogOut, MoreHorizontal } from 'lucide-react';
+import { Home, Wallet, LogOut, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
-  { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'variable', label: 'Categories', icon: Wallet },
-  { id: 'transactions', label: 'Activity', icon: List },
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'dashboard', label: 'Budget', icon: Wallet },
   { id: 'profile', label: 'More', icon: MoreHorizontal },
 ];
 
@@ -23,7 +22,8 @@ export function SideNav({ activeTab, onTabChange, activeProfileItem }: SideNavPr
   const { signOut } = useAuth();
   // Budget / Plan tabs live inside More now — when the user is in those, we
   // still want More to look active in the side nav.
-  const navActive = (activeTab === 'budget' || activeTab === 'plan') ? 'profile' : activeTab;
+  const navActive = (activeTab === 'budget' || activeTab === 'plan') ? 'profile'
+    : (activeTab === 'variable' || activeTab === 'transactions') ? 'dashboard' : activeTab;
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 w-[220px] bg-card/60 border-r border-border flex-col z-40 safe-top overflow-y-auto">
       <div className="px-6 pt-8 pb-6 flex items-center gap-3">

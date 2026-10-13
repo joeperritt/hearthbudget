@@ -24,9 +24,12 @@ import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
 import { BudgetTabView } from '@/components/keeper/BudgetTabView';
+import { HomePage } from '@/components/home/HomePage';
+import { CalendarSettingsView } from '@/components/home/CalendarSettingsView';
+import { BudgetSubNav } from '@/components/keeper/BudgetSubNav';
 
 
-type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security';
+type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars';
 
 const Index = () => {
   const {
@@ -92,7 +95,7 @@ const Index = () => {
     return () => { cancelled = true; };
   }, [householdId]);
 
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
   const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
 
   // Allow other components (e.g. Dashboard reconnect banner) to navigate to
@@ -372,6 +375,19 @@ const Index = () => {
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
+        {activeTab === 'home' && (
+          <HomePage
+            unassignedCount={unassignedTransactions.length}
+            onOpenUnassigned={() => {
+              setActivityInitialFilter('unassigned');
+              setActiveTab('transactions');
+            }}
+            onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
+          />
+        )}
+        {(activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions') && (
+          <BudgetSubNav activeTab={activeTab} onTabChange={handleTabChange} />
+        )}
         {activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
@@ -531,6 +547,9 @@ const Index = () => {
             spentByCategory={spentByCategory}
             onBack={() => setProfileSubView('menu')}
           />
+        )}
+        {activeTab === 'profile' && profileSubView === 'calendars' && (
+          <CalendarSettingsView onBack={() => setProfileSubView('menu')} />
         )}
         {activeTab === 'profile' && profileSubView === 'security' && (
           <SecurityView onBack={() => setProfileSubView('menu')} />
