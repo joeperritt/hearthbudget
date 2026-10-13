@@ -531,6 +531,69 @@ export type Database = {
           },
         ]
       }
+      home_list_items: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          list_type: string
+          text: string
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          household_id: string
+          id?: string
+          list_type: string
+          text: string
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          list_type?: string
+          text?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      household_calendars: {
+        Row: {
+          added_by: string
+          created_at: string
+          household_id: string
+          ics_url: string
+          id: string
+          label: string
+        }
+        Insert: {
+          added_by?: string
+          created_at?: string
+          household_id: string
+          ics_url: string
+          id?: string
+          label?: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          household_id?: string
+          ics_url?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       households: {
         Row: {
           active_month: string
@@ -1081,6 +1144,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_home_layouts: {
+        Row: {
+          cards: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cards: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cards?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_mfa_email_factors: {
         Row: {
