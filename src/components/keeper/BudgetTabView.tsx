@@ -11,7 +11,6 @@ import { BucketMappingSheet } from './BucketMappingSheet';
 import { useCategoryBucketMap } from '@/hooks/useCategoryBucketMap';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useHomeCards } from '@/hooks/useHomeCards';
 import { useHouseholdFlags } from '@/hooks/useHouseholdFlags';
 import { CFP_BUCKETS } from '@/lib/cfpBuckets';
 import { BudgetBuilderStep, persistBudgetDrafts, type BucketCategoryDraft } from './BudgetBuilderStep';
@@ -80,7 +79,6 @@ export function BudgetTabView({
   const { profile } = useAuth();
   const householdId = profile?.household_id ?? null;
   const { map: bucketMap } = useCategoryBucketMap();
-  const { update: updateHomeCards } = useHomeCards(householdId);
   const { flags } = useHouseholdFlags(householdId);
 
   useEffect(() => {
@@ -389,10 +387,6 @@ export function BudgetTabView({
           monthlyTakeHome={totalTakeHome}
           onClose={() => setBuilderOpen(false)}
           onSaved={async () => {
-            await updateHomeCards({
-              needs_budget_setup: false,
-              budget_setup_dismissed: true,
-            });
             
             toast.success('Budget saved!');
             setBuilderOpen(false);
