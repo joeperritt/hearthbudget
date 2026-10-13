@@ -1,11 +1,12 @@
-import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3 } from 'lucide-react';
+import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export type ProfileTabSelection =
   | 'bank-connections'
   | 'security'
   | 'budget-setup'
-  | 'trends';
+  | 'trends'
+  | 'calendars';
 
 interface ProfileTabProps {
   onSelect: (target: ProfileTabSelection, profileTabHint?: string) => void;
@@ -18,7 +19,7 @@ export function ProfileTab({ onSelect }: ProfileTabProps) {
     <div className="max-w-lg mx-auto pb-12">
       <div className="px-6 pt-12 safe-top">
         <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">More</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Budget setup, bank accounts, and settings</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Calendars, budget setup, bank accounts, and settings</p>
       </div>
 
       <div className="px-6 mt-6 space-y-3">
@@ -36,6 +37,14 @@ export function ProfileTab({ onSelect }: ProfileTabProps) {
           title="Bank Accounts"
           subtitle="Linked banks, sync, and cardholder mapping"
           onClick={() => onSelect('bank-connections')}
+        />
+
+        <Tile
+          accent="neutral"
+          icon={CalendarClock}
+          title="Calendars"
+          subtitle="Google Calendar iCal links for the Home page"
+          onClick={() => onSelect('calendars')}
         />
 
         <Tile
