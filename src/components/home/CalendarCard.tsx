@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { useHomeCalendars } from '@/hooks/useHomeCalendars';
+import { calendarDotClass } from '@/lib/homeCalendars';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string }
+interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
 
 function dayLabel(dateStr: string, today: string) {
   if (dateStr === today) return 'Today';
@@ -23,43 +27,66 @@ function timeLabel(e: Ev) {
 export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const [state, setState] = useState<{ events: Ev[]; calendars: number; today: string; errors: string[] } | null>(null);
   const [failed, setFailed] = useState(false);
+  const isMobile = useIsMobile();
+  const { calendars, loading, failed: preferencesFailed, saving, toggle, isVisible } = useHomeCalendars();
 
+  const calendarSignature = JSON.stringify(calendars);
   useEffect(() => {
+    if (loading) return;
+    let alive = true;
+    setFailed(false);
     supabase.functions.invoke('calendar-events').then(({ data, error }) => {
+      if (!alive) return;
       if (error || !data) { setFailed(true); return; }
       setState(data);
     });
-  }, []);
+    return () => { alive = false; };
+  }, [calendarSignature, loading]);
 
   const header = (
-    <div className="flex items-center gap-2 mb-3">
+    <div className="mb-3 space-y-2">
+      <div className="flex items-center gap-2">
       <CalendarDays size={18} className="text-accent" />
       <h2 className="font-display text-lg font-semibold text-foreground">Calendar</h2>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {calendars.map(calendar => (
+          <Button key={calendar.id} size="sm" variant={isVisible(calendar) ? "secondary" : "ghost"}
+            aria-label={`${calendar.label} calendar`} aria-pressed={isVisible(calendar)}
+            disabled={saving.includes(calendar.id)} onClick={() => toggle(calendar)}
+            className={`h-7 gap-1.5 rounded-full px-2.5 text-xs border ${isVisible(calendar) ? "border-primary/20 text-foreground" : "border-border text-muted-foreground opacity-60"}`}>
+            <span className={`h-2 w-2 shrink-0 rounded-full ${calendarDotClass(calendar.id, calendars)}`} />
+            {calendar.label}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 
-  if (failed) {
+  if (failed || preferencesFailed) {
     return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
   }
-  if (!state) {
+  if (!state || loading) {
     return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}<p className="text-xs text-muted-foreground">Loading…</p></section>;
   }
   if (state.calendars === 0) {
     return (
-      <button onClick={onConnect} className="w-full bg-card rounded-2xl border border-dashed border-border p-4 shadow-sm flex items-center gap-3 text-left active:scale-[0.99]">
+      <Button variant="ghost" onClick={onConnect} className="h-auto whitespace-normal w-full bg-card rounded-2xl border border-dashed border-border p-4 shadow-sm flex items-center gap-3 text-left active:scale-[0.99]">
         <CalendarDays size={20} className="text-accent" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-foreground">Connect calendar</p>
           <p className="text-xs text-muted-foreground">Paste your Google Calendar iCal link</p>
         </div>
         <ChevronRight size={16} className="text-muted-foreground" />
-      </button>
+      </Button>
     );
   }
 
   const today = state.today;
-  const todays = state.events.filter(e => e.start.slice(0, 10) <= today && (e.end ? (e.allDay ? e.end.slice(0, 10) > today : e.end.slice(0, 10) >= today) : e.start.slice(0, 10) === today));
-  const upcoming = state.events.filter(e => e.start.slice(0, 10) > today).slice(0, 6);
+  const visibleIds = new Set(calendars.filter(isVisible).map(c => c.id));
+  const events = state.events.filter(e => visibleIds.has(e.calendarId));
+  const todays = events.filter(e => e.start.slice(0, 10) <= today && (e.end ? (e.allDay ? e.end.slice(0, 10) > today : e.end.slice(0, 10) >= today) : e.start.slice(0, 10) === today));
+  const upcoming = events.filter(e => e.start.slice(0, 10) > today).slice(0, isMobile ? 6 : 50);
   const groups: { day: string; events: Ev[] }[] = [];
   if (todays.length) groups.push({ day: today, events: todays });
   for (const e of upcoming) {
@@ -67,13 +94,12 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
     const g = groups.find(x => x.day === d);
     if (g) g.events.push(e); else groups.push({ day: d, events: [e] });
   }
-  const multi = state.calendars > 1;
 
   return (
     <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">
       {header}
       {!todays.length && <p className="text-xs text-muted-foreground mb-2">Nothing on the calendar today.</p>}
-      <div className="space-y-3">
+      <div className="space-y-3 md:max-h-80 md:overflow-y-auto md:pr-1">
         {groups.map(g => (
           <div key={g.day}>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{dayLabel(g.day, today)}</p>
@@ -82,8 +108,10 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
                 <li key={i} className="flex gap-3 text-sm">
                   <span className="w-14 shrink-0 text-muted-foreground text-xs pt-0.5">{timeLabel(e)}</span>
                   <span className="flex-1 min-w-0">
-                    <span className="text-foreground">{e.title}</span>
-                    {multi && <span className="text-[11px] text-muted-foreground"> · {e.calendar}</span>}
+                    <span className="inline-flex items-baseline gap-1.5">
+                      <span title={e.calendar} aria-label={`${e.calendar} calendar`} className={`inline-block h-2 w-2 shrink-0 rounded-full ${calendarDotClass(e.calendarId, calendars)}`} />
+                      <span className="text-foreground break-words">{e.title}</span>
+                    </span>
                   </span>
                 </li>
               ))}

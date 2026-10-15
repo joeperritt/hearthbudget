@@ -575,6 +575,7 @@ export type Database = {
           ics_url: string
           id: string
           label: string
+          owner_user_id: string | null
         }
         Insert: {
           added_by?: string
@@ -583,6 +584,7 @@ export type Database = {
           ics_url: string
           id?: string
           label?: string
+          owner_user_id?: string | null
         }
         Update: {
           added_by?: string
@@ -591,6 +593,7 @@ export type Database = {
           ics_url?: string
           id?: string
           label?: string
+          owner_user_id?: string | null
         }
         Relationships: []
       }
@@ -1147,16 +1150,19 @@ export type Database = {
       }
       user_home_layouts: {
         Row: {
+          calendar_visibility: Json
           cards: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          calendar_visibility?: Json
           cards: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          calendar_visibility?: Json
           cards?: Json
           updated_at?: string
           user_id?: string
@@ -1320,6 +1326,10 @@ export type Database = {
       revoke_all_trusted_devices: {
         Args: { _user_id: string }
         Returns: number
+      }
+      set_home_calendar_visibility: {
+        Args: { calendar_id: string; visible: boolean }
+        Returns: undefined
       }
       validate_invite_code: {
         Args: { _code: string; _email?: string }

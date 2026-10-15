@@ -46,7 +46,7 @@ export function HomeListCard({ title, listType, placeholder }: { title: string; 
       ) : items.length === 0 ? (
         <p className="text-xs text-muted-foreground py-2">Nothing here yet.</p>
       ) : (
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border md:max-h-80 md:overflow-y-auto md:pr-1">
           {[...open, ...done].map(item => (
             <Row key={item.id} item={item} onToggle={() => toggle(item)} onDelete={() => remove(item.id)} />
           ))}
