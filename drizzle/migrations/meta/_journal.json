@@ -8,6 +8,13 @@
       "when": 1791905189997,
       "tag": "0000_home_lists_calendars",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792098842487,
+      "tag": "0001_calendar_owners_and_user_visibility",
+      "breakpoints": true
     }
   ]
 }

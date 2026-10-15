@@ -1,0 +1,5 @@
+ALTER TABLE public.household_calendars ADD COLUMN owner_user_id uuid;
+UPDATE public.household_calendars SET owner_user_id = CASE id WHEN '998cbf6a-bde6-4bb3-8434-2f0cc501bb88'::uuid THEN '13efdfc1-d276-4a93-b4ff-9f238d5f4793'::uuid WHEN '6cbd2c52-0f44-4709-b254-48f3e0899caf'::uuid THEN '72e11e46-d6cb-42c2-b8eb-7e4dc82ec8eb'::uuid ELSE NULL END WHERE id IN ('998cbf6a-bde6-4bb3-8434-2f0cc501bb88','6cbd2c52-0f44-4709-b254-48f3e0899caf','5a28d561-9c6d-4035-a801-2ce4a7e31dbd');
+ALTER TABLE public.user_home_layouts ADD COLUMN calendar_visibility jsonb NOT NULL DEFAULT '{}'::jsonb;
+COMMENT ON COLUMN public.household_calendars.owner_user_id IS 'Default visibility owner; null means shared with the household.';
+COMMENT ON COLUMN public.user_home_layouts.calendar_visibility IS 'Per-calendar visibility choices keyed by calendar UUID; missing keys use owner/shared defaults.';
