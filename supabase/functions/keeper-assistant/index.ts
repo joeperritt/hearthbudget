@@ -15,11 +15,36 @@ const tools = [{
   functionDeclarations: [
     {
       name: 'add_list_items',
-      description: 'Add items to a household list immediately. family = shared Family To Do; personal = the current user\'s private My To Do; grocery = shared Grocery List.',
+      description: 'Add items immediately. list=todo adds to the shared To Do list with an owner; list=store adds to the shared Store List (anything to buy or pick up).',
       parameters: { type: 'OBJECT', properties: {
-        list: { type: 'STRING', enum: ['family', 'personal', 'grocery'] },
+        list: { type: 'STRING', enum: ['todo', 'store'] },
         items: { type: 'ARRAY', items: { type: 'STRING' } },
+        owner: { type: 'STRING', enum: ['joe', 'katie', 'family'], description: 'todo only' },
+        due_date: { type: 'STRING', description: 'todo only, optional YYYY-MM-DD' },
+        due_time: { type: 'STRING', description: 'todo only, optional HH:mm (24h)' },
       }, required: ['list', 'items'] },
+    },
+    {
+      name: 'find_todos',
+      description: 'Search existing to dos by words in their text. Returns ids for update_todo.',
+      parameters: { type: 'OBJECT', properties: {
+        query: { type: 'STRING' },
+        include_completed: { type: 'BOOLEAN' },
+      }, required: ['query'] },
+    },
+    {
+      name: 'update_todo',
+      description: 'Change a to do found with find_todos immediately. Only include fields that change. Use clear_due_date to remove the date.',
+      parameters: { type: 'OBJECT', properties: {
+        id: { type: 'STRING' },
+        text: { type: 'STRING' },
+        owner: { type: 'STRING', enum: ['joe', 'katie', 'family'] },
+        due_date: { type: 'STRING', description: 'YYYY-MM-DD' },
+        due_time: { type: 'STRING', description: 'HH:mm 24h' },
+        clear_due_date: { type: 'BOOLEAN' },
+        done: { type: 'BOOLEAN' },
+        delete: { type: 'BOOLEAN' },
+      }, required: ['id'] },
     },
     {
       name: 'propose_calendar_event',
@@ -105,8 +130,10 @@ Deno.serve(async (req) => {
 Household calendars:
 ${calList || '(none)'}
 Rules:
-- Grocery requests ("we need milk and eggs") -> add_list_items list=grocery, one item per thing, short names.
-- "Remind me to..." -> list=personal unless clearly a shared household task -> family.
+- Any shopping request ("we need milk", "pick up batteries", "buy a new hose") -> add_list_items list=store, one item per thing, short names.
+- To dos ("remind me to...", "I need to...") -> add_list_items list=todo. owner defaults to ${profile.display_name.split(' ')[0].toLowerCase()}; use family for household tasks or when it mentions "we", "us" or Thomas; use the other person's name if it is for them. Add due_date/due_time only if a time frame is given.
+- Resolve relative dates ("tomorrow", "next Friday", "end of the month") against today in America/New_York.
+- To change, move, reschedule, complete or delete a to do: call find_todos, then update_todo (applies immediately). If several match, ask which one; if none, say so.
 - For events, call propose_calendar_event; it only creates a confirmation card. Default calendar: the shared one (${shared?.id ?? 'n/a'}) if it mentions the family, Thomas, both of us or "we"; otherwise ${profile.display_name}'s own (${own?.id ?? shared?.id ?? 'n/a'}). Default duration 1 hour.
 - When the user says an event was moved, rescheduled, changed, pushed, canceled or deleted, ALWAYS call find_events first, then propose_update_event or propose_delete_event on the existing event. NEVER create a new event in that case. If several events match, ask which one (list them briefly with day and time). If none match, say so and offer to create a new one.
 - For recurring events change only the single occurrence mentioned (use event_id) unless the user says "every" or "all" (then use recurring_event_id).
@@ -120,7 +147,16 @@ Rules:
     // deno-lint-ignore no-explicit-any
     const proposals: any[] = [];
     let reply = '';
-    const listName: Record<string, string> = { family: 'Family To Do', personal: 'My To Do', grocery: 'Grocery' };
+    const listName: Record<string, string> = { todo: 'To Do', store: 'Store List' };
+    const ownerId = (o: unknown): string | null | undefined => {
+      if (o === undefined || o === null || o === '') return undefined;
+      const k = String(o).toLowerCase();
+      if (k === 'family') return null;
+      return members?.find(m => m.display_name.split(' ')[0].toLowerCase() === k)?.user_id;
+    };
+    const ownerName = (id: string | null) => id ? (members?.find(m => m.user_id === id)?.display_name.split(' ')[0] ?? 'someone') : 'Family';
+    const validDate = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+    const validTime = (t: unknown) => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t) ? t : null;
 
     const found = new Map<string, Found>();
     for (let step = 0; step < 6; step++) {
@@ -149,15 +185,52 @@ Rules:
         const args = fc.args ?? {};
         let result: unknown;
         if (fc.name === 'add_list_items') {
-          const list = ['family', 'personal', 'grocery'].includes(args.list) ? args.list : null;
-          const items = (Array.isArray(args.items) ? args.items : []).map((s: unknown) => String(s).trim().slice(0, 300)).filter(Boolean).slice(0, 25);
+          const list = args.list === 'todo' || args.list === 'store' ? args.list : null;
+          const items = (Array.isArray(args.items) ? args.items : []).map((x: unknown) => String(x).trim().slice(0, 300)).filter(Boolean).slice(0, 25);
           if (!list || !items.length) result = { error: 'invalid list or items' };
           else {
+            const owner = list === 'todo' ? (ownerId(args.owner) === undefined ? user.id : ownerId(args.owner)!) : null;
+            const dueDate = list === 'todo' ? validDate(args.due_date) : null;
             const { error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
-              household_id: profile.household_id, list_type: list, user_id: list === 'personal' ? user.id : null, text, created_by: user.id,
+              household_id: profile.household_id, list_type: list, user_id: owner, text, created_by: user.id,
+              due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null,
             })));
             if (error) { console.error(error); result = { error: 'could not save' }; }
-            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list] }; }
+            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate }; }
+          }
+        } else if (fc.name === 'find_todos') {
+          const words = String(args.query ?? '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
+          let q = supabase.from('home_list_items').select('id, text, user_id, due_date, due_time, completed').eq('household_id', profile.household_id).eq('list_type', 'todo').limit(200);
+          if (!args.include_completed) q = q.eq('completed', false);
+          const { data, error } = await q;
+          if (error) result = { error: 'could not search' };
+          else {
+            const matches = (data ?? []).filter(t => !words.length || words.some(w => t.text.toLowerCase().includes(w)))
+              .map(t => ({ id: t.id, text: t.text, owner: ownerName(t.user_id), due_date: t.due_date, due_time: t.due_time?.slice(0, 5) ?? null, done: t.completed }));
+            result = { matches: matches.slice(0, 15) };
+          }
+        } else if (fc.name === 'update_todo') {
+          const id = String(args.id ?? '');
+          const { data: cur } = await supabase.from('home_list_items').select('id, text').eq('id', id).eq('list_type', 'todo').maybeSingle();
+          if (!cur) result = { error: 'to do not found; call find_todos first' };
+          else if (args.delete) {
+            const { error } = await supabase.from('home_list_items').delete().eq('id', id);
+            result = error ? { error: 'could not delete' } : { ok: true, deleted: cur.text };
+          } else {
+            // deno-lint-ignore no-explicit-any
+            const patch: any = {};
+            if (args.text) patch.text = String(args.text).trim().slice(0, 300);
+            const o = ownerId(args.owner); if (o !== undefined) patch.user_id = o;
+            if (args.clear_due_date) { patch.due_date = null; patch.due_time = null; }
+            else if (validDate(args.due_date)) { patch.due_date = validDate(args.due_date); patch.due_time = validTime(args.due_time); }
+            else if (validTime(args.due_time)) patch.due_time = validTime(args.due_time);
+            if (typeof args.done === 'boolean') { patch.completed = args.done; patch.completed_at = args.done ? new Date().toISOString() : null; }
+            if (!Object.keys(patch).length) result = { error: 'no changes given' };
+            else {
+              const { error } = await supabase.from('home_list_items').update(patch).eq('id', id);
+              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch };
+              if (!error) added.push({ list: 'todo', items: [] });
+            }
           }
         } else if (fc.name === 'propose_calendar_event') {
           const cal = cals?.find(c => c.id === args.calendar_id) ?? own ?? shared;
