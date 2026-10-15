@@ -29,6 +29,20 @@
       "when": 1792100909308,
       "tag": "0003_calendar_color",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792101119027,
+      "tag": "0004_unified_todos_store_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792101269384,
+      "tag": "0005_calendar_visibility_default_cards",
+      "breakpoints": true
     }
   ]
 }

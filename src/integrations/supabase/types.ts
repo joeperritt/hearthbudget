@@ -537,9 +537,12 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string
+          due_date: string | null
+          due_time: string | null
           household_id: string
           id: string
           list_type: string
+          notes: string | null
           text: string
           user_id: string | null
         }
@@ -548,9 +551,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string
+          due_date?: string | null
+          due_time?: string | null
           household_id: string
           id?: string
           list_type: string
+          notes?: string | null
           text: string
           user_id?: string | null
         }
@@ -559,9 +565,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string
+          due_date?: string | null
+          due_time?: string | null
           household_id?: string
           id?: string
           list_type?: string
+          notes?: string | null
           text?: string
           user_id?: string | null
         }
@@ -1158,18 +1167,21 @@ export type Database = {
         Row: {
           calendar_visibility: Json
           cards: Json
+          todo_visibility: Json
           updated_at: string
           user_id: string
         }
         Insert: {
           calendar_visibility?: Json
           cards: Json
+          todo_visibility?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
           calendar_visibility?: Json
           cards?: Json
+          todo_visibility?: Json
           updated_at?: string
           user_id?: string
         }
@@ -1335,6 +1347,10 @@ export type Database = {
       }
       set_home_calendar_visibility: {
         Args: { calendar_id: string; visible: boolean }
+        Returns: undefined
+      }
+      set_home_todo_visibility: {
+        Args: { owner_key: string; visible: boolean }
         Returns: undefined
       }
       validate_invite_code: {

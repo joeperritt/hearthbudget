@@ -5,3 +5,4 @@
 - Budget amount edits for future months go to `budget_amount_overrides` and are promoted at month rollover — so closed/current months are never retroactively changed.
 - Home page cards come from a per-user list (`user_home_layouts.cards`, falling back to a default order) — so each person's Home can differ later without code changes.
 - Calendar events carry stable calendar IDs; ownership only sets default visibility, and per-user visibility is saved via an atomic invoker RPC on user_home_layouts — so toggles preserve card order, respect RLS, and sync across devices.
+- To dos live in home_list_items (list_type 'todo') with user_id as owner (null = Family); owner colors derive from each owner's calendar color, and chip visibility saves via an invoker RPC into user_home_layouts.todo_visibility — so to dos and calendars stay visually consistent.

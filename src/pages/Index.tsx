@@ -378,11 +378,6 @@ const Index = () => {
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
         {activeTab === 'home' && (
           <HomePage
-            unassignedCount={unassignedTransactions.length}
-            onOpenUnassigned={() => {
-              setActivityInitialFilter('unassigned');
-              setActiveTab('transactions');
-            }}
             onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
           />
         )}
