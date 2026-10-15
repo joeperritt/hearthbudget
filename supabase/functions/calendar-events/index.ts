@@ -1,5 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { getGoogleAccessToken, hasServiceAccount } from '../_shared/google-auth.ts';
 
 // Household time zone (Lexington, SC). Event times are returned as local
 // wall-clock strings "YYYY-MM-DDTHH:mm" in this zone.
@@ -170,7 +171,7 @@ Deno.serve(async (req) => {
     if (uErr || !user) return json({ error: 'Unauthorized' }, 401);
 
     // RLS scopes this to the caller's household.
-    const { data: cals, error } = await supabase.from('household_calendars').select('id, label, ics_url');
+    const { data: cals, error } = await supabase.from('household_calendars').select('id, label, ics_url, google_calendar_id');
     if (error) return json({ error: error.message }, 500);
     if (!cals?.length) return json({ events: [], calendars: 0 });
 
@@ -180,7 +181,38 @@ Deno.serve(async (req) => {
 
     const errors: string[] = [];
     const all: Ev[] = [];
+    const fromGoogle = async (c: { id: string; label: string; google_calendar_id: string }) => {
+      const token = await getGoogleAccessToken();
+      const fromD = new Date(today + 'T00:00:00Z'); fromD.setUTCDate(fromD.getUTCDate() - 1);
+      const params = new URLSearchParams({
+        singleEvents: 'true', orderBy: 'startTime', timeZone: TZ, maxResults: '250',
+        timeMin: fromD.toISOString(), timeMax: new Date(to + 'T23:59:59Z').toISOString(),
+      });
+      const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.google_calendar_id)}/events?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`Google HTTP ${r.status}: ${await r.text()}`);
+      const data = await r.json();
+      const local = (v: { date?: string; dateTime?: string } | undefined) => {
+        if (!v) return null;
+        if (v.date) return v.date;
+        // Requested in TZ, so dateTime carries the household offset; keep wall clock.
+        return v.dateTime ? utcToLocal(new Date(v.dateTime)) : null;
+      };
+      for (const it of data.items ?? []) {
+        if (it.status === 'cancelled') continue;
+        const s = local(it.start); if (!s) continue;
+        const e = local(it.end);
+        const allDay = Boolean(it.start?.date);
+        const endKey = e ?? s;
+        if ((allDay ? endKey <= today : endKey.slice(0, 10) < today) && s.slice(0, 10) < today) continue;
+        if (s.slice(0, 10) > to) continue;
+        all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id });
+      }
+    };
     await Promise.all(cals.map(async (c) => {
+      if (c.google_calendar_id && hasServiceAccount()) {
+        try { await fromGoogle(c as { id: string; label: string; google_calendar_id: string }); return; }
+        catch (e) { console.error(`Google read for ${c.id} failed, using iCal:`, e); }
+      }
       try {
         const url = c.ics_url.replace(/^webcal:/i, 'https:');
         let hit = cache.get(url);
