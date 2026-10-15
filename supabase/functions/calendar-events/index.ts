@@ -8,7 +8,7 @@ const TZ = 'America/New_York';
 const CACHE_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; text: string }>();
 
-interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
+interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string; eventId?: string; recurringEventId?: string | null }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         const endKey = e ?? s;
         if ((allDay ? endKey <= today : endKey.slice(0, 10) < today) && s.slice(0, 10) < today) continue;
         if (s.slice(0, 10) > to) continue;
-        all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id });
+        all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id, eventId: it.id, recurringEventId: it.recurringEventId ?? null });
       }
     };
     await Promise.all(cals.map(async (c) => {

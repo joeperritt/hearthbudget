@@ -24,7 +24,6 @@ describe('personal calendar visibility', () => {
   it('keeps known calendar colors stable', () => {
     const cals = [{ id: 'a', label: 'A', owner_user_id: null, color: '#33B679' }, { id: 'b', label: 'B', owner_user_id: null }];
     expect(calendarColor('a', cals)).toBe('#33B679');
-    expect(calendarColor('b', cals)).toBe('#33B679'.length ? calendarColor('b', cals) : '');
     expect(calendarColor('b', cals)).toMatch(/^#[0-9A-F]{6}$/i);
   });
 });
