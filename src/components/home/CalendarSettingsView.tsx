@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 interface Cal { id: string; label: string; ics_url: string; owner_user_id: string | null; google_calendar_id: string | null }
 interface Member { user_id: string; display_name: string }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag google_calendar_id
 export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
   const { profile } = useAuth();
   const [cals, setCals] = useState<Cal[]>([]);
@@ -37,7 +38,7 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
     if (!/^https:\/\/\S+$/.test(u)) { toast.error('Paste a link that starts with https://'); return; }
     if (!profile?.household_id) return;
     setSaving(true);
-    const values = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner, google_calendar_id: googleId.trim().slice(0, 255) || null };
+    const values: any = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner, google_calendar_id: googleId.trim().slice(0, 255) || null };
     const { error } = editing
       ? await supabase.from('household_calendars').update(values).eq('id', editing).eq('household_id', profile.household_id)
       : await supabase.from('household_calendars').insert({ ...values, household_id: profile.household_id });
