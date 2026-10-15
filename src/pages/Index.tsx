@@ -25,6 +25,7 @@ import { SecurityView } from '@/components/keeper/SecurityView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
 import { BudgetTabView } from '@/components/keeper/BudgetTabView';
 import { HomePage } from '@/components/home/HomePage';
+import { KeeperAssistant } from '@/components/assistant/KeeperAssistant';
 import { CalendarSettingsView } from '@/components/home/CalendarSettingsView';
 import { BudgetSubNav } from '@/components/keeper/BudgetSubNav';
 
@@ -558,6 +559,7 @@ const Index = () => {
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <KeeperAssistant />
 
       <AddTransactionSheet
         open={showAddTransaction}

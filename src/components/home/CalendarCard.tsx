@@ -31,6 +31,12 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const { calendars, loading, failed: preferencesFailed, saving, toggle, isVisible } = useHomeCalendars();
 
   const calendarSignature = JSON.stringify(calendars);
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const bump = () => setRefreshKey(k => k + 1);
+    window.addEventListener('keeper-calendar-refresh', bump);
+    return () => window.removeEventListener('keeper-calendar-refresh', bump);
+  }, []);
   useEffect(() => {
     if (loading) return;
     let alive = true;
@@ -41,7 +47,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
       setState(data);
     });
     return () => { alive = false; };
-  }, [calendarSignature, loading]);
+  }, [calendarSignature, loading, refreshKey]);
 
   const header = (
     <div className="mb-3 space-y-2">
