@@ -8,6 +8,19 @@ function b64url(data: Uint8Array | string) {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// Tolerates common paste damage (trailing commas, stray text, real newlines in the key).
+function parseServiceAccount(raw: string): { client_email: string; private_key: string } {
+  const text = raw.trim();
+  const attempts = [text, text.replace(/,\s*([}\]])/g, '$1'), text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1).replace(/,\s*([}\]])/g, '$1')];
+  for (const t of attempts) {
+    try { const v = JSON.parse(t); if (v?.client_email && v?.private_key) return v; } catch { /* next */ }
+  }
+  const email = text.match(/"client_email"\s*:\s*"([^"]+)"/)?.[1];
+  const key = text.match(/"private_key"\s*:\s*"([\s\S]*?-----END PRIVATE KEY-----[\s\S]*?)"/)?.[1];
+  if (email && key) return { client_email: email, private_key: key.replace(/\\n/g, '\n') };
+  throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not valid service account JSON; please re-paste the full key file');
+}
+
 export function hasServiceAccount() {
   return Boolean(Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON'));
 }
@@ -16,7 +29,7 @@ export async function getGoogleAccessToken(): Promise<string> {
   if (cached && Date.now() < cached.exp - 60_000) return cached.token;
   const raw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
   if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not set');
-  const sa = JSON.parse(raw);
+  const sa = parseServiceAccount(raw);
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const claims = b64url(JSON.stringify({
