@@ -1,6 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { getGoogleAccessToken } from '../_shared/google-auth.ts';
 
 const TZ = 'America/New_York';
 const MODEL = 'gemini-2.5-flash';
@@ -33,8 +34,40 @@ const tools = [{
         notes: { type: 'STRING' },
       }, required: ['calendar_id', 'title', 'start'] },
     },
+    {
+      name: 'find_events',
+      description: 'Search existing events on the household Google calendars. Use before any move/reschedule/change/cancel/delete.',
+      parameters: { type: 'OBJECT', properties: {
+        query: { type: 'STRING', description: 'Words from the event title, e.g. "Winston groomer"' },
+        from: { type: 'STRING', description: 'Optional YYYY-MM-DD. Default 14 days ago.' },
+        to: { type: 'STRING', description: 'Optional YYYY-MM-DD. Default 60 days ahead.' },
+      }, required: ['query'] },
+    },
+    {
+      name: 'propose_update_event',
+      description: 'Propose changes to an existing event found with find_events. Does NOT change it until the user confirms. Only include fields that change; if start moves and no end is given, the original duration is kept.',
+      parameters: { type: 'OBJECT', properties: {
+        calendar_id: { type: 'STRING' },
+        event_id: { type: 'STRING', description: 'event_id from find_events (single occurrence), or recurring_event_id to change every occurrence' },
+        title: { type: 'STRING' }, start: { type: 'STRING' }, end: { type: 'STRING' }, all_day: { type: 'BOOLEAN' },
+        location: { type: 'STRING' }, notes: { type: 'STRING' },
+      }, required: ['calendar_id', 'event_id'] },
+    },
+    {
+      name: 'propose_delete_event',
+      description: 'Propose deleting an existing event found with find_events. Does NOT delete until the user confirms.',
+      parameters: { type: 'OBJECT', properties: {
+        calendar_id: { type: 'STRING' },
+        event_id: { type: 'STRING', description: 'event_id (single occurrence) or recurring_event_id (all occurrences)' },
+      }, required: ['calendar_id', 'event_id'] },
+    },
   ],
 }];
+
+function shiftDays(d: string, n: number) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+function addMinutes(local: string, m: number) { const x = new Date(local + ':00Z'); x.setUTCMinutes(x.getUTCMinutes() + m); return x.toISOString().slice(0, 16); }
+function minutesBetween(a: string, b: string) { return Math.round((Date.parse(b + ':00Z') - Date.parse(a + ':00Z')) / 60000); }
+interface Found { event_id: string; recurring_event_id: string | null; calendar_id: string; calendar: string; title: string; start: string; end: string | null; all_day: boolean }
 
 function nowLocal() {
   return new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date());
@@ -60,7 +93,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase.from('profiles').select('household_id, display_name').eq('user_id', user.id).single();
     if (!profile) return json({ error: 'No household' }, 403);
     const [{ data: cals }, { data: members }] = await Promise.all([
-      supabase.from('household_calendars').select('id, label, owner_user_id').eq('household_id', profile.household_id),
+      supabase.from('household_calendars').select('id, label, owner_user_id, google_calendar_id').eq('household_id', profile.household_id),
       supabase.from('profiles').select('user_id, display_name').eq('household_id', profile.household_id),
     ]);
     const nameOf = (id: string | null) => id ? (members?.find(m => m.user_id === id)?.display_name ?? 'someone') : 'Shared';
@@ -75,6 +108,8 @@ Rules:
 - Grocery requests ("we need milk and eggs") -> add_list_items list=grocery, one item per thing, short names.
 - "Remind me to..." -> list=personal unless clearly a shared household task -> family.
 - For events, call propose_calendar_event; it only creates a confirmation card. Default calendar: the shared one (${shared?.id ?? 'n/a'}) if it mentions the family, Thomas, both of us or "we"; otherwise ${profile.display_name}'s own (${own?.id ?? shared?.id ?? 'n/a'}). Default duration 1 hour.
+- When the user says an event was moved, rescheduled, changed, pushed, canceled or deleted, ALWAYS call find_events first, then propose_update_event or propose_delete_event on the existing event. NEVER create a new event in that case. If several events match, ask which one (list them briefly with day and time). If none match, say so and offer to create a new one.
+- For recurring events change only the single occurrence mentioned (use event_id) unless the user says "every" or "all" (then use recurring_event_id).
 - If a date or time is ambiguous or missing for a timed event, ask one quick follow-up question instead of guessing.
 - After any action, reply with ONE short line (e.g. "Added milk and eggs to Grocery." or "Here's the event — tap Confirm to add it.").
 - For anything outside lists and calendar, answer briefly and take no actions. Plain text, no markdown.`;
@@ -87,7 +122,8 @@ Rules:
     let reply = '';
     const listName: Record<string, string> = { family: 'Family To Do', personal: 'My To Do', grocery: 'Grocery' };
 
-    for (let step = 0; step < 4; step++) {
+    const found = new Map<string, Found>();
+    for (let step = 0; step < 6; step++) {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, tools }),
@@ -132,8 +168,63 @@ Rules:
           else {
             const s = allDay ? start.slice(0, 10) : start.slice(0, 16);
             const end = args.end ? String(args.end).slice(0, allDay ? 10 : 16) : (allDay ? s : addHour(s));
-            proposals.push({ calendar_id: cal.id, title: String(args.title).slice(0, 200), start: s, end, all_day: allDay, location: args.location ?? null, notes: args.notes ?? null });
+            proposals.push({ kind: 'create', calendar_id: cal.id, title: String(args.title).slice(0, 200), start: s, end, all_day: allDay, location: args.location ?? null, notes: args.notes ?? null });
             result = { ok: true, status: 'shown to user for confirmation; not created yet' };
+          }
+        } else if (fc.name === 'find_events') {
+          const q = String(args.query ?? '').slice(0, 100);
+          const today = todayISO();
+          const from = /^\d{4}-\d{2}-\d{2}$/.test(args.from ?? '') ? args.from : shiftDays(today, -14);
+          const to = /^\d{4}-\d{2}-\d{2}$/.test(args.to ?? '') ? args.to : shiftDays(today, 60);
+          try {
+            const token = await getGoogleAccessToken();
+            const matches: Found[] = [];
+            await Promise.all((cals ?? []).filter(c => c.google_calendar_id).map(async c => {
+              const params = new URLSearchParams({ q, singleEvents: 'true', orderBy: 'startTime', timeZone: TZ, maxResults: '20',
+                timeMin: new Date(from + 'T00:00:00-05:00').toISOString(), timeMax: new Date(to + 'T23:59:59-05:00').toISOString() });
+              const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.google_calendar_id!)}/events?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+              if (!r.ok) { console.error(`find_events ${c.id} [${r.status}]: ${await r.text()}`); return; }
+              for (const it of (await r.json()).items ?? []) {
+                if (it.status === 'cancelled') continue;
+                const allDay = Boolean(it.start?.date);
+                const st = allDay ? it.start.date : String(it.start?.dateTime ?? '').slice(0, 16);
+                const en = allDay ? (it.end?.date ? shiftDays(it.end.date, -1) : st) : (it.end?.dateTime ? String(it.end.dateTime).slice(0, 16) : null);
+                matches.push({ event_id: it.id, recurring_event_id: it.recurringEventId ?? null, calendar_id: c.id, calendar: c.label, title: it.summary || '(No title)', start: st, end: en, all_day: allDay });
+              }
+            }));
+            matches.sort((a, b) => a.start.localeCompare(b.start));
+            for (const m of matches) { found.set(`${m.calendar_id}|${m.event_id}`, m); if (m.recurring_event_id && !found.has(`${m.calendar_id}|${m.recurring_event_id}`)) found.set(`${m.calendar_id}|${m.recurring_event_id}`, { ...m, event_id: m.recurring_event_id }); }
+            result = { matches: matches.slice(0, 15) };
+          } catch (e) { console.error(e); result = { error: 'calendar search unavailable' }; }
+        } else if (fc.name === 'propose_update_event' || fc.name === 'propose_delete_event') {
+          const ev = found.get(`${args.calendar_id}|${args.event_id}`);
+          if (!ev) result = { error: 'unknown event; call find_events first and use its ids' };
+          else {
+            const series = ev.event_id === ev.recurring_event_id;
+            const before = { title: ev.title, start: ev.start, end: ev.end, all_day: ev.all_day };
+            if (fc.name === 'propose_delete_event') {
+              proposals.push({ kind: 'delete', calendar_id: ev.calendar_id, event_id: ev.event_id, series, before, title: ev.title, start: ev.start, end: ev.end, all_day: ev.all_day });
+              result = { ok: true, status: 'delete shown to user for confirmation' };
+            } else {
+              // deno-lint-ignore no-explicit-any
+              const changes: any = {};
+              if (args.title) changes.title = String(args.title).slice(0, 200);
+              if (args.location !== undefined) changes.location = args.location;
+              if (args.notes !== undefined) changes.notes = args.notes;
+              if (args.start) {
+                const allDay = args.all_day ?? ev.all_day;
+                const s = String(args.start).slice(0, allDay ? 10 : 16);
+                let e = args.end ? String(args.end).slice(0, allDay ? 10 : 16) : null;
+                if (!e) e = allDay ? s : (!ev.all_day && ev.end ? addMinutes(s, minutesBetween(ev.start, ev.end)) : addMinutes(s, 60));
+                Object.assign(changes, { start: s, end: e, all_day: Boolean(allDay) });
+              }
+              if (!Object.keys(changes).length) result = { error: 'no changes given' };
+              else {
+                proposals.push({ kind: 'update', calendar_id: ev.calendar_id, event_id: ev.event_id, series, before, changes,
+                  title: changes.title ?? ev.title, start: changes.start ?? ev.start, end: changes.end ?? ev.end, all_day: changes.all_day ?? ev.all_day });
+                result = { ok: true, status: 'update shown to user for confirmation' };
+              }
+            }
           }
         } else result = { error: 'unknown tool' };
         responses.push({ functionResponse: { name: fc.name, response: { result } } });
