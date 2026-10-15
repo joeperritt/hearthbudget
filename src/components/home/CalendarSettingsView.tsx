@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
-interface Cal { id: string; label: string; ics_url: string; owner_user_id: string | null }
+interface Cal { id: string; label: string; ics_url: string; owner_user_id: string | null; google_calendar_id: string | null }
 interface Member { user_id: string; display_name: string }
 
 export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
@@ -14,6 +14,7 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
+  const [googleId, setGoogleId] = useState('');
   const [owner, setOwner] = useState('shared');
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -21,22 +22,22 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
   const load = async () => {
     if (!profile?.household_id) return;
     const [calResult, memberResult] = await Promise.all([
-      supabase.from('household_calendars').select('id, label, ics_url, owner_user_id').eq('household_id', profile.household_id).order('created_at'),
+      supabase.from('household_calendars').select('id, label, ics_url, owner_user_id, google_calendar_id').eq('household_id', profile.household_id).order('created_at'),
       supabase.from('profiles').select('user_id, display_name').eq('household_id', profile.household_id).order('display_name'),
     ]);
     if (calResult.error || memberResult.error) { toast.error("Couldn't load calendars. Please try again."); return; }
-    setCals(calResult.data ?? []);
+    setCals((calResult.data ?? []) as unknown as Cal[]);
     setMembers(memberResult.data ?? []);
   };
   useEffect(() => { load(); }, [profile?.household_id]);
 
-  const reset = () => { setEditing(null); setLabel(''); setUrl(''); setOwner('shared'); };
+  const reset = () => { setEditing(null); setLabel(''); setUrl(''); setGoogleId(''); setOwner('shared'); };
   const save = async () => {
     const u = url.trim().replace(/^webcal:\/\//i, 'https://');
     if (!/^https:\/\/\S+$/.test(u)) { toast.error('Paste a link that starts with https://'); return; }
     if (!profile?.household_id) return;
     setSaving(true);
-    const values = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner };
+    const values = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner, google_calendar_id: googleId.trim().slice(0, 255) || null };
     const { error } = editing
       ? await supabase.from('household_calendars').update(values).eq('id', editing).eq('household_id', profile.household_id)
       : await supabase.from('household_calendars').insert({ ...values, household_id: profile.household_id });
@@ -65,6 +66,7 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
           </p>
           <input aria-label="Calendar name" value={label} onChange={e => setLabel(e.target.value)} placeholder="Name (e.g. Joe, Katie, Family)" className="auth-input" maxLength={60} />
           <input aria-label="iCal URL" type="password" autoComplete="off" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" className="auth-input" />
+          <input aria-label="Google Calendar ID" value={googleId} onChange={e => setGoogleId(e.target.value)} placeholder="Google Calendar ID (e.g. name@gmail.com)" className="auth-input" maxLength={255} autoComplete="off" />
           <label className="block text-xs font-semibold text-muted-foreground">
             Owner
             <select aria-label="Calendar owner" value={owner} onChange={e => setOwner(e.target.value)} className="auth-input mt-1">
@@ -85,7 +87,7 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
                   <p className="text-sm font-semibold text-foreground">{c.label}</p>
                   <p className="text-xs text-muted-foreground">{members.find(m => m.user_id === c.owner_user_id)?.display_name ?? 'Shared'}</p>
                 </div>
-                <Button variant="ghost" size="icon" disabled={saving} onClick={() => { setEditing(c.id); setLabel(c.label); setUrl(c.ics_url); setOwner(c.owner_user_id ?? 'shared'); }} aria-label={`Edit ${c.label} calendar`} title="Edit calendar" className="text-muted-foreground"><Pencil size={16} /></Button>
+                <Button variant="ghost" size="icon" disabled={saving} onClick={() => { setEditing(c.id); setLabel(c.label); setUrl(c.ics_url); setGoogleId(c.google_calendar_id ?? ''); setOwner(c.owner_user_id ?? 'shared'); }} aria-label={`Edit ${c.label} calendar`} title="Edit calendar" className="text-muted-foreground"><Pencil size={16} /></Button>
                 <Button variant="ghost" size="icon" disabled={saving} onClick={() => remove(c.id)} aria-label={`Remove ${c.label} calendar`} title="Remove calendar" className="text-muted-foreground hover:text-destructive"><Trash2 size={16} /></Button>
               </li>
             ))}

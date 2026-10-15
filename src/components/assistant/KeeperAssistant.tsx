@@ -52,7 +52,7 @@ export function KeeperAssistant() {
       body: { messages: next.slice(-12).map(m => ({ role: m.role, content: m.content })) },
     });
     setBusy(false);
-    if (error || !data) { setMsgs(m => [...m, { role: 'assistant', content: 'Sorry — ' + '' }]); const t = await errorText(error); setMsgs(m => [...m.slice(0, -1), { role: 'assistant', content: `Sorry — ${t}` }]); return; }
+    if (error || !data) { const t = await errorText(error); setMsgs(m => [...m, { role: 'assistant', content: `Sorry — ${t}` }]); return; }
     setMsgs(m => [...m, { role: 'assistant', content: data.reply, proposals: (data.proposals ?? []).map((p: Proposal) => ({ ...p, state: 'open' })) }]);
   };
 
