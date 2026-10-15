@@ -1,0 +1,1 @@
+ALTER TABLE public.household_calendars ADD COLUMN IF NOT EXISTS color text CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$');

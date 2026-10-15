@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Send, Sparkles, CalendarPlus } from 'lucide-react';
+import { Mic, Send, Sparkles } from 'lucide-react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { calendarColor } from '@/lib/homeCalendars';
 
-interface Proposal { calendar_id: string; title: string; start: string; end: string | null; all_day: boolean; location: string | null; notes: string | null; state?: 'open' | 'saving' | 'done' | 'cancelled' }
+interface Before { title: string; start: string; end: string | null; all_day: boolean }
+interface Proposal { kind?: 'create' | 'update' | 'delete'; event_id?: string; series?: boolean; before?: Before; changes?: Record<string, unknown>; calendar_id: string; title: string; start: string; end: string | null; all_day: boolean; location: string | null; notes: string | null; state?: 'open' | 'saving' | 'done' | 'cancelled' }
 interface Msg { role: 'user' | 'assistant'; content: string; proposals?: Proposal[] }
-interface Cal { id: string; label: string }
+interface Cal { id: string; label: string; owner_user_id: string | null; color: string | null }
 
 // deno-ish typing for the browser speech API
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,7 +23,7 @@ async function errorText(error: unknown) {
   return 'Something went wrong.';
 }
 
-function when(p: Proposal) {
+function when(p: Pick<Proposal, 'start' | 'end' | 'all_day'>) {
   const d = (s: string) => new Date(s.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const t = (s: string) => { const [h, m] = s.slice(11, 16).split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')}${h >= 12 ? 'pm' : 'am'}`; };
   if (p.all_day) return p.end && p.end !== p.start ? `${d(p.start)} – ${d(p.end)} · All day` : `${d(p.start)} · All day`;
@@ -39,7 +41,7 @@ export function KeeperAssistant() {
 
   useEffect(() => {
     if (!open) return;
-    supabase.from('household_calendars').select('id, label').order('created_at').then(({ data }) => setCals(data ?? []));
+    supabase.from('household_calendars').select('id, label, owner_user_id, color').order('created_at').then(({ data }) => setCals(data ?? []));
   }, [open]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, busy]);
 
@@ -61,16 +63,21 @@ export function KeeperAssistant() {
 
   const confirm = async (mi: number, pi: number, p: Proposal) => {
     updateProposal(mi, pi, { state: 'saving' });
-    const { data, error } = await supabase.functions.invoke('create-calendar-event', {
-      body: { calendar_id: p.calendar_id, title: p.title, start: p.start, end: p.end, all_day: p.all_day, location: p.location, notes: p.notes },
-    });
+    const kind = p.kind ?? 'create';
+    const { data, error } = kind === 'create'
+      ? await supabase.functions.invoke('create-calendar-event', {
+        body: { calendar_id: p.calendar_id, title: p.title, start: p.start, end: p.end, all_day: p.all_day, location: p.location, notes: p.notes },
+      })
+      : await supabase.functions.invoke('modify-calendar-event', {
+        body: { action: kind, calendar_id: p.calendar_id, event_id: p.event_id, changes: kind === 'update' ? p.changes : undefined },
+      });
     if (error || !data?.ok) {
       updateProposal(mi, pi, { state: 'open' });
-      toast.error(`Couldn't add the event: ${await errorText(error)}`);
+      toast.error(`Couldn't ${kind === 'create' ? 'add' : kind} the event: ${await errorText(error)}`);
       return;
     }
     updateProposal(mi, pi, { state: 'done' });
-    setMsgs(m => [...m, { role: 'assistant', content: `Added "${p.title}" to ${data.calendar}.` }]);
+    setMsgs(m => [...m, { role: 'assistant', content: kind === 'create' ? `Added "${p.title}" to ${data.calendar}.` : kind === 'update' ? `Updated "${p.title}".` : `Deleted "${p.title}".` }]);
     window.dispatchEvent(new Event('keeper-calendar-refresh'));
   };
 
@@ -109,17 +116,32 @@ export function KeeperAssistant() {
                 <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}>{m.content}</div>
                 {m.proposals?.map((p, pi) => (
                   <div key={pi} className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5 max-w-[95%]">
-                    <div className="flex items-center gap-2"><CalendarPlus size={16} className="text-accent" /><p className="text-sm font-semibold text-foreground">{p.title}</p></div>
-                    <p className="text-xs text-muted-foreground">{when(p)}{p.location ? ` · ${p.location}` : ''}</p>
-                    <select aria-label="Calendar" value={p.calendar_id} disabled={p.state !== 'open'}
-                      onChange={e => updateProposal(mi, pi, { calendar_id: e.target.value })} className="auth-input">
-                      {cals.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                    </select>
-                    {p.state === 'done' ? <p className="text-xs font-semibold text-success">Added ✓</p>
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: calendarColor(p.calendar_id, cals) }} />
+                      <p className="text-sm font-semibold text-foreground">
+                        {p.kind === 'update' ? `Change "${p.before?.title ?? p.title}"` : p.kind === 'delete' ? `Delete "${p.title}" on ${when(p)}?` : p.title}
+                      </p>
+                    </div>
+                    {p.kind === 'update' && p.before ? (
+                      <div className="text-xs space-y-0.5">
+                        {(p.before.start !== p.start || p.before.end !== p.end) && <p className="text-muted-foreground line-through">{when(p.before)}</p>}
+                        <p className="text-foreground">{p.title !== p.before.title ? `${p.title} · ` : ''}{when(p)}</p>
+                      </div>
+                    ) : p.kind !== 'delete' && <p className="text-xs text-muted-foreground">{when(p)}{p.location ? ` · ${p.location}` : ''}</p>}
+                    {p.series && <p className="text-[11px] text-muted-foreground">Applies to every occurrence.</p>}
+                    {(p.kind ?? 'create') === 'create' ? (
+                      <select aria-label="Calendar" value={p.calendar_id} disabled={p.state !== 'open'}
+                        onChange={e => updateProposal(mi, pi, { calendar_id: e.target.value })} className="auth-input">
+                        {cals.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                    ) : <p className="text-[11px] text-muted-foreground">{cals.find(c => c.id === p.calendar_id)?.label} calendar</p>}
+                    {p.state === 'done' ? <p className="text-xs font-semibold text-success">{p.kind === 'delete' ? 'Deleted ✓' : p.kind === 'update' ? 'Updated ✓' : 'Added ✓'}</p>
                       : p.state === 'cancelled' ? <p className="text-xs text-muted-foreground">Cancelled</p>
                       : (
                         <div className="flex gap-2">
-                          <Button size="sm" className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" disabled={p.state === 'saving'} onClick={() => confirm(mi, pi, p)}>{p.state === 'saving' ? 'Adding…' : 'Confirm'}</Button>
+                          <Button size="sm" variant={p.kind === 'delete' ? 'destructive' : 'default'} className={`flex-1 ${p.kind === 'delete' ? '' : 'bg-accent text-accent-foreground hover:bg-accent/90'}`} disabled={p.state === 'saving'} onClick={() => confirm(mi, pi, p)}>
+                            {p.state === 'saving' ? 'Saving…' : p.kind === 'delete' ? 'Delete' : 'Confirm'}
+                          </Button>
                           <Button size="sm" variant="ghost" className="flex-1" disabled={p.state === 'saving'} onClick={() => updateProposal(mi, pi, { state: 'cancelled' })}>Cancel</Button>
                         </div>
                       )}

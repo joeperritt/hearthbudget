@@ -3,7 +3,7 @@ import { CalendarDays, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useHomeCalendars } from '@/hooks/useHomeCalendars';
-import { calendarDotClass } from '@/lib/homeCalendars';
+import { calendarColor } from '@/lib/homeCalendars';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
@@ -61,7 +61,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
             aria-label={`${calendar.label} calendar`} aria-pressed={isVisible(calendar)}
             disabled={saving.includes(calendar.id)} onClick={() => toggle(calendar)}
             className={`h-7 gap-1.5 rounded-full px-2.5 text-xs border ${isVisible(calendar) ? "border-primary/20 text-foreground" : "border-border text-muted-foreground opacity-60"}`}>
-            <span className={`h-2 w-2 shrink-0 rounded-full ${calendarDotClass(calendar.id, calendars)}`} />
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: calendarColor(calendar.id, calendars) }} />
             {calendar.label}
           </Button>
         ))}
@@ -115,7 +115,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
                   <span className="w-14 shrink-0 text-muted-foreground text-xs pt-0.5">{timeLabel(e)}</span>
                   <span className="flex-1 min-w-0">
                     <span className="inline-flex items-baseline gap-1.5">
-                      <span title={e.calendar} aria-label={`${e.calendar} calendar`} className={`inline-block h-2 w-2 shrink-0 rounded-full ${calendarDotClass(e.calendarId, calendars)}`} />
+                      <span title={e.calendar} aria-label={`${e.calendar} calendar`} className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: calendarColor(e.calendarId, calendars) }} />
                       <span className="text-foreground break-words">{e.title}</span>
                     </span>
                   </span>

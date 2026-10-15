@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCalendarVisible, parseCalendarVisibility, calendarDotClass } from '@/lib/homeCalendars';
+import { isCalendarVisible, parseCalendarVisibility, calendarColor } from '@/lib/homeCalendars';
 
 const joe = { id: 'joe-calendar', label: 'Joe', owner_user_id: 'joe' };
 const katie = { id: 'katie-calendar', label: 'Katie', owner_user_id: 'katie' };
@@ -22,8 +22,8 @@ describe('personal calendar visibility', () => {
     expect(parseCalendarVisibility(null)).toEqual({});
   });
   it('keeps known calendar colors stable', () => {
-    expect(calendarDotClass('998cbf6a-bde6-4bb3-8434-2f0cc501bb88', [])).toBe('bg-primary');
-    expect(calendarDotClass('6cbd2c52-0f44-4709-b254-48f3e0899caf', [])).toBe('bg-success');
-    expect(calendarDotClass('5a28d561-9c6d-4035-a801-2ce4a7e31dbd', [])).toBe('bg-accent');
+    const cals = [{ id: 'a', label: 'A', owner_user_id: null, color: '#33B679' }, { id: 'b', label: 'B', owner_user_id: null }];
+    expect(calendarColor('a', cals)).toBe('#33B679');
+    expect(calendarColor('b', cals)).toMatch(/^#[0-9A-F]{6}$/i);
   });
 });
