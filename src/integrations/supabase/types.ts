@@ -1327,6 +1327,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: number
       }
+      set_home_calendar_visibility: {
+        Args: { calendar_id: string; visible: boolean }
+        Returns: undefined
+      }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
         Returns: Json
