@@ -1,25 +1,22 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, CheckCircle2, Inbox } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { WeatherStrip } from './WeatherStrip';
 import { CalendarCard } from './CalendarCard';
 import { HomeListCard } from './HomeListCard';
-import { Button } from '@/components/ui/button';
+import { TodoCard } from './TodoCard';
 
-export type HomeCardId = 'weather' | 'calendar' | 'budget' | 'family_todo' | 'my_todo' | 'grocery';
+export type HomeCardId = 'calendar' | 'todo' | 'store';
 
 /** Default layout. A per-user override can be stored in user_home_layouts.cards. */
-export const DEFAULT_HOME_CARDS: HomeCardId[] = ['weather', 'calendar', 'budget', 'family_todo', 'my_todo', 'grocery'];
+export const DEFAULT_HOME_CARDS: HomeCardId[] = ['calendar', 'todo', 'store'];
 const KNOWN = new Set<string>(DEFAULT_HOME_CARDS);
 
 interface HomePageProps {
-  unassignedCount: number;
-  onOpenUnassigned: () => void;
   onOpenCalendarSettings: () => void;
 }
 
-export function HomePage({ unassignedCount, onOpenUnassigned, onOpenCalendarSettings }: HomePageProps) {
+export function HomePage({ onOpenCalendarSettings }: HomePageProps) {
   const { user, profile } = useAuth();
   const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
 
@@ -38,47 +35,25 @@ export function HomePage({ unassignedCount, onOpenUnassigned, onOpenCalendarSett
 
   const render = (id: HomeCardId) => {
     switch (id) {
-      case 'weather': return <div key={id} className="md:hidden"><WeatherStrip /></div>;
-      case 'calendar': return <CalendarCard key={id} onConnect={onOpenCalendarSettings} />;
-      case 'budget': return (
-        <Button variant="ghost" key={id} onClick={onOpenUnassigned} className="h-auto whitespace-normal w-full bg-card rounded-2xl border border-border p-4 shadow-sm flex items-center gap-3 text-left active:scale-[0.99]">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${unassignedCount ? 'bg-accent/15 text-accent' : 'bg-primary/10 text-primary'}`}>
-            {unassignedCount ? <Inbox size={20} /> : <CheckCircle2 size={20} />}
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-muted-foreground">Budget</p>
-            <p className="text-sm font-semibold text-foreground">
-              {unassignedCount ? `${unassignedCount} transaction${unassignedCount === 1 ? '' : 's'} to assign` : 'All caught up'}
-            </p>
-          </div>
-          <ChevronRight size={16} className="text-muted-foreground" />
-        </Button>
-      );
-      case 'family_todo': return <HomeListCard key={id} title="Family To Do" listType="family" placeholder="Add a family to-do" />;
-      case 'my_todo': return <HomeListCard key={id} title="My To Do" listType="personal" placeholder="Add a to-do just for you" />;
-      case 'grocery': return <HomeListCard key={id} title="Grocery List" listType="grocery" placeholder="Add groceries" />;
+      case 'calendar': return <CalendarCard onConnect={onOpenCalendarSettings} />;
+      case 'todo': return <TodoCard />;
+      case 'store': return <HomeListCard />;
     }
   };
 
   return (
     <div className="max-w-lg md:max-w-6xl mx-auto pb-12">
-      <div className="px-6 pt-12 safe-top md:flex md:items-center md:justify-between md:gap-6">
-        <div>
-        <p className="text-xs text-muted-foreground">{today}</p>
-        <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-          {greet}{name ? `, ${name}` : ''}
-        </h1>
+      <div className="px-6 pt-12 safe-top flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">{today}</p>
+          <h1 className="font-display text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
+            {greet}{name ? `, ${name}` : ''}
+          </h1>
         </div>
-        {cards.includes('weather') && <div className="hidden md:block md:shrink-0"><WeatherStrip /></div>}
+        <div className="shrink-0"><WeatherStrip /></div>
       </div>
       <div className="px-6 mt-4 space-y-4 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:items-start">
-        {cards.map(id => {
-          const positions: Record<HomeCardId, string> = {
-            weather: 'md:hidden', calendar: 'md:order-1', family_todo: 'md:order-2',
-            my_todo: 'md:order-3', grocery: 'md:order-4', budget: 'md:order-5',
-          };
-          return <div key={id} className={`min-w-0 ${positions[id]}`}>{render(id)}</div>;
-        })}
+        {cards.map(id => <div key={id} className="min-w-0">{render(id)}</div>)}
       </div>
     </div>
   );
