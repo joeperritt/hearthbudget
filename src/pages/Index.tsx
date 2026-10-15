@@ -379,6 +379,11 @@ const Index = () => {
         {activeTab === 'home' && (
           <HomePage
             onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
+            unassignedCount={unassignedTransactions.length}
+            onOpenUnassigned={() => {
+              setActivityInitialFilter('unassigned');
+              setActiveTab('transactions');
+            }}
           />
         )}
         {(activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions') && (

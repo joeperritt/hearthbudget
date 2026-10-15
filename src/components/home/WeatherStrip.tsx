@@ -28,16 +28,14 @@ export function WeatherStrip() {
     return () => { alive = false; clearInterval(t); };
   }, []);
 
-  if (!w) return <div className="h-6 text-xs text-muted-foreground">Lexington, SC</div>;
+  if (!w) return <div className="text-xs text-muted-foreground">Lexington, SC</div>;
   const { label, Icon } = describe(w.code);
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-      <Icon size={18} className="text-accent" />
+    <div title={`Lexington, SC · ${label}`} className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+      <Icon size={16} className="text-accent shrink-0" aria-label={label} />
       <span className="font-semibold text-foreground">{Math.round(w.temp)}°</span>
-      <span>{label}</span>
-      <span className="text-muted-foreground/60">·</span>
+      <span className="hidden sm:inline">{label}</span>
       <span>H {Math.round(w.hi)}° L {Math.round(w.lo)}°</span>
-      <span className="ml-auto text-xs md:ml-1">Lexington, SC</span>
     </div>
   );
 }
