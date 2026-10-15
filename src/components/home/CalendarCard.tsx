@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useHomeCalendars } from '@/hooks/useHomeCalendars';
 import { calendarDotClass } from '@/lib/homeCalendars';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
 
@@ -26,6 +27,7 @@ function timeLabel(e: Ev) {
 export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const [state, setState] = useState<{ events: Ev[]; calendars: number; today: string; errors: string[] } | null>(null);
   const [failed, setFailed] = useState(false);
+  const isMobile = useIsMobile();
   const { calendars, loading, failed: preferencesFailed, saving, toggle, isVisible } = useHomeCalendars();
 
   const calendarSignature = JSON.stringify(calendars);
@@ -84,7 +86,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const visibleIds = new Set(calendars.filter(isVisible).map(c => c.id));
   const events = state.events.filter(e => visibleIds.has(e.calendarId));
   const todays = events.filter(e => e.start.slice(0, 10) <= today && (e.end ? (e.allDay ? e.end.slice(0, 10) > today : e.end.slice(0, 10) >= today) : e.start.slice(0, 10) === today));
-  const upcoming = events.filter(e => e.start.slice(0, 10) > today).slice(0, 50);
+  const upcoming = events.filter(e => e.start.slice(0, 10) > today).slice(0, isMobile ? 6 : 50);
   const groups: { day: string; events: Ev[] }[] = [];
   if (todays.length) groups.push({ day: today, events: todays });
   for (const e of upcoming) {
