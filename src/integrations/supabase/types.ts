@@ -570,6 +570,7 @@ export type Database = {
       household_calendars: {
         Row: {
           added_by: string
+          color: string | null
           created_at: string
           google_calendar_id: string | null
           household_id: string
@@ -580,6 +581,7 @@ export type Database = {
         }
         Insert: {
           added_by?: string
+          color?: string | null
           created_at?: string
           google_calendar_id?: string | null
           household_id: string
@@ -590,6 +592,7 @@ export type Database = {
         }
         Update: {
           added_by?: string
+          color?: string | null
           created_at?: string
           google_calendar_id?: string | null
           household_id?: string
