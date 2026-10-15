@@ -7,7 +7,7 @@ const TZ = 'America/New_York';
 const CACHE_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; text: string }>();
 
-interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string }
+interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -15,7 +15,7 @@ function json(body: unknown, status = 200) {
 
 function utcToLocal(d: Date): string {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d);
-  const g = (t: string) => p.find(x => x.type === t)!.value;
+  const g = (t: string) => p.find(x => x.type === t)?.value ?? '';
   return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
 }
 
@@ -60,7 +60,7 @@ function shift(local: string, freq: string, n: number): string {
   return timePart ? `${s}T${timePart}` : s;
 }
 
-function parseICS(text: string, calendar: string, from: string, to: string): Ev[] {
+function parseICS(text: string, calendar: string, calendarId: string, from: string, to: string): Ev[] {
   const lines = text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '').split(/\r?\n/);
   const out: Ev[] = [];
   let cur: Record<string, { params: string; value: string }[]> | null = null;
@@ -104,7 +104,7 @@ function parseICS(text: string, calendar: string, from: string, to: string): Ev[
       const endKey = (e && start.allDay) ? e : (e || s);
       if (endKey.slice(0, 10) < from && s.slice(0, 10) < from) return;
       if (s.slice(0, 10) > to) return;
-      out.push({ title, start: s, end: e, allDay: start.allDay, location, calendar });
+      out.push({ title, start: s, end: e, allDay: start.allDay, location, calendar, calendarId });
     };
     const rrule = b['RRULE']?.[0]?.value;
     if (!rrule || b['RECURRENCE-ID']) {
@@ -190,14 +190,14 @@ Deno.serve(async (req) => {
           hit = { at: Date.now(), text: await r.text() };
           cache.set(url, hit);
         }
-        all.push(...parseICS(hit.text, c.label, today, to));
+        all.push(...parseICS(hit.text, c.label, c.id, today, to));
       } catch (e) {
         console.error(`Calendar ${c.id} failed:`, e);
         errors.push(c.label);
       }
     }));
     all.sort((a, b) => a.start.localeCompare(b.start));
-    return json({ events: all.slice(0, 50), calendars: cals.length, errors, today });
+    return json({ events: all, calendars: cals.length, errors, today });
   } catch (e) {
     console.error(e);
     return json({ error: String(e) }, 500);

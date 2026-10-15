@@ -31,13 +31,13 @@ export function WeatherStrip() {
   if (!w) return <div className="h-6 text-xs text-muted-foreground">Lexington, SC</div>;
   const { label, Icon } = describe(w.code);
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
       <Icon size={18} className="text-accent" />
       <span className="font-semibold text-foreground">{Math.round(w.temp)}°</span>
       <span>{label}</span>
       <span className="text-muted-foreground/60">·</span>
       <span>H {Math.round(w.hi)}° L {Math.round(w.lo)}°</span>
-      <span className="ml-auto text-xs">Lexington, SC</span>
+      <span className="ml-auto text-xs md:ml-1">Lexington, SC</span>
     </div>
   );
 }
