@@ -52,11 +52,11 @@ export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassi
             variant="outline"
             size="sm"
             className="h-8 rounded-full bg-card text-xs px-3"
-            aria-label={`Budget Activity: ${unassignedCount > 0 ? `${unassignedCount} to assign` : 'All caught up'}, show unassigned transactions`}
+            aria-label={`Budget: ${unassignedCount > 0 ? `${unassignedCount} to assign` : 'All caught up'}, show unassigned transactions`}
             onClick={onOpenUnassigned}
           >
             {unassignedCount > 0 ? <Wallet /> : <Check className="text-success" />}
-            {unassignedCount > 0 ? `${unassignedCount} to assign` : 'All caught up'}
+            {`Budget: ${unassignedCount > 0 ? `${unassignedCount} to assign` : 'All caught up'}`}
           </Button>
         </div>
       </div>
