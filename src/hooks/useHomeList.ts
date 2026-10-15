@@ -64,7 +64,7 @@ export function useHomeList(listType: HomeListType) {
   };
 
   const update = async (id: string, patch: HomeListPatch) => {
-    const full = { ...patch } as Record<string, unknown>;
+    const full: HomeListPatch & { completed_at?: string | null } = { ...patch };
     if ('completed' in patch) full.completed_at = patch.completed ? new Date().toISOString() : null;
     if (patch.due_date === null) full.due_time = null;
     if (typeof patch.text === 'string') full.text = patch.text.trim().slice(0, 300);
