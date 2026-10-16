@@ -151,7 +151,7 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') setEditing(true); else setConfirmDelete(true); }}>
+            <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') { setEditSeries(false); setEditing(true); } else setConfirmDelete(true); }}>
               This event
             </AlertDialogAction>
             <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') { setEditSeries(true); setEditing(true); } else { doDelete(true); } }}>

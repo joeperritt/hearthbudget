@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AddEventDialog, AddEventMenu } from './AddEventButton';
+import { EventDetailsView } from './EventDetails';
 import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
 
-export interface CalEv { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
+export interface CalEv { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string; eventId?: string; recurringEventId?: string | null; description?: string | null }
 
 export const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const addDays = (s: string, n: number) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
