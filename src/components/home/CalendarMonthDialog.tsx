@@ -45,6 +45,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
   const [events, setEvents] = useState<CalEv[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [detail, setDetail] = useState<CalEv | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     const bump = () => setRefreshKey(k => k + 1);
@@ -52,7 +53,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
     return () => window.removeEventListener('keeper-calendar-refresh', bump);
   }, []);
 
-  useEffect(() => { if (open) { setMonth(today.slice(0, 7)); setSelected(null); } }, [open, today]);
+  useEffect(() => { if (open) { setMonth(today.slice(0, 7)); setSelected(null); setDetail(null); } }, [open, today]);
 
   const days = useMemo(() => {
     const first = new Date(month + '-01T00:00:00');
@@ -88,6 +89,9 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
   const dot = (id: string) => calendarColor(id, calendars);
 
   const dayList = selected && (
+    detail ? (
+      <EventDetailsView event={detail} calendars={calendars} onBack={() => setDetail(null)} onClose={() => setDetail(null)} />
+    ) : (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="font-display text-base font-semibold text-foreground">
@@ -99,20 +103,23 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
       {forDay(selected).length ? (
         <ul className="space-y-2">
           {forDay(selected).map((e, i) => (
-            <li key={i} className="flex gap-3 text-sm">
-              <span className="w-14 shrink-0 text-xs text-muted-foreground pt-0.5">{timeText(e)}</span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-baseline gap-1.5">
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot(e.calendarId) }} />
-                  <span className="text-foreground break-words">{e.title}</span>
+            <li key={i}>
+              <button type="button" onClick={() => setDetail(e)} className="flex gap-3 text-sm w-full text-left rounded-lg px-1 -mx-1 py-0.5 hover:bg-muted/50">
+                <span className="w-14 shrink-0 text-xs text-muted-foreground pt-0.5">{timeText(e)}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot(e.calendarId) }} />
+                    <span className="text-foreground break-words">{e.title}</span>
+                  </span>
+                  {e.location && <span className="block text-xs text-muted-foreground truncate">{e.location}</span>}
                 </span>
-                {e.location && <span className="block text-xs text-muted-foreground truncate">{e.location}</span>}
-              </span>
+              </button>
             </li>
           ))}
         </ul>
       ) : <p className="text-xs text-muted-foreground">No events.</p>}
     </div>
+    )
   );
 
   return (
