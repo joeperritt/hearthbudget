@@ -176,16 +176,21 @@ Deno.serve(async (req) => {
     if (!cals?.length) return json({ events: [], calendars: 0 });
 
     const today = utcToLocal(new Date()).slice(0, 10);
-    const toD = new Date(today + 'T00:00:00Z'); toD.setUTCDate(toD.getUTCDate() + 60);
-    const to = toD.toISOString().slice(0, 10);
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const from = isDate(body?.from) ? body.from : today;
+    const toD = new Date(from + 'T00:00:00Z'); toD.setUTCDate(toD.getUTCDate() + 60);
+    let to = isDate(body?.to) && body.to >= from ? body.to : toD.toISOString().slice(0, 10);
+    const maxD = new Date(from + 'T00:00:00Z'); maxD.setUTCDate(maxD.getUTCDate() + 400);
+    if (to > maxD.toISOString().slice(0, 10)) to = maxD.toISOString().slice(0, 10);
 
     const errors: string[] = [];
     const all: Ev[] = [];
     const fromGoogle = async (c: { id: string; label: string; google_calendar_id: string }) => {
       const token = await getGoogleAccessToken();
-      const fromD = new Date(today + 'T00:00:00Z'); fromD.setUTCDate(fromD.getUTCDate() - 1);
+      const fromD = new Date(from + 'T00:00:00Z'); fromD.setUTCDate(fromD.getUTCDate() - 1);
       const params = new URLSearchParams({
-        singleEvents: 'true', orderBy: 'startTime', timeZone: TZ, maxResults: '250',
+        singleEvents: 'true', orderBy: 'startTime', timeZone: TZ, maxResults: '2500',
         timeMin: fromD.toISOString(), timeMax: new Date(to + 'T23:59:59Z').toISOString(),
       });
       const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.google_calendar_id)}/events?${params}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -203,7 +208,7 @@ Deno.serve(async (req) => {
         const e = local(it.end);
         const allDay = Boolean(it.start?.date);
         const endKey = e ?? s;
-        if ((allDay ? endKey <= today : endKey.slice(0, 10) < today) && s.slice(0, 10) < today) continue;
+        if ((allDay ? endKey <= from : endKey.slice(0, 10) < from) && s.slice(0, 10) < from) continue;
         if (s.slice(0, 10) > to) continue;
         all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id, eventId: it.id, recurringEventId: it.recurringEventId ?? null });
       }
@@ -222,7 +227,7 @@ Deno.serve(async (req) => {
           hit = { at: Date.now(), text: await r.text() };
           cache.set(url, hit);
         }
-        all.push(...parseICS(hit.text, c.label, c.id, today, to));
+        all.push(...parseICS(hit.text, c.label, c.id, from, to));
       } catch (e) {
         console.error(`Calendar ${c.id} failed:`, e);
         errors.push(c.label);
