@@ -828,6 +828,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_prefs: {
+        Row: {
+          last_sent_date: string | null
+          morning_enabled: boolean
+          morning_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_sent_date?: string | null
+          morning_enabled?: boolean
+          morning_time?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_sent_date?: string | null
+          morning_enabled?: boolean
+          morning_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plaid_accounts: {
         Row: {
           account_category: string
@@ -1064,6 +1088,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          endpoint: string
+          id: string
+          keys: Json
+          last_success_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          endpoint: string
+          id?: string
+          keys: Json
+          last_success_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          endpoint?: string
+          id?: string
+          keys?: Json
+          last_success_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       suppressed_emails: {
         Row: {
