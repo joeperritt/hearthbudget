@@ -112,6 +112,8 @@ const Index = () => {
   }, [householdId, resumeTick]);
 
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  // Increments whenever Home is tapped so HomePage remounts and mobile starts on Calendar.
+  const [homeResetKey, setHomeResetKey] = useState(0);
   const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
 
   // Allow other components (e.g. Dashboard reconnect banner) to navigate to
@@ -284,6 +286,8 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
+    // Re-tapping Home always opens it back on the Calendar view on mobile.
+    if (tab === 'home') setHomeResetKey(k => k + 1);
     if (tab === 'profile') setProfileSubView('menu');
     if (tab === 'budget') setBudgetSubView('main');
   };
