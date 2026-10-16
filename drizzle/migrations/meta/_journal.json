@@ -43,6 +43,13 @@
       "when": 1792101269384,
       "tag": "0005_calendar_visibility_default_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792157398604,
+      "tag": "0006_lock_app_config",
+      "breakpoints": true
     }
   ]
 }

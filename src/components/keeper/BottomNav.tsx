@@ -1,8 +1,9 @@
 import { TabId } from '@/types/budget';
-import { Home, Wallet, MoreHorizontal } from 'lucide-react';
+import { Home, ListChecks, Wallet, MoreHorizontal } from 'lucide-react';
 
 const tabs: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'Home', icon: Home },
+  { id: 'lists', label: 'Lists', icon: ListChecks },
   { id: 'dashboard', label: 'Budget', icon: Wallet },
   { id: 'profile', label: 'More', icon: MoreHorizontal },
 ];
