@@ -18,17 +18,14 @@ interface HomePageProps {
   onOpenCalendarSettings: () => void;
   unassignedCount: number;
   onOpenUnassigned: () => void;
-  /** 'lists' is the phone-only Lists tab (To Do / Store List toggle). */
-  mode?: 'home' | 'lists';
 }
 
-const LIST_KEY = 'perritt-lists-tab';
-
-export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned, mode = 'home' }: HomePageProps) {
-  const [listTab, setListTab] = useState<'todo' | 'store'>(() => (localStorage.getItem(LIST_KEY) === 'store' ? 'store' : 'todo'));
-  const pickList = (t: 'todo' | 'store') => { setListTab(t); localStorage.setItem(LIST_KEY, t); };
+export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned }: HomePageProps) {
   const { user } = useAuth();
   const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
+  // Mobile: one widget at a time behind a segmented toggle; starts on Calendar
+  // (the component remounts whenever Home is opened, so it always resets here).
+  const [mobileTab, setMobileTab] = useState<HomeCardId>('calendar');
 
   useEffect(() => {
     if (!user) return;
@@ -66,20 +63,20 @@ export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassi
           </Button>
         </div>
       </div>
-      <div className="px-6 mt-4 space-y-4 lg:space-y-0 lg:grid lg:gap-4 lg:grid-cols-3 lg:items-stretch lg:flex-1 lg:min-h-0">
-        {mode === 'lists' ? (
-          <>
-            <div role="tablist" aria-label="List" className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1">
-              {(['todo', 'store'] as const).map(t => (
-                <button key={t} role="tab" aria-selected={listTab === t} onClick={() => pickList(t)}
-                  className={`h-8 rounded-full text-sm font-medium transition-colors ${listTab === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-                  {t === 'todo' ? 'To Do' : 'Store List'}
-                </button>
-              ))}
-            </div>
-            <div className="min-w-0">{render(listTab)}</div>
-          </>
-        ) : cards.map(id => <div key={id} className={`min-w-0 lg:min-h-0 ${id === 'calendar' ? '' : 'hidden lg:block'}`}>{render(id)}</div>)}
+      <div className="px-6 mt-3 lg:hidden">
+        <div role="tablist" aria-label="Home widget" className="grid grid-cols-3 gap-1 rounded-full bg-muted p-1">
+          {cards.map(id => (
+            <button key={id} role="tab" aria-selected={mobileTab === id} onClick={() => setMobileTab(id)}
+              className={`h-8 rounded-full text-sm font-medium transition-colors ${mobileTab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+              {id === 'calendar' ? 'Calendar' : id === 'todo' ? 'To Do' : 'Store'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-6 mt-3 lg:mt-4 space-y-4 lg:space-y-0 lg:grid lg:gap-4 lg:grid-cols-3 lg:items-stretch lg:flex-1 lg:min-h-0">
+        {cards.map(id => (
+          <div key={id} className={`min-w-0 lg:min-h-0 ${mobileTab === id ? '' : 'hidden'} lg:block`}>{render(id)}</div>
+        ))}
       </div>
     </div>
   );
