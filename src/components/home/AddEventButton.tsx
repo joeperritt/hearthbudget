@@ -22,15 +22,15 @@ export function dayPrefix(date: string) {
   return `On ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}: `;
 }
 
-export function AddEventMenu({ calendars, date, onManual, trigger }: { calendars: HomeCalendar[]; date?: string | null; onManual: () => void; trigger?: ReactNode }) {
+export function AddEventMenu({ calendars, date, onManual, trigger, aiPrefill, label = 'Add event' }: { calendars?: HomeCalendar[]; date?: string | null; onManual: () => void; trigger?: ReactNode; aiPrefill?: string; label?: string }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        {trigger ?? <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Add event"><Plus size={18} /></Button>}
+        {trigger ?? <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={label}><Plus size={18} /></Button>}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onManual}><PenLine size={14} className="mr-2" /> Add manually</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => openAssistant(date ? dayPrefix(date) : undefined)} disabled={!calendars.length}>
+        <DropdownMenuItem onSelect={() => openAssistant(aiPrefill ?? (date ? dayPrefix(date) : undefined))}>
           <Sparkles size={14} className="mr-2" /> Describe to AI
         </DropdownMenuItem>
       </DropdownMenuContent>

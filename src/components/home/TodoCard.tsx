@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useHomeList, HomeListItem } from '@/hooks/useHomeList';
 import { useTodoOwners } from '@/hooks/useTodoOwners';
 import { ListItemEditSheet } from './ListItemEditSheet';
-import { ListRow, QuickAdd } from './HomeListCard';
+import { ListRow } from './HomeListCard';
+import { AddEventMenu } from './AddEventButton';
 
 function nyToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -23,14 +23,10 @@ export function TodoCard() {
   const { user } = useAuth();
   const { items, loading, add, update, toggle, remove, clearCompleted } = useHomeList('todo');
   const { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } = useTodoOwners();
-  const [draft, setDraft] = useState('');
-  const [due, setDue] = useState('');
-  const [owner, setOwner] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<HomeListItem | null>(null);
 
-  const ownerKey = owner ?? user?.id ?? 'family';
-  const submit = () => { add(draft, { owner: ownerKey === 'family' ? null : ownerKey, due_date: due || null }); setDraft(''); setDue(''); };
+  const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null } as HomeListItem);
 
   const visible = items.filter(i => isVisible(keyOf(i.user_id)));
   const open = visible.filter(i => !i.completed);
@@ -59,8 +55,9 @@ export function TodoCard() {
     <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       <div className="mb-3 space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-foreground">To Do</h2>
-          {done.length > 0 && <button onClick={clearCompleted} className="text-xs text-muted-foreground active:text-foreground">Clear completed</button>}
+          <h2 className="font-display text-lg font-semibold text-foreground flex-1">To Do</h2>
+          {done.length > 0 && <button onClick={clearCompleted} className="text-xs text-muted-foreground active:text-foreground mr-1">Clear completed</button>}
+          <AddEventMenu calendars={[]} onManual={startNew} aiPrefill="Add a to do: " label="Add to do" />
         </div>
         <div className="flex flex-wrap gap-1.5">
           {owners.map(o => (
@@ -71,19 +68,6 @@ export function TodoCard() {
             </Button>
           ))}
         </div>
-      </div>
-      <QuickAdd value={draft} onChange={setDraft} onSubmit={submit} placeholder="Add a to do">
-        <label className={`relative w-10 h-10 rounded-lg border border-border flex items-center justify-center shrink-0 cursor-pointer ${due ? 'text-accent' : 'text-muted-foreground'}`} title={due ? fmtDate(due) : 'Due date'}>
-          <CalendarDays size={16} />
-          <input type="date" aria-label="Due date" value={due} onChange={e => setDue(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-        </label>
-      </QuickAdd>
-      <div className="flex items-center gap-2 mb-2 text-xs">
-        <span className="text-muted-foreground">For</span>
-        <select aria-label="Owner" value={ownerKey} onChange={e => setOwner(e.target.value)} className="bg-transparent text-foreground font-semibold focus:outline-none">
-          {owners.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
-        {due && <button onClick={() => setDue('')} className="ml-auto text-muted-foreground">Due {fmtDate(due)} ✕</button>}
       </div>
       {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p> : (
         <div className="space-y-3 md:max-h-96 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
@@ -102,7 +86,7 @@ export function TodoCard() {
           )}
         </div>
       )}
-      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update} onDelete={remove} />
+      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update} onDelete={remove} onCreate={(text, o) => add(text, o)} />
     </section>
   );
 }

@@ -49,15 +49,16 @@ export function useHomeList(listType: HomeListType) {
     return () => { supabase.removeChannel(ch); };
   }, [householdId, listType, load]);
 
-  const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null } = {}) => {
+  const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null } = {}) => {
     const t = text.trim().slice(0, 300);
     if (!t || !householdId || !user) return;
     const owner = listType === 'todo' ? (opts.owner === undefined ? user.id : opts.owner) : null;
     const tempId = `temp-${Date.now()}`;
-    setItems(prev => [{ id: tempId, text: t, completed: false, created_at: new Date().toISOString(), completed_at: null, user_id: owner, due_date: opts.due_date ?? null, due_time: opts.due_time ?? null, notes: null }, ...prev]);
+    setItems(prev => [{ id: tempId, text: t, completed: false, created_at: new Date().toISOString(), completed_at: null, user_id: owner, due_date: opts.due_date ?? null, due_time: opts.due_time ?? null, notes: opts.notes ?? null }, ...prev]);
     const { error } = await supabase.from('home_list_items').insert({
       household_id: householdId, list_type: listType, user_id: owner, text: t, created_by: user.id,
       due_date: opts.due_date ?? null, due_time: opts.due_date ? opts.due_time ?? null : null,
+      notes: opts.notes?.trim().slice(0, 2000) || null,
     });
     if (error) toast.error("Couldn't add that. Please try again.");
     load();
