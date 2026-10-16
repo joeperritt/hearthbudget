@@ -211,7 +211,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
           else {
             const owner = list === 'todo' ? (ownerId(args.owner) === undefined ? user.id : ownerId(args.owner)!) : null;
             const rule = list === 'todo' ? parseRule(args.recurrence) : null;
-            const dueDate = list === 'todo' ? (validDate(args.due_date) ?? (rule ? todayNY() : null)) : null;
+            const dueDate = list === 'todo' ? (validDate(args.due_date) ?? (rule ? todayISO() : null)) : null;
             const { error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
               household_id: profile.household_id, list_type: list, user_id: owner, text, created_by: user.id,
               due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null, recurrence: rule,
@@ -246,7 +246,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             else if (validDate(args.due_date)) { patch.due_date = validDate(args.due_date); patch.due_time = validTime(args.due_time); }
             else if (validTime(args.due_time)) patch.due_time = validTime(args.due_time);
             if (args.stop_repeating) patch.recurrence = null;
-            else if (parseRule(args.recurrence)) { patch.recurrence = parseRule(args.recurrence); if (!patch.due_date && !cur.due_date) patch.due_date = todayNY(); }
+            else if (parseRule(args.recurrence)) { patch.recurrence = parseRule(args.recurrence); if (!patch.due_date && !cur.due_date) patch.due_date = todayISO(); }
             if (typeof args.done === 'boolean') { patch.completed = args.done; patch.completed_at = args.done ? new Date().toISOString() : null; }
             if (!Object.keys(patch).length) result = { error: 'no changes given' };
             else {
