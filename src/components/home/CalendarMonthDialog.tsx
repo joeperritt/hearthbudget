@@ -83,7 +83,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
 
   const shiftMonth = (n: number) => {
     const d = new Date(month + '-01T00:00:00'); d.setMonth(d.getMonth() + n);
-    setMonth(ymd(d).slice(0, 7)); setSelected(null);
+    setMonth(ymd(d).slice(0, 7)); setSelected(null); setDetail(null);
   };
   const monthLabel = new Date(month + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const dot = (id: string) => calendarColor(id, calendars);
@@ -162,7 +162,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
                 const list = forDay(d);
                 const inMonth = d.slice(0, 7) === month;
                 return (
-                  <button key={d} type="button" onClick={() => setSelected(d)} aria-label={d}
+                  <button key={d} type="button" onClick={() => { setSelected(d); setDetail(null); }} aria-label={d}
                     className={`min-h-0 overflow-hidden border-b border-r border-border p-0.5 sm:p-1 text-left flex flex-col gap-0.5 hover:bg-muted/40 ${inMonth ? '' : 'bg-muted/20'} ${selected === d ? 'ring-2 ring-inset ring-accent' : ''}`}>
                     <span className={`self-center sm:self-start text-[11px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${d === today ? 'bg-primary text-primary-foreground font-semibold' : inMonth ? 'text-foreground' : 'text-muted-foreground/60'}`}>
                       {Number(d.slice(8))}
