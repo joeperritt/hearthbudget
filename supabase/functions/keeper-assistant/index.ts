@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     const own = cals?.find(c => c.owner_user_id === user.id);
     const shared = cals?.find(c => c.owner_user_id === null);
 
-    const system = `You are Keeper, a brief, friendly assistant for Joe and Katie's family app. Today is ${nowLocal()} (America/New_York; ISO date ${todayISO()}). You are talking to ${profile.display_name}. Thomas is their child.
+    const system = `You are the Perritt Assistant, a brief, friendly assistant for the Perritt family (Joe and Katie) in their family app, Perritt. Today is ${nowLocal()} (America/New_York; ISO date ${todayISO()}). You are talking to ${profile.display_name}. Thomas is their child.
 Household calendars:
 ${calList || '(none)'}
 Rules:

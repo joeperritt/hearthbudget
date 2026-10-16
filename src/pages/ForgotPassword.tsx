@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-primary-foreground font-display text-2xl font-bold">K</span>
+            <span className="text-primary-foreground font-display text-2xl font-bold">P</span>
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground">Reset password</h1>
         </div>

@@ -26,10 +26,10 @@ export default function Login() {
         {/* Logo / Brand */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-primary-foreground font-display text-2xl font-bold">K</span>
+            <span className="text-primary-foreground font-display text-2xl font-bold">P</span>
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Keeper</h1>
-          <p className="text-muted-foreground text-sm mt-1.5">Family budget, simplified.</p>
+          <h1 className="font-display text-3xl font-bold text-foreground">Perritt</h1>
+          <p className="text-muted-foreground text-sm mt-1.5">Family Management Tool</p>
         </div>
 
         {/* Login Card */}
@@ -81,7 +81,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-[11px] text-muted-foreground/50 mt-8">
-          Keeper · Budgeting together.
+          Perritt · Family Management Tool
         </p>
       </div>
     </div>

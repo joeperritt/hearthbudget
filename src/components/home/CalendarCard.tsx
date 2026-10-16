@@ -121,7 +121,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
       {header}
       {monthDialog}{addDialog}
       {!todays.length && <p className="text-xs text-muted-foreground mb-2">Nothing on the calendar today.</p>}
-      <div className="space-y-3 md:max-h-80 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
+      <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {groups.map(g => (
           <div key={g.day}>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{dayLabel(g.day, today)}</p>

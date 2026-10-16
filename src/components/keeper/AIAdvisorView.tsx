@@ -114,7 +114,7 @@ export function AIAdvisorView({
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Ask Keeper about your budget or plan..."
+            placeholder="Ask Perritt about your budget or plan..."
             className="flex-1 text-sm"
             disabled={chatLoading}
           />

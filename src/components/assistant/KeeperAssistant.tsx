@@ -122,7 +122,7 @@ export function KeeperAssistant() {
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="Open Keeper assistant"
+        aria-label="Open Perritt Assistant"
         className="fixed bottom-40 right-6 lg:bottom-6 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
       >
         <Sparkles size={22} />
@@ -130,9 +130,9 @@ export function KeeperAssistant() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom"
           style={keyboardOpen && vv ? { top: vv.top, bottom: 'auto', height: vv.h, borderRadius: 0 } : undefined}
-          className="h-[85dvh] sm:h-[80dvh] lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:w-[420px] lg:max-w-[420px] flex flex-col p-0 rounded-t-2xl lg:rounded-none">
+          className="h-[85dvh] sm:h-[80dvh] pt-[env(safe-area-inset-top,0px)] lg:pt-0 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:w-[420px] lg:max-w-[420px] flex flex-col p-0 rounded-t-2xl lg:rounded-none">
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
-            <SheetTitle className="font-display flex items-center gap-2"><Sparkles size={18} className="text-accent" /> Keeper</SheetTitle>
+            <SheetTitle className="font-display flex items-center gap-2"><Sparkles size={18} className="text-accent" /> Perritt Assistant</SheetTitle>
           </SheetHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3">
             {!msgs.length && (
@@ -180,7 +180,7 @@ export function KeeperAssistant() {
             <div ref={endRef} />
           </div>
           <form onSubmit={e => { e.preventDefault(); send(); }} className={`border-t border-border p-3 flex items-center gap-2 ${keyboardOpen ? '' : 'safe-bottom'}`}>
-            <input ref={inputRef} aria-label="Message Keeper" value={text} onChange={e => setText(e.target.value)} onFocus={() => setTimeout(() => endRef.current?.scrollIntoView({ block: 'end' }), 300)} placeholder={listening ? 'Listening…' : 'Ask Keeper…'} className="auth-input flex-1 text-base sm:text-sm" maxLength={2000} />
+            <input ref={inputRef} aria-label="Message Perritt" value={text} onChange={e => setText(e.target.value)} onFocus={() => setTimeout(() => endRef.current?.scrollIntoView({ block: 'end' }), 300)} placeholder={listening ? 'Listening…' : 'Ask Perritt…'} className="auth-input flex-1 text-base sm:text-sm" maxLength={2000} />
             {SpeechRec && (
               <Button type="button" size="icon" variant={listening ? 'secondary' : 'ghost'} onClick={listen} aria-label="Speak" disabled={busy}><Mic size={18} className={listening ? 'text-destructive' : ''} /></Button>
             )}
