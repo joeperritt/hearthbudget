@@ -87,10 +87,10 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const detailsDialog = <EventDetailsDialog event={detail} calendars={calendars} onClose={() => setDetail(null)} />;
 
   if (failed || preferencesFailed) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
   }
   if (!state || loading) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
   }
   if (state.calendars === 0) {
     return (
@@ -122,7 +122,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   return (
     <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       {header}
-      {monthDialog}{addDialog}
+      {monthDialog}{addDialog}{detailsDialog}
       {!todays.length && <p className="text-xs text-muted-foreground mb-2">Nothing on the calendar today.</p>}
       <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {groups.map(g => (
