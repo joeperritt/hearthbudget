@@ -7,6 +7,7 @@ import { HomeListCard } from './HomeListCard';
 import { TodoCard } from './TodoCard';
 import { Check, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HomeDataProvider, useHomeData } from './HomeDataContext';
 
 export type HomeCardId = 'calendar' | 'todo' | 'store';
 
@@ -20,8 +21,20 @@ interface HomePageProps {
   onOpenUnassigned: () => void;
 }
 
-export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned }: HomePageProps) {
+export function HomePage(props: HomePageProps) {
+  return (
+    <HomeDataProvider>
+      <HomePageInner {...props} />
+    </HomeDataProvider>
+  );
+}
+
+function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned }: HomePageProps) {
   const { user } = useAuth();
+  const { todo, store, owners: { isVisible, keyOf } } = useHomeData();
+  // Live open counts for the mobile toggle; chip choices come from user_home_layouts.todo_visibility.
+  const todoCount = todo.items.filter(i => !i.completed && isVisible(keyOf(i.user_id))).length;
+  const storeCount = store.items.filter(i => !i.completed).length;
   const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
   // Mobile: one widget at a time behind a segmented toggle; starts on Calendar
   // (the component remounts whenever Home is opened, so it always resets here).
@@ -68,7 +81,7 @@ export function HomePage({ onOpenCalendarSettings, unassignedCount, onOpenUnassi
           {cards.map(id => (
             <button key={id} role="tab" aria-selected={mobileTab === id} onClick={() => setMobileTab(id)}
               className={`h-8 rounded-full text-sm font-medium transition-colors ${mobileTab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-              {id === 'calendar' ? 'Calendar' : id === 'todo' ? 'To Do' : 'Store'}
+              {id === 'calendar' ? 'Calendar' : id === 'todo' ? `To Do${todoCount ? ` (${todoCount})` : ''}` : `Store${storeCount ? ` (${storeCount})` : ''}`}
             </button>
           ))}
         </div>
