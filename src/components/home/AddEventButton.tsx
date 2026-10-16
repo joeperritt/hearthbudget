@@ -69,7 +69,8 @@ export function AddEventDialog({ open, onOpenChange, calendars, date, event }: {
       setTitle(event.title); setLocation(event.location ?? ''); setNotes(event.description ?? '');
       setAllDay(event.allDay); setDay(event.start.slice(0, 10));
       setStart(event.allDay ? '09:00' : event.start.slice(11, 16));
-      setEnd(event.allDay ? '10:00' : (event.end && !event.end.slice(0, 10) > event.start.slice(0, 10) ? event.end.slice(11, 16) : plusHour(event.start.slice(11, 16) || '09:00')));
+      const sameDayEnd = event.end && event.end.slice(0, 10) === event.start.slice(0, 10) ? event.end.slice(11, 16) : null;
+      setEnd(event.allDay ? '10:00' : (sameDayEnd ?? plusHour(event.start.slice(11, 16) || '09:00')));
       setCalendarId(event.calendarId);
       return;
     }
