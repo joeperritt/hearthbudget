@@ -66,7 +66,7 @@ async function buildSummary(db: SupabaseClient, userId: string) {
   }
   events.sort((a, b) => (a.allDay === b.allDay ? a.start.localeCompare(b.start) : a.allDay ? -1 : 1));
   const shown = events.slice(0, 4).map(e => e.allDay ? e.title : `${e.title} ${fmtTime(e.start)}`);
-  const calLine = events.length ? `Today: ${shown.join(', ')}${events.length > 4 ? ` +${events.length - 4} more` : ''}` : 'Nothing on the calendar today';
+  const calLine = events.length ? `Today: ${shown.join(', ')}${events.length > 4 ? ` +${events.length - 4} more` : ''}` : 'Today: nothing on the calendar';
 
   // To dos
   const { data: todos } = await db.from('home_list_items').select('user_id, due_date').eq('household_id', prof.household_id).eq('list_type', 'todo').eq('completed', false).lte('due_date', today);
@@ -76,7 +76,7 @@ async function buildSummary(db: SupabaseClient, userId: string) {
     if (!(todoVis[key] ?? (key === 'family' || key === userId))) continue;
     if (t.due_date! < today) past++; else due++;
   }
-  const todoLine = past || due ? `To dos: ${[past && `${past} past due`, due && `${due} due today`].filter(Boolean).join(', ')}` : 'No to dos due';
+  const todoLine = past || due ? `To dos: ${[past && `${past} past due`, due && `${due} due today`].filter(Boolean).join(', ')}` : 'To dos: none due';
 
   // Budget (same exclusions as the app's unassigned count)
   const { data: hh } = await db.from('households').select('active_month').eq('id', prof.household_id).maybeSingle();
@@ -133,6 +133,8 @@ Deno.serve(async (req) => {
     for (const p of prefs ?? []) {
       if (String(p.morning_time).slice(0, 5) > now.time) continue;
       if (p.last_sent_date === now.date) continue;
+      // A missed summary is never sent after noon.
+      if (now.time >= '12:00') continue;
       // Claim today's send first so overlapping runs can't double send.
       const { data: claimed } = await admin.from('notification_prefs').update({ last_sent_date: now.date })
         .eq('user_id', p.user_id).or(`last_sent_date.is.null,last_sent_date.neq.${now.date}`).select('user_id');
