@@ -8,7 +8,7 @@ const TZ = 'America/New_York';
 const CACHE_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; text: string }>();
 
-interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string; eventId?: string; recurringEventId?: string | null }
+interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string; eventId?: string; recurringEventId?: string | null; description?: string | null }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -46,6 +46,10 @@ function parseDate(value: string, params: string): { local: string; allDay: bool
 
 function unescape(s: string) {
   return s.replace(/\\n/gi, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+}
+// Descriptions keep their line breaks.
+function unescapeDesc(s: string) {
+  return s.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
 }
 
 // Shift a local string by n days/months/years, preserving the time part.
@@ -94,6 +98,7 @@ function parseICS(text: string, calendar: string, calendarId: string, from: stri
     const end = de ? parseDate(de.value, de.params) : null;
     const title = unescape(b['SUMMARY']?.[0]?.value || '(No title)');
     const location = b['LOCATION']?.[0]?.value ? unescape(b['LOCATION'][0].value) : null;
+    const description = b['DESCRIPTION']?.[0]?.value ? unescapeDesc(b['DESCRIPTION'][0].value) : null;
     const uid = b['UID']?.[0]?.value || '';
     const durationDays = end && start.allDay
       ? Math.round((Date.parse(end.local) - Date.parse(start.local)) / 86400000) : 0;
@@ -105,7 +110,7 @@ function parseICS(text: string, calendar: string, calendarId: string, from: stri
       const endKey = (e && start.allDay) ? e : (e || s);
       if (endKey.slice(0, 10) < from && s.slice(0, 10) < from) return;
       if (s.slice(0, 10) > to) return;
-      out.push({ title, start: s, end: e, allDay: start.allDay, location, calendar, calendarId });
+      out.push({ title, start: s, end: e, allDay: start.allDay, location, calendar, calendarId, description });
     };
     const rrule = b['RRULE']?.[0]?.value;
     if (!rrule || b['RECURRENCE-ID']) {
@@ -210,7 +215,7 @@ Deno.serve(async (req) => {
         const endKey = e ?? s;
         if ((allDay ? endKey <= from : endKey.slice(0, 10) < from) && s.slice(0, 10) < from) continue;
         if (s.slice(0, 10) > to) continue;
-        all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id, eventId: it.id, recurringEventId: it.recurringEventId ?? null });
+        all.push({ title: it.summary || '(No title)', start: s, end: e, allDay, location: it.location ?? null, calendar: c.label, calendarId: c.id, eventId: it.id, recurringEventId: it.recurringEventId ?? null, description: it.description ?? null });
       }
     };
     await Promise.all(cals.map(async (c) => {
