@@ -50,6 +50,13 @@
       "when": 1792157398604,
       "tag": "0006_lock_app_config",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792161092109,
+      "tag": "0007_recurring_todos",
+      "breakpoints": true
     }
   ]
 }

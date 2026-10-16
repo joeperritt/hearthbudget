@@ -533,6 +533,7 @@ export type Database = {
       }
       home_list_items: {
         Row: {
+          auto_due_date: string | null
           completed: boolean
           completed_at: string | null
           created_at: string
@@ -543,10 +544,14 @@ export type Database = {
           id: string
           list_type: string
           notes: string | null
+          recurrence: Json | null
+          series_id: string | null
+          spawned_from: string | null
           text: string
           user_id: string | null
         }
         Insert: {
+          auto_due_date?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
@@ -557,10 +562,14 @@ export type Database = {
           id?: string
           list_type: string
           notes?: string | null
+          recurrence?: Json | null
+          series_id?: string | null
+          spawned_from?: string | null
           text: string
           user_id?: string | null
         }
         Update: {
+          auto_due_date?: string | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string
@@ -571,6 +580,9 @@ export type Database = {
           id?: string
           list_type?: string
           notes?: string | null
+          recurrence?: Json | null
+          series_id?: string | null
+          spawned_from?: string | null
           text?: string
           user_id?: string | null
         }
@@ -1353,6 +1365,7 @@ export type Database = {
         Args: { owner_key: string; visible: boolean }
         Returns: undefined
       }
+      todo_step: { Args: { _d: string; _rule: Json }; Returns: string }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
         Returns: Json

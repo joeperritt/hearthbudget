@@ -3,6 +3,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { HomeListItem, HomeListPatch } from '@/hooks/useHomeList';
 import { TodoOwner } from '@/hooks/useTodoOwners';
+import { Repeat } from 'lucide-react';
+import { DAY_NAMES, PRESETS, Recurrence, RepeatPreset, describeRecurrence, fromPreset, presetOf } from '@/lib/recurrence';
 
 interface Props {
   item: HomeListItem | null;
@@ -12,7 +14,7 @@ interface Props {
   onSave: (id: string, patch: HomeListPatch) => void;
   onDelete: (id: string) => void;
   /** When set and item.id === 'new', the sheet creates instead of edits. */
-  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null }) => void;
+  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null }) => void;
 }
 
 export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, onCreate }: Props) {
@@ -22,19 +24,30 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
   const [done, setDone] = useState(false);
+  const [preset, setPreset] = useState<RepeatPreset>('never');
+  const [from, setFrom] = useState<Recurrence['from']>('due');
+  const [days, setDays] = useState<number[]>([]);
+  const [customN, setCustomN] = useState(1);
+  const [customUnit, setCustomUnit] = useState<'day' | 'week' | 'month'>('week');
 
   useEffect(() => {
     if (!item) return;
     setText(item.text); setOwner(item.user_id ?? 'family');
     setDate(item.due_date ?? ''); setTime(item.due_time?.slice(0, 5) ?? '');
     setNotes(item.notes ?? ''); setDone(item.completed);
+    const r = item.recurrence ?? null;
+    setPreset(presetOf(r)); setFrom(r?.from ?? 'due'); setDays(r?.days ?? []);
+    setCustomN(r?.interval ?? 1); setCustomUnit(r && (r.unit === 'day' || r.unit === 'week' || r.unit === 'month') ? r.unit : 'week');
   }, [item]);
 
   const isNew = item?.id === 'new';
+  const dueDow = date ? new Date(date + 'T00:00:00').getDay() : 0;
+  const rule = date ? fromPreset(preset, from, preset === 'weekly' ? (days.length ? days : [dueDow]) : [], { n: customN, unit: customUnit }) : null;
+  const toggleDay = (d: number) => setDays(cur => { const base = cur.length ? cur : [dueDow]; const nx = base.includes(d) ? base.filter(x => x !== d) : [...base, d]; return nx.length ? nx : base; });
   const save = () => {
     if (!item || !text.trim()) return;
     if (isNew) {
-      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null });
+      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null, recurrence: rule });
       onClose();
       return;
     }
@@ -42,7 +55,7 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
     if (kind === 'todo') Object.assign(patch, {
       user_id: owner === 'family' ? null : owner,
       due_date: date || null, due_time: date && time ? time : null,
-      notes: notes.trim().slice(0, 2000) || null, completed: done,
+      notes: notes.trim().slice(0, 2000) || null, completed: done, recurrence: rule,
     });
     onSave(item.id, patch);
     onClose();
@@ -69,6 +82,47 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
                 <input aria-label="Due time" type="time" value={time} disabled={!date} onChange={e => setTime(e.target.value)} className="auth-input w-32" />
                 {(date || time) && <Button type="button" variant="ghost" size="sm" onClick={() => { setDate(''); setTime(''); }}>Clear</Button>}
               </div>
+              {date && (
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Repeat className="h-4 w-4 text-muted-foreground" />
+                    <select aria-label="Repeat" value={preset} onChange={e => setPreset(e.target.value as RepeatPreset)} className="auth-input flex-1">
+                      {PRESETS.map(p => <option key={p.id} value={p.id}>{p.id === 'never' ? 'Does not repeat' : p.label}</option>)}
+                    </select>
+                  </div>
+                  {preset === 'weekly' && (
+                    <div className="flex gap-1" aria-label="Repeat on days">
+                      {DAY_NAMES.map((n, d) => {
+                        const on = (days.length ? days : [dueDow]).includes(d);
+                        return <button key={d} type="button" aria-pressed={on} onClick={() => toggleDay(d)}
+                          className={`h-8 w-8 rounded-full text-xs font-medium border ${on ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'}`}>{n[0]}</button>;
+                      })}
+                    </div>
+                  )}
+                  {preset === 'custom' && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>Every</span>
+                      <input aria-label="Repeat every" type="number" min={1} max={365} value={customN} onChange={e => setCustomN(Number(e.target.value))} className="auth-input w-20" />
+                      <select aria-label="Repeat unit" value={customUnit} onChange={e => setCustomUnit(e.target.value as 'day' | 'week' | 'month')} className="auth-input flex-1">
+                        <option value="day">days</option><option value="week">weeks</option><option value="month">months</option>
+                      </select>
+                    </div>
+                  )}
+                  {preset !== 'never' && (
+                    <>
+                      <div className="flex gap-1.5" role="radiogroup" aria-label="Repeat from">
+                        {(['due', 'completion'] as const).map(f => (
+                          <Button key={f} type="button" size="sm" role="radio" aria-checked={from === f} variant={from === f ? 'secondary' : 'ghost'} onClick={() => setFrom(f)}
+                            className={`h-8 rounded-full px-3 text-xs border ${from === f ? 'border-primary/30' : 'border-border text-muted-foreground'}`}>
+                            From {f === 'due' ? 'due date' : 'completion date'}
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{describeRecurrence(rule, date)}</p>
+                    </>
+                  )}
+                </div>
+              )}
               <textarea aria-label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes" maxLength={2000} rows={3} className="auth-input min-h-[80px]" />
               {!isNew && <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={done} onChange={e => setDone(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--accent))]" /> Done
@@ -78,7 +132,7 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
           <Button onClick={save} disabled={!text.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Save</Button>
           {isNew
             ? <Button variant="ghost" onClick={onClose} className="w-full">Cancel</Button>
-            : <Button variant="ghost" onClick={() => { if (item) onDelete(item.id); onClose(); }} className="w-full text-destructive hover:text-destructive">Delete</Button>}
+            : <Button variant="ghost" onClick={() => { if (item) onDelete(item.id); }} className="w-full text-destructive hover:text-destructive">Delete</Button>}
         </div>
       </SheetContent>
     </Sheet>
