@@ -55,6 +55,7 @@ interface Props {
 
 export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
   const [editing, setEditing] = useState(false);
+  const [editSeries, setEditSeries] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [recurringChoice, setRecurringChoice] = useState<'edit' | 'delete' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,7 +93,8 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
   };
 
   const editable: EditableEvent = {
-    eventId: event.eventId!, calendarId: event.calendarId, title: event.title,
+    eventId: (editSeries && event.recurringEventId) ? event.recurringEventId : event.eventId!,
+    calendarId: event.calendarId, title: event.title,
     start: event.start, end: event.end, allDay: event.allDay, location: event.location, description: event.description,
   };
 
@@ -152,7 +154,7 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
             <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') setEditing(true); else setConfirmDelete(true); }}>
               This event
             </AlertDialogAction>
-            <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') { setEditing(true); } else { doDelete(true); } }}>
+            <AlertDialogAction onClick={() => { const c = recurringChoice; setRecurringChoice(null); if (c === 'edit') { setEditSeries(true); setEditing(true); } else { doDelete(true); } }}>
               All events
             </AlertDialogAction>
           </AlertDialogFooter>
