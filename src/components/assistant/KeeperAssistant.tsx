@@ -37,14 +37,16 @@ export function KeeperAssistant() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [cals, setCals] = useState<Cal[]>([]);
+  const [eventCtx, setEventCtx] = useState<{ calendar_id: string; event_id: string; title: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Other screens open the assistant via window event, optionally with a prefill.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill;
-      if (prefill) setText(prefill);
+      const d = (e as CustomEvent<{ prefill?: string; eventContext?: { calendar_id: string; event_id: string; title: string } }>).detail;
+      if (d?.prefill) setText(d.prefill);
+      setEventCtx(d?.eventContext ?? null);
       setOpen(true);
       setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 350);
     };
@@ -76,7 +78,7 @@ export function KeeperAssistant() {
     const next: Msg[] = [...msgs, { role: 'user', content }];
     setMsgs(next); setText(''); setBusy(true);
     const { data, error } = await supabase.functions.invoke('keeper-assistant', {
-      body: { messages: next.slice(-12).map(m => ({ role: m.role, content: m.content })) },
+      body: { messages: next.slice(-12).map(m => ({ role: m.role, content: m.content })), ...(eventCtx ? { event_context: eventCtx } : {}) },
     });
     setBusy(false);
     if (error || !data) { const t = await errorText(error); setMsgs(m => [...m, { role: 'assistant', content: `Sorry — ${t}` }]); return; }

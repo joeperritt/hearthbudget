@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AddEventDialog, AddEventMenu } from './AddEventButton';
+import { EventDetailsView } from './EventDetails';
 import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
 
-export interface CalEv { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
+export interface CalEv { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string; eventId?: string; recurringEventId?: string | null; description?: string | null }
 
 export const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const addDays = (s: string, n: number) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
@@ -44,6 +45,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
   const [events, setEvents] = useState<CalEv[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [detail, setDetail] = useState<CalEv | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     const bump = () => setRefreshKey(k => k + 1);
@@ -51,7 +53,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
     return () => window.removeEventListener('keeper-calendar-refresh', bump);
   }, []);
 
-  useEffect(() => { if (open) { setMonth(today.slice(0, 7)); setSelected(null); } }, [open, today]);
+  useEffect(() => { if (open) { setMonth(today.slice(0, 7)); setSelected(null); setDetail(null); } }, [open, today]);
 
   const days = useMemo(() => {
     const first = new Date(month + '-01T00:00:00');
@@ -81,12 +83,15 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
 
   const shiftMonth = (n: number) => {
     const d = new Date(month + '-01T00:00:00'); d.setMonth(d.getMonth() + n);
-    setMonth(ymd(d).slice(0, 7)); setSelected(null);
+    setMonth(ymd(d).slice(0, 7)); setSelected(null); setDetail(null);
   };
   const monthLabel = new Date(month + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const dot = (id: string) => calendarColor(id, calendars);
 
   const dayList = selected && (
+    detail ? (
+      <EventDetailsView event={detail} calendars={calendars} onBack={() => setDetail(null)} onClose={() => setDetail(null)} />
+    ) : (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="font-display text-base font-semibold text-foreground">
@@ -98,20 +103,23 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
       {forDay(selected).length ? (
         <ul className="space-y-2">
           {forDay(selected).map((e, i) => (
-            <li key={i} className="flex gap-3 text-sm">
-              <span className="w-14 shrink-0 text-xs text-muted-foreground pt-0.5">{timeText(e)}</span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-baseline gap-1.5">
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot(e.calendarId) }} />
-                  <span className="text-foreground break-words">{e.title}</span>
+            <li key={i}>
+              <button type="button" onClick={() => setDetail(e)} className="flex gap-3 text-sm w-full text-left rounded-lg px-1 -mx-1 py-0.5 hover:bg-muted/50">
+                <span className="w-14 shrink-0 text-xs text-muted-foreground pt-0.5">{timeText(e)}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot(e.calendarId) }} />
+                    <span className="text-foreground break-words">{e.title}</span>
+                  </span>
+                  {e.location && <span className="block text-xs text-muted-foreground truncate">{e.location}</span>}
                 </span>
-                {e.location && <span className="block text-xs text-muted-foreground truncate">{e.location}</span>}
-              </span>
+              </button>
             </li>
           ))}
         </ul>
       ) : <p className="text-xs text-muted-foreground">No events.</p>}
     </div>
+    )
   );
 
   return (
@@ -154,7 +162,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
                 const list = forDay(d);
                 const inMonth = d.slice(0, 7) === month;
                 return (
-                  <button key={d} type="button" onClick={() => setSelected(d)} aria-label={d}
+                  <button key={d} type="button" onClick={() => { setSelected(d); setDetail(null); }} aria-label={d}
                     className={`min-h-0 overflow-hidden border-b border-r border-border p-0.5 sm:p-1 text-left flex flex-col gap-0.5 hover:bg-muted/40 ${inMonth ? '' : 'bg-muted/20'} ${selected === d ? 'ring-2 ring-inset ring-accent' : ''}`}>
                     <span className={`self-center sm:self-start text-[11px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${d === today ? 'bg-primary text-primary-foreground font-semibold' : inMonth ? 'text-foreground' : 'text-muted-foreground/60'}`}>
                       {Number(d.slice(8))}

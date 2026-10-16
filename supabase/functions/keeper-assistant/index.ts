@@ -9,6 +9,8 @@ const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { sta
 
 const Body = z.object({
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(4000) })).min(1).max(30),
+  // Hidden context when the user tapped "Tell AI" on a specific event.
+  event_context: z.object({ calendar_id: z.string().uuid(), event_id: z.string().max(1024), title: z.string().max(200) }).optional(),
 });
 
 const tools = [{
@@ -139,7 +141,9 @@ Rules:
 - For recurring events change only the single occurrence mentioned (use event_id) unless the user says "every" or "all" (then use recurring_event_id).
 - If a date or time is ambiguous or missing for a timed event, ask one quick follow-up question instead of guessing.
 - After any action, reply with ONE short line (e.g. "Added milk and eggs to Grocery." or "Here's the event — tap Confirm to add it.").
-- For anything outside lists and calendar, answer briefly and take no actions. Plain text, no markdown.`;
+- For anything outside lists and calendar, answer briefly and take no actions. Plain text, no markdown.${parsed.data.event_context ? `
+
+The user is editing one specific event: "${parsed.data.event_context.title}" (calendar_id ${parsed.data.event_context.calendar_id}, event_id ${parsed.data.event_context.event_id}). Do NOT call find_events — target this exact event. Restate the change in one line, then call propose_update_event (or propose_delete_event if they ask to remove it) with this calendar_id and event_id so the confirmation card appears. Never create a new event.` : ''}`;
 
     // deno-lint-ignore no-explicit-any
     const contents: any[] = parsed.data.messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));

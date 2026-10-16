@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { useHomeCalendars } from '@/hooks/useHomeCalendars';
 import { calendarColor } from '@/lib/homeCalendars';
 import { AddEventDialog, AddEventMenu } from './AddEventButton';
-import { CalendarMonthDialog, addDays, ymd } from './CalendarMonthDialog';
+import { CalendarMonthDialog, addDays, ymd, type CalEv } from './CalendarMonthDialog';
+import { EventDetailsDialog } from './EventDetails';
 
 const DEFAULT_DAYS = 7;
 
-interface Ev { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
+type Ev = CalEv;
 
 function dayLabel(dateStr: string, today: string) {
   if (dateStr === today) return 'Today';
@@ -33,6 +34,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [monthOpen, setMonthOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [detail, setDetail] = useState<Ev | null>(null);
   const { calendars, loading, failed: preferencesFailed, saving, toggle, isVisible } = useHomeCalendars();
 
   const calendarSignature = JSON.stringify(calendars);
@@ -82,12 +84,13 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
       calendars={calendars} isVisible={isVisible} toggle={toggle} saving={saving} />
   );
   const addDialog = <AddEventDialog open={adding} onOpenChange={setAdding} calendars={calendars} />;
+  const detailsDialog = <EventDetailsDialog event={detail} calendars={calendars} onClose={() => setDetail(null)} />;
 
   if (failed || preferencesFailed) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
   }
   if (!state || loading) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
   }
   if (state.calendars === 0) {
     return (
@@ -119,7 +122,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   return (
     <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       {header}
-      {monthDialog}{addDialog}
+      {monthDialog}{addDialog}{detailsDialog}
       {!todays.length && <p className="text-xs text-muted-foreground mb-2">Nothing on the calendar today.</p>}
       <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {groups.map(g => (
@@ -127,14 +130,16 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{dayLabel(g.day, today)}</p>
             <ul className="space-y-1.5">
               {g.events.map((e, i) => (
-                <li key={i} className="flex gap-3 text-sm">
-                  <span className="w-14 shrink-0 text-muted-foreground text-xs pt-0.5">{timeLabel(e)}</span>
-                  <span className="flex-1 min-w-0">
-                    <span className="inline-flex items-baseline gap-1.5">
-                      <span title={e.calendar} aria-label={`${e.calendar} calendar`} className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: calendarColor(e.calendarId, calendars) }} />
-                      <span className="text-foreground break-words">{e.title}</span>
+                <li key={i}>
+                  <button type="button" onClick={() => setDetail(e)} className="flex gap-3 text-sm w-full text-left rounded-lg px-1 -mx-1 py-0.5 hover:bg-muted/50">
+                    <span className="w-14 shrink-0 text-muted-foreground text-xs pt-0.5">{timeLabel(e)}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="inline-flex items-baseline gap-1.5">
+                        <span title={e.calendar} aria-label={`${e.calendar} calendar`} className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: calendarColor(e.calendarId, calendars) }} />
+                        <span className="text-foreground break-words">{e.title}</span>
+                      </span>
                     </span>
-                  </span>
+                  </button>
                 </li>
               ))}
             </ul>

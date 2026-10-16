@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
 
-/** Open the Keeper assistant from anywhere, optionally prefilled. */
-export function openAssistant(prefill?: string) {
-  window.dispatchEvent(new CustomEvent('keeper-open-assistant', { detail: { prefill } }));
+export interface AssistantEventContext { calendar_id: string; event_id: string; title: string }
+
+/** Open the Keeper assistant from anywhere, optionally prefilled with hidden event context. */
+export function openAssistant(prefill?: string, eventContext?: AssistantEventContext) {
+  window.dispatchEvent(new CustomEvent('keeper-open-assistant', { detail: { prefill, eventContext } }));
 }
 
 const localDate = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -38,7 +40,18 @@ export function AddEventMenu({ calendars, date, onManual, trigger, aiPrefill, la
   );
 }
 
-export function AddEventDialog({ open, onOpenChange, calendars, date }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null }) {
+export interface EditableEvent {
+  eventId: string;
+  calendarId: string;
+  title: string;
+  start: string;
+  end: string | null;
+  allDay: boolean;
+  location: string | null;
+  description?: string | null;
+}
+
+export function AddEventDialog({ open, onOpenChange, calendars, date, event, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null; event?: EditableEvent | null; onSaved?: () => void }) {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [calendarId, setCalendarId] = useState('');
@@ -52,34 +65,61 @@ export function AddEventDialog({ open, onOpenChange, calendars, date }: { open: 
 
   useEffect(() => {
     if (!open) return;
+    if (event) {
+      setTitle(event.title); setLocation(event.location ?? ''); setNotes(event.description ?? '');
+      setAllDay(event.allDay); setDay(event.start.slice(0, 10));
+      setStart(event.allDay ? '09:00' : event.start.slice(11, 16));
+      const sameDayEnd = event.end && event.end.slice(0, 10) === event.start.slice(0, 10) ? event.end.slice(11, 16) : null;
+      setEnd(event.allDay ? '10:00' : (sameDayEnd ?? plusHour(event.start.slice(11, 16) || '09:00')));
+      setCalendarId(event.calendarId);
+      return;
+    }
     setTitle(''); setLocation(''); setNotes(''); setAllDay(false); setStart('09:00'); setEnd('10:00');
     setDay(date ?? localDate());
     setCalendarId((calendars.find(c => c.owner_user_id === user?.id) ?? calendars.find(c => !c.owner_user_id) ?? calendars[0])?.id ?? '');
-  }, [open, date, calendars, user?.id]);
+  }, [open, date, calendars, user?.id, event]);
+
+  const fail = async (error: unknown, data: { error?: string } | null, verb: string) => {
+    let msg = 'Something went wrong.';
+    if (error instanceof FunctionsHttpError) { try { msg = (await error.context.json()).error ?? msg; } catch { /* keep */ } }
+    else if (data?.error) msg = data.error;
+    toast.error(`Couldn't ${verb} the event: ${msg}`);
+  };
 
   const save = async () => {
     if (!title.trim() || !calendarId || !day) return;
     if (!allDay && end <= start) { toast.error('End time must be after the start time.'); return; }
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke('create-calendar-event', {
-      body: { calendar_id: calendarId, title: title.trim(), start: allDay ? day : `${day}T${start}`, end: allDay ? day : `${day}T${end}`, all_day: allDay, location: location.trim() || null, notes: notes.trim() || null },
-    });
-    setSaving(false);
-    if (error || !data?.ok) {
-      let msg = 'Something went wrong.';
-      if (error instanceof FunctionsHttpError) { try { msg = (await error.context.json()).error ?? msg; } catch { /* keep */ } }
-      toast.error(`Couldn't add the event: ${msg}`);
-      return;
+    const payload = { title: title.trim(), start: allDay ? day : `${day}T${start}`, end: allDay ? day : `${day}T${end}`, all_day: allDay, location: location.trim() || null, notes: notes.trim() || null };
+    if (event) {
+      if (calendarId !== event.calendarId) {
+        // Move: create on the new calendar, then delete from the old one.
+        const { data: cData, error: cErr } = await supabase.functions.invoke('create-calendar-event', { body: { calendar_id: calendarId, ...payload } });
+        if (cErr || !cData?.ok) { setSaving(false); await fail(cErr, cData, 'move'); return; }
+        await supabase.functions.invoke('modify-calendar-event', { body: { action: 'delete', calendar_id: event.calendarId, event_id: event.eventId } });
+        toast.success(`Moved "${payload.title}" to ${cData.calendar}.`);
+      } else {
+        const { data, error } = await supabase.functions.invoke('modify-calendar-event', {
+          body: { action: 'update', calendar_id: calendarId, event_id: event.eventId, changes: payload },
+        });
+        if (error || !data?.ok) { setSaving(false); await fail(error, data, 'save'); return; }
+        toast.success(`Updated "${payload.title}".`);
+      }
+    } else {
+      const { data, error } = await supabase.functions.invoke('create-calendar-event', { body: { calendar_id: calendarId, ...payload } });
+      if (error || !data?.ok) { setSaving(false); await fail(error, data, 'add'); return; }
+      toast.success(`Added "${payload.title}" to ${data.calendar}.`);
     }
-    toast.success(`Added "${title.trim()}" to ${data.calendar}.`);
+    setSaving(false);
     window.dispatchEvent(new Event('keeper-calendar-refresh'));
     onOpenChange(false);
+    onSaved?.();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-display">New event</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-display">{event ? 'Edit event' : 'New event'}</DialogTitle></DialogHeader>
         <form className="space-y-3" onSubmit={e => { e.preventDefault(); save(); }}>
           <input aria-label="Title" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="auth-input text-base sm:text-sm" maxLength={200} autoFocus />
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Calendar">
