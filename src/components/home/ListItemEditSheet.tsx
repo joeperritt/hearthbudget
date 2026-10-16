@@ -11,9 +11,11 @@ interface Props {
   onClose: () => void;
   onSave: (id: string, patch: HomeListPatch) => void;
   onDelete: (id: string) => void;
+  /** When set and item.id === 'new', the sheet creates instead of edits. */
+  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null }) => void;
 }
 
-export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete }: Props) {
+export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, onCreate }: Props) {
   const [text, setText] = useState('');
   const [owner, setOwner] = useState('family');
   const [date, setDate] = useState('');
@@ -28,8 +30,14 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
     setNotes(item.notes ?? ''); setDone(item.completed);
   }, [item]);
 
+  const isNew = item?.id === 'new';
   const save = () => {
     if (!item || !text.trim()) return;
+    if (isNew) {
+      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null });
+      onClose();
+      return;
+    }
     const patch: HomeListPatch = { text };
     if (kind === 'todo') Object.assign(patch, {
       user_id: owner === 'family' ? null : owner,
@@ -43,9 +51,9 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
   return (
     <Sheet open={!!item} onOpenChange={o => { if (!o) onClose(); }}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto lg:max-w-lg lg:mx-auto">
-        <SheetHeader><SheetTitle className="font-display">{kind === 'todo' ? 'Edit to do' : 'Edit item'}</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle className="font-display">{isNew ? 'New to do' : kind === 'todo' ? 'Edit to do' : 'Edit item'}</SheetTitle></SheetHeader>
         <div className="mt-4 space-y-3">
-          <input aria-label="Text" value={text} onChange={e => setText(e.target.value)} maxLength={300} className="auth-input" />
+          <input aria-label="Text" placeholder={isNew ? "To do" : undefined} autoFocus={isNew} value={text} onChange={e => setText(e.target.value)} maxLength={300} className="auth-input" />
           {kind === 'todo' && (
             <>
               <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Owner">
@@ -62,13 +70,15 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
                 {(date || time) && <Button type="button" variant="ghost" size="sm" onClick={() => { setDate(''); setTime(''); }}>Clear</Button>}
               </div>
               <textarea aria-label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes" maxLength={2000} rows={3} className="auth-input min-h-[80px]" />
-              <label className="flex items-center gap-2 text-sm text-foreground">
+              {!isNew && <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={done} onChange={e => setDone(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--accent))]" /> Done
-              </label>
+              </label>}
             </>
           )}
           <Button onClick={save} disabled={!text.trim()} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Save</Button>
-          <Button variant="ghost" onClick={() => { if (item) onDelete(item.id); onClose(); }} className="w-full text-destructive hover:text-destructive">Delete</Button>
+          {isNew
+            ? <Button variant="ghost" onClick={onClose} className="w-full">Cancel</Button>
+            : <Button variant="ghost" onClick={() => { if (item) onDelete(item.id); onClose(); }} className="w-full text-destructive hover:text-destructive">Delete</Button>}
         </div>
       </SheetContent>
     </Sheet>
