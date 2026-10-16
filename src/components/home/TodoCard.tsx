@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useHomeList, HomeListItem } from '@/hooks/useHomeList';
-import { useTodoOwners } from '@/hooks/useTodoOwners';
+import { HomeListItem } from '@/hooks/useHomeList';
+import { useHomeData } from './HomeDataContext';
 import { ListItemEditSheet } from './ListItemEditSheet';
 import { ListRow } from './HomeListCard';
 import { AddEventMenu } from './AddEventButton';
@@ -21,8 +21,7 @@ const byDue = (a: HomeListItem, b: HomeListItem) => (a.due_date! + (a.due_time ?
 
 export function TodoCard() {
   const { user } = useAuth();
-  const { items, loading, add, update, toggle, remove, clearCompleted } = useHomeList('todo');
-  const { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } = useTodoOwners();
+  const { todo: { items, loading, add, update, toggle, remove, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } } = useHomeData();
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<HomeListItem | null>(null);
 
