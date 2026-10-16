@@ -1,5 +1,5 @@
 import { useRef, useState, KeyboardEvent, TouchEvent, ReactNode } from 'react';
-import { Check, X, Plus } from 'lucide-react';
+import { Check, X, Plus, Repeat } from 'lucide-react';
 import { HomeListItem } from '@/hooks/useHomeList';
 import { ListItemEditSheet } from './ListItemEditSheet';
 import { useHomeData } from './HomeDataContext';
@@ -29,7 +29,7 @@ export function HomeListCard() {
             ))}
           </ul>
         )}
-      <ListItemEditSheet item={editing} kind="store" onClose={() => setEditing(null)} onSave={update} onDelete={remove} />
+      <ListItemEditSheet item={editing} kind="store" onClose={() => setEditing(null)} onSave={update} onDelete={id => { remove(id); setEditing(null); }} />
     </section>
   );
 }
