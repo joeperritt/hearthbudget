@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { Recurrence } from '@/lib/recurrence';
 
 export type HomeListType = 'todo' | 'store';
 
@@ -16,9 +17,11 @@ export interface HomeListItem {
   due_date: string | null;
   due_time: string | null;
   notes: string | null;
+  recurrence: Recurrence | null;
+  series_id: string | null;
 }
 
-export type HomeListPatch = Partial<Pick<HomeListItem, 'text' | 'user_id' | 'due_date' | 'due_time' | 'notes' | 'completed'>>;
+export type HomeListPatch = Partial<Pick<HomeListItem, 'text' | 'user_id' | 'due_date' | 'due_time' | 'notes' | 'completed' | 'recurrence'>>;
 
 /** Household list with realtime sync. RLS scopes rows to the household. */
 export function useHomeList(listType: HomeListType) {
@@ -31,11 +34,11 @@ export function useHomeList(listType: HomeListType) {
     if (!householdId) return;
     const { data } = await supabase
       .from('home_list_items')
-      .select('id, text, completed, created_at, completed_at, user_id, due_date, due_time, notes')
+      .select('id, text, completed, created_at, completed_at, user_id, due_date, due_time, notes, recurrence, series_id')
       .eq('household_id', householdId)
       .eq('list_type', listType)
       .order('created_at', { ascending: false });
-    setItems((data as HomeListItem[]) || []);
+    setItems((data as unknown as HomeListItem[]) || []);
     setLoading(false);
   }, [householdId, listType]);
 
@@ -50,16 +53,17 @@ export function useHomeList(listType: HomeListType) {
     return () => { supabase.removeChannel(ch); window.removeEventListener('perritt-resume', load); };
   }, [householdId, listType, load]);
 
-  const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null } = {}) => {
+  const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null; recurrence?: Recurrence | null } = {}) => {
     const t = text.trim().slice(0, 300);
     if (!t || !householdId || !user) return;
     const owner = listType === 'todo' ? (opts.owner === undefined ? user.id : opts.owner) : null;
     const tempId = `temp-${Date.now()}`;
-    setItems(prev => [{ id: tempId, text: t, completed: false, created_at: new Date().toISOString(), completed_at: null, user_id: owner, due_date: opts.due_date ?? null, due_time: opts.due_time ?? null, notes: opts.notes ?? null }, ...prev]);
+    setItems(prev => [{ id: tempId, text: t, completed: false, created_at: new Date().toISOString(), completed_at: null, user_id: owner, due_date: opts.due_date ?? null, due_time: opts.due_time ?? null, notes: opts.notes ?? null, recurrence: opts.recurrence ?? null, series_id: null }, ...prev]);
     const { error } = await supabase.from('home_list_items').insert({
       household_id: householdId, list_type: listType, user_id: owner, text: t, created_by: user.id,
       due_date: opts.due_date ?? null, due_time: opts.due_date ? opts.due_time ?? null : null,
       notes: opts.notes?.trim().slice(0, 2000) || null,
+      recurrence: (opts.due_date && opts.recurrence) ? (opts.recurrence as never) : null,
     });
     if (error) toast.error("Couldn't add that. Please try again.");
     load();
@@ -68,10 +72,10 @@ export function useHomeList(listType: HomeListType) {
   const update = async (id: string, patch: HomeListPatch) => {
     const full: HomeListPatch & { completed_at?: string | null } = { ...patch };
     if ('completed' in patch) full.completed_at = patch.completed ? new Date().toISOString() : null;
-    if (patch.due_date === null) full.due_time = null;
+    if (patch.due_date === null) { full.due_time = null; full.recurrence = null; }
     if (typeof patch.text === 'string') full.text = patch.text.trim().slice(0, 300);
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...full } as HomeListItem : i));
-    const { error } = await supabase.from('home_list_items').update(full).eq('id', id);
+    const { error } = await supabase.from('home_list_items').update(full as never).eq('id', id);
     if (error) { toast.error("Couldn't save that change."); load(); }
   };
 
@@ -82,6 +86,14 @@ export function useHomeList(listType: HomeListType) {
     await supabase.from('home_list_items').delete().eq('id', id);
   };
 
+  /** Recurring: "delete this one" completes it (the database creates the next) and then removes it. */
+  const skipOccurrence = async (item: HomeListItem) => {
+    setItems(prev => prev.filter(i => i.id !== item.id));
+    if (!item.completed) await supabase.from('home_list_items').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', item.id);
+    await supabase.from('home_list_items').delete().eq('id', item.id);
+    load();
+  };
+
   const clearCompleted = async () => {
     const ids = items.filter(i => i.completed).map(i => i.id);
     if (!ids.length) return;
@@ -89,5 +101,5 @@ export function useHomeList(listType: HomeListType) {
     await supabase.from('home_list_items').delete().in('id', ids);
   };
 
-  return { items, loading, add, update, toggle, remove, clearCompleted };
+  return { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted };
 }
