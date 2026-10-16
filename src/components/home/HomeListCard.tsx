@@ -1,11 +1,12 @@
 import { useRef, useState, KeyboardEvent, TouchEvent, ReactNode } from 'react';
 import { Check, X, Plus } from 'lucide-react';
-import { useHomeList, HomeListItem } from '@/hooks/useHomeList';
+import { HomeListItem } from '@/hooks/useHomeList';
 import { ListItemEditSheet } from './ListItemEditSheet';
+import { useHomeData } from './HomeDataContext';
 
 /** Store List: shared household list. */
 export function HomeListCard() {
-  const { items, loading, add, update, toggle, remove, clearCompleted } = useHomeList('store');
+  const { store: { items, loading, add, update, toggle, remove, clearCompleted } } = useHomeData();
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<HomeListItem | null>(null);
   const open = items.filter(i => !i.completed);
