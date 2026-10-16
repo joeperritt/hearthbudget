@@ -112,6 +112,8 @@ const Index = () => {
   }, [householdId, resumeTick]);
 
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  // Increments whenever Home is tapped so HomePage remounts and mobile starts on Calendar.
+  const [homeResetKey, setHomeResetKey] = useState(0);
   const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
 
   // Allow other components (e.g. Dashboard reconnect banner) to navigate to
@@ -284,6 +286,8 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
+    // Re-tapping Home always opens it back on the Calendar view on mobile.
+    if (tab === 'home') setHomeResetKey(k => k + 1);
     if (tab === 'profile') setProfileSubView('menu');
     if (tab === 'budget') setBudgetSubView('main');
   };
@@ -391,9 +395,9 @@ const Index = () => {
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
-        {(activeTab === 'home' || activeTab === 'lists') && (
+        {activeTab === 'home' && (
           <HomePage
-            mode={activeTab === 'lists' ? 'lists' : 'home'}
+            key={homeResetKey}
             onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
             unassignedCount={unassignedTransactions.length}
             onOpenUnassigned={() => {
