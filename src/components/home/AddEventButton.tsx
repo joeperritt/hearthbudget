@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Plus, PenLine, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -22,11 +22,11 @@ export function dayPrefix(date: string) {
   return `On ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}: `;
 }
 
-export function AddEventMenu({ calendars, date, onManual }: { calendars: HomeCalendar[]; date?: string | null; onManual: () => void }) {
+export function AddEventMenu({ calendars, date, onManual, trigger }: { calendars: HomeCalendar[]; date?: string | null; onManual: () => void; trigger?: ReactNode }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Add event"><Plus size={18} /></Button>
+        {trigger ?? <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Add event"><Plus size={18} /></Button>}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onManual}><PenLine size={14} className="mr-2" /> Add manually</DropdownMenuItem>

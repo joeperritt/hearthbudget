@@ -56,7 +56,7 @@ export function TodoCard() {
   );
 
   return (
-    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       <div className="mb-3 space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-foreground">To Do</h2>
@@ -86,7 +86,7 @@ export function TodoCard() {
         {due && <button onClick={() => setDue('')} className="ml-auto text-muted-foreground">Due {fmtDate(due)} ✕</button>}
       </div>
       {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p> : (
-        <div className="space-y-3 md:max-h-96 md:overflow-y-auto md:pr-1">
+        <div className="space-y-3 md:max-h-96 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
           {groups.map(g => (
             <div key={g.label}>
               <p className={`text-[11px] font-semibold uppercase tracking-wide mb-0.5 ${g.danger ? 'text-destructive' : 'text-muted-foreground'}`}>{g.label}</p>

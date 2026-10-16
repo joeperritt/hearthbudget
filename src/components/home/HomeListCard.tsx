@@ -13,7 +13,7 @@ export function HomeListCard() {
   const submit = () => { add(draft); setDraft(''); };
 
   return (
-    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display text-lg font-semibold text-foreground">Store List</h2>
         {done.length > 0 && <button onClick={clearCompleted} className="text-xs text-muted-foreground active:text-foreground">Clear completed</button>}
@@ -22,7 +22,7 @@ export function HomeListCard() {
       {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p>
         : items.length === 0 ? <p className="text-xs text-muted-foreground py-2">Nothing here yet.</p>
         : (
-          <ul className="divide-y divide-border md:max-h-96 md:overflow-y-auto md:pr-1">
+          <ul className="divide-y divide-border md:max-h-96 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
             {[...open, ...done].map(item => (
               <ListRow key={item.id} item={item} onToggle={() => toggle(item)} onDelete={() => remove(item.id)} onEdit={() => setEditing(item)} />
             ))}

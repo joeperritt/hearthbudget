@@ -38,6 +38,19 @@ export function KeeperAssistant() {
   const [listening, setListening] = useState(false);
   const [cals, setCals] = useState<Cal[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Other screens open the assistant via window event, optionally with a prefill.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill;
+      if (prefill) setText(prefill);
+      setOpen(true);
+      setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 350);
+    };
+    window.addEventListener('keeper-open-assistant', onOpen);
+    return () => window.removeEventListener('keeper-open-assistant', onOpen);
+  }, []);
   const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
 
   // Track the visual viewport so the sheet sits above the iOS keyboard.
@@ -167,7 +180,7 @@ export function KeeperAssistant() {
             <div ref={endRef} />
           </div>
           <form onSubmit={e => { e.preventDefault(); send(); }} className={`border-t border-border p-3 flex items-center gap-2 ${keyboardOpen ? '' : 'safe-bottom'}`}>
-            <input aria-label="Message Keeper" value={text} onChange={e => setText(e.target.value)} onFocus={() => setTimeout(() => endRef.current?.scrollIntoView({ block: 'end' }), 300)} placeholder={listening ? 'Listening…' : 'Ask Keeper…'} className="auth-input flex-1 text-base sm:text-sm" maxLength={2000} />
+            <input ref={inputRef} aria-label="Message Keeper" value={text} onChange={e => setText(e.target.value)} onFocus={() => setTimeout(() => endRef.current?.scrollIntoView({ block: 'end' }), 300)} placeholder={listening ? 'Listening…' : 'Ask Keeper…'} className="auth-input flex-1 text-base sm:text-sm" maxLength={2000} />
             {SpeechRec && (
               <Button type="button" size="icon" variant={listening ? 'secondary' : 'ghost'} onClick={listen} aria-label="Speak" disabled={busy}><Mic size={18} className={listening ? 'text-destructive' : ''} /></Button>
             )}
