@@ -22,6 +22,7 @@ import { InsightsSection } from '@/components/keeper/InsightsSection';
 import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
 import { BankConnectionView } from '@/components/keeper/BankConnectionView';
 import { SecurityView } from '@/components/keeper/SecurityView';
+import { NotificationsView } from '@/components/keeper/NotificationsView';
 import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
 import { BudgetTabView } from '@/components/keeper/BudgetTabView';
 import { HomePage } from '@/components/home/HomePage';
@@ -30,7 +31,7 @@ import { CalendarSettingsView } from '@/components/home/CalendarSettingsView';
 import { BudgetSubNav } from '@/components/keeper/BudgetSubNav';
 
 
-type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars';
+type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars' | 'notifications';
 
 const Index = () => {
   const {
@@ -571,6 +572,9 @@ const Index = () => {
         )}
         {activeTab === 'profile' && profileSubView === 'calendars' && (
           <CalendarSettingsView onBack={() => setProfileSubView('menu')} />
+        )}
+        {activeTab === 'profile' && profileSubView === 'notifications' && (
+          <NotificationsView onBack={() => setProfileSubView('menu')} />
         )}
         {activeTab === 'profile' && profileSubView === 'security' && (
           <SecurityView onBack={() => setProfileSubView('menu')} />
