@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { AddEventDialog, AddEventMenu } from './AddEventButton';
 import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
 
 export interface CalEv { title: string; start: string; end: string | null; allDay: boolean; location: string | null; calendar: string; calendarId: string }
@@ -42,6 +43,13 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
   const [selected, setSelected] = useState<string | null>(null);
   const [events, setEvents] = useState<CalEv[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const bump = () => setRefreshKey(k => k + 1);
+    window.addEventListener('keeper-calendar-refresh', bump);
+    return () => window.removeEventListener('keeper-calendar-refresh', bump);
+  }, []);
 
   useEffect(() => { if (open) { setMonth(today.slice(0, 7)); setSelected(null); } }, [open, today]);
 
@@ -65,7 +73,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
       setEvents(data.events ?? []);
     });
     return () => { alive = false; };
-  }, [open, days]);
+  }, [open, days, refreshKey]);
 
   const visibleIds = new Set(calendars.filter(isVisible).map(c => c.id));
   const shown = (events ?? []).filter(e => visibleIds.has(e.calendarId));
@@ -80,9 +88,13 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
 
   const dayList = selected && (
     <div className="space-y-2">
-      <p className="font-display text-base font-semibold text-foreground">
-        {new Date(selected + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-display text-base font-semibold text-foreground">
+          {new Date(selected + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+        <AddEventMenu calendars={calendars} date={selected} onManual={() => setAdding(true)}
+          trigger={<Button variant="link" size="sm" className="h-auto p-0 text-xs text-accent">+ Add</Button>} />
+      </div>
       {forDay(selected).length ? (
         <ul className="space-y-2">
           {forDay(selected).map((e, i) => (
@@ -111,6 +123,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Next month" onClick={() => shiftMonth(1)}><ChevronRight size={18} /></Button>
           <h2 className="font-display text-lg font-semibold text-foreground flex-1">{monthLabel}</h2>
           <Button variant="outline" size="sm" className="h-8" onClick={() => { setMonth(today.slice(0, 7)); setSelected(today); }}>Today</Button>
+          <AddEventMenu calendars={calendars} date={selected} onManual={() => setAdding(true)} />
         </div>
         <div className="flex flex-wrap gap-1.5">
           {calendars.map(c => (
@@ -166,6 +179,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
           </div>
           {selected && <aside className="hidden sm:block w-72 shrink-0 overflow-y-auto">{dayList}</aside>}
         </div>
+        <AddEventDialog open={adding} onOpenChange={setAdding} calendars={calendars} date={selected} />
       </DialogContent>
     </Dialog>
   );

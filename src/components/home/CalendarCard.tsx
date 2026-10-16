@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useHomeCalendars } from '@/hooks/useHomeCalendars';
 import { calendarColor } from '@/lib/homeCalendars';
+import { AddEventDialog, AddEventMenu } from './AddEventButton';
 import { CalendarMonthDialog, addDays, ymd } from './CalendarMonthDialog';
 
 const DEFAULT_DAYS = 7;
@@ -31,6 +32,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   const [failed, setFailed] = useState(false);
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [monthOpen, setMonthOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const { calendars, loading, failed: preferencesFailed, saving, toggle, isVisible } = useHomeCalendars();
 
   const calendarSignature = JSON.stringify(calendars);
@@ -59,6 +61,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
       <CalendarDays size={18} className="text-accent" />
       <h2 className="font-display text-lg font-semibold text-foreground flex-1">Calendar</h2>
       <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open month view" onClick={() => setMonthOpen(true)}><CalendarRange size={18} /></Button>
+      <AddEventMenu calendars={calendars} onManual={() => setAdding(true)} />
       </div>
       <div className="flex flex-wrap gap-1.5">
         {calendars.map(calendar => (
@@ -78,12 +81,13 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
     <CalendarMonthDialog open={monthOpen} onOpenChange={setMonthOpen} today={state?.today ?? ymd(new Date())}
       calendars={calendars} isVisible={isVisible} toggle={toggle} saving={saving} />
   );
+  const addDialog = <AddEventDialog open={adding} onOpenChange={setAdding} calendars={calendars} />;
 
   if (failed || preferencesFailed) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
   }
   if (!state || loading) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
   }
   if (state.calendars === 0) {
     return (
@@ -113,11 +117,11 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
   }
 
   return (
-    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
       {header}
-      {monthDialog}
+      {monthDialog}{addDialog}
       {!todays.length && <p className="text-xs text-muted-foreground mb-2">Nothing on the calendar today.</p>}
-      <div className="space-y-3 md:max-h-80 md:overflow-y-auto md:pr-1">
+      <div className="space-y-3 md:max-h-80 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
         {groups.map(g => (
           <div key={g.day}>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{dayLabel(g.day, today)}</p>
