@@ -19,7 +19,7 @@ function AuthGate() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-primary-foreground font-display text-lg font-bold">K</span>
+          <span className="text-primary-foreground font-display text-lg font-bold">P</span>
         </div>
       </div>
     );

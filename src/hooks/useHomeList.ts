@@ -46,7 +46,8 @@ export function useHomeList(listType: HomeListType) {
       .channel(`home-list-${listType}-${householdId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'home_list_items', filter: `household_id=eq.${householdId}` }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    window.addEventListener('perritt-resume', load);
+    return () => { supabase.removeChannel(ch); window.removeEventListener('perritt-resume', load); };
   }, [householdId, listType, load]);
 
   const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null } = {}) => {

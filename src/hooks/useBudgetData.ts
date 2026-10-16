@@ -390,6 +390,18 @@ export function useBudgetData() {
     }
   }, [householdId, activeMonth, loading, categories, fixedExpenses, buildSnapshotData, promoteOverridesForMonth]);
 
+  // Refetch transactions when the app returns to the foreground.
+  useEffect(() => {
+    if (!householdId) return;
+    const onResume = () => {
+      supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }).then(({ data }) => {
+        if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
+      });
+    };
+    window.addEventListener('perritt-resume', onResume);
+    return () => window.removeEventListener('perritt-resume', onResume);
+  }, [householdId]);
+
   // Real-time subscriptions
   useEffect(() => {
     if (!householdId) return;

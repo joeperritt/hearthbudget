@@ -70,6 +70,21 @@ const Index = () => {
   // On-open fallback sync: if the most recent successful sync for this household
   // is more than 4 hours old (or never), kick off a background sync. We don't
   // block the UI — realtime subscriptions reflect new transactions automatically.
+  const [resumeTick, setResumeTick] = useState(0);
+  useEffect(() => {
+    let last = Date.now();
+    const fire = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 30_000) return;
+      last = Date.now();
+      setResumeTick(t => t + 1);
+      window.dispatchEvent(new Event('perritt-resume'));
+      window.dispatchEvent(new Event('keeper-calendar-refresh'));
+    };
+    document.addEventListener('visibilitychange', fire);
+    window.addEventListener('focus', fire);
+    return () => { document.removeEventListener('visibilitychange', fire); window.removeEventListener('focus', fire); };
+  }, []);
+
   useEffect(() => {
     if (!householdId) return;
     let cancelled = false;
@@ -94,7 +109,7 @@ const Index = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [householdId]);
+  }, [householdId, resumeTick]);
 
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
@@ -311,7 +326,7 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-primary-foreground font-display text-lg font-bold">K</span>
+          <span className="text-primary-foreground font-display text-lg font-bold">P</span>
         </div>
       </div>
     );

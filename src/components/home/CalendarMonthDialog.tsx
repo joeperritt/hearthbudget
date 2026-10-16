@@ -116,7 +116,7 @@ export function CalendarMonthDialog({ open, onOpenChange, today, calendars, isVi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col gap-3 p-4 w-screen max-w-none h-[100dvh] rounded-none sm:rounded-2xl sm:w-[95vw] sm:max-w-5xl sm:h-[90dvh] overflow-hidden">
+      <DialogContent className="flex flex-col gap-3 p-4 w-screen max-w-none h-[100dvh] rounded-none sm:rounded-2xl sm:w-[95vw] sm:max-w-5xl sm:h-[90dvh] overflow-hidden pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">
         <DialogTitle className="sr-only">Calendar month view</DialogTitle>
         <div className="flex items-center gap-2 pr-8 pt-[env(safe-area-inset-top,0px)]">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Previous month" onClick={() => shiftMonth(-1)}><ChevronLeft size={18} /></Button>

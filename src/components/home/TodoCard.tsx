@@ -70,7 +70,7 @@ export function TodoCard() {
         </div>
       </div>
       {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p> : (
-        <div className="space-y-3 md:max-h-96 lg:max-h-none lg:flex-1 lg:min-h-0 md:overflow-y-auto md:pr-1">
+        <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {groups.map(g => (
             <div key={g.label}>
               <p className={`text-[11px] font-semibold uppercase tracking-wide mb-0.5 ${g.danger ? 'text-destructive' : 'text-muted-foreground'}`}>{g.label}</p>
