@@ -1,4 +1,4 @@
-import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3, CalendarClock } from 'lucide-react';
+import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3, CalendarClock, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export type ProfileTabSelection =
@@ -6,7 +6,8 @@ export type ProfileTabSelection =
   | 'security'
   | 'budget-setup'
   | 'trends'
-  | 'calendars';
+  | 'calendars'
+  | 'notifications';
 
 interface ProfileTabProps {
   onSelect: (target: ProfileTabSelection, profileTabHint?: string) => void;
@@ -45,6 +46,14 @@ export function ProfileTab({ onSelect }: ProfileTabProps) {
           title="Calendars"
           subtitle="Google Calendar iCal links for the Home page"
           onClick={() => onSelect('calendars')}
+        />
+
+        <Tile
+          accent="neutral"
+          icon={Bell}
+          title="Notifications"
+          subtitle="Morning summary on this device"
+          onClick={() => onSelect('notifications')}
         />
 
         <Tile
