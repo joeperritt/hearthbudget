@@ -1,3 +1,4 @@
+import { Recurrence, describeRecurrence } from '../_shared/recurrence.ts';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
@@ -13,6 +14,13 @@ const Body = z.object({
   event_context: z.object({ calendar_id: z.string().uuid(), event_id: z.string().max(1024), title: z.string().max(200) }).optional(),
 });
 
+// deno-lint-ignore no-explicit-any
+function parseRule(r: any): Recurrence | null {
+  if (!r || typeof r !== 'object' || !['day', 'weekday', 'week', 'month', 'year'].includes(r.unit)) return null;
+  const days = Array.isArray(r.days) ? [...new Set(r.days.map(Number).filter((d: number) => d >= 0 && d <= 6))] as number[] : undefined;
+  return { unit: r.unit, interval: Math.max(1, Math.min(365, Math.round(Number(r.interval) || 1))), days: r.unit === 'week' && days?.length ? days.sort() : undefined, from: r.from === 'completion' ? 'completion' : 'due' };
+}
+
 const tools = [{
   functionDeclarations: [
     {
@@ -24,6 +32,9 @@ const tools = [{
         owner: { type: 'STRING', enum: ['joe', 'katie', 'family'], description: 'todo only' },
         due_date: { type: 'STRING', description: 'todo only, optional YYYY-MM-DD' },
         due_time: { type: 'STRING', description: 'todo only, optional HH:mm (24h)' },
+        recurrence: { type: 'OBJECT', description: 'Optional repeat rule (needs a due date). unit: day|weekday|week|month|year; interval: every N units; days: weekdays 0=Sun..6=Sat for weekly; from: due (fixed schedule, default) or completion (N units after it is done).', properties: {
+          unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
+          days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
       }, required: ['list', 'items'] },
     },
     {
@@ -44,6 +55,10 @@ const tools = [{
         due_date: { type: 'STRING', description: 'YYYY-MM-DD' },
         due_time: { type: 'STRING', description: 'HH:mm 24h' },
         clear_due_date: { type: 'BOOLEAN' },
+        recurrence: { type: 'OBJECT', description: 'Optional repeat rule (needs a due date). unit: day|weekday|week|month|year; interval: every N units; days: weekdays 0=Sun..6=Sat for weekly; from: due (fixed schedule, default) or completion (N units after it is done).', properties: {
+          unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
+          days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
+        stop_repeating: { type: 'BOOLEAN' },
         done: { type: 'BOOLEAN' },
         delete: { type: 'BOOLEAN' },
       }, required: ['id'] },
@@ -135,6 +150,7 @@ Rules:
 - Any shopping request ("we need milk", "pick up batteries", "buy a new hose") -> add_list_items list=store, one item per thing, short names.
 - To dos ("remind me to...", "I need to...") -> add_list_items list=todo. owner defaults to ${profile.display_name.split(' ')[0].toLowerCase()}; use family for household tasks or when it mentions "we", "us" or Thomas; use the other person's name if it is for them. Add due_date/due_time only if a time frame is given.
 - Resolve relative dates ("tomorrow", "next Friday", "end of the month") against today in America/New_York.
+- Repeating to dos ("every Sunday", "every 3 months"): pass recurrence with a due_date for the first one. "every N months/after I do it" style chores (air filter) use from=completion when the user implies it; fixed schedules (trash every Sunday) use from=due with days. "stop repeating" -> find_todos then update_todo stop_repeating. Reply with the plain-words rule from the "repeats" field.
 - To change, move, reschedule, complete or delete a to do: call find_todos, then update_todo (applies immediately). If several match, ask which one; if none, say so.
 - For events, call propose_calendar_event; it only creates a confirmation card. Default calendar: the shared one (${shared?.id ?? 'n/a'}) if it mentions the family, Thomas, both of us or "we"; otherwise ${profile.display_name}'s own (${own?.id ?? shared?.id ?? 'n/a'}). Default duration 1 hour.
 - When the user says an event was moved, rescheduled, changed, pushed, canceled or deleted, ALWAYS call find_events first, then propose_update_event or propose_delete_event on the existing event. NEVER create a new event in that case. If several events match, ask which one (list them briefly with day and time). If none match, say so and offer to create a new one.
@@ -194,28 +210,29 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
           if (!list || !items.length) result = { error: 'invalid list or items' };
           else {
             const owner = list === 'todo' ? (ownerId(args.owner) === undefined ? user.id : ownerId(args.owner)!) : null;
-            const dueDate = list === 'todo' ? validDate(args.due_date) : null;
+            const rule = list === 'todo' ? parseRule(args.recurrence) : null;
+            const dueDate = list === 'todo' ? (validDate(args.due_date) ?? (rule ? todayNY() : null)) : null;
             const { error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
               household_id: profile.household_id, list_type: list, user_id: owner, text, created_by: user.id,
-              due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null,
+              due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null, recurrence: rule,
             })));
             if (error) { console.error(error); result = { error: 'could not save' }; }
-            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate }; }
+            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate, repeats: rule ? describeRecurrence(rule, dueDate) : undefined }; }
           }
         } else if (fc.name === 'find_todos') {
           const words = String(args.query ?? '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
-          let q = supabase.from('home_list_items').select('id, text, user_id, due_date, due_time, completed').eq('household_id', profile.household_id).eq('list_type', 'todo').limit(200);
+          let q = supabase.from('home_list_items').select('id, text, user_id, due_date, due_time, completed, recurrence').eq('household_id', profile.household_id).eq('list_type', 'todo').limit(200);
           if (!args.include_completed) q = q.eq('completed', false);
           const { data, error } = await q;
           if (error) result = { error: 'could not search' };
           else {
             const matches = (data ?? []).filter(t => !words.length || words.some(w => t.text.toLowerCase().includes(w)))
-              .map(t => ({ id: t.id, text: t.text, owner: ownerName(t.user_id), due_date: t.due_date, due_time: t.due_time?.slice(0, 5) ?? null, done: t.completed }));
+              .map(t => ({ id: t.id, text: t.text, owner: ownerName(t.user_id), due_date: t.due_date, due_time: t.due_time?.slice(0, 5) ?? null, done: t.completed, repeats: t.recurrence ? describeRecurrence(t.recurrence as Recurrence, t.due_date) : null }));
             result = { matches: matches.slice(0, 15) };
           }
         } else if (fc.name === 'update_todo') {
           const id = String(args.id ?? '');
-          const { data: cur } = await supabase.from('home_list_items').select('id, text').eq('id', id).eq('list_type', 'todo').maybeSingle();
+          const { data: cur } = await supabase.from('home_list_items').select('id, text, due_date').eq('id', id).eq('list_type', 'todo').maybeSingle();
           if (!cur) result = { error: 'to do not found; call find_todos first' };
           else if (args.delete) {
             const { error } = await supabase.from('home_list_items').delete().eq('id', id);
@@ -228,11 +245,13 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             if (args.clear_due_date) { patch.due_date = null; patch.due_time = null; }
             else if (validDate(args.due_date)) { patch.due_date = validDate(args.due_date); patch.due_time = validTime(args.due_time); }
             else if (validTime(args.due_time)) patch.due_time = validTime(args.due_time);
+            if (args.stop_repeating) patch.recurrence = null;
+            else if (parseRule(args.recurrence)) { patch.recurrence = parseRule(args.recurrence); if (!patch.due_date && !cur.due_date) patch.due_date = todayNY(); }
             if (typeof args.done === 'boolean') { patch.completed = args.done; patch.completed_at = args.done ? new Date().toISOString() : null; }
             if (!Object.keys(patch).length) result = { error: 'no changes given' };
             else {
               const { error } = await supabase.from('home_list_items').update(patch).eq('id', id);
-              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch };
+              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch, repeats: patch.recurrence ? describeRecurrence(patch.recurrence, patch.due_date ?? cur.due_date) : patch.recurrence === null ? 'no longer repeats' : undefined };
               if (!error) added.push({ list: 'todo', items: [] });
             }
           }
