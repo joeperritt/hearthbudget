@@ -51,7 +51,7 @@ export interface EditableEvent {
   description?: string | null;
 }
 
-export function AddEventDialog({ open, onOpenChange, calendars, date, event }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null; event?: EditableEvent | null }) {
+export function AddEventDialog({ open, onOpenChange, calendars, date, event, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null; event?: EditableEvent | null; onSaved?: () => void }) {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [calendarId, setCalendarId] = useState('');
@@ -113,6 +113,7 @@ export function AddEventDialog({ open, onOpenChange, calendars, date, event }: {
     setSaving(false);
     window.dispatchEvent(new Event('keeper-calendar-refresh'));
     onOpenChange(false);
+    onSaved?.();
   };
 
   return (

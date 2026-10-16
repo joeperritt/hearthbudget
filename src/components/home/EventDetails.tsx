@@ -140,7 +140,7 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
         <p className="text-xs text-muted-foreground pt-1">This event comes from a calendar link, so it can't be edited here.</p>
       )}
 
-      <AddEventDialog open={editing} onOpenChange={(o) => { setEditing(o); if (!o) finish(); }} calendars={calendars} event={editable} />
+      <AddEventDialog open={editing} onOpenChange={setEditing} calendars={calendars} event={editable} onSaved={finish} />
 
       {/* Recurring: this event or the whole series */}
       <AlertDialog open={recurringChoice !== null} onOpenChange={(o) => !o && setRecurringChoice(null)}>
