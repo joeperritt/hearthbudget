@@ -33,7 +33,8 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
   const { user } = useAuth();
   const { todo, store, owners: { isVisible, keyOf } } = useHomeData();
   // Live open counts for the mobile toggle; chip choices come from user_home_layouts.todo_visibility.
-  const todoCount = todo.items.filter(i => !i.completed && isVisible(keyOf(i.user_id))).length;
+  const nyToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const todoCount = todo.items.filter(i => !i.completed && i.due_date && i.due_date <= nyToday && isVisible(keyOf(i.user_id))).length;
   const storeCount = store.items.filter(i => !i.completed).length;
   const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
   // Mobile: one widget at a time behind a segmented toggle; starts on Calendar

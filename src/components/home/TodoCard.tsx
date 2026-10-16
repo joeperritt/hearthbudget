@@ -6,6 +6,7 @@ import { useHomeData } from './HomeDataContext';
 import { ListItemEditSheet } from './ListItemEditSheet';
 import { ListRow } from './HomeListCard';
 import { AddEventMenu } from './AddEventButton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 function nyToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -21,11 +22,16 @@ const byDue = (a: HomeListItem, b: HomeListItem) => (a.due_date! + (a.due_time ?
 
 export function TodoCard() {
   const { user } = useAuth();
-  const { todo: { items, loading, add, update, toggle, remove, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } } = useHomeData();
+  const { todo: { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } } = useHomeData();
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<HomeListItem | null>(null);
+  const [deleting, setDeleting] = useState<HomeListItem | null>(null);
+  const requestDelete = (i: HomeListItem) => {
+    if (i.recurrence && !i.completed) setDeleting(i);
+    else { remove(i.id); setEditing(null); }
+  };
 
-  const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null } as HomeListItem);
+  const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null, recurrence: null, series_id: null } as HomeListItem);
 
   const visible = items.filter(i => isVisible(keyOf(i.user_id)));
   const open = visible.filter(i => !i.completed);
@@ -45,8 +51,8 @@ export function TodoCard() {
   if (undated.length) groups.push({ label: 'No date', items: undated });
 
   const row = (i: HomeListItem, showDate = false) => (
-    <ListRow key={i.id} item={i} onToggle={() => toggle(i)} onDelete={() => remove(i.id)} onEdit={() => setEditing(i)}
-      dot={ownerOf(i.user_id)?.color}
+    <ListRow key={i.id} item={i} onToggle={() => toggle(i)} onDelete={() => requestDelete(i)} onEdit={() => setEditing(i)}
+      dot={ownerOf(i.user_id)?.color} repeat={!!i.recurrence}
       meta={[showDate && i.due_date ? fmtDate(i.due_date) : '', fmtTime(i.due_time)].filter(Boolean).join(' · ') || undefined} />
   );
 
@@ -85,7 +91,20 @@ export function TodoCard() {
           )}
         </div>
       )}
-      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update} onDelete={remove} onCreate={(text, o) => add(text, o)} />
+      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update} onDelete={id => { const it = items.find(x => x.id === id); if (it) requestDelete(it); }} onCreate={(text, o) => add(text, o)} />
+      <AlertDialog open={!!deleting} onOpenChange={o => { if (!o) setDeleting(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete repeating to do?</AlertDialogTitle>
+            <AlertDialogDescription>"{deleting?.text}" repeats. Delete just this one, or stop it repeating?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleting) skipOccurrence(deleting); setDeleting(null); setEditing(null); }}>Delete this one</AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleting) remove(deleting.id); setDeleting(null); setEditing(null); }}>Stop repeating and delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
