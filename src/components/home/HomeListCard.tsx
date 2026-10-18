@@ -1,3 +1,4 @@
+import { WidgetSkeleton } from './WidgetSkeleton';
 import { useRef, useState, KeyboardEvent, TouchEvent, ReactNode } from 'react';
 import { Bell, Check, X, Plus, Repeat } from 'lucide-react';
 import { HomeListItem } from '@/hooks/useHomeList';
@@ -20,7 +21,7 @@ export function HomeListCard() {
         {done.length > 0 && <button onClick={clearCompleted} className="text-xs text-muted-foreground active:text-foreground">Clear completed</button>}
       </div>
       <QuickAdd value={draft} onChange={setDraft} onSubmit={submit} placeholder="Add something we need" />
-      {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p>
+      {loading ? <WidgetSkeleton />
         : items.length === 0 ? <p className="text-xs text-muted-foreground py-2">Nothing here yet.</p>
         : (
           <ul className="divide-y divide-border lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">

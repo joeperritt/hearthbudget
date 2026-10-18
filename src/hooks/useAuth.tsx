@@ -45,8 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         setTimeout(async () => {
-          await fetchProfile(session.user.id);
-          await checkAdmin(session.user.id);
+          await Promise.all([fetchProfile(session.user.id), checkAdmin(session.user.id)]);
           supabase.from('profiles')
             .update({ last_seen_at: new Date().toISOString() } as any)
             .eq('user_id', session.user.id).then(() => {});

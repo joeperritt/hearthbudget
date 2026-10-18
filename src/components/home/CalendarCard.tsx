@@ -1,3 +1,4 @@
+import { WidgetSkeleton } from './WidgetSkeleton';
 import { useEffect, useState } from 'react';
 import { CalendarDays, CalendarRange, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,7 +91,7 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
     return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Couldn't load the calendar right now.</p></section>;
   }
   if (!state || loading) {
-    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<p className="text-xs text-muted-foreground">Loading…</p></section>;
+    return <section className="bg-card rounded-2xl border border-border p-4 shadow-sm">{header}{monthDialog}{addDialog}{detailsDialog}<WidgetSkeleton /></section>;
   }
   if (state.calendars === 0) {
     return (
