@@ -1,3 +1,4 @@
+import { WidgetSkeleton } from './WidgetSkeleton';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -96,7 +97,7 @@ export function TodoCard() {
           ))}
         </div>
       </div>
-      {loading ? <p className="text-xs text-muted-foreground py-2">Loading…</p> : (
+      {loading ? <WidgetSkeleton /> : (
         <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {groups.map(g => (
             <div key={g.label}>
