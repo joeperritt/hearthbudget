@@ -833,6 +833,7 @@ export type Database = {
           last_sent_date: string | null
           morning_enabled: boolean
           morning_time: string
+          todo_reminders_enabled: boolean
           updated_at: string
           user_id: string
         }
@@ -840,6 +841,7 @@ export type Database = {
           last_sent_date?: string | null
           morning_enabled?: boolean
           morning_time?: string
+          todo_reminders_enabled?: boolean
           updated_at?: string
           user_id: string
         }
@@ -847,6 +849,7 @@ export type Database = {
           last_sent_date?: string | null
           morning_enabled?: boolean
           morning_time?: string
+          todo_reminders_enabled?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -1143,6 +1146,44 @@ export type Database = {
         }
         Relationships: []
       }
+      todo_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          remind_at: string
+          rule: Json
+          sent_at: string | null
+          todo_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          remind_at: string
+          rule: Json
+          sent_at?: string | null
+          todo_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          remind_at?: string
+          rule?: Json
+          sent_at?: string | null
+          todo_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_reminders_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "home_list_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tool_states: {
         Row: {
           household_id: string
@@ -1359,6 +1400,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_remind_at: {
+        Args: { _due_date: string; _due_time: string; _rule: Json }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
