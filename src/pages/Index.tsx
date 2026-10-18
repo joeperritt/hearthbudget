@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { format, parse } from 'date-fns';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, TabId, GIVING_VARIABLE_CATEGORY, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY } from '@/types/budget';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -8,28 +8,37 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/keeper/BottomNav';
 import { SideNav, ProfileSidebarItem } from '@/components/keeper/SideNav';
-import { Dashboard } from '@/components/keeper/Dashboard';
-import { SpendingView } from '@/components/keeper/SpendingView';
-import { TransactionsView } from '@/components/keeper/TransactionsView';
-import { AddTransactionSheet } from '@/components/keeper/AddTransactionSheet';
-import { EditTransactionSheet } from '@/components/keeper/EditTransactionSheet';
-import { CategoryDetail } from '@/components/keeper/CategoryDetail';
 
-import { MoveFundsSheet } from '@/components/keeper/MoveFundsSheet';
-import { ProfileTab } from '@/components/keeper/ProfileTab';
-import { SettingsView } from '@/components/keeper/SettingsView';
-import { InsightsSection } from '@/components/keeper/InsightsSection';
-import { AskAIChatSheet } from '@/components/keeper/AskAIChatSheet';
-import { BankConnectionView } from '@/components/keeper/BankConnectionView';
-import { SecurityView } from '@/components/keeper/SecurityView';
-import { NotificationsView } from '@/components/keeper/NotificationsView';
-import { SpendingTrendsView } from '@/components/keeper/SpendingTrendsView';
-import { BudgetTabView } from '@/components/keeper/BudgetTabView';
 import { HomePage } from '@/components/home/HomePage';
 import { KeeperAssistant } from '@/components/assistant/KeeperAssistant';
-import { CalendarSettingsView } from '@/components/home/CalendarSettingsView';
 import { BudgetSubNav } from '@/components/keeper/BudgetSubNav';
 
+
+const Dashboard = lazy(() => import('@/components/keeper/Dashboard').then(m => ({ default: m.Dashboard })));
+const SpendingView = lazy(() => import('@/components/keeper/SpendingView').then(m => ({ default: m.SpendingView })));
+const TransactionsView = lazy(() => import('@/components/keeper/TransactionsView').then(m => ({ default: m.TransactionsView })));
+const AddTransactionSheet = lazy(() => import('@/components/keeper/AddTransactionSheet').then(m => ({ default: m.AddTransactionSheet })));
+const EditTransactionSheet = lazy(() => import('@/components/keeper/EditTransactionSheet').then(m => ({ default: m.EditTransactionSheet })));
+const CategoryDetail = lazy(() => import('@/components/keeper/CategoryDetail').then(m => ({ default: m.CategoryDetail })));
+const MoveFundsSheet = lazy(() => import('@/components/keeper/MoveFundsSheet').then(m => ({ default: m.MoveFundsSheet })));
+const ProfileTab = lazy(() => import('@/components/keeper/ProfileTab').then(m => ({ default: m.ProfileTab })));
+const SettingsView = lazy(() => import('@/components/keeper/SettingsView').then(m => ({ default: m.SettingsView })));
+const InsightsSection = lazy(() => import('@/components/keeper/InsightsSection').then(m => ({ default: m.InsightsSection })));
+const AskAIChatSheet = lazy(() => import('@/components/keeper/AskAIChatSheet').then(m => ({ default: m.AskAIChatSheet })));
+const BankConnectionView = lazy(() => import('@/components/keeper/BankConnectionView').then(m => ({ default: m.BankConnectionView })));
+const SecurityView = lazy(() => import('@/components/keeper/SecurityView').then(m => ({ default: m.SecurityView })));
+const NotificationsView = lazy(() => import('@/components/keeper/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const SpendingTrendsView = lazy(() => import('@/components/keeper/SpendingTrendsView').then(m => ({ default: m.SpendingTrendsView })));
+const BudgetTabView = lazy(() => import('@/components/keeper/BudgetTabView').then(m => ({ default: m.BudgetTabView })));
+const CalendarSettingsView = lazy(() => import('@/components/home/CalendarSettingsView').then(m => ({ default: m.CalendarSettingsView })));
+
+const ScreenLoader = () => (
+  <div className="p-6 space-y-3 animate-pulse" aria-label="Loading">
+    <div className="h-6 w-40 rounded bg-muted" />
+    <div className="h-24 rounded-xl bg-muted" />
+    <div className="h-24 rounded-xl bg-muted" />
+  </div>
+);
 
 type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars' | 'notifications';
 
