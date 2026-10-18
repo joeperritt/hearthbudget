@@ -41,6 +41,11 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
   // (the component remounts whenever Home is opened, so it always resets here).
   const [mobileTab, setMobileTab] = useState<HomeCardId>('calendar');
 
+  // A reminder notification opens the app with ?todo=<id>: jump to the To Do widget.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('todo')) setMobileTab('todo');
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('user_home_layouts').select('cards').eq('user_id', user.id).maybeSingle().then(({ data }) => {
