@@ -6,6 +6,7 @@ import { filterForMonth, useBudgetData, applyOverridesToCategories, applyOverrid
 import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { onReminderLink } from '@/lib/reminderLink';
 import { BottomNav } from '@/components/keeper/BottomNav';
 import { SideNav, ProfileSidebarItem } from '@/components/keeper/SideNav';
 
