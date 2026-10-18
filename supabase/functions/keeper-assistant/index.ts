@@ -227,12 +227,17 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             const owner = list === 'todo' ? (ownerId(args.owner) === undefined ? user.id : ownerId(args.owner)!) : null;
             const rule = list === 'todo' ? parseRule(args.recurrence) : null;
             const dueDate = list === 'todo' ? (validDate(args.due_date) ?? (rule ? todayISO() : null)) : null;
-            const { error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
+            const { data: inserted, error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
               household_id: profile.household_id, list_type: list, user_id: owner, text, created_by: user.id,
               due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null, recurrence: rule,
-            })));
+            }))).select('id');
             if (error) { console.error(error); result = { error: 'could not save' }; }
-            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate, repeats: rule ? describeRecurrence(rule, dueDate) : undefined }; }
+            else {
+              let reminderNote: string | null = null;
+              if (list === 'todo' && args.reminder) for (const row of inserted ?? []) reminderNote = await setReminder(row.id, args.reminder, dueDate, validTime(args.due_time));
+              added.push({ list, items });
+              result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate, repeats: rule ? describeRecurrence(rule, dueDate) : undefined, reminder: reminderNote ?? undefined };
+            }
           }
         } else if (fc.name === 'find_todos') {
           const words = String(args.query ?? '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
