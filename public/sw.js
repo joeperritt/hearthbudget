@@ -12,7 +12,6 @@ self.addEventListener('push', (event) => {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/' },
-    actions: Array.isArray(data.actions) ? data.actions : [],
   }));
 });
 
@@ -20,7 +19,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
   if (target.origin !== self.location.origin) return;
-  if (['done', 'hour', 'tomorrow'].includes(event.action)) target.searchParams.set('action', event.action);
+  if (target.searchParams.has('todo')) target.searchParams.set('from', 'push');
   const url = target.href;
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
