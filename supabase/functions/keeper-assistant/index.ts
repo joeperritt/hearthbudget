@@ -268,10 +268,13 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             if (args.stop_repeating) patch.recurrence = null;
             else if (parseRule(args.recurrence)) { patch.recurrence = parseRule(args.recurrence); if (!patch.due_date && !cur.due_date) patch.due_date = todayISO(); }
             if (typeof args.done === 'boolean') { patch.completed = args.done; patch.completed_at = args.done ? new Date().toISOString() : null; }
-            if (!Object.keys(patch).length) result = { error: 'no changes given' };
+            if (!Object.keys(patch).length && !args.reminder && !args.clear_reminder) result = { error: 'no changes given' };
             else {
-              const { error } = await supabase.from('home_list_items').update(patch).eq('id', id);
-              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch, repeats: patch.recurrence ? describeRecurrence(patch.recurrence, patch.due_date ?? cur.due_date) : patch.recurrence === null ? 'no longer repeats' : undefined };
+              const { error } = Object.keys(patch).length ? await supabase.from('home_list_items').update(patch).eq('id', id) : { error: null };
+              let reminderNote: string | null = null;
+              if (!error && args.clear_reminder) { await supabase.from('todo_reminders').delete().eq('todo_id', id).eq('user_id', user.id); reminderNote = 'reminder removed'; }
+              if (!error && args.reminder) reminderNote = (await setReminder(id, args.reminder, patch.due_date ?? cur.due_date, patch.due_time ?? cur.due_time?.slice(0, 5) ?? null)) ?? 'could not set the reminder (needs a due date)';
+              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch, reminder: reminderNote ?? undefined, repeats: patch.recurrence ? describeRecurrence(patch.recurrence, patch.due_date ?? cur.due_date) : patch.recurrence === null ? 'no longer repeats' : undefined };
               if (!error) added.push({ list: 'todo', items: [] });
             }
           }
