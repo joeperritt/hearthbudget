@@ -140,6 +140,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   // Increments whenever Home is tapped so HomePage remounts and mobile starts on Calendar.
   const [homeResetKey, setHomeResetKey] = useState(0);
+  // A reminder tapped while the app was open on another screen: go to Home (To Do opens the sheet).
+  useEffect(() => onReminderLink(() => { setSelectedCategoryId(null); setSelectedFixedExpenseId(null); setActiveTab('home'); }), []);
   const [activityInitialFilter, setActivityInitialFilter] = useState<string | undefined>(undefined);
 
   // Allow other components (e.g. Dashboard reconnect banner) to navigate to
