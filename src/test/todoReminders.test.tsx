@@ -19,7 +19,7 @@ describe('personal due-time reminder', () => {
     fireEvent.change(screen.getByLabelText('Due time'), { target: { value: '18:00' } });
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-checked', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Save', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
     expect(saveReminder).toHaveBeenCalledWith({ kind: 'at' }, { date: '2026-10-19', time: '18:00' });
   });
   it('turns off the current user reminder when the time is cleared', () => {
@@ -28,7 +28,7 @@ describe('personal due-time reminder', () => {
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
     fireEvent.change(screen.getByLabelText('Due time'), { target: { value: '' } });
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-    fireEvent.click(screen.getByRole('button', { name: 'Save', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
     expect(saveReminder).toHaveBeenCalledWith(null, { date: '2026-10-19', time: null });
   });
 });
@@ -37,7 +37,7 @@ describe('reminder actions', () => {
   it('marks the actual to do done and closes only after success', async () => {
     const onDone = vi.fn().mockResolvedValue(true), onClose = vi.fn();
     render(<ReminderSheet item={item} automaticAction={null} ready canSnooze onDone={onDone} onSnooze={vi.fn()} onClose={onClose} onOpen={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Done', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /^Done$/ }));
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
     expect(onDone).toHaveBeenCalledWith('todo-1');
   });
