@@ -55,7 +55,7 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
   const dueDow = date ? new Date(date + 'T00:00:00').getDay() : 0;
   const rule = date ? fromPreset(preset, from, preset === 'weekly' ? (days.length ? days : [dueDow]) : [], { n: customN, unit: customUnit }) : null;
   const toggleDay = (d: number) => setDays(cur => { const base = cur.length ? cur : [dueDow]; const nx = base.includes(d) ? base.filter(x => x !== d) : [...base, d]; return nx.length ? nx : base; });
-  const reminderRule: ReminderRule | null = date && time && remind ? { kind: 'at' } : null;
+  const reminderRule: ReminderRule | null = date && time && remind && !done ? { kind: 'at' } : null;
   const save = () => {
     if (!item || !text.trim()) return;
     if (isNew) {

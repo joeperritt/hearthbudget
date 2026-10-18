@@ -39,7 +39,7 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
   const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
   // Mobile: one widget at a time behind a segmented toggle; starts on Calendar
   // (the component remounts whenever Home is opened, so it always resets here).
-  const [mobileTab, setMobileTab] = useState<HomeCardId>('calendar');
+  const [mobileTab, setMobileTab] = useState<HomeCardId>(() => new URLSearchParams(window.location.search).has('todo') ? 'todo' : 'calendar');
 
   // A reminder notification opens the app with ?todo=<id>: jump to the To Do widget.
   useEffect(() => {
