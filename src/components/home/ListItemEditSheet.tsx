@@ -135,6 +135,23 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
                   )}
                 </div>
               )}
+              {date && (
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-muted-foreground" />
+                    <select aria-label="Remind me" value={remind} onChange={e => setRemind(e.target.value as ReminderKind | 'none')} className="auth-input flex-1">
+                      <option value="none">No reminder</option>
+                      {REMINDER_OPTIONS.filter(o => !o.needsTime || time).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  {remind === 'custom' && (
+                    <input aria-label="Reminder date and time" type="datetime-local" value={remindCustom} onChange={e => setRemindCustom(e.target.value)} className="auth-input" />
+                  )}
+                  {remind !== 'none' && typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
+                    <p className="text-xs text-muted-foreground">Reminders arrive as notifications — turn them on in More → Notifications.</p>
+                  )}
+                </div>
+              )}
               <textarea aria-label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes" maxLength={2000} rows={3} className="auth-input min-h-[80px]" />
               {!isNew && <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={done} onChange={e => setDone(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--accent))]" /> Done
