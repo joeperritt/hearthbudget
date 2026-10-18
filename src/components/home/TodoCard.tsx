@@ -38,17 +38,21 @@ export function TodoCard() {
 
   const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null, recurrence: null, series_id: null } as HomeListItem);
 
-  // Both notification taps and supported notification actions land in this authenticated flow.
+  // The quick Reminder sheet opens only from a tapped push notification on an iPhone (sw.js adds from=push).
+  // The link is stripped from the URL immediately so it's consumed exactly once.
   useEffect(() => {
-    if (loading) return;
-    const { todoId, action, userId } = parseReminderLink(window.location.search);
-    if (!todoId || !user) return;
-    if (userId && userId !== user.id) toast.error('This reminder belongs to another account.');
-    else if (items.some(x => x.id === todoId)) { setReminderId(todoId); setAutomaticAction(action); }
-    else toast.info('This to do is no longer available.');
+    if (loading || !user) return;
     const query = new URLSearchParams(window.location.search);
-    ['todo', 'action', 'reminderUser'].forEach(key => query.delete(key));
+    const { todoId, userId } = parseReminderLink(window.location.search);
+    if (!todoId) return;
+    const fromPush = query.get('from') === 'push';
+    ['todo', 'action', 'reminderUser', 'from'].forEach(key => query.delete(key));
     window.history.replaceState(null, '', `${window.location.pathname}${query.size ? `?${query}` : ''}${window.location.hash}`);
+    const isIPhone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (!fromPush || !isIPhone) return;
+    if (userId && userId !== user.id) toast.error('This reminder belongs to another account.');
+    else if (items.some(x => x.id === todoId)) { setReminderId(todoId); setAutomaticAction(null); }
+    else toast.info('This to do is no longer available.');
   }, [loading, items, user]);
 
   const visible = items.filter(i => isVisible(keyOf(i.user_id)));
