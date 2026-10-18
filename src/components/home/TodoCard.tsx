@@ -8,7 +8,8 @@ import { ListItemEditSheet } from './ListItemEditSheet';
 import { ListRow } from './HomeListCard';
 import { AddEventMenu } from './AddEventButton';
 import { ReminderSheet } from './ReminderSheet';
-import { parseReminderLink, ReminderAction } from '@/lib/todoReminderActions';
+import { ReminderAction } from '@/lib/todoReminderActions';
+import { onReminderLink, peekReminderLink, takeReminderLink } from '@/lib/reminderLink';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
