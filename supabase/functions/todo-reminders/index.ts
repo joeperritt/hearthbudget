@@ -44,7 +44,10 @@ Deno.serve(async (req) => {
   try {
     const keys = vapid();
     webpush.setVapidDetails('mailto:joeperritt31@gmail.com', keys.publicKey, keys.privateKey);
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const backendUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!backendUrl || !serviceKey) throw new Error('Service configuration missing');
+    const admin = createClient(backendUrl, serviceKey);
 
     const { data: due } = await admin.from('todo_reminders')
       .select('id, todo_id, user_id')
@@ -66,7 +69,8 @@ Deno.serve(async (req) => {
       if (prefs && prefs.todo_reminders_enabled === false) continue;
 
       const when = dueLabel(item.due_date, item.due_time);
-      const payload = { title: 'Reminder', body: `${item.text}${when ? ` · ${when}` : ''}`, url: `/?todo=${r.todo_id}` };
+       const payload = { title: 'Reminder', body: `${item.text}${when ? ` · ${when}` : ''}`, url: `/?todo=${r.todo_id}&reminderUser=${r.user_id}`,
+         actions: [{ action: 'done', title: 'Done' }, { action: 'hour', title: '1 hour' }, { action: 'tomorrow', title: 'Tomorrow' }] };
       const { data: subs } = await admin.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', r.user_id);
       for (const s of subs ?? []) {
         try {
