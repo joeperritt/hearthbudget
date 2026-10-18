@@ -1464,6 +1464,10 @@ export type Database = {
         Args: { owner_key: string; visible: boolean }
         Returns: undefined
       }
+      snooze_todo_reminder: {
+        Args: { _action: string; _todo_id: string }
+        Returns: string
+      }
       todo_step: { Args: { _d: string; _rule: Json }; Returns: string }
       validate_invite_code: {
         Args: { _code: string; _email?: string }

@@ -71,6 +71,13 @@
       "when": 1792359538789,
       "tag": "0009_todo_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792366655331,
+      "tag": "0010_reminder_quick_actions",
+      "breakpoints": true
     }
   ]
 }
