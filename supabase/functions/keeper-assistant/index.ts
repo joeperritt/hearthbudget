@@ -181,6 +181,17 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
     const ownerName = (id: string | null) => id ? (members?.find(m => m.user_id === id)?.display_name.split(' ')[0] ?? 'someone') : 'Family';
     const validDate = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
     const validTime = (t: unknown) => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t) ? t : null;
+    const REMINDER_KINDS = ['at', 'before15', 'before1h', 'morning_of', 'day_before'];
+    const REMINDER_WORDS: Record<string, string> = { at: 'at the due time', before15: '15 minutes before', before1h: 'an hour before', morning_of: 'the morning of', day_before: 'the day before' };
+    // Save a push reminder for the asking user; returns a plain-words description or null on failure.
+    const setReminder = async (todoId: string, kind: unknown, dueDate: string | null, dueTime: string | null): Promise<string | null> => {
+      if (typeof kind !== 'string' || !REMINDER_KINDS.includes(kind) || !dueDate) return null;
+      const rule = { kind };
+      const { data: remindAt } = await supabase.rpc('compute_remind_at', { _rule: rule, _due_date: dueDate, _due_time: dueTime });
+      if (!remindAt) return null;
+      const { error } = await supabase.from('todo_reminders').upsert({ todo_id: todoId, user_id: user.id, rule, remind_at: remindAt, sent_at: null }, { onConflict: 'todo_id,user_id' });
+      return error ? null : REMINDER_WORDS[kind];
+    };
 
     const found = new Map<string, Found>();
     for (let step = 0; step < 6; step++) {
