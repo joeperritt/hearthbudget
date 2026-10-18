@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
       if (prefs && prefs.todo_reminders_enabled === false) continue;
 
       const when = dueLabel(item.due_date, item.due_time);
-      const payload = { title: 'Reminder', body: `${item.text}${when ? ` · ${when}` : ''}`, url: `/?todo=${r.todo_id}&reminderUser=${r.user_id}` };
+      const body = when ? when.charAt(0).toUpperCase() + when.slice(1) : '';
+      const payload = { title: item.text, body, url: `/?todo=${r.todo_id}&reminderUser=${r.user_id}&from=push` };
       const { data: subs } = await admin.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', r.user_id);
       for (const s of subs ?? []) {
         try {
