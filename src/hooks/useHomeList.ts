@@ -55,18 +55,19 @@ export function useHomeList(listType: HomeListType) {
 
   const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null; recurrence?: Recurrence | null } = {}) => {
     const t = text.trim().slice(0, 300);
-    if (!t || !householdId || !user) return;
+    if (!t || !householdId || !user) return null;
     const owner = listType === 'todo' ? (opts.owner === undefined ? user.id : opts.owner) : null;
     const tempId = `temp-${Date.now()}`;
     setItems(prev => [{ id: tempId, text: t, completed: false, created_at: new Date().toISOString(), completed_at: null, user_id: owner, due_date: opts.due_date ?? null, due_time: opts.due_time ?? null, notes: opts.notes ?? null, recurrence: opts.recurrence ?? null, series_id: null }, ...prev]);
-    const { error } = await supabase.from('home_list_items').insert({
+    const { data, error } = await supabase.from('home_list_items').insert({
       household_id: householdId, list_type: listType, user_id: owner, text: t, created_by: user.id,
       due_date: opts.due_date ?? null, due_time: opts.due_date ? opts.due_time ?? null : null,
       notes: opts.notes?.trim().slice(0, 2000) || null,
       recurrence: (opts.due_date && opts.recurrence) ? (opts.recurrence as never) : null,
-    });
-    if (error) toast.error("Couldn't add that. Please try again.");
+    }).select('id').single();
+    if (error) { toast.error("Couldn't add that. Please try again."); load(); return null; }
     load();
+    return (data as { id: string } | null)?.id ?? null;
   };
 
   const update = async (id: string, patch: HomeListPatch) => {
