@@ -252,7 +252,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
           }
         } else if (fc.name === 'update_todo') {
           const id = String(args.id ?? '');
-          const { data: cur } = await supabase.from('home_list_items').select('id, text, due_date').eq('id', id).eq('list_type', 'todo').maybeSingle();
+          const { data: cur } = await supabase.from('home_list_items').select('id, text, due_date, due_time').eq('id', id).eq('list_type', 'todo').maybeSingle();
           if (!cur) result = { error: 'to do not found; call find_todos first' };
           else if (args.delete) {
             const { error } = await supabase.from('home_list_items').delete().eq('id', id);
