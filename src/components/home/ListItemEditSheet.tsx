@@ -3,8 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { HomeListItem, HomeListPatch } from '@/hooks/useHomeList';
 import { TodoOwner } from '@/hooks/useTodoOwners';
-import { Repeat } from 'lucide-react';
+import { Bell, Repeat } from 'lucide-react';
 import { DAY_NAMES, PRESETS, Recurrence, RepeatPreset, describeRecurrence, fromPreset, presetOf } from '@/lib/recurrence';
+import { REMINDER_OPTIONS, ReminderKind, ReminderRule } from '@/hooks/useTodoReminders';
 
 interface Props {
   item: HomeListItem | null;
@@ -13,8 +14,12 @@ interface Props {
   onClose: () => void;
   onSave: (id: string, patch: HomeListPatch) => void;
   onDelete: (id: string) => void;
+  /** The current user's reminder on this to do, if any. */
+  reminder?: ReminderRule | null;
+  /** Save or clear the current user's reminder. */
+  onSaveReminder?: (rule: ReminderRule | null, due: { date: string; time: string | null }, customAt?: string) => void;
   /** When set and item.id === 'new', the sheet creates instead of edits. */
-  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null }) => void;
+  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null; reminder?: ReminderRule | null; reminderCustomAt?: string }) => void;
 }
 
 export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, onCreate }: Props) {
