@@ -77,7 +77,8 @@ export function useHomeList(listType: HomeListType) {
     if (typeof patch.text === 'string') full.text = patch.text.trim().slice(0, 300);
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...full } as HomeListItem : i));
     const { error } = await supabase.from('home_list_items').update(full as never).eq('id', id);
-    if (error) { toast.error("Couldn't save that change."); load(); }
+    if (error) { toast.error("Couldn't save that change."); load(); return false; }
+    return true;
   };
 
   const toggle = (item: HomeListItem) => update(item.id, { completed: !item.completed });

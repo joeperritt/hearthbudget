@@ -46,7 +46,8 @@ export function useTodoReminders() {
       return;
     }
     // Compute the fire time the same way the database does (America/New_York).
-    const ruleJson: Record<string, string> = { kind: rule.kind };
+    if (!due.date || !due.time) { toast.error('Set a time to get a reminder'); return; }
+    const ruleJson: Record<string, string> = { kind: 'at' };
     if (rule.kind === 'custom' && customAt) ruleJson.custom_at = customAt;
     const { data: remindAt, error: calcErr } = await supabase.rpc('compute_remind_at' as never, {
       _rule: ruleJson, _due_date: due.date, _due_time: due.time,
@@ -60,5 +61,10 @@ export function useTodoReminders() {
     if (error) { toast.error("Couldn't save that reminder."); load(); }
   };
 
-  return { reminders: mine, hasReminder: (todoId: string) => todoId in mine, save };
+  const snooze = async (todoId: string, action: 'hour' | 'tomorrow') => {
+    const { data, error } = await supabase.rpc('snooze_todo_reminder' as never, { _todo_id: todoId, _action: action } as never) as { data: string | null; error: unknown };
+    if (error || !data) { toast.error("Couldn't snooze that reminder."); return null; }
+    return data;
+  };
+  return { reminders: mine, hasReminder: (todoId: string) => todoId in mine, save, snooze };
 }
