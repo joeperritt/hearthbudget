@@ -22,7 +22,7 @@ const byDue = (a: HomeListItem, b: HomeListItem) => (a.due_date! + (a.due_time ?
 
 export function TodoCard() {
   const { user } = useAuth();
-  const { todo: { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf } } = useHomeData();
+  const { todo: { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf }, reminders: { reminders, hasReminder, save: saveReminder } } = useHomeData();
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<HomeListItem | null>(null);
   const [deleting, setDeleting] = useState<HomeListItem | null>(null);
@@ -52,7 +52,7 @@ export function TodoCard() {
 
   const row = (i: HomeListItem, showDate = false) => (
     <ListRow key={i.id} item={i} onToggle={() => toggle(i)} onDelete={() => requestDelete(i)} onEdit={() => setEditing(i)}
-      dot={ownerOf(i.user_id)?.color} repeat={!!i.recurrence}
+      dot={ownerOf(i.user_id)?.color} repeat={!!i.recurrence} bell={hasReminder(i.id)}
       meta={[showDate && i.due_date ? fmtDate(i.due_date) : '', fmtTime(i.due_time)].filter(Boolean).join(' · ') || undefined} />
   );
 
@@ -91,7 +91,11 @@ export function TodoCard() {
           )}
         </div>
       )}
-      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update} onDelete={id => { const it = items.find(x => x.id === id); if (it) requestDelete(it); }} onCreate={(text, o) => add(text, o)} />
+      <ListItemEditSheet item={editing} kind="todo" owners={owners} onClose={() => setEditing(null)} onSave={update}
+        reminder={editing && editing.id !== 'new' ? reminders[editing.id] ?? null : null}
+        onSaveReminder={editing && editing.id !== 'new' ? (rule, due, customAt) => saveReminder(editing.id, rule, due, customAt) : undefined}
+        onDelete={id => { const it = items.find(x => x.id === id); if (it) requestDelete(it); }}
+        onCreate={async (text, o) => { const id = await add(text, o); if (id && o.reminder && o.due_date) saveReminder(id, o.reminder, { date: o.due_date, time: o.due_time }, o.reminderCustomAt); }} />
       <AlertDialog open={!!deleting} onOpenChange={o => { if (!o) setDeleting(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
