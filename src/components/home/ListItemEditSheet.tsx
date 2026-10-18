@@ -22,7 +22,7 @@ interface Props {
   onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null; reminder?: ReminderRule | null; reminderCustomAt?: string }) => void;
 }
 
-export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, onCreate }: Props) {
+export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, reminder = null, onSaveReminder, onCreate }: Props) {
   const [text, setText] = useState('');
   const [owner, setOwner] = useState('family');
   const [date, setDate] = useState('');
@@ -34,6 +34,8 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
   const [days, setDays] = useState<number[]>([]);
   const [customN, setCustomN] = useState(1);
   const [customUnit, setCustomUnit] = useState<'day' | 'week' | 'month'>('week');
+  const [remind, setRemind] = useState<ReminderKind | 'none'>('none');
+  const [remindCustom, setRemindCustom] = useState('');
 
   useEffect(() => {
     if (!item) return;
@@ -43,16 +45,19 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
     const r = item.recurrence ?? null;
     setPreset(presetOf(r)); setFrom(r?.from ?? 'due'); setDays(r?.days ?? []);
     setCustomN(r?.interval ?? 1); setCustomUnit(r && (r.unit === 'day' || r.unit === 'week' || r.unit === 'month') ? r.unit : 'week');
-  }, [item]);
+    setRemind(reminder?.kind ?? 'none');
+    setRemindCustom(reminder?.custom_at ? reminder.custom_at.slice(0, 16) : '');
+  }, [item, reminder]);
 
   const isNew = item?.id === 'new';
   const dueDow = date ? new Date(date + 'T00:00:00').getDay() : 0;
   const rule = date ? fromPreset(preset, from, preset === 'weekly' ? (days.length ? days : [dueDow]) : [], { n: customN, unit: customUnit }) : null;
   const toggleDay = (d: number) => setDays(cur => { const base = cur.length ? cur : [dueDow]; const nx = base.includes(d) ? base.filter(x => x !== d) : [...base, d]; return nx.length ? nx : base; });
+  const reminderRule: ReminderRule | null = !date || remind === 'none' ? null : { kind: remind, ...(remind === 'custom' && remindCustom ? { custom_at: new Date(remindCustom).toISOString() } : {}) };
   const save = () => {
     if (!item || !text.trim()) return;
     if (isNew) {
-      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null, recurrence: rule });
+      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null, recurrence: rule, reminder: reminderRule, reminderCustomAt: remindCustom || undefined });
       onClose();
       return;
     }
@@ -63,6 +68,8 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
       notes: notes.trim().slice(0, 2000) || null, completed: done, recurrence: rule,
     });
     onSave(item.id, patch);
+    if (date) onSaveReminder?.(reminderRule, { date, time: time || null }, remindCustom || undefined);
+    else if (reminder) onSaveReminder?.(null, { date: '', time: null });
     onClose();
   };
 
