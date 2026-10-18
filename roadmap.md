@@ -1,7 +1,8 @@
 # Home page updates
-- [ ] Simplify personal reminders to a due-time switch and update assistant validation.
-- [ ] Add compact notification action sheet and one-off snoozes, plus supported browser actions.
-- [ ] Verify signed-in reminder flows and publish.
+- [x] Simplify personal reminders to a due-time switch and update assistant validation.
+- [x] Add compact notification action sheet and one-off snoozes, plus supported browser actions.
+- [x] Run reminder tests and request publishing (11 tests passed; app compiles).
+- [ ] Verify signed-in reminder flows and real iPhone delivery — account-session approval unavailable; requires signing in to the preview and a subscribed iPhone.
 - [x] Add calendar ownership and saved per-user visibility toggles.
 - [x] Add owner selection to calendar add/edit settings.
 - [x] Arrange Home widgets into a responsive desktop grid without changing mobile order.
