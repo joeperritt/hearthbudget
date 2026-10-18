@@ -32,6 +32,7 @@ const tools = [{
         owner: { type: 'STRING', enum: ['joe', 'katie', 'family'], description: 'todo only' },
         due_date: { type: 'STRING', description: 'todo only, optional YYYY-MM-DD' },
         due_time: { type: 'STRING', description: 'todo only, optional HH:mm (24h)' },
+        reminder: { type: 'STRING', enum: ['at', 'before15', 'before1h', 'morning_of', 'day_before'], description: 'todo only, optional push reminder for the asking user. at/before15/before1h need a due_time; morning_of = 8 AM on the due date; day_before = 8 AM the day before.' },
         recurrence: { type: 'OBJECT', description: 'Optional repeat rule (needs a due date). unit: day|weekday|week|month|year; interval: every N units; days: weekdays 0=Sun..6=Sat for weekly; from: due (fixed schedule, default) or completion (N units after it is done).', properties: {
           unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
           days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
@@ -59,6 +60,8 @@ const tools = [{
           unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
           days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
         stop_repeating: { type: 'BOOLEAN' },
+        reminder: { type: 'STRING', enum: ['at', 'before15', 'before1h', 'morning_of', 'day_before'], description: 'Set a push reminder for the asking user. Needs a due date; at/before15/before1h need a due_time.' },
+        clear_reminder: { type: 'BOOLEAN', description: 'Remove the asking user\'s reminder from this to do' },
         done: { type: 'BOOLEAN' },
         delete: { type: 'BOOLEAN' },
       }, required: ['id'] },
