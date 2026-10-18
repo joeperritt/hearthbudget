@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { HomeListItem } from '@/hooks/useHomeList';
@@ -32,6 +32,16 @@ export function TodoCard() {
   };
 
   const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null, recurrence: null, series_id: null } as HomeListItem);
+
+  // Tapping a reminder notification opens the app with ?todo=<id>: open that to do's edit sheet.
+  useEffect(() => {
+    if (loading) return;
+    const id = new URLSearchParams(window.location.search).get('todo');
+    if (!id) return;
+    const it = items.find(x => x.id === id);
+    if (it) setEditing(it);
+    window.history.replaceState(null, '', window.location.pathname);
+  }, [loading, items]);
 
   const visible = items.filter(i => isVisible(keyOf(i.user_id)));
   const open = visible.filter(i => !i.completed);
