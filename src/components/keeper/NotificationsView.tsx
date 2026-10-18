@@ -27,14 +27,15 @@ function deviceLabel() {
 export function NotificationsView({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();
   const [enabled, setEnabled] = useState(false);
+  const [todoEnabled, setTodoEnabled] = useState(true);
   const [time, setTime] = useState('07:00');
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<'sub' | 'test' | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('notification_prefs').select('morning_enabled, morning_time').eq('user_id', user.id).maybeSingle().then(({ data }) => {
-      if (data) { setEnabled(data.morning_enabled); setTime(String(data.morning_time).slice(0, 5)); }
+    supabase.from('notification_prefs').select('morning_enabled, morning_time, todo_reminders_enabled').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+      if (data) { setEnabled(data.morning_enabled); setTime(String(data.morning_time).slice(0, 5)); setTodoEnabled(data.todo_reminders_enabled); }
     });
     (async () => {
       if (!supported) return setSubscribed(false);
@@ -46,9 +47,9 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
     })().catch(() => setSubscribed(false));
   }, [user]);
 
-  const savePrefs = async (next: { morning_enabled?: boolean; morning_time?: string }) => {
+  const savePrefs = async (next: { morning_enabled?: boolean; morning_time?: string; todo_reminders_enabled?: boolean }) => {
     if (!user) return;
-    const row = { user_id: user.id, morning_enabled: next.morning_enabled ?? enabled, morning_time: next.morning_time ?? time, updated_at: new Date().toISOString() };
+    const row = { user_id: user.id, morning_enabled: next.morning_enabled ?? enabled, morning_time: next.morning_time ?? time, todo_reminders_enabled: next.todo_reminders_enabled ?? todoEnabled, updated_at: new Date().toISOString() };
     const { error } = await supabase.from('notification_prefs').upsert(row, { onConflict: 'user_id' });
     if (error) toast.error("Couldn't save that setting.");
   };
@@ -105,6 +106,16 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
             <label htmlFor="morning-time" className="text-sm text-foreground">Time (Eastern)</label>
             <Input id="morning-time" type="time" step={900} value={time} disabled={!enabled} className="w-32 text-base"
               onChange={e => setTime(e.target.value)} onBlur={e => e.target.value && savePrefs({ morning_time: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">To do reminders</p>
+              <p className="text-xs text-muted-foreground">Reminders you set on individual to dos</p>
+            </div>
+            <Switch checked={todoEnabled} onCheckedChange={v => { setTodoEnabled(v); savePrefs({ todo_reminders_enabled: v }); }} aria-label="To do reminders" />
           </div>
         </div>
 
