@@ -19,6 +19,7 @@ export const REMINDER_OPTIONS: { id: ReminderKind; label: string; needsTime?: bo
 export function useTodoReminders() {
   const { user } = useAuth();
   const [mine, setMine] = useState<Record<string, ReminderRule>>({});
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -26,6 +27,7 @@ export function useTodoReminders() {
     const map: Record<string, ReminderRule> = {};
     for (const r of data ?? []) map[r.todo_id] = r.rule as unknown as ReminderRule;
     setMine(map);
+    setLoading(false);
   }, [user]);
 
   useEffect(() => {
@@ -66,5 +68,5 @@ export function useTodoReminders() {
     if (error || !data) { toast.error("Couldn't snooze that reminder."); return null; }
     return data;
   };
-  return { reminders: mine, hasReminder: (todoId: string) => todoId in mine, save, snooze };
+  return { reminders: mine, loading, hasReminder: (todoId: string) => todoId in mine, save, snooze };
 }

@@ -6,6 +6,9 @@ import { useHomeData } from './HomeDataContext';
 import { ListItemEditSheet } from './ListItemEditSheet';
 import { ListRow } from './HomeListCard';
 import { AddEventMenu } from './AddEventButton';
+import { ReminderSheet } from './ReminderSheet';
+import { parseReminderLink, ReminderAction } from '@/lib/todoReminderActions';
+import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 function nyToday() {
@@ -18,14 +21,16 @@ function fmtTime(t: string | null) {
   const [h, m] = t.split(':').map(Number);
   return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h >= 12 ? 'pm' : 'am'}`;
 }
-const byDue = (a: HomeListItem, b: HomeListItem) => (a.due_date! + (a.due_time ?? '99')).localeCompare(b.due_date! + (b.due_time ?? '99'));
+const byDue = (a: HomeListItem, b: HomeListItem) => ((a.due_date ?? '') + (a.due_time ?? '99')).localeCompare((b.due_date ?? '') + (b.due_time ?? '99'));
 
 export function TodoCard() {
   const { user } = useAuth();
-  const { todo: { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf }, reminders: { reminders, hasReminder, save: saveReminder } } = useHomeData();
+  const { todo: { items, loading, add, update, toggle, remove, skipOccurrence, clearCompleted }, owners: { owners, isVisible, toggle: toggleOwner, ownerOf, keyOf }, reminders: { reminders, loading: remindersLoading, hasReminder, save: saveReminder, snooze } } = useHomeData();
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<HomeListItem | null>(null);
   const [deleting, setDeleting] = useState<HomeListItem | null>(null);
+  const [reminderId, setReminderId] = useState<string | null>(null);
+  const [automaticAction, setAutomaticAction] = useState<ReminderAction | null>(null);
   const requestDelete = (i: HomeListItem) => {
     if (i.recurrence && !i.completed) setDeleting(i);
     else { remove(i.id); setEditing(null); }
@@ -33,15 +38,18 @@ export function TodoCard() {
 
   const startNew = () => setEditing({ id: 'new', text: '', completed: false, created_at: '', completed_at: null, user_id: user?.id ?? null, due_date: null, due_time: null, notes: null, recurrence: null, series_id: null } as HomeListItem);
 
-  // Tapping a reminder notification opens the app with ?todo=<id>: open that to do's edit sheet.
+  // Both notification taps and supported notification actions land in this authenticated flow.
   useEffect(() => {
     if (loading) return;
-    const id = new URLSearchParams(window.location.search).get('todo');
-    if (!id) return;
-    const it = items.find(x => x.id === id);
-    if (it) setEditing(it);
-    window.history.replaceState(null, '', window.location.pathname);
-  }, [loading, items]);
+    const { todoId, action, userId } = parseReminderLink(window.location.search);
+    if (!todoId || !user) return;
+    if (userId && userId !== user.id) toast.error('This reminder belongs to another account.');
+    else if (items.some(x => x.id === todoId)) { setReminderId(todoId); setAutomaticAction(action); }
+    else toast.info('This to do is no longer available.');
+    const query = new URLSearchParams(window.location.search);
+    ['todo', 'action', 'reminderUser'].forEach(key => query.delete(key));
+    window.history.replaceState(null, '', `${window.location.pathname}${query.size ? `?${query}` : ''}${window.location.hash}`);
+  }, [loading, items, user]);
 
   const visible = items.filter(i => isVisible(keyOf(i.user_id)));
   const open = visible.filter(i => !i.completed);
@@ -53,7 +61,7 @@ export function TodoCard() {
   if (overdue.length) groups.push({ label: 'Overdue', danger: true, items: overdue });
   const dated = open.filter(i => i.due_date && i.due_date >= today).sort(byDue);
   for (const i of dated) {
-    const label = i.due_date === today ? 'Today' : i.due_date === tomorrow ? 'Tomorrow' : fmtDate(i.due_date!);
+    const label = i.due_date === today ? 'Today' : i.due_date === tomorrow ? 'Tomorrow' : fmtDate(i.due_date ?? today);
     const g = groups.find(x => x.label === label);
     if (g) g.items.push(i); else groups.push({ label, items: [i] });
   }
@@ -106,6 +114,11 @@ export function TodoCard() {
         onSaveReminder={editing && editing.id !== 'new' ? (rule, due, customAt) => saveReminder(editing.id, rule, due, customAt) : undefined}
         onDelete={id => { const it = items.find(x => x.id === id); if (it) requestDelete(it); }}
         onCreate={async (text, o) => { const id = await add(text, o); if (id && o.reminder && o.due_date) saveReminder(id, o.reminder, { date: o.due_date, time: o.due_time }, o.reminderCustomAt); }} />
+      <ReminderSheet item={items.find(i => i.id === reminderId) ?? null} automaticAction={automaticAction}
+        ready={!remindersLoading} canSnooze={!!reminderId && hasReminder(reminderId)}
+        onDone={id => update(id, { completed: true })} onSnooze={snooze}
+        onClose={() => { setReminderId(null); setAutomaticAction(null); }}
+        onOpen={item => { setReminderId(null); setAutomaticAction(null); setEditing(item); }} />
       <AlertDialog open={!!deleting} onOpenChange={o => { if (!o) setDeleting(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

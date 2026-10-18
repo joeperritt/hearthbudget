@@ -12,12 +12,16 @@ self.addEventListener('push', (event) => {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/' },
+    actions: Array.isArray(data.actions) ? data.actions : [],
   }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  if (target.origin !== self.location.origin) return;
+  if (['done', 'hour', 'tomorrow'].includes(event.action)) target.searchParams.set('action', event.action);
+  const url = target.href;
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {
