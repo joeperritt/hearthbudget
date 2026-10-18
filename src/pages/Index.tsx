@@ -57,6 +57,22 @@ const Index = () => {
   } = useBudgetData();
 
   const { accounts } = useAccounts();
+
+  // Lightweight unassigned count so Home's Budget pill shows before all transactions load.
+  const [quickUnassigned, setQuickUnassigned] = useState(0);
+  useEffect(() => {
+    if (!householdId || !loading) return;
+    let cancelled = false;
+    (async () => {
+      const { data: hh } = await supabase.from('households').select('active_month').eq('id', householdId).maybeSingle();
+      const month = (hh?.active_month as string | undefined) || format(new Date(), 'yyyy-MM');
+      const { count } = await supabase.from('transactions').select('id', { count: 'exact', head: true })
+        .eq('household_id', householdId).eq('budget_month', month).eq('category_slug', 'unassigned')
+        .eq('transaction_type', 'expense').eq('is_transfer_to_savings', false);
+      if (!cancelled) setQuickUnassigned(count ?? 0);
+    })();
+    return () => { cancelled = true; };
+  }, [householdId, loading]);
   const { user } = useAuth();
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
@@ -336,21 +352,14 @@ const Index = () => {
     setActiveTab('budget');
   }, []);
 
-  if (loading || !activeMonth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-primary-foreground font-display text-lg font-bold">P</span>
-        </div>
-      </div>
-    );
-  }
+  const budgetReady = !loading && !!activeMonth;
+  const needsBudget = activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions' || activeTab === 'budget' || (activeTab === 'profile' && profileSubView === 'trends');
 
-  if (selectedCategoryId) {
+  if (budgetReady && selectedCategoryId) {
     const cat = activeMonthCategories.find(c => c.id === selectedCategoryId);
     if (cat) {
       return (
-        <CategoryDetail
+        <Suspense fallback={<ScreenLoader />}><CategoryDetail
           category={{ id: cat.id, name: cat.name, budgeted: cat.budgeted }}
           categories={activeMonthCategories}
           fixedExpenses={activeMonthFixedExpenses}
@@ -364,19 +373,19 @@ const Index = () => {
           onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
-        />
+        /></Suspense>
       );
     }
   }
 
-  if (selectedFixedExpenseId) {
+  if (budgetReady && selectedFixedExpenseId) {
     const exp = activeMonthFixedExpenses.find(e => e.id === selectedFixedExpenseId);
     if (exp) {
       const fixedTransactions = monthTransactions.filter(t => t.categoryId === exp.id && t.transactionType === 'expense');
       const fixedDeposits = monthTransactions.filter(t => t.transactionType === 'deposit' && t.categoryId === exp.id);
       const expFixedSpent = fixedTransactions.reduce((s, t) => s + t.amount, 0) - fixedDeposits.reduce((s, d) => s + Math.abs(d.amount), 0);
       return (
-        <CategoryDetail
+        <Suspense fallback={<ScreenLoader />}><CategoryDetail
           category={{ id: exp.id, name: exp.name, budgeted: exp.amount }}
           categories={activeMonthCategories}
           fixedExpenses={activeMonthFixedExpenses}
@@ -390,7 +399,7 @@ const Index = () => {
           onDeleteTransfer={deleteTransfer}
           onGoToTransaction={handleGoToTransaction}
           accounts={accounts}
-        />
+        /></Suspense>
       );
     }
   }
@@ -405,21 +414,23 @@ const Index = () => {
       />
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-10 lg:pt-10 lg:pl-[220px]">
         <div className="lg:px-12 xl:px-16 lg:[&>*]:max-w-none lg:[&>*]:mx-0 lg:[&>*]:w-full">
+        <Suspense fallback={<ScreenLoader />}>
+        {!budgetReady && needsBudget && <ScreenLoader />}
         {activeTab === 'home' && (
           <HomePage
             key={homeResetKey}
             onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
-            unassignedCount={unassignedTransactions.length}
+            unassignedCount={budgetReady ? unassignedTransactions.length : quickUnassigned}
             onOpenUnassigned={() => {
               setActivityInitialFilter('unassigned');
               setActiveTab('transactions');
             }}
           />
         )}
-        {(activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions') && (
+        {budgetReady && (activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions') && (
           <BudgetSubNav activeTab={activeTab} onTabChange={handleTabChange} />
         )}
-        {activeTab === 'dashboard' && (
+        {budgetReady && activeTab === 'dashboard' && (
           <Dashboard
             monthLabel={monthLabel}
             onAddTransaction={() => setShowAddTransaction(true)}
@@ -467,7 +478,7 @@ const Index = () => {
             }
           />
         )}
-        {activeTab === 'variable' && (
+        {budgetReady && activeTab === 'variable' && (
           <SpendingView
             categories={activeMonthCategories}
             fixedExpenses={activeMonthFixedExpenses}
@@ -489,7 +500,7 @@ const Index = () => {
             householdMembers={householdMembers}
           />
         )}
-        {activeTab === 'transactions' && (
+        {budgetReady && activeTab === 'transactions' && (
           <TransactionsView
             allTransactions={transactions}
             allTransfers={transfers}
@@ -508,7 +519,7 @@ const Index = () => {
         )}
 
         {/* Budget Tab (now lives inside More) */}
-        {activeTab === 'budget' && budgetSubView === 'main' && (
+        {budgetReady && activeTab === 'budget' && budgetSubView === 'main' && (
           <BudgetTabView
             categories={categories}
             fixedExpenses={fixedExpenses}
@@ -570,7 +581,7 @@ const Index = () => {
           <BankConnectionView onBack={() => setProfileSubView('menu')} />
         )}
         {/* AI Advisor removed — use contextual Ask AI buttons instead */}
-        {activeTab === 'profile' && profileSubView === 'trends' && (
+        {budgetReady && activeTab === 'profile' && profileSubView === 'trends' && (
           <SpendingTrendsView
             activeMonth={activeMonth}
             categories={activeMonthCategories}
@@ -588,12 +599,15 @@ const Index = () => {
         {activeTab === 'profile' && profileSubView === 'security' && (
           <SecurityView onBack={() => setProfileSubView('menu')} />
         )}
+        </Suspense>
         </div>
       </div>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       <KeeperAssistant />
 
+      {budgetReady && (
+      <Suspense fallback={null}>
       <AddTransactionSheet
         open={showAddTransaction}
         onOpenChange={setShowAddTransaction}
@@ -666,6 +680,8 @@ const Index = () => {
         chatLoading={chatLoading}
         onSendMessage={sendChatMessage}
       />
+      </Suspense>
+      )}
     </div>
   );
 };
