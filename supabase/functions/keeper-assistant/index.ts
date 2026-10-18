@@ -32,6 +32,7 @@ const tools = [{
         owner: { type: 'STRING', enum: ['joe', 'katie', 'family'], description: 'todo only' },
         due_date: { type: 'STRING', description: 'todo only, optional YYYY-MM-DD' },
         due_time: { type: 'STRING', description: 'todo only, optional HH:mm (24h)' },
+        reminder: { type: 'STRING', enum: ['at', 'before15', 'before1h', 'morning_of', 'day_before'], description: 'todo only, optional push reminder for the asking user. at/before15/before1h need a due_time; morning_of = 8 AM on the due date; day_before = 8 AM the day before.' },
         recurrence: { type: 'OBJECT', description: 'Optional repeat rule (needs a due date). unit: day|weekday|week|month|year; interval: every N units; days: weekdays 0=Sun..6=Sat for weekly; from: due (fixed schedule, default) or completion (N units after it is done).', properties: {
           unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
           days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
@@ -59,6 +60,8 @@ const tools = [{
           unit: { type: 'STRING', enum: ['day', 'weekday', 'week', 'month', 'year'] }, interval: { type: 'INTEGER' },
           days: { type: 'ARRAY', items: { type: 'INTEGER' } }, from: { type: 'STRING', enum: ['due', 'completion'] } } },
         stop_repeating: { type: 'BOOLEAN' },
+        reminder: { type: 'STRING', enum: ['at', 'before15', 'before1h', 'morning_of', 'day_before'], description: 'Set a push reminder for the asking user. Needs a due date; at/before15/before1h need a due_time.' },
+        clear_reminder: { type: 'BOOLEAN', description: 'Remove the asking user\'s reminder from this to do' },
         done: { type: 'BOOLEAN' },
         delete: { type: 'BOOLEAN' },
       }, required: ['id'] },
@@ -150,6 +153,7 @@ Rules:
 - Any shopping request ("we need milk", "pick up batteries", "buy a new hose") -> add_list_items list=store, one item per thing, short names.
 - To dos ("remind me to...", "I need to...") -> add_list_items list=todo. owner defaults to ${profile.display_name.split(' ')[0].toLowerCase()}; use family for household tasks or when it mentions "we", "us" or Thomas; use the other person's name if it is for them. Add due_date/due_time only if a time frame is given.
 - Resolve relative dates ("tomorrow", "next Friday", "end of the month") against today in America/New_York.
+- "Remind me to..." asks for a push reminder: set a due date (and time if given) plus reminder. "at 2" / "when it's due" -> at; "15 minutes/an hour before" -> before15/before1h; "the morning of" -> morning_of; "the day before" -> day_before. If they say "remind me" with no timing, use at when a time is set, else morning_of. To remove a reminder, update_todo clear_reminder.
 - Repeating to dos ("every Sunday", "every 3 months"): pass recurrence with a due_date for the first one. "every N months/after I do it" style chores (air filter) use from=completion when the user implies it; fixed schedules (trash every Sunday) use from=due with days. "stop repeating" -> find_todos then update_todo stop_repeating. Reply with the plain-words rule from the "repeats" field.
 - To change, move, reschedule, complete or delete a to do: call find_todos, then update_todo (applies immediately). If several match, ask which one; if none, say so.
 - For events, call propose_calendar_event; it only creates a confirmation card. Default calendar: the shared one (${shared?.id ?? 'n/a'}) if it mentions the family, Thomas, both of us or "we"; otherwise ${profile.display_name}'s own (${own?.id ?? shared?.id ?? 'n/a'}). Default duration 1 hour.
@@ -177,6 +181,17 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
     const ownerName = (id: string | null) => id ? (members?.find(m => m.user_id === id)?.display_name.split(' ')[0] ?? 'someone') : 'Family';
     const validDate = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
     const validTime = (t: unknown) => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t) ? t : null;
+    const REMINDER_KINDS = ['at', 'before15', 'before1h', 'morning_of', 'day_before'];
+    const REMINDER_WORDS: Record<string, string> = { at: 'at the due time', before15: '15 minutes before', before1h: 'an hour before', morning_of: 'the morning of', day_before: 'the day before' };
+    // Save a push reminder for the asking user; returns a plain-words description or null on failure.
+    const setReminder = async (todoId: string, kind: unknown, dueDate: string | null, dueTime: string | null): Promise<string | null> => {
+      if (typeof kind !== 'string' || !REMINDER_KINDS.includes(kind) || !dueDate) return null;
+      const rule = { kind };
+      const { data: remindAt } = await supabase.rpc('compute_remind_at', { _rule: rule, _due_date: dueDate, _due_time: dueTime });
+      if (!remindAt) return null;
+      const { error } = await supabase.from('todo_reminders').upsert({ todo_id: todoId, user_id: user.id, rule, remind_at: remindAt, sent_at: null }, { onConflict: 'todo_id,user_id' });
+      return error ? null : REMINDER_WORDS[kind];
+    };
 
     const found = new Map<string, Found>();
     for (let step = 0; step < 6; step++) {
@@ -212,12 +227,17 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             const owner = list === 'todo' ? (ownerId(args.owner) === undefined ? user.id : ownerId(args.owner)!) : null;
             const rule = list === 'todo' ? parseRule(args.recurrence) : null;
             const dueDate = list === 'todo' ? (validDate(args.due_date) ?? (rule ? todayISO() : null)) : null;
-            const { error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
+            const { data: inserted, error } = await supabase.from('home_list_items').insert(items.map((text: string) => ({
               household_id: profile.household_id, list_type: list, user_id: owner, text, created_by: user.id,
               due_date: dueDate, due_time: dueDate ? validTime(args.due_time) : null, recurrence: rule,
-            })));
+            }))).select('id');
             if (error) { console.error(error); result = { error: 'could not save' }; }
-            else { added.push({ list, items }); result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate, repeats: rule ? describeRecurrence(rule, dueDate) : undefined }; }
+            else {
+              let reminderNote: string | null = null;
+              if (list === 'todo' && args.reminder) for (const row of inserted ?? []) reminderNote = await setReminder(row.id, args.reminder, dueDate, validTime(args.due_time));
+              added.push({ list, items });
+              result = { ok: true, added: items, list: listName[list], owner: list === 'todo' ? ownerName(owner) : undefined, due_date: dueDate, repeats: rule ? describeRecurrence(rule, dueDate) : undefined, reminder: reminderNote ?? undefined };
+            }
           }
         } else if (fc.name === 'find_todos') {
           const words = String(args.query ?? '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
@@ -232,7 +252,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
           }
         } else if (fc.name === 'update_todo') {
           const id = String(args.id ?? '');
-          const { data: cur } = await supabase.from('home_list_items').select('id, text, due_date').eq('id', id).eq('list_type', 'todo').maybeSingle();
+          const { data: cur } = await supabase.from('home_list_items').select('id, text, due_date, due_time').eq('id', id).eq('list_type', 'todo').maybeSingle();
           if (!cur) result = { error: 'to do not found; call find_todos first' };
           else if (args.delete) {
             const { error } = await supabase.from('home_list_items').delete().eq('id', id);
@@ -248,10 +268,13 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             if (args.stop_repeating) patch.recurrence = null;
             else if (parseRule(args.recurrence)) { patch.recurrence = parseRule(args.recurrence); if (!patch.due_date && !cur.due_date) patch.due_date = todayISO(); }
             if (typeof args.done === 'boolean') { patch.completed = args.done; patch.completed_at = args.done ? new Date().toISOString() : null; }
-            if (!Object.keys(patch).length) result = { error: 'no changes given' };
+            if (!Object.keys(patch).length && !args.reminder && !args.clear_reminder) result = { error: 'no changes given' };
             else {
-              const { error } = await supabase.from('home_list_items').update(patch).eq('id', id);
-              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch, repeats: patch.recurrence ? describeRecurrence(patch.recurrence, patch.due_date ?? cur.due_date) : patch.recurrence === null ? 'no longer repeats' : undefined };
+              const { error } = Object.keys(patch).length ? await supabase.from('home_list_items').update(patch).eq('id', id) : { error: null };
+              let reminderNote: string | null = null;
+              if (!error && args.clear_reminder) { await supabase.from('todo_reminders').delete().eq('todo_id', id).eq('user_id', user.id); reminderNote = 'reminder removed'; }
+              if (!error && args.reminder) reminderNote = (await setReminder(id, args.reminder, patch.due_date ?? cur.due_date, patch.due_time ?? cur.due_time?.slice(0, 5) ?? null)) ?? 'could not set the reminder (needs a due date)';
+              result = error ? { error: 'could not update' } : { ok: true, updated: cur.text, changes: patch, reminder: reminderNote ?? undefined, repeats: patch.recurrence ? describeRecurrence(patch.recurrence, patch.due_date ?? cur.due_date) : patch.recurrence === null ? 'no longer repeats' : undefined };
               if (!error) added.push({ list: 'todo', items: [] });
             }
           }

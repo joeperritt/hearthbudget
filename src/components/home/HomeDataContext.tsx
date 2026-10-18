@@ -1,11 +1,13 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useHomeList } from '@/hooks/useHomeList';
 import { useTodoOwners } from '@/hooks/useTodoOwners';
+import { useTodoReminders } from '@/hooks/useTodoReminders';
 
 type HomeData = {
   todo: ReturnType<typeof useHomeList>;
   store: ReturnType<typeof useHomeList>;
   owners: ReturnType<typeof useTodoOwners>;
+  reminders: ReturnType<typeof useTodoReminders>;
 };
 
 const Ctx = createContext<HomeData | null>(null);
@@ -15,7 +17,8 @@ export function HomeDataProvider({ children }: { children: ReactNode }) {
   const todo = useHomeList('todo');
   const store = useHomeList('store');
   const owners = useTodoOwners();
-  return <Ctx.Provider value={{ todo, store, owners }}>{children}</Ctx.Provider>;
+  const reminders = useTodoReminders();
+  return <Ctx.Provider value={{ todo, store, owners, reminders }}>{children}</Ctx.Provider>;
 }
 
 export function useHomeData() {

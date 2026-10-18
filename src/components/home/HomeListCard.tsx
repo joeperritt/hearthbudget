@@ -1,5 +1,5 @@
 import { useRef, useState, KeyboardEvent, TouchEvent, ReactNode } from 'react';
-import { Check, X, Plus, Repeat } from 'lucide-react';
+import { Bell, Check, X, Plus, Repeat } from 'lucide-react';
 import { HomeListItem } from '@/hooks/useHomeList';
 import { ListItemEditSheet } from './ListItemEditSheet';
 import { useHomeData } from './HomeDataContext';
@@ -47,7 +47,7 @@ export function QuickAdd({ value, onChange, onSubmit, placeholder, children }: {
   );
 }
 
-export function ListRow({ item, onToggle, onDelete, onEdit, dot, meta, repeat }: { item: HomeListItem; onToggle: () => void; onDelete: () => void; onEdit: () => void; dot?: string; meta?: string; repeat?: boolean }) {
+export function ListRow({ item, onToggle, onDelete, onEdit, dot, meta, repeat, bell }: { item: HomeListItem; onToggle: () => void; onDelete: () => void; onEdit: () => void; dot?: string; meta?: string; repeat?: boolean; bell?: boolean }) {
   const startX = useRef<number | null>(null);
   const [dx, setDx] = useState(0);
   const onStart = (e: TouchEvent) => { startX.current = e.touches[0].clientX; };
@@ -64,6 +64,7 @@ export function ListRow({ item, onToggle, onDelete, onEdit, dot, meta, repeat }:
           {dot && <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot }} />}
           <span>{item.text}</span>
           {repeat && <Repeat aria-label="Repeats" className="h-3 w-3 shrink-0 self-center text-muted-foreground" />}
+          {bell && <Bell aria-label="Reminder set" className="h-3 w-3 shrink-0 self-center text-muted-foreground" />}
         </span>
         {meta && <span className="block text-[11px] text-muted-foreground">{meta}</span>}
       </button>

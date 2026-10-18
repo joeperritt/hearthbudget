@@ -3,8 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { HomeListItem, HomeListPatch } from '@/hooks/useHomeList';
 import { TodoOwner } from '@/hooks/useTodoOwners';
-import { Repeat } from 'lucide-react';
+import { Bell, Repeat } from 'lucide-react';
 import { DAY_NAMES, PRESETS, Recurrence, RepeatPreset, describeRecurrence, fromPreset, presetOf } from '@/lib/recurrence';
+import { REMINDER_OPTIONS, ReminderKind, ReminderRule } from '@/hooks/useTodoReminders';
 
 interface Props {
   item: HomeListItem | null;
@@ -13,11 +14,15 @@ interface Props {
   onClose: () => void;
   onSave: (id: string, patch: HomeListPatch) => void;
   onDelete: (id: string) => void;
+  /** The current user's reminder on this to do, if any. */
+  reminder?: ReminderRule | null;
+  /** Save or clear the current user's reminder. */
+  onSaveReminder?: (rule: ReminderRule | null, due: { date: string; time: string | null }, customAt?: string) => void;
   /** When set and item.id === 'new', the sheet creates instead of edits. */
-  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null }) => void;
+  onCreate?: (text: string, opts: { owner: string | null; due_date: string | null; due_time: string | null; notes: string | null; recurrence: Recurrence | null; reminder?: ReminderRule | null; reminderCustomAt?: string }) => void;
 }
 
-export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, onCreate }: Props) {
+export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, onDelete, reminder = null, onSaveReminder, onCreate }: Props) {
   const [text, setText] = useState('');
   const [owner, setOwner] = useState('family');
   const [date, setDate] = useState('');
@@ -29,6 +34,8 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
   const [days, setDays] = useState<number[]>([]);
   const [customN, setCustomN] = useState(1);
   const [customUnit, setCustomUnit] = useState<'day' | 'week' | 'month'>('week');
+  const [remind, setRemind] = useState<ReminderKind | 'none'>('none');
+  const [remindCustom, setRemindCustom] = useState('');
 
   useEffect(() => {
     if (!item) return;
@@ -38,16 +45,19 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
     const r = item.recurrence ?? null;
     setPreset(presetOf(r)); setFrom(r?.from ?? 'due'); setDays(r?.days ?? []);
     setCustomN(r?.interval ?? 1); setCustomUnit(r && (r.unit === 'day' || r.unit === 'week' || r.unit === 'month') ? r.unit : 'week');
-  }, [item]);
+    setRemind(reminder?.kind ?? 'none');
+    setRemindCustom(reminder?.custom_at ? reminder.custom_at.slice(0, 16) : '');
+  }, [item, reminder]);
 
   const isNew = item?.id === 'new';
   const dueDow = date ? new Date(date + 'T00:00:00').getDay() : 0;
   const rule = date ? fromPreset(preset, from, preset === 'weekly' ? (days.length ? days : [dueDow]) : [], { n: customN, unit: customUnit }) : null;
   const toggleDay = (d: number) => setDays(cur => { const base = cur.length ? cur : [dueDow]; const nx = base.includes(d) ? base.filter(x => x !== d) : [...base, d]; return nx.length ? nx : base; });
+  const reminderRule: ReminderRule | null = !date || remind === 'none' ? null : { kind: remind, ...(remind === 'custom' && remindCustom ? { custom_at: new Date(remindCustom).toISOString() } : {}) };
   const save = () => {
     if (!item || !text.trim()) return;
     if (isNew) {
-      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null, recurrence: rule });
+      onCreate?.(text, { owner: owner === 'family' ? null : owner, due_date: date || null, due_time: date && time ? time : null, notes: notes.trim() || null, recurrence: rule, reminder: reminderRule, reminderCustomAt: remindCustom || undefined });
       onClose();
       return;
     }
@@ -58,6 +68,8 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
       notes: notes.trim().slice(0, 2000) || null, completed: done, recurrence: rule,
     });
     onSave(item.id, patch);
+    if (date) onSaveReminder?.(reminderRule, { date, time: time || null }, remindCustom || undefined);
+    else if (reminder) onSaveReminder?.(null, { date: '', time: null });
     onClose();
   };
 
@@ -120,6 +132,23 @@ export function ListItemEditSheet({ item, kind, owners = [], onClose, onSave, on
                       </div>
                       <p className="text-xs text-muted-foreground">{describeRecurrence(rule, date)}</p>
                     </>
+                  )}
+                </div>
+              )}
+              {date && (
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-muted-foreground" />
+                    <select aria-label="Remind me" value={remind} onChange={e => setRemind(e.target.value as ReminderKind | 'none')} className="auth-input flex-1">
+                      <option value="none">No reminder</option>
+                      {REMINDER_OPTIONS.filter(o => !o.needsTime || time).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  {remind === 'custom' && (
+                    <input aria-label="Reminder date and time" type="datetime-local" value={remindCustom} onChange={e => setRemindCustom(e.target.value)} className="auth-input" />
+                  )}
+                  {remind !== 'none' && typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
+                    <p className="text-xs text-muted-foreground">Reminders arrive as notifications — turn them on in More → Notifications.</p>
                   )}
                 </div>
               )}
