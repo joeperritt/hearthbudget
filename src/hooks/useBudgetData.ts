@@ -110,6 +110,13 @@ function dbToTransfer(row: Record<string, unknown>): BudgetTransfer {
   };
 }
 
+function loadedTxQuery(householdId: string, months: string[]) {
+  const list = months.filter(Boolean).map(m => `"${m}"`).join(',');
+  return supabase.from('transactions').select('*').eq('household_id', householdId)
+    .or(`budget_month.in.(${list}),category_slug.eq.unassigned`)
+    .order('created_at', { ascending: false }).range(0, 9999);
+}
+
 export function useBudgetData() {
   const { profile, user } = useAuth();
   const householdId = profile?.household_id;
@@ -123,17 +130,47 @@ export function useBudgetData() {
   const [planningData, setPlanningData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const initialLoad = useRef(true);
+  const loadedMonths = useRef<Set<string>>(new Set());
+
+  /** Refetch transactions for every month already loaded (plus all unassigned). */
+  const refetchLoadedTx = useCallback(() => {
+    if (!householdId) return;
+    loadedTxQuery(householdId, [...loadedMonths.current]).then(({ data }) => {
+      if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
+    });
+  }, [householdId]);
+
+  /** Load older months on demand; each month is fetched at most once per session. */
+  const ensureMonths = useCallback(async (months: string[]) => {
+    if (!householdId) return;
+    const missing = months.filter(m => m && !loadedMonths.current.has(m));
+    if (!missing.length) return;
+    missing.forEach(m => loadedMonths.current.add(m));
+    const { data, error } = await supabase.from('transactions').select('*').eq('household_id', householdId)
+      .in('budget_month', missing).order('created_at', { ascending: false }).range(0, 9999);
+    if (error) { missing.forEach(m => loadedMonths.current.delete(m)); return; }
+    const rows = (data ?? []).map(r => dbToTx(r as unknown as Record<string, unknown>));
+    setTransactions(prev => {
+      const ids = new Set(rows.map(r => r.id));
+      return [...prev.filter(t => !ids.has(t.id)), ...rows].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+    });
+  }, [householdId]);
 
   // Fetch all data
   const fetchAll = useCallback(async () => {
     if (!householdId) return;
 
-    const [catRes, fixRes, txRes, trRes, hhRes, ovRes] = await Promise.all([
+    // Households first (tiny) so we know the active month, then load only that month's
+    // transactions plus unassigned ones from any month. Older months load on demand.
+    const hhRes = await supabase.from('households').select('*').eq('id', householdId).single();
+    const am = ((hhRes.data as any)?.active_month as string) || format(new Date(), 'yyyy-MM');
+    const months = Array.from(new Set([am, ...loadedMonths.current]));
+    loadedMonths.current = new Set(months);
+    const [catRes, fixRes, txRes, trRes, ovRes] = await Promise.all([
       supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order'),
       supabase.from('fixed_expenses').select('*').eq('household_id', householdId).order('sort_order'),
-      supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }),
+      loadedTxQuery(householdId, months),
       supabase.from('budget_transfers').select('*').eq('household_id', householdId),
-      supabase.from('households').select('*').eq('id', householdId).single(),
       supabase.from('budget_amount_overrides' as any).select('*').eq('household_id', householdId),
     ]);
 
@@ -394,13 +431,11 @@ export function useBudgetData() {
   useEffect(() => {
     if (!householdId) return;
     const onResume = () => {
-      supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }).then(({ data }) => {
-        if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
-      });
+      refetchLoadedTx();
     };
     window.addEventListener('perritt-resume', onResume);
     return () => window.removeEventListener('perritt-resume', onResume);
-  }, [householdId]);
+  }, [householdId, refetchLoadedTx]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -409,9 +444,7 @@ export function useBudgetData() {
     const channel = supabase
       .channel('budget-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `household_id=eq.${householdId}` }, () => {
-        supabase.from('transactions').select('*').eq('household_id', householdId).order('created_at', { ascending: false }).then(({ data }) => {
-          if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
-        });
+        refetchLoadedTx();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_categories', filter: `household_id=eq.${householdId}` }, () => {
         supabase.from('budget_categories').select('*').eq('household_id', householdId).order('sort_order').then(({ data }) => {
@@ -832,6 +865,7 @@ export function useBudgetData() {
     categories,
     fixedExpenses,
     transactions,
+    ensureMonths,
     transfers,
     activeMonth,
     planningData,
