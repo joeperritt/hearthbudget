@@ -25,6 +25,8 @@ type Filter = 'all' | 'manual' | 'unassigned' | 'budget-transfers' | 'transfers-
 
 interface TransactionsViewProps {
   allTransactions: Transaction[];
+  /** Load a month's transactions on demand when the user switches to it. */
+  onViewMonth?: (month: string) => void;
   allTransfers?: BudgetTransfer[];
   categories: BudgetCategory[];
   fixedExpenses: FixedExpense[];
@@ -102,12 +104,13 @@ function groupSplitTransactions(transactions: Transaction[]): DisplayRow[] {
 }
 
 export function TransactionsView({
-  allTransactions, allTransfers = [], categories: allCategories, fixedExpenses: allFixedExpenses,
+  allTransactions, onViewMonth, allTransfers = [], categories: allCategories, fixedExpenses: allFixedExpenses,
   initialMonth, onAddTransaction, onDeleteTransaction, onEditTransaction, accounts = [], initialFilter,
 }: TransactionsViewProps) {
   // Internal month browsing — initialized from the household's active month.
   const [viewMonth, setViewMonth] = useState(initialMonth);
   useEffect(() => { setViewMonth(initialMonth); }, [initialMonth]);
+  useEffect(() => { onViewMonth?.(viewMonth); }, [viewMonth, onViewMonth]);
 
   const monthLabel = useMemo(() => {
     try {

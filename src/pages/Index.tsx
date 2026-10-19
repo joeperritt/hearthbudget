@@ -45,7 +45,7 @@ type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'sec
 
 const Index = () => {
   const {
-    categories, fixedExpenses, transactions, transfers,
+    categories, fixedExpenses, transactions, transfers, ensureMonths,
     activeMonth, loading, householdId,
     addTransactions, deleteTransaction, addTransfer, deleteTransfer,
     updateCategories, updateFixedExpenses, startNewMonth,
@@ -506,6 +506,7 @@ const Index = () => {
         {budgetReady && activeTab === 'transactions' && (
           <TransactionsView
             allTransactions={transactions}
+            onViewMonth={(m: string) => ensureMonths([m])}
             allTransfers={transfers}
             categories={categories}
             fixedExpenses={fixedExpenses}
