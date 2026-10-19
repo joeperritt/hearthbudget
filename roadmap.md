@@ -1,6 +1,6 @@
 # Home page updates
-- [ ] Restore Lovable Cloud access and inspect blocking queries, resource usage, scheduled jobs, and logs.
-- [ ] Fix the verified outage cause and validate app loads and notification scheduling without resending today's summary.
+- [ ] Restore Lovable Cloud access and inspect blocking queries, resource usage, scheduled jobs, and logs — blocked: restart requested October 19 at approximately 16:49 UTC; Cloud remains starting and database probes time out. Requires Lovable support if restart does not recover.
+- [ ] Fix the verified outage cause and validate app loads and notification scheduling without resending today's summary — blocked until database access recovers; saved trigger review found no recurrence/reminder cycle, but live jobs, locks, retention, and delivery remain unverified.
 - [x] Simplify personal reminders to a due-time switch and update assistant validation.
 - [x] Add compact notification action sheet and one-off snoozes, plus supported browser actions.
 - [x] Run reminder tests and request publishing (11 tests passed; app compiles).
