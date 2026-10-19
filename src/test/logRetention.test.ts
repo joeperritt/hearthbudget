@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const sql = readFileSync(new URL('../../maintenance/log-retention.sql', import.meta.url), 'utf8');
+const sql = readFileSync('maintenance/log-retention.sql', 'utf8');
 
 describe('scheduled log retention', () => {
   it('removes scheduled-job history older than one day', () => {
