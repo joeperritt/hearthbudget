@@ -152,7 +152,7 @@ export function useBudgetData() {
     const rows = (data ?? []).map(r => dbToTx(r as unknown as Record<string, unknown>));
     setTransactions(prev => {
       const ids = new Set(rows.map(r => r.id));
-      return [...prev.filter(t => !ids.has(t.id)), ...rows].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+      return [...prev.filter(t => !ids.has(t.id)), ...rows];
     });
   }, [householdId]);
 
