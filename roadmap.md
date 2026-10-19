@@ -1,4 +1,6 @@
 # Home page updates
+- [ ] Restore Lovable Cloud access and inspect blocking queries, resource usage, scheduled jobs, and logs.
+- [ ] Fix the verified outage cause and validate app loads and notification scheduling without resending today's summary.
 - [x] Simplify personal reminders to a due-time switch and update assistant validation.
 - [x] Add compact notification action sheet and one-off snoozes, plus supported browser actions.
 - [x] Run reminder tests and request publishing (11 tests passed; app compiles).
