@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 import { getGoogleAccessToken } from '../_shared/google-auth.ts';
+import { writeBlockReason } from '../_shared/calendar-access.ts';
 
 const TZ = 'America/New_York';
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -38,7 +39,8 @@ Deno.serve(async (req) => {
     // RLS limits this to the caller's household.
     const { data: cal } = await supabase.from('household_calendars').select('id, label, google_calendar_id, read_only').eq('id', b.calendar_id).maybeSingle();
     if (!cal) return json({ error: 'Calendar not found' }, 404);
-    if (cal.read_only || !cal.google_calendar_id?.trim()) return json({ error: `${cal.label} is view only in Perritt`, code: 'read_only' }, 403);
+    const blocked = writeBlockReason(cal);
+    if (blocked || !cal.google_calendar_id) return json({ error: blocked, code: 'read_only' }, 403);
 
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.google_calendar_id)}/events/${encodeURIComponent(b.event_id)}`;
     const token = await getGoogleAccessToken();

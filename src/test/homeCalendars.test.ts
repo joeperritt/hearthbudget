@@ -27,3 +27,16 @@ describe('personal calendar visibility', () => {
     expect(calendarColor('b', cals)).toMatch(/^#[0-9A-F]{6}$/i);
   });
 });
+
+import { isCalendarWritable } from '@/lib/homeCalendars';
+describe('view-only calendars', () => {
+  it('treats calendars without a Google Calendar ID as view only', () => {
+    expect(isCalendarWritable({ google_calendar_id: null, read_only: false })).toBe(false);
+  });
+  it('treats calendars marked view only as view only', () => {
+    expect(isCalendarWritable({ google_calendar_id: 'a@b.com', read_only: true })).toBe(false);
+  });
+  it('allows Google calendars not marked view only', () => {
+    expect(isCalendarWritable({ google_calendar_id: 'a@b.com', read_only: false })).toBe(true);
+  });
+});
