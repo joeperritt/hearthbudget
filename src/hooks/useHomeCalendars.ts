@@ -16,7 +16,7 @@ export function useHomeCalendars() {
   const load = useCallback(async () => {
     if (!user || !profile?.household_id) return;
     const [calendarResult, layoutResult] = await Promise.all([
-      supabase.from('household_calendars').select('id, label, owner_user_id, color').eq('household_id', profile.household_id).order('created_at'),
+      supabase.from('household_calendars').select('id, label, owner_user_id, color, read_only, google_calendar_id').eq('household_id', profile.household_id).order('created_at'),
       supabase.from('user_home_layouts').select('calendar_visibility').eq('user_id', user.id).maybeSingle(),
     ]);
     if (calendarResult.error || layoutResult.error) { setFailed(true); setLoading(false); return; }

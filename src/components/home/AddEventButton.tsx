@@ -51,7 +51,8 @@ export interface EditableEvent {
   description?: string | null;
 }
 
-export function AddEventDialog({ open, onOpenChange, calendars, date, event, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null; event?: EditableEvent | null; onSaved?: () => void }) {
+export function AddEventDialog({ open, onOpenChange, calendars: allCalendars, date, event, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; calendars: HomeCalendar[]; date?: string | null; event?: EditableEvent | null; onSaved?: () => void }) {
+  const calendars = useMemo(() => allCalendars.filter(isCalendarWritable), [allCalendars]);
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [calendarId, setCalendarId] = useState('');

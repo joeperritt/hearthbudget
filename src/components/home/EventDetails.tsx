@@ -61,7 +61,8 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
   const [busy, setBusy] = useState(false);
   if (!event) return null;
 
-  const canEdit = Boolean(event.eventId);
+  const writable = isCalendarWritable(calendars.find(c => c.id === event.calendarId));
+  const canEdit = Boolean(event.eventId) && writable;
   const recurring = Boolean(event.recurringEventId);
   const calName = event.calendar;
 

@@ -68,7 +68,7 @@ export function KeeperAssistant() {
 
   useEffect(() => {
     if (!open) return;
-    supabase.from('household_calendars').select('id, label, owner_user_id, color').order('created_at').then(({ data }) => setCals(data ?? []));
+    supabase.from('household_calendars').select('id, label, owner_user_id, color, read_only, google_calendar_id').order('created_at').then(({ data }) => setCals(data ?? []));
   }, [open]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, busy]);
 
@@ -161,7 +161,7 @@ export function KeeperAssistant() {
                     {(p.kind ?? 'create') === 'create' ? (
                       <select aria-label="Calendar" value={p.calendar_id} disabled={p.state !== 'open'}
                         onChange={e => updateProposal(mi, pi, { calendar_id: e.target.value })} className="auth-input">
-                        {cals.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        {cals.filter(c => !c.read_only && c.google_calendar_id?.trim()).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                       </select>
                     ) : <p className="text-[11px] text-muted-foreground">{cals.find(c => c.id === p.calendar_id)?.label} calendar</p>}
                     {p.state === 'done' ? <p className="text-xs font-semibold text-success">{p.kind === 'delete' ? 'Deleted ✓' : p.kind === 'update' ? 'Updated ✓' : 'Added ✓'}</p>
