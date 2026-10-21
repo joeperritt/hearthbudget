@@ -78,6 +78,13 @@
       "when": 1792366655331,
       "tag": "0010_reminder_quick_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792612517051,
+      "tag": "0011_calendar_read_only",
+      "breakpoints": true
     }
   ]
 }

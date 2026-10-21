@@ -3,6 +3,13 @@ export interface HomeCalendar {
   label: string;
   owner_user_id: string | null;
   color?: string | null;
+  read_only?: boolean | null;
+  google_calendar_id?: string | null;
+}
+
+/** View-only calendars (no Google Calendar ID, or marked read_only) can't be written to. */
+export function isCalendarWritable(c: Pick<HomeCalendar, 'read_only' | 'google_calendar_id'> | undefined | null) {
+  return Boolean(c && !c.read_only && c.google_calendar_id?.trim());
 }
 
 export type CalendarVisibility = Record<string, boolean>;

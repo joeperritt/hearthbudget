@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 import { getGoogleAccessToken } from '../_shared/google-auth.ts';
+import { writeBlockReason } from '../_shared/calendar-access.ts';
 
 const TZ = 'America/New_York';
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -31,9 +32,10 @@ Deno.serve(async (req) => {
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
     const b = parsed.data;
     // RLS limits this to the caller's household.
-    const { data: cal } = await supabase.from('household_calendars').select('id, label, google_calendar_id').eq('id', b.calendar_id).maybeSingle();
+    const { data: cal } = await supabase.from('household_calendars').select('id, label, google_calendar_id, read_only').eq('id', b.calendar_id).maybeSingle();
     if (!cal) return json({ error: 'Calendar not found' }, 404);
-    if (!cal.google_calendar_id) return json({ error: `${cal.label} has no Google Calendar ID set` }, 400);
+    const blocked = writeBlockReason(cal);
+    if (blocked || !cal.google_calendar_id) return json({ error: blocked, code: 'read_only' }, 403);
 
     let start, end;
     if (b.all_day) {

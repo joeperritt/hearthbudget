@@ -4,8 +4,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 
-interface Cal { id: string; label: string; ics_url: string; owner_user_id: string | null; google_calendar_id: string | null; color: string | null }
+interface Cal { id: string; label: string; ics_url: string; owner_user_id: string | null; google_calendar_id: string | null; color: string | null; read_only: boolean }
 interface Member { user_id: string; display_name: string }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types lag google_calendar_id
@@ -18,13 +19,15 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
   const [googleId, setGoogleId] = useState('');
   const [color, setColor] = useState('#4285F4');
   const [owner, setOwner] = useState('shared');
+  const [readOnly, setReadOnly] = useState(false);
+  const noGoogle = !googleId.trim();
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     if (!profile?.household_id) return;
     const [calResult, memberResult] = await Promise.all([
-      supabase.from('household_calendars').select('id, label, ics_url, owner_user_id, google_calendar_id, color').eq('household_id', profile.household_id).order('created_at'),
+      supabase.from('household_calendars').select('id, label, ics_url, owner_user_id, google_calendar_id, color, read_only').eq('household_id', profile.household_id).order('created_at'),
       supabase.from('profiles').select('user_id, display_name').eq('household_id', profile.household_id).order('display_name'),
     ]);
     if (calResult.error || memberResult.error) { toast.error("Couldn't load calendars. Please try again."); return; }
@@ -33,13 +36,13 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
   };
   useEffect(() => { load(); }, [profile?.household_id]);
 
-  const reset = () => { setEditing(null); setLabel(''); setUrl(''); setGoogleId(''); setColor('#4285F4'); setOwner('shared'); };
+  const reset = () => { setEditing(null); setLabel(''); setUrl(''); setGoogleId(''); setColor('#4285F4'); setOwner('shared'); setReadOnly(false); };
   const save = async () => {
     const u = url.trim().replace(/^webcal:\/\//i, 'https://');
     if (!/^https:\/\/\S+$/.test(u)) { toast.error('Paste a link that starts with https://'); return; }
     if (!profile?.household_id) return;
     setSaving(true);
-    const values: any = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner, google_calendar_id: googleId.trim().slice(0, 255) || null, color: /^#[0-9a-f]{6}$/i.test(color) ? color : null };
+    const values: any = { label: label.trim().slice(0, 60) || 'Calendar', ics_url: u, owner_user_id: owner === 'shared' ? null : owner, google_calendar_id: googleId.trim().slice(0, 255) || null, color: /^#[0-9a-f]{6}$/i.test(color) ? color : null, read_only: noGoogle || readOnly };
     const { error } = editing
       ? await supabase.from('household_calendars').update(values).eq('id', editing).eq('household_id', profile.household_id)
       : await supabase.from('household_calendars').insert({ ...values, household_id: profile.household_id });
@@ -73,6 +76,13 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
             Color
             <input type="color" aria-label="Calendar color" value={color} onChange={e => setColor(e.target.value)} className="h-9 w-14 cursor-pointer rounded-md border border-border bg-transparent" />
           </label>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground">View only</p>
+              {noGoogle && <p className="text-[11px] text-muted-foreground">Always on without a Google Calendar ID</p>}
+            </div>
+            <Switch aria-label="View only" checked={noGoogle || readOnly} disabled={noGoogle} onCheckedChange={setReadOnly} />
+          </div>
           <label className="block text-xs font-semibold text-muted-foreground">
             Owner
             <select aria-label="Calendar owner" value={owner} onChange={e => setOwner(e.target.value)} className="auth-input mt-1">
@@ -91,9 +101,9 @@ export function CalendarSettingsView({ onBack }: { onBack: () => void }) {
               <li key={c.id} className="flex items-center gap-2 p-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c.color ?? undefined }} />{c.label}</p>
-                  <p className="text-xs text-muted-foreground">{members.find(m => m.user_id === c.owner_user_id)?.display_name ?? 'Shared'}</p>
+                  <p className="text-xs text-muted-foreground">{members.find(m => m.user_id === c.owner_user_id)?.display_name ?? 'Shared'}{c.read_only ? ' · View only' : ''}</p>
                 </div>
-                <Button variant="ghost" size="icon" disabled={saving} onClick={() => { setEditing(c.id); setLabel(c.label); setUrl(c.ics_url); setGoogleId(c.google_calendar_id ?? ''); setColor(c.color ?? '#4285F4'); setOwner(c.owner_user_id ?? 'shared'); }} aria-label={`Edit ${c.label} calendar`} title="Edit calendar" className="text-muted-foreground"><Pencil size={16} /></Button>
+                <Button variant="ghost" size="icon" disabled={saving} onClick={() => { setEditing(c.id); setLabel(c.label); setUrl(c.ics_url); setGoogleId(c.google_calendar_id ?? ''); setColor(c.color ?? '#4285F4'); setOwner(c.owner_user_id ?? 'shared'); setReadOnly(c.read_only); }} aria-label={`Edit ${c.label} calendar`} title="Edit calendar" className="text-muted-foreground"><Pencil size={16} /></Button>
                 <Button variant="ghost" size="icon" disabled={saving} onClick={() => remove(c.id)} aria-label={`Remove ${c.label} calendar`} title="Remove calendar" className="text-muted-foreground hover:text-destructive"><Trash2 size={16} /></Button>
               </li>
             ))}
