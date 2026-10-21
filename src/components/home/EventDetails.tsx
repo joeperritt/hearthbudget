@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
+import { calendarColor, isCalendarWritable, type HomeCalendar } from '@/lib/homeCalendars';
 import { AddEventDialog, openAssistant, type EditableEvent } from './AddEventButton';
 import type { CalEv } from './CalendarMonthDialog';
 
@@ -137,6 +137,8 @@ export function EventDetailsView({ event, calendars, onClose, onBack }: Props) {
             <Trash2 size={14} /> Delete
           </Button>
         </div>
+      ) : !writable ? (
+        <p className="pt-1"><span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">View only</span></p>
       ) : (
         <p className="text-xs text-muted-foreground pt-1">This event comes from a calendar link, so it can't be edited here.</p>
       )}

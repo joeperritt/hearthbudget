@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Plus, PenLine, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { calendarColor, type HomeCalendar } from '@/lib/homeCalendars';
+import { calendarColor, isCalendarWritable, type HomeCalendar } from '@/lib/homeCalendars';
 
 export interface AssistantEventContext { calendar_id: string; event_id: string; title: string }
 
