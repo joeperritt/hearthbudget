@@ -10,7 +10,7 @@ import { calendarColor } from '@/lib/homeCalendars';
 interface Before { title: string; start: string; end: string | null; all_day: boolean }
 interface Proposal { kind?: 'create' | 'update' | 'delete'; event_id?: string; series?: boolean; before?: Before; changes?: Record<string, unknown>; calendar_id: string; title: string; start: string; end: string | null; all_day: boolean; location: string | null; notes: string | null; state?: 'open' | 'saving' | 'done' | 'cancelled' }
 interface Msg { role: 'user' | 'assistant'; content: string; proposals?: Proposal[] }
-interface Cal { id: string; label: string; owner_user_id: string | null; color: string | null }
+interface Cal { id: string; label: string; owner_user_id: string | null; color: string | null; read_only?: boolean | null; google_calendar_id?: string | null }
 
 // deno-ish typing for the browser speech API
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
