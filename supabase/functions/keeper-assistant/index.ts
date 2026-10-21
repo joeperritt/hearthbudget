@@ -138,18 +138,25 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase.from('profiles').select('household_id, display_name').eq('user_id', user.id).single();
     if (!profile) return json({ error: 'No household' }, 403);
     const [{ data: cals }, { data: members }] = await Promise.all([
-      supabase.from('household_calendars').select('id, label, owner_user_id, google_calendar_id').eq('household_id', profile.household_id),
+      supabase.from('household_calendars').select('id, label, owner_user_id, google_calendar_id, read_only').eq('household_id', profile.household_id),
       supabase.from('profiles').select('user_id, display_name').eq('household_id', profile.household_id),
     ]);
     const nameOf = (id: string | null) => id ? (members?.find(m => m.user_id === id)?.display_name ?? 'someone') : 'Shared';
-    const calList = (cals ?? []).map(c => `- id ${c.id}: "${c.label}" (owner: ${nameOf(c.owner_user_id)})`).join('\n');
-    const own = cals?.find(c => c.owner_user_id === user.id);
-    const shared = cals?.find(c => c.owner_user_id === null);
+    const writable = (c: { read_only?: boolean | null; google_calendar_id?: string | null }) => !c.read_only && Boolean(c.google_calendar_id?.trim());
+    const wcals = (cals ?? []).filter(writable);
+    const isWritableId = (id: string) => wcals.some(c => c.id === id);
+    const calList = wcals.map(c => `- id ${c.id}: "${c.label}" (owner: ${nameOf(c.owner_user_id)})`).join('\n');
+    const roList = (cals ?? []).filter(c => !writable(c)).map(c => `- "${c.label}" (VIEW ONLY)`).join('\n');
+    const own = wcals.find(c => c.owner_user_id === user.id);
+    const shared = wcals.find(c => c.owner_user_id === null);
 
     const system = `You are the Perritt Assistant, a brief, friendly assistant for the Perritt family (Joe and Katie) in their family app, Perritt. Today is ${nowLocal()} (America/New_York; ISO date ${todayISO()}). You are talking to ${profile.display_name}. Thomas is their child.
-Household calendars:
+Household calendars you may add to or change:
 ${calList || '(none)'}
+View-only calendars (find_events may show their events for context, but NEVER propose creating, changing or deleting events on them):
+${roList || '(none)'}
 Rules:
+- If the user asks to add, change, move or delete an event on a view-only calendar (e.g. a work calendar), do not propose anything; reply that that calendar is view only in Perritt.
 - Any shopping request ("we need milk", "pick up batteries", "buy a new hose") -> add_list_items list=store, one item per thing, short names.
 - To dos ("remind me to...", "I need to...") -> add_list_items list=todo. owner defaults to ${profile.display_name.split(' ')[0].toLowerCase()}; use family for household tasks or when it mentions "we", "us" or Thomas; use the other person's name if it is for them. Add due_date/due_time only if a time frame is given.
 - Resolve relative dates ("tomorrow", "next Friday", "end of the month") against today in America/New_York.
@@ -284,11 +291,12 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
             }
           }
         } else if (fc.name === 'propose_calendar_event') {
-          const cal = cals?.find(c => c.id === args.calendar_id) ?? own ?? shared;
+          const cal = wcals.find(c => c.id === args.calendar_id) ?? (args.calendar_id && (cals ?? []).some(c => c.id === args.calendar_id) ? undefined : own ?? shared);
           const allDay = Boolean(args.all_day);
           const start = String(args.start ?? '');
           const valid = allDay ? /^\d{4}-\d{2}-\d{2}/.test(start) : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(start);
-          if (!cal || !valid || !args.title) result = { error: 'need a calendar, title and a valid start' };
+          if (!cal) result = { error: 'that calendar is view only in Perritt; tell the user' };
+          else if (!valid || !args.title) result = { error: 'need a calendar, title and a valid start' };
           else {
             const s = allDay ? start.slice(0, 10) : start.slice(0, 16);
             const end = args.end ? String(args.end).slice(0, allDay ? 10 : 16) : (allDay ? s : addHour(s));
@@ -322,7 +330,8 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
           } catch (e) { console.error(e); result = { error: 'calendar search unavailable' }; }
         } else if (fc.name === 'propose_update_event' || fc.name === 'propose_delete_event') {
           const ev = found.get(`${args.calendar_id}|${args.event_id}`);
-          if (!ev) result = { error: 'unknown event; call find_events first and use its ids' };
+          if (!isWritableId(String(args.calendar_id))) result = { error: 'that calendar is view only in Perritt; tell the user it cannot be changed here' };
+          else if (!ev) result = { error: 'unknown event; call find_events first and use its ids' };
           else {
             const series = ev.event_id === ev.recurring_event_id;
             const before = { title: ev.title, start: ev.start, end: ev.end, all_day: ev.all_day };
