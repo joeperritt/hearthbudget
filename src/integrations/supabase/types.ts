@@ -599,6 +599,7 @@ export type Database = {
           id: string
           label: string
           owner_user_id: string | null
+          read_only: boolean
         }
         Insert: {
           added_by?: string
@@ -610,6 +611,7 @@ export type Database = {
           id?: string
           label?: string
           owner_user_id?: string | null
+          read_only?: boolean
         }
         Update: {
           added_by?: string
@@ -621,6 +623,7 @@ export type Database = {
           id?: string
           label?: string
           owner_user_id?: string | null
+          read_only?: boolean
         }
         Relationships: []
       }
