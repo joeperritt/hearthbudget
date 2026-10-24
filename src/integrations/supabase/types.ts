@@ -1430,6 +1430,7 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
+      morning_summary_due: { Args: { _at?: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -1471,6 +1472,7 @@ export type Database = {
         Args: { _action: string; _todo_id: string }
         Returns: string
       }
+      todo_reminders_due: { Args: { _at?: string }; Returns: boolean }
       todo_step: { Args: { _d: string; _rule: Json }; Returns: string }
       validate_invite_code: {
         Args: { _code: string; _email?: string }
