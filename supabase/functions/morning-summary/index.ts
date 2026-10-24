@@ -49,7 +49,8 @@ async function buildSummary(db: SupabaseClient, userId: string) {
     await Promise.all(visible.map(async c => {
       try {
         const params = new URLSearchParams({ singleEvents: 'true', orderBy: 'startTime', timeZone: TZ, maxResults: '100', timeMin: dayStart.toISOString(), timeMax: dayEnd.toISOString() });
-        const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.google_calendar_id!)}/events?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!c.google_calendar_id) return;
+        const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.google_calendar_id)}/events?${params}`, { headers: { Authorization: `Bearer ${token}` } });
         if (!r.ok) return;
         const data = await r.json();
         for (const it of data.items ?? []) {
@@ -74,7 +75,7 @@ async function buildSummary(db: SupabaseClient, userId: string) {
   for (const t of todos ?? []) {
     const key = t.user_id ?? 'family';
     if (!(todoVis[key] ?? (key === 'family' || key === userId))) continue;
-    if (t.due_date! < today) past++; else due++;
+    if (t.due_date && t.due_date < today) past++; else due++;
   }
   const todoLine = past || due ? `To dos: ${[past && `${past} past due`, due && `${due} due today`].filter(Boolean).join(', ')}` : 'To dos: none due';
 
@@ -113,23 +114,27 @@ Deno.serve(async (req) => {
     const keys = vapid();
     if (body?.mode === 'public_key') return json({ publicKey: keys.publicKey });
     webpush.setVapidDetails('mailto:joeperritt31@gmail.com', keys.publicKey, keys.privateKey);
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const backendUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!backendUrl || !serviceKey || !anonKey) throw new Error('Service configuration missing');
+    const admin = createClient(backendUrl, serviceKey);
 
     if (body?.mode === 'test') {
       const auth = req.headers.get('Authorization');
       if (!auth) return json({ error: 'Unauthorized' }, 401);
-      const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } });
+      const userClient = createClient(backendUrl, anonKey, { global: { headers: { Authorization: auth } } });
       const { data: { user } } = await userClient.auth.getUser();
       if (!user) return json({ error: 'Unauthorized' }, 401);
       const summary = await buildSummary(admin, user.id);
       if (!summary) return json({ error: 'No profile' }, 400);
-      return json({ ...(await sendToUser(admin, user.id, summary)), summary });
+      return json({ ok: true, sent: (await sendToUser(admin, user.id, summary)).sent });
     }
 
     // Scheduled run: idempotent — only sends summaries that are due and not yet sent today.
     const now = nyParts();
     const { data: prefs } = await admin.from('notification_prefs').select('user_id, morning_time, last_sent_date').eq('morning_enabled', true);
-    const results: unknown[] = [];
+    let sent = 0;
     for (const p of prefs ?? []) {
       if (String(p.morning_time).slice(0, 5) > now.time) continue;
       if (p.last_sent_date === now.date) continue;
@@ -140,9 +145,9 @@ Deno.serve(async (req) => {
         .eq('user_id', p.user_id).or(`last_sent_date.is.null,last_sent_date.neq.${now.date}`).select('user_id');
       if (!claimed?.length) continue;
       const summary = await buildSummary(admin, p.user_id);
-      if (summary) results.push({ user: p.user_id, ...(await sendToUser(admin, p.user_id, summary)) });
+      if (summary) sent += (await sendToUser(admin, p.user_id, summary)).sent;
     }
-    return json({ ok: true, results });
+    return json({ ok: true, sent });
   } catch (e) {
     console.error(e);
     return json({ error: (e as Error).message }, 500);
