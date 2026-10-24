@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         }
       }
     }
-    return json({ ok: true, sent, due: due?.length ?? 0 });
+    return json({ ok: true, sent });
   } catch (e) {
     console.error(e);
     return json({ error: (e as Error).message }, 500);
