@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { clearSnapshots, readSnapshot, writeSnapshot } from '@/lib/snapshot';
 
 interface Profile {
   id: string;
@@ -31,19 +32,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
-    if (data) setProfile(data as Profile);
+    if (data) { setProfile(data as Profile); writeSnapshot(userId, 'auth-profile', data); }
   };
 
   const checkAdmin = async (userId: string) => {
     const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId);
-    setIsAdmin(data?.some(r => r.role === 'household_admin' || r.role === 'system_admin') ?? false);
+    if (!data) return;
+    const admin = data.some(r => r.role === 'household_admin' || r.role === 'system_admin');
+    setIsAdmin(admin);
+    writeSnapshot(userId, 'auth-admin', admin);
+  };
+
+  /** Seed profile/admin from this user's snapshot so screens can render before the network answers. */
+  const seedFromSnapshot = (userId: string) => {
+    const p = readSnapshot<Profile>(userId, 'auth-profile');
+    if (p && p.user_id === userId && typeof p.household_id === 'string') {
+      setProfile(cur => (cur && cur.user_id === userId ? cur : p));
+      const a = readSnapshot<boolean>(userId, 'auth-admin');
+      if (typeof a === 'boolean') setIsAdmin(a);
+      return true;
+    }
+    return false;
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (event === 'SIGNED_OUT') clearSnapshots();
       if (session?.user) {
+        seedFromSnapshot(session.user.id);
         setTimeout(async () => {
           await Promise.all([fetchProfile(session.user.id), checkAdmin(session.user.id)]);
           supabase.from('profiles')
@@ -61,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await Promise.all([fetchProfile(session.user.id), checkAdmin(session.user.id)]);
+        const fresh = Promise.all([fetchProfile(session.user.id), checkAdmin(session.user.id)]);
+        // With a saved snapshot, show the app now and let the profile refresh in the background.
+        if (!seedFromSnapshot(session.user.id)) await fresh;
       }
       setLoading(false);
     });
@@ -75,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    clearSnapshots();
     await supabase.auth.signOut();
+    clearSnapshots();
     setProfile(null);
     setIsAdmin(false);
   };

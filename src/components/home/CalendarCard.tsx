@@ -2,6 +2,8 @@ import { WidgetSkeleton } from './WidgetSkeleton';
 import { useEffect, useState } from 'react';
 import { CalendarDays, CalendarRange, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { readSnapshot, trackRefresh, writeSnapshot } from '@/lib/snapshot';
 import { Button } from '@/components/ui/button';
 import { useHomeCalendars } from '@/hooks/useHomeCalendars';
 import { calendarColor } from '@/lib/homeCalendars';
@@ -30,7 +32,12 @@ function timeLabel(e: Ev) {
 }
 
 export function CalendarCard({ onConnect }: { onConnect: () => void }) {
-  const [state, setState] = useState<{ events: Ev[]; calendars: number; today: string; errors: string[] } | null>(null);
+  const { user } = useAuth();
+  type CalState = { events: Ev[]; calendars: number; today: string; errors: string[] };
+  const [state, setState] = useState<CalState | null>(() => {
+    const s = readSnapshot<CalState>(user?.id, 'calendar-events');
+    return s && Array.isArray(s.events) && typeof s.today === 'string' ? s : null;
+  });
   const [failed, setFailed] = useState(false);
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [monthOpen, setMonthOpen] = useState(false);
@@ -50,10 +57,13 @@ export function CalendarCard({ onConnect }: { onConnect: () => void }) {
     let alive = true;
     setFailed(false);
     const from = ymd(new Date());
-    supabase.functions.invoke('calendar-events', { body: { from, to: addDays(from, days - 1) } }).then(({ data, error }) => {
+    const hadState = state !== null;
+    trackRefresh(supabase.functions.invoke('calendar-events', { body: { from, to: addDays(from, days - 1) } })).then(({ data, error }) => {
       if (!alive) return;
-      if (error || !data) { setFailed(true); return; }
+      // Keep last-known events on screen if a background refresh fails.
+      if (error || !data) { if (!hadState) setFailed(true); return; }
       setState(data);
+      if (days === DEFAULT_DAYS) writeSnapshot(user?.id, 'calendar-events', data);
     });
     return () => { alive = false; };
   }, [calendarSignature, loading, refreshKey, days]);

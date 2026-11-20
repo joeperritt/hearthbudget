@@ -2,16 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { readSnapshot, trackRefresh, writeSnapshot } from '@/lib/snapshot';
 import { CalendarVisibility, HomeCalendar, isCalendarVisible, parseCalendarVisibility } from '@/lib/homeCalendars';
 
 export function useHomeCalendars() {
   const { user, profile } = useAuth();
-  const [calendars, setCalendars] = useState<HomeCalendar[]>([]);
-  const [choices, setChoices] = useState<CalendarVisibility>({});
-  const [loading, setLoading] = useState(true);
+  const [seed] = useState(() => {
+    const s = readSnapshot<{ calendars: HomeCalendar[]; choices: CalendarVisibility }>(user?.id, 'home-calendars');
+    return s && Array.isArray(s.calendars) && s.choices && typeof s.choices === 'object' ? s : null;
+  });
+  const [calendars, setCalendars] = useState<HomeCalendar[]>(seed?.calendars ?? []);
+  const [choices, setChoices] = useState<CalendarVisibility>(seed?.choices ?? {});
+  const [loading, setLoading] = useState(!seed);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState<string[]>([]);
   const pending = useRef(new Map<string, boolean>());
+  const seededRef = useRef(Boolean(seed));
 
   const load = useCallback(async () => {
     if (!user || !profile?.household_id) return;
@@ -19,23 +25,32 @@ export function useHomeCalendars() {
       supabase.from('household_calendars').select('id, label, owner_user_id, color, read_only, google_calendar_id').eq('household_id', profile.household_id).order('created_at'),
       supabase.from('user_home_layouts').select('calendar_visibility').eq('user_id', user.id).maybeSingle(),
     ]);
-    if (calendarResult.error || layoutResult.error) { setFailed(true); setLoading(false); return; }
+    if (calendarResult.error || layoutResult.error) {
+      // With a snapshot on screen, keep it instead of showing an error.
+      if (!seededRef.current) setFailed(true);
+      setLoading(false);
+      return;
+    }
+    const saved = parseCalendarVisibility(layoutResult.data?.calendar_visibility);
     setCalendars(calendarResult.data ?? []);
-    setChoices({ ...parseCalendarVisibility(layoutResult.data?.calendar_visibility), ...Object.fromEntries(pending.current) });
+    setChoices({ ...saved, ...Object.fromEntries(pending.current) });
+    writeSnapshot(user.id, 'home-calendars', { calendars: calendarResult.data ?? [], choices: saved });
     setFailed(false);
     setLoading(false);
   }, [user?.id, profile?.household_id]);
 
   useEffect(() => {
-    setLoading(true);
+    if (!seededRef.current) setLoading(true);
     pending.current.clear();
-    load();
+    if (seededRef.current) trackRefresh(load()); else load();
     if (!user || !profile?.household_id) return;
     const channel = supabase.channel(`home-calendars-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_calendars', filter: `household_id=eq.${profile.household_id}` }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_home_layouts', filter: `user_id=eq.${user.id}` }, load)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const onResume = () => { trackRefresh(load()); };
+    window.addEventListener('perritt-resume', onResume);
+    return () => { supabase.removeChannel(channel); window.removeEventListener('perritt-resume', onResume); };
   }, [load]);
 
   const toggle = async (calendar: HomeCalendar) => {

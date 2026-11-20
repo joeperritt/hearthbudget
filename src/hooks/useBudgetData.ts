@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { readSnapshot, trackRefresh, writeSnapshot } from '@/lib/snapshot';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -117,18 +118,39 @@ function loadedTxQuery(householdId: string, months: string[]) {
     .order('created_at', { ascending: false }).range(0, 9999);
 }
 
+interface BudgetSnapshot {
+  householdId: string;
+  activeMonth: string;
+  planningData: Record<string, string>;
+  categories: BudgetCategory[];
+  fixedExpenses: FixedExpense[];
+  transfers: BudgetTransfer[];
+  overrides: MonthAmountOverrides;
+  transactions: Transaction[];
+}
+
 export function useBudgetData() {
   const { profile, user } = useAuth();
   const householdId = profile?.household_id;
 
-  const [categories, setCategories] = useState<BudgetCategory[]>([]);
-  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transfers, setTransfers] = useState<BudgetTransfer[]>([]);
-  const [monthAmountOverrides, setMonthAmountOverrides] = useState<MonthAmountOverrides>({});
-  const [activeMonth, setActiveMonth] = useState<string>('');
-  const [planningData, setPlanningData] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  // Last-known current-month data for this user (shown instantly, replaced by the fresh load).
+  const [seed] = useState(() => {
+    const s = readSnapshot<BudgetSnapshot>(user?.id, 'budget');
+    return s && s.householdId === householdId && typeof s.activeMonth === 'string' && s.activeMonth
+      && [s.categories, s.fixedExpenses, s.transactions, s.transfers].every(Array.isArray)
+      && s.overrides && typeof s.overrides === 'object' ? s : null;
+  });
+  const [categories, setCategories] = useState<BudgetCategory[]>(seed?.categories ?? []);
+  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>(seed?.fixedExpenses ?? []);
+  const [transactions, setTransactions] = useState<Transaction[]>(seed?.transactions ?? []);
+  const [transfers, setTransfers] = useState<BudgetTransfer[]>(seed?.transfers ?? []);
+  const [monthAmountOverrides, setMonthAmountOverrides] = useState<MonthAmountOverrides>(seed?.overrides ?? {});
+  const [activeMonth, setActiveMonth] = useState<string>(seed?.activeMonth ?? '');
+  const [planningData, setPlanningData] = useState<Record<string, string>>(seed?.planningData ?? {});
+  const [loading, setLoading] = useState(!seed);
+  // True once data has come from the database in this session; month rollover and
+  // snapshot saving wait for it so nothing is ever written based on cached data.
+  const [fresh, setFresh] = useState(false);
   const initialLoad = useRef(true);
   const loadedMonths = useRef<Set<string>>(new Set());
 
@@ -197,11 +219,25 @@ export function useBudgetData() {
       initialLoad.current = false;
       setLoading(false);
     }
+    if (hhRes.data && catRes.data && fixRes.data && txRes.data && trRes.data && ovRes.data) setFresh(true);
   }, [householdId]);
 
   useEffect(() => {
-    fetchAll();
+    if (seed && initialLoad.current) trackRefresh(fetchAll()); else fetchAll();
   }, [fetchAll]);
+
+  // Save the current-month view (active month + unassigned, as loaded at startup) after fresh loads.
+  useEffect(() => {
+    if (!fresh || !householdId || !activeMonth) return;
+    const t = setTimeout(() => {
+      writeSnapshot(user?.id, 'budget', {
+        householdId, activeMonth, planningData, categories, fixedExpenses, transfers,
+        overrides: monthAmountOverrides,
+        transactions: transactions.filter(tx => tx.budgetMonth === activeMonth || tx.categoryId === 'unassigned'),
+      } satisfies BudgetSnapshot);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [fresh, householdId, activeMonth, planningData, categories, fixedExpenses, transfers, monthAmountOverrides, transactions, user?.id]);
 
   // Shared helper: build snapshot data for a given month
   const buildSnapshotData = useCallback((month: string, cats: BudgetCategory[], fixed: FixedExpense[]) => {
@@ -411,7 +447,7 @@ export function useBudgetData() {
   // automatically snapshot and advance to the current month
   const autoTransitionDone = useRef(false);
   useEffect(() => {
-    if (!householdId || !activeMonth || loading || autoTransitionDone.current) return;
+    if (!householdId || !activeMonth || loading || !fresh || autoTransitionDone.current) return;
     const currentCalendarMonth = format(new Date(), 'yyyy-MM');
     if (activeMonth < currentCalendarMonth && categories.length > 0) {
       autoTransitionDone.current = true;
@@ -425,17 +461,17 @@ export function useBudgetData() {
         setActiveMonth(currentCalendarMonth);
       })();
     }
-  }, [householdId, activeMonth, loading, categories, fixedExpenses, buildSnapshotData, promoteOverridesForMonth]);
+  }, [householdId, activeMonth, loading, fresh, categories, fixedExpenses, buildSnapshotData, promoteOverridesForMonth]);
 
   // Refetch transactions when the app returns to the foreground.
   useEffect(() => {
     if (!householdId) return;
     const onResume = () => {
-      refetchLoadedTx();
+      trackRefresh(fetchAll());
     };
     window.addEventListener('perritt-resume', onResume);
     return () => window.removeEventListener('perritt-resume', onResume);
-  }, [householdId, refetchLoadedTx]);
+  }, [householdId, fetchAll]);
 
   // Real-time subscriptions
   useEffect(() => {

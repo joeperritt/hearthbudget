@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { readSnapshot, writeSnapshot } from '@/lib/snapshot';
 import { Sun, Cloud, CloudSun, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudDrizzle } from 'lucide-react';
 
 // Lexington, SC
@@ -16,17 +18,25 @@ function describe(code: number): { label: string; Icon: typeof Sun } {
 }
 
 export function WeatherStrip() {
-  const [w, setW] = useState<{ temp: number; code: number; hi: number; lo: number } | null>(null);
+  const { user } = useAuth();
+  type W = { temp: number; code: number; hi: number; lo: number };
+  const [w, setW] = useState<W | null>(() => {
+    const s = readSnapshot<W>(user?.id, 'weather');
+    return s && [s.temp, s.code, s.hi, s.lo].every(n => typeof n === 'number') ? s : null;
+  });
   useEffect(() => {
     let alive = true;
     const load = () => fetch(URL).then(r => r.json()).then(d => {
       if (!alive) return;
-      setW({ temp: d.current.temperature_2m, code: d.current.weather_code, hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] });
+      const next = { temp: d.current.temperature_2m, code: d.current.weather_code, hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] };
+      setW(next);
+      writeSnapshot(user?.id, 'weather', next);
     }).catch(() => {});
     load();
     const t = setInterval(load, 15 * 60 * 1000);
-    return () => { alive = false; clearInterval(t); };
-  }, []);
+    window.addEventListener('perritt-resume', load);
+    return () => { alive = false; clearInterval(t); window.removeEventListener('perritt-resume', load); };
+  }, [user?.id]);
 
   if (!w) return <div className="text-xs text-muted-foreground">Lexington, SC</div>;
   const { label, Icon } = describe(w.code);

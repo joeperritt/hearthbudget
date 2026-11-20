@@ -7,6 +7,7 @@ import { useBudgetInsights } from '@/hooks/useBudgetInsights';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { onReminderLink } from '@/lib/reminderLink';
+import { readSnapshot, writeSnapshot } from '@/lib/snapshot';
 import { BottomNav } from '@/components/keeper/BottomNav';
 import { SideNav, ProfileSidebarItem } from '@/components/keeper/SideNav';
 
@@ -60,7 +61,11 @@ const Index = () => {
   const { accounts } = useAccounts();
 
   // Lightweight unassigned count so Home's Budget pill shows before all transactions load.
-  const [quickUnassigned, setQuickUnassigned] = useState(0);
+  const { user } = useAuth();
+  const [quickUnassigned, setQuickUnassigned] = useState(() => {
+    const n = readSnapshot<number>(user?.id, 'budget-unassigned');
+    return typeof n === 'number' && n >= 0 ? n : 0;
+  });
   useEffect(() => {
     if (!householdId || !loading) return;
     let cancelled = false;
@@ -70,11 +75,10 @@ const Index = () => {
       const { count } = await supabase.from('transactions').select('id', { count: 'exact', head: true })
         .eq('household_id', householdId).eq('budget_month', month).eq('category_slug', 'unassigned')
         .eq('transaction_type', 'expense').eq('is_transfer_to_savings', false);
-      if (!cancelled) setQuickUnassigned(count ?? 0);
+      if (!cancelled && count !== null) { setQuickUnassigned(count); writeSnapshot(user?.id, 'budget-unassigned', count); }
     })();
     return () => { cancelled = true; };
-  }, [householdId, loading]);
-  const { user } = useAuth();
+  }, [householdId, loading, user?.id]);
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
   useEffect(() => {
@@ -99,9 +103,14 @@ const Index = () => {
   // block the UI — realtime subscriptions reflect new transactions automatically.
   const [resumeTick, setResumeTick] = useState(0);
   useEffect(() => {
+    // Quiet refresh when returning after more than a minute away.
     let last = Date.now();
+    let hiddenAt: number | null = null;
     const fire = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - last < 30_000) return;
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      const awaySince = hiddenAt ?? last;
+      if (Date.now() - awaySince < 60_000 || Date.now() - last < 60_000) return;
+      hiddenAt = null;
       last = Date.now();
       setResumeTick(t => t + 1);
       window.dispatchEvent(new Event('perritt-resume'));
@@ -171,6 +180,7 @@ const Index = () => {
   const [budgetEntryFromMore, setBudgetEntryFromMore] = useState(false);
   const [budgetEntryFromSpending, setBudgetEntryFromSpending] = useState(false);
 
+  const budgetReady = !loading && !!activeMonth;
   const monthKey = activeMonth;
   const monthLabel = useMemo(() => {
     if (!activeMonth) return '';
@@ -289,6 +299,10 @@ const Index = () => {
     [monthTransactions]
   );
 
+  useEffect(() => {
+    if (budgetReady) writeSnapshot(user?.id, 'budget-unassigned', unassignedTransactions.length);
+  }, [budgetReady, unassignedTransactions.length, user?.id]);
+
   const {
     insights, loading: insightsLoading, error: insightsError, lastUpdated: insightsLastUpdated,
     hasCached: insightsHasCached, generateInsights,
@@ -355,7 +369,6 @@ const Index = () => {
     setActiveTab('budget');
   }, []);
 
-  const budgetReady = !loading && !!activeMonth;
   const needsBudget = activeTab === 'dashboard' || activeTab === 'variable' || activeTab === 'transactions' || activeTab === 'budget' || (activeTab === 'profile' && profileSubView === 'trends');
 
   if (budgetReady && selectedCategoryId) {
@@ -422,6 +435,7 @@ const Index = () => {
         {activeTab === 'home' && (
           <HomePage
             key={homeResetKey}
+            restoreLastTab={homeResetKey === 0}
             onOpenCalendarSettings={() => { setActiveTab('profile'); setProfileSubView('calendars'); }}
             unassignedCount={budgetReady ? unassignedTransactions.length : quickUnassigned}
             onOpenUnassigned={() => {

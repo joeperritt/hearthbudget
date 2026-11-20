@@ -9,6 +9,7 @@ import { TodoCard } from './TodoCard';
 import { Check, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HomeDataProvider, useHomeData } from './HomeDataContext';
+import { readSnapshot, useRefreshing, writeSnapshot } from '@/lib/snapshot';
 
 export type HomeCardId = 'calendar' | 'todo' | 'store';
 
@@ -20,6 +21,8 @@ interface HomePageProps {
   onOpenCalendarSettings: () => void;
   unassignedCount: number;
   onOpenUnassigned: () => void;
+  /** True on app open: start on the last-selected mobile tab instead of Calendar. */
+  restoreLastTab?: boolean;
 }
 
 export function HomePage(props: HomePageProps) {
@@ -30,26 +33,41 @@ export function HomePage(props: HomePageProps) {
   );
 }
 
-function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned }: HomePageProps) {
+function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned, restoreLastTab }: HomePageProps) {
   const { user } = useAuth();
   const { todo, store, owners: { isVisible, keyOf } } = useHomeData();
   // Live open counts for the mobile toggle; chip choices come from user_home_layouts.todo_visibility.
   const nyToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const todoCount = todo.items.filter(i => !i.completed && i.due_date && i.due_date <= nyToday && isVisible(keyOf(i.user_id))).length;
   const storeCount = store.items.filter(i => !i.completed).length;
-  const [cards, setCards] = useState<HomeCardId[]>(DEFAULT_HOME_CARDS);
+  const refreshing = useRefreshing();
+  const [cards, setCards] = useState<HomeCardId[]>(() => {
+    const s = readSnapshot<string[]>(user?.id, 'home-cards');
+    const list = Array.isArray(s) ? s.filter(c => KNOWN.has(c)) : [];
+    return list.length ? list as HomeCardId[] : DEFAULT_HOME_CARDS;
+  });
   // Mobile: one widget at a time behind a segmented toggle; starts on Calendar
   // (the component remounts whenever Home is opened, so it always resets here).
-  const [mobileTab, setMobileTab] = useState<HomeCardId>(() => peekReminderLink() ? 'todo' : 'calendar');
+  const [mobileTab, setMobileTab] = useState<HomeCardId>(() => {
+    if (peekReminderLink()) return 'todo';
+    if (restoreLastTab) {
+      const last = readSnapshot<string>(user?.id, 'home-tab');
+      if (last && KNOWN.has(last)) return last as HomeCardId;
+    }
+    return 'calendar';
+  });
+  useEffect(() => { writeSnapshot(user?.id, 'home-tab', mobileTab); }, [mobileTab, user?.id]);
 
   // A tapped reminder notification (captured at startup or via service worker message): jump to To Do.
   useEffect(() => onReminderLink(() => setMobileTab('todo')), []);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('user_home_layouts').select('cards').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+    supabase.from('user_home_layouts').select('cards').eq('user_id', user.id).maybeSingle().then(({ data, error }) => {
+      if (error) return;
       const list = Array.isArray(data?.cards) ? (data.cards as string[]).filter(c => KNOWN.has(c)) : null;
       if (list && list.length) setCards(list as HomeCardId[]);
+      writeSnapshot(user.id, 'home-cards', list && list.length ? list : DEFAULT_HOME_CARDS);
     });
   }, [user]);
 
@@ -66,7 +84,11 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
   return (
     <div className="max-w-lg lg:max-w-none mx-auto pb-12 lg:pb-0 lg:h-[calc(100dvh-5rem)] lg:flex lg:flex-col">
       <div className="px-6 pt-6 safe-top flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <p className="text-xs text-muted-foreground shrink-0">{today}</p>
+        <p className="text-xs text-muted-foreground shrink-0 inline-flex items-center gap-1.5">
+          {today}
+          <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full bg-accent transition-opacity duration-300 ${refreshing ? 'opacity-70 animate-pulse' : 'opacity-0'}`} />
+          {refreshing && <span className="sr-only">Refreshing</span>}
+        </p>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <div className="rounded-full border border-border bg-card px-3 h-8 flex items-center"><WeatherStrip /></div>
           <Button

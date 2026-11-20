@@ -1,4 +1,4 @@
-/** Registers the network-only /sw.js in the published app only; never in dev or Lovable preview. */
+/** Registers /sw.js (app shell cache + push) in the published app only; never in dev or Lovable preview. */
 export function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   const h = location.hostname;

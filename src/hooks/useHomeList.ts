@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Recurrence } from '@/lib/recurrence';
+import { readSnapshot, trackRefresh, writeSnapshot } from '@/lib/snapshot';
 
 export type HomeListType = 'todo' | 'store';
 
@@ -27,30 +28,36 @@ export type HomeListPatch = Partial<Pick<HomeListItem, 'text' | 'user_id' | 'due
 export function useHomeList(listType: HomeListType) {
   const { user, profile } = useAuth();
   const householdId = profile?.household_id;
-  const [items, setItems] = useState<HomeListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const snapKey = `home-list-${listType}`;
+  const [seed] = useState(() => { const s = readSnapshot<HomeListItem[]>(user?.id, snapKey); return Array.isArray(s) ? s : null; });
+  const [items, setItems] = useState<HomeListItem[]>(seed ?? []);
+  const [loading, setLoading] = useState(!seed);
 
   const load = useCallback(async () => {
     if (!householdId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('home_list_items')
       .select('id, text, completed, created_at, completed_at, user_id, due_date, due_time, notes, recurrence, series_id')
       .eq('household_id', householdId)
       .eq('list_type', listType)
       .order('created_at', { ascending: false });
-    setItems((data as unknown as HomeListItem[]) || []);
+    if (error) { setLoading(false); return; } // keep what's on screen
+    const rows = (data as unknown as HomeListItem[]) || [];
+    setItems(rows);
     setLoading(false);
-  }, [householdId, listType]);
+    writeSnapshot(user?.id, snapKey, rows);
+  }, [householdId, listType, user?.id, snapKey]);
 
   useEffect(() => {
     if (!householdId) return;
-    load();
+    if (seed) trackRefresh(load()); else load();
     const ch = supabase
       .channel(`home-list-${listType}-${householdId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'home_list_items', filter: `household_id=eq.${householdId}` }, () => load())
       .subscribe();
-    window.addEventListener('perritt-resume', load);
-    return () => { supabase.removeChannel(ch); window.removeEventListener('perritt-resume', load); };
+    const onResume = () => { trackRefresh(load()); };
+    window.addEventListener('perritt-resume', onResume);
+    return () => { supabase.removeChannel(ch); window.removeEventListener('perritt-resume', onResume); };
   }, [householdId, listType, load]);
 
   const add = async (text: string, opts: { owner?: string | null; due_date?: string | null; due_time?: string | null; notes?: string | null; recurrence?: Recurrence | null } = {}) => {
@@ -76,8 +83,10 @@ export function useHomeList(listType: HomeListType) {
     if (patch.due_date === null) { full.due_time = null; full.recurrence = null; }
     if (typeof patch.text === 'string') full.text = patch.text.trim().slice(0, 300);
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...full } as HomeListItem : i));
-    const { error } = await supabase.from('home_list_items').update(full as never).eq('id', id);
+    const { data: saved, error } = await supabase.from('home_list_items').update(full as never).eq('id', id).select('id');
     if (error) { toast.error("Couldn't save that change."); load(); return false; }
+    // The item was already gone (e.g. changed on the other phone): refresh quietly.
+    if (!saved || saved.length === 0) { load(); return false; }
     return true;
   };
 
