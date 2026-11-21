@@ -1,4 +1,5 @@
 # Home page updates
+- [x] Unassigned card refunds now appear in Unassigned and count toward "to assign"; assigning keeps them as refunds.
 - [x] Instant opens: app shell caching and per-user last-known data with quiet refresh. Tests and production cache check passed.
 - [ ] Verify signed-in instant open on the iPhones — no signed-in session available here.
 - [x] Reduce notification load: restricted due-only SQL checks, tiny deployed sender responses, hourly one-hour HTTP retention and morning index (existing partial reminder index reused). SQL boundary tests passed; Joe's one-minute reminder flipped false→true and was removed unsent; original schedules restored active. Nine regression tests passed; no frontend changes.

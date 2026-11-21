@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { onReminderLink } from '@/lib/reminderLink';
 import { readSnapshot, writeSnapshot } from '@/lib/snapshot';
+import { creditCardIds, needsAssignment } from '@/lib/needsAssignment';
 import { BottomNav } from '@/components/keeper/BottomNav';
 import { SideNav, ProfileSidebarItem } from '@/components/keeper/SideNav';
 
@@ -59,6 +60,7 @@ const Index = () => {
   } = useBudgetData();
 
   const { accounts } = useAccounts();
+  const cardIds = useMemo(() => creditCardIds(accounts), [accounts]);
 
   // Lightweight unassigned count so Home's Budget pill shows before all transactions load.
   const { user } = useAuth();
@@ -75,10 +77,14 @@ const Index = () => {
       const { count } = await supabase.from('transactions').select('id', { count: 'exact', head: true })
         .eq('household_id', householdId).eq('budget_month', month).eq('category_slug', 'unassigned')
         .eq('transaction_type', 'expense').eq('is_transfer_to_savings', false);
-      if (!cancelled && count !== null) { setQuickUnassigned(count); writeSnapshot(user?.id, 'budget-unassigned', count); }
+      // Unassigned card refunds also need assigning (card payments stay excluded).
+      const { data: credits } = await supabase.from('transactions').select('account, description, category_slug, transaction_type, is_transfer_to_savings')
+        .eq('household_id', householdId).eq('budget_month', month).eq('category_slug', 'unassigned').eq('transaction_type', 'deposit');
+      const refunds = (credits ?? []).filter(r => needsAssignment({ categoryId: r.category_slug, transactionType: r.transaction_type as never, account: r.account, description: r.description, isTransferToSavings: r.is_transfer_to_savings }, cardIds)).length;
+      if (!cancelled && count !== null) { const n = count + refunds; setQuickUnassigned(n); writeSnapshot(user?.id, 'budget-unassigned', n); }
     })();
     return () => { cancelled = true; };
-  }, [householdId, loading, user?.id]);
+  }, [householdId, loading, user?.id, cardIds]);
 
   const [householdMembers, setHouseholdMembers] = useState<{ primaryName: string; partnerName: string | null }>({ primaryName: '', partnerName: null });
   useEffect(() => {
@@ -295,8 +301,8 @@ const Index = () => {
   );
 
   const unassignedTransactions = useMemo(
-    () => monthTransactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t)),
-    [monthTransactions]
+    () => monthTransactions.filter(t => needsAssignment(t, cardIds)),
+    [monthTransactions, cardIds]
   );
 
   useEffect(() => {

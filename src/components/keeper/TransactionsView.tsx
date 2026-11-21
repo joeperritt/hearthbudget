@@ -1,3 +1,4 @@
+import { creditCardIds, isUnassignedRefund, needsAssignment } from '@/lib/needsAssignment';
 import { useState, useEffect, useMemo } from 'react';
 import { Transaction, BudgetCategory, FixedExpense, BudgetTransfer, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS } from '@/types/budget';
 import { Plus, Trash2, ChevronDown, ChevronUp, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -183,6 +184,7 @@ export function TransactionsView({
   // Mirror the Home-page unassigned rule: a row only counts as "unassigned" when
   // categoryId === 'unassigned' AND it isn't excluded for budget purposes
   // (income, deposit, transfer, cc-payment, prior-month, or user-ignored).
+  const cardIds = creditCardIds(accounts);
   const isExcluded = (t: Transaction) =>
     t.isTransferToSavings
     || t.transactionType === 'income'
@@ -197,7 +199,7 @@ export function TransactionsView({
     : filter === 'manual'
       ? transactions.filter(t => t.source === 'manual')
       : filter === 'unassigned'
-        ? transactions.filter(t => t.categoryId === 'unassigned' && !isExcluded(t))
+        ? transactions.filter(t => needsAssignment(t, cardIds))
         : filter === 'budget-transfers'
           ? [] // budget transfers are not transactions; render only transferRows below
           : categoryFilterId
@@ -291,7 +293,8 @@ export function TransactionsView({
     const isPriorMonth = t.categoryId === PRIOR_MONTH_CATEGORY;
     const isDeposit = t.categoryId === DEPOSIT_CATEGORY || t.transactionType === 'deposit';
     const isUserIgnore = t.categoryId === USER_IGNORE_CATEGORY;
-    const isExcluded = isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth || isUserIgnore;
+    const isRefund = isUnassignedRefund(t, cardIds);
+    const isExcluded = !isRefund && (isIncome || isDeposit || isTransfer || isCcPayment || isPriorMonth || isUserIgnore);
     // Whole row is muted as a single visual unit when transaction is ignored
     const isMuted = isExcluded;
 
@@ -338,6 +341,9 @@ export function TransactionsView({
                 {catMap[t.categoryId]?.name || fixedMap[t.categoryId]?.name || (t.categoryId === 'unassigned' ? 'Unassigned' : 'Unknown')}
                 {fixedMap[t.categoryId] && (
                   <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">fixed</span>
+                )}
+                {isRefund && (
+                  <span className="ml-1.5 text-[10px] text-success bg-success/10 px-1.5 py-0.5 rounded-full align-middle">Refund</span>
                 )}
                 {t.isTransferToSavings && (
                   <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full align-middle">savings</span>

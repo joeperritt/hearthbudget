@@ -1,3 +1,4 @@
+import { creditCardIds, isUnassignedRefund } from '@/lib/needsAssignment';
 import { useState, useEffect, useMemo } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { Transaction, BudgetCategory, FixedExpense, AccountSource, INCOME_CATEGORY, DEPOSIT_CATEGORY, TRANSFER_CATEGORY, CC_PAYMENT_CATEGORY, USER_IGNORE_CATEGORY, PRIOR_MONTH_CATEGORY, IGNORE_CATEGORY_SLUGS, categoryRequiresNotes } from '@/types/budget';
@@ -39,7 +40,9 @@ interface EditTransactionSheetProps {
   monthAmountOverrides?: MonthAmountOverrides;
 }
 
-function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[]): TxMode {
+function deriveMode(categoryId: string, transactionType: string, fixedExpenses: FixedExpense[], isRefund = false): TxMode {
+  // Unassigned card refunds open ready to assign, like any unassigned row.
+  if (isRefund) return 'variable';
   // Auto-detected or user-marked Ignore family
   if (IGNORE_CATEGORY_SLUGS.has(categoryId)) return 'ignore';
   if (transactionType === 'income' || transactionType === 'transfer' || transactionType === 'cc-payment' || transactionType === 'deposit' || transactionType === 'prior-month') {
@@ -80,7 +83,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
       setSplitLines([]);
     }
 
-    const m = deriveMode(transaction.categoryId, transaction.transactionType, fixedExpenses);
+    const m = deriveMode(transaction.categoryId, transaction.transactionType, fixedExpenses, isUnassignedRefund(transaction, creditCardIds(accounts)));
     setMode(m);
 
     if (m === 'variable') {
@@ -128,7 +131,7 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
   if (!transaction) return null;
 
-  const isUnassigned = transaction.categoryId === 'unassigned' && transaction.transactionType === 'expense';
+  const isUnassigned = transaction.categoryId === 'unassigned' && (transaction.transactionType === 'expense' || isUnassignedRefund(transaction, creditCardIds(accounts)));
   const showAISuggestion = isUnassigned && !suggestionDismissed;
 
   const handleUseSuggestion = (suggestion: { type: string; subtype: string | null; categoryId: string | null }) => {
@@ -235,15 +238,17 @@ export function EditTransactionSheet({ transaction, open, onOpenChange, categori
 
     let slugToSave: string;
     let txType: string;
+    // A card refund assigned to a category stays a deposit so it credits that category back.
+    const keepsDeposit = isUnassignedRefund(transaction, creditCardIds(accounts));
 
     switch (mode) {
       case 'variable':
         slugToSave = variableCategoryId;
-        txType = 'expense';
+        txType = keepsDeposit ? 'deposit' : 'expense';
         break;
       case 'fixed':
         slugToSave = fixedCategoryId;
-        txType = 'expense';
+        txType = keepsDeposit ? 'deposit' : 'expense';
         break;
       case 'ignore':
         // Preserve auto-detect routing if this transaction was auto-classified;
