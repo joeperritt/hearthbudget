@@ -109,14 +109,10 @@ const Index = () => {
   // block the UI — realtime subscriptions reflect new transactions automatically.
   const [resumeTick, setResumeTick] = useState(0);
   useEffect(() => {
-    // Quiet refresh when returning after more than a minute away.
+    // Quiet refresh every time the app comes back to the foreground (at most every 10 seconds).
     let last = Date.now();
-    let hiddenAt: number | null = null;
     const fire = () => {
-      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
-      const awaySince = hiddenAt ?? last;
-      if (Date.now() - awaySince < 60_000 || Date.now() - last < 60_000) return;
-      hiddenAt = null;
+      if (document.visibilityState !== 'visible' || Date.now() - last < 10_000) return;
       last = Date.now();
       setResumeTick(t => t + 1);
       window.dispatchEvent(new Event('perritt-resume'));
@@ -124,7 +120,8 @@ const Index = () => {
     };
     document.addEventListener('visibilitychange', fire);
     window.addEventListener('focus', fire);
-    return () => { document.removeEventListener('visibilitychange', fire); window.removeEventListener('focus', fire); };
+    window.addEventListener('pageshow', fire);
+    return () => { document.removeEventListener('visibilitychange', fire); window.removeEventListener('focus', fire); window.removeEventListener('pageshow', fire); };
   }, []);
 
   useEffect(() => {

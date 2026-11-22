@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { registerSW } from "./lib/registerSW";
+import { watchForNewBuild } from "./lib/appUpdate";
 import { captureReminderLink } from "./lib/reminderLink";
 
 // After a new publish, an older cached page may ask for a file that no longer exists.
@@ -19,3 +20,4 @@ window.addEventListener('load', () => { setTimeout(() => { try { sessionStorage.
 captureReminderLink();
 createRoot(document.getElementById("root")!).render(<App />);
 registerSW();
+if (import.meta.env.PROD) watchForNewBuild();

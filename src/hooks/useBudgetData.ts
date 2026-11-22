@@ -155,10 +155,13 @@ export function useBudgetData() {
   const loadedMonths = useRef<Set<string>>(new Set());
 
   /** Refetch transactions for every month already loaded (plus all unassigned). */
+  // Only the newest transaction request may write state, so a slow older response never overwrites newer rows.
+  const txRequest = useRef(0);
   const refetchLoadedTx = useCallback(() => {
     if (!householdId) return;
+    const req = ++txRequest.current;
     loadedTxQuery(householdId, [...loadedMonths.current]).then(({ data }) => {
-      if (data) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
+      if (data && req === txRequest.current) setTransactions(data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
     });
   }, [householdId]);
 
@@ -179,8 +182,9 @@ export function useBudgetData() {
   }, [householdId]);
 
   // Fetch all data
-  const fetchAll = useCallback(async () => {
-    if (!householdId) return;
+  const fetchAll = useCallback(async (): Promise<boolean> => {
+    if (!householdId) return false;
+    const req = ++txRequest.current;
 
     // Households first (tiny) so we know the active month, then load only that month's
     // transactions plus unassigned ones from any month. Older months load on demand.
@@ -198,7 +202,7 @@ export function useBudgetData() {
 
     if (catRes.data) setCategories(catRes.data.map(r => dbToCat(r as unknown as Record<string, unknown>)));
     if (fixRes.data) setFixedExpenses(fixRes.data.map(r => dbToFixed(r as unknown as Record<string, unknown>)));
-    if (txRes.data) setTransactions(txRes.data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
+    if (txRes.data && req === txRequest.current) setTransactions(txRes.data.map(r => dbToTx(r as unknown as Record<string, unknown>)));
     if (trRes.data) setTransfers(trRes.data.map(r => dbToTransfer(r as unknown as Record<string, unknown>)));
     if (hhRes.data) {
       const hh = hhRes.data as unknown as Record<string, unknown>;
@@ -219,12 +223,23 @@ export function useBudgetData() {
       initialLoad.current = false;
       setLoading(false);
     }
-    if (hhRes.data && catRes.data && fixRes.data && txRes.data && trRes.data && ovRes.data) setFresh(true);
+    const ok = Boolean(hhRes.data && catRes.data && fixRes.data && txRes.data && trRes.data && ovRes.data);
+    if (ok) setFresh(true);
+    return ok;
   }, [householdId]);
 
-  useEffect(() => {
-    if (seed && initialLoad.current) trackRefresh(fetchAll()); else fetchAll();
+  /** Background refresh that retries (2s, 5s, 15s) instead of silently keeping old data when a request fails. */
+  const refreshAll = useCallback(async () => {
+    for (const wait of [0, 2000, 5000, 15000]) {
+      if (wait) await new Promise(r => setTimeout(r, wait));
+      try { if (await fetchAll()) return true; } catch { /* retry */ }
+    }
+    return false;
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (seed && initialLoad.current) trackRefresh(refreshAll()); else refreshAll();
+  }, [refreshAll]);
 
   // Save the current-month view (active month + unassigned, as loaded at startup) after fresh loads.
   useEffect(() => {
@@ -467,11 +482,11 @@ export function useBudgetData() {
   useEffect(() => {
     if (!householdId) return;
     const onResume = () => {
-      trackRefresh(fetchAll());
+      trackRefresh(refreshAll());
     };
     window.addEventListener('perritt-resume', onResume);
     return () => window.removeEventListener('perritt-resume', onResume);
-  }, [householdId, fetchAll]);
+  }, [householdId, refreshAll]);
 
   // Real-time subscriptions
   useEffect(() => {

@@ -1,4 +1,5 @@
 # Home page updates
+- [x] New bank-sync refunds always appear: refresh retries, refreshes on every return, card accounts refresh, installed app picks up new publishes on return.
 - [x] Unassigned card refunds now appear in Unassigned and count toward "to assign"; assigning keeps them as refunds.
 - [x] Instant opens: app shell caching and per-user last-known data with quiet refresh. Tests and production cache check passed.
 - [ ] Verify signed-in instant open on the iPhones — no signed-in session available here.
