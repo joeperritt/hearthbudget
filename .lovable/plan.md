@@ -1,71 +1,65 @@
-# Treat transfers and deposit add-backs as transactions
+# 2717 — Goals, Net Worth, Income, JP Advisor Data
 
-## What I found while diagnosing Bug 1 (the Dog math)
+Purely additive. New tables, new components, one new tile on More, and one new sub view route in Index.tsx. Nothing else changes.
 
-DB shows: Dog budgeted = $75. May transfers OUT of Dog = $657.70 (3 transfers). May transactions on Dog include a Wealthfront row with `amount = -$791, transaction_type = 'expense'` plus normal expenses summing to $208.30. So:
+## Navigation
+- `ProfileTab.tsx`: add one `Tile` "2717" / "Goals, net worth, income, advisor data", calling the existing `onNavigate('2717')`.
+- `Index.tsx`: add `'2717'` to the `ProfileSubView` union and one render block `profileSubView === '2717'` showing `<RetreatHub onBack={() => setProfileSubView('menu')} />`.
+- Inside the hub, its own internal state switches between hub / goals / net-worth / income / advisor. Each screen's Back goes to the hub, and the hub's Back goes to More. That's the same header and back pattern as CalendarSettingsView.
+- The desktop sidebar (SideNav) is not touched. On desktop, the tile is reached from the More page.
 
-- `spentByCategory[dog]` = 10 + 15 + 183.30 + (-791) = **-$582.70**
-- `transferAdjustments[dog]` = **-$657.70**
-- `adjustedBudget = budgeted + transferAdj` = 75 - 657.70 = **-$582.70**
-- Display: `-$582.70 of -$582.70` ✓ matches the screenshot
+## Tables (all in public, all with household_id = Perritt Family)
+| Table | Key columns |
+|---|---|
+| `retreat_visions` | household_id, retreat_year, label ("Our family", "2030"), text, sort_order |
+| `retreat_goals` | household_id, retreat_year, horizon, category, text, sort_order, result (hit/faded/short, null), result_note |
+| `retreat_scorecards` | household_id, year, summary_line (pattern text). The counts are calculated from the goals. |
+| `nw_line_items` | household_id, section (asset/liability), category, name, sort_order, active, is_business_equity, is_business_loan |
+| `nw_snapshots` | household_id, snapshot_month (date, first of month, unique per household) |
+| `nw_values` | household_id, snapshot_id → nw_snapshots (cascade), line_item_id → nw_line_items, amount, unique(snapshot_id, line_item_id) |
+| `income_sources` | household_id, year, name, sort_order |
+| `income_entries` | household_id, source_id → income_sources (cascade), month (1–12), amount, unique(source_id, month) |
+| `advisor_monthly` | household_id, month (date), aum, nna, production (each nullable), unique(household_id, month) |
 
-So both numbers are colliding at -$582.70 by coincidence. The real architectural problem: a $791 inflow is being modeled as a negative-amount expense on Dog (almost certainly a misapplied refund/deposit), and the transfer-out logic produces a confusing negative budget.
+**Access rules (same for every table, matching tool_states):** grant SELECT/INSERT/UPDATE/DELETE to authenticated and ALL to service_role, with no anon access. RLS is on, with four policies: select, insert (with check), update and delete, all `household_id = get_household_id()`. Joe and Katie both see and edit everything. A shared trigger fills household_id on insert when it's missing. `updated_at` is maintained with the existing `update_updated_at_column()`.
 
-**Bug 1 needs a clarifying decision from you before I commit a fix** — see "Open question" below.
+## Seed
+One-time inserts for household 6c4e60db-… with every value from your message:
+- **Goals:** the 2026 retreat goals and both vision statements (retreat_year 2026, horizons Every Year/2027/2030/2035/2040/2045/2065), plus the 14 prior-year 2026 goals with results and notes and the pattern line. The prior-year goals are stored under retreat_year 2025 with horizon "2026", so they sit apart from the current set.
+- **Net worth:** 4 snapshots and all line items, with the business equity and BBF loan flags.
+- **Income:** the 2026 sources and Jan–Nov values. December stays blank.
+- **Advisor:** production for 2024–2026, plus AUM and NNA. Unknown cells stay null.
+- **Checks after seeding:** Nov 2026 assets 2,452,511, liabilities 1,314,832, net worth 1,137,679. Oct 2025 net worth 241,046. 2026 income through November 340,378.53. Scorecard 9 hit / 3 faded / 2 short.
 
-## Open question on Bug 1
+## Screens
+- **Goals:** "All Goals" / "Prior Years" toggle.
+  - All Goals shows the vision cards, then a section per horizon (Every Year first, then by year) with category groups.
+  - Prior Years has a year selector, a scorecard summary and goals with colored result badges (Hit green, Faded amber, Short red) and notes.
+  - Read-only.
+- **Net Worth:** classic balance sheet.
+  - Sticky first column, right-aligned whole dollars, negatives in parentheses, subtle striping and bold totals with a top rule.
+  - Category subtotals (Cryptocurrency shows $0), Total Assets, Total Liabilities, Net Worth, and Net Worth without Blackbridge (worked out from the flags).
+  - Default view is the latest snapshot vs the one about a year earlier, plus change in $ and %. A toggle shows all snapshots with horizontal scroll.
+  - Actions: Add update (any month, prefilled from the latest snapshot), tap a value to edit, add a line item, deactivate a line item (history kept), delete a snapshot with a confirmation.
+- **Income:** year selector, month rows, source columns, Total column and Total row, cents shown, sticky month column. Tap a cell to edit, and add or remove a source.
+- **JP Advisor Data:** year selector, a Month | AUM | NNA | Production table with editable cells, and Add month.
+  - Summary: total production, average monthly production, best month, latest AUM, year-to-date NNA.
+  - The averages only count months that have a value.
 
-Your stated expectation: "Dog should show **$75 of $75 spent, $0 remaining**." For that to be true mathematically, one of these models must be right:
+Styling uses the existing tokens and fonts (Playfair headers, DM Sans body), with shadcn Sheet/Dialog for edits.
 
-**Model A — refund offsets transfer-out, transfers reduce budget**
-- Budget = original − transfers out + deposit add-backs = 75 − 657.70 + 791 = **$208.30**
-- Spent = gross expenses only = 10+15+183.30 = **$208.30**
-- Displays "$208.30 of $208.30" — not $75/$75.
+## Files
+**New**
+- `src/components/retreat/RetreatHub.tsx`, `GoalsView.tsx`, `NetWorthView.tsx`, `IncomeView.tsx`, `AdvisorDataView.tsx`, plus small edit sheets.
+- `src/hooks/useRetreatData.ts` (queries and mutations).
+- `src/lib/netWorth.ts` (totals and change math).
+- `src/test/netWorth.test.ts`: checks the Nov 2026 and Oct 2025 totals, net worth without Blackbridge, the income total and the scorecard counts.
 
-**Model B — transfers are just informational, original budget is the truth**
-- Budget = 75 (ignore transfers in the per-bucket card)
-- Spent = gross expenses + refunds net, *if refund is treated as deposit add-back instead* = $208.30 - $791 (treated as add-back) ... still not $75.
+**Changed (only these two)**
+- `ProfileTab.tsx`: one Tile.
+- `Index.tsx`: the union member and one render block.
 
-**Model C — the Wealthfront -$791 row is bad data and should be reclassified as a deposit, not an expense.** Then:
-- spent = 10+15+183.30 = $208.30 (gross)
-- adjustedBudget = 75 + transferAdj − depositAddBacks subtracted from spent already? With the refund logic on line 225-227 of `Index.tsx`, a deposit assigned to dog reduces `spentByCategory[dog]` by $791, giving spent = -$582.70. Same problem, different label.
+`types.ts` is regenerated automatically after the migration, and AGENTS.md gets one rule for the 2717 data. No existing tables, hooks or feature components are modified.
 
-**None of these naturally produce $75 of $75 unless that -$791 row is unrelated to Dog (data-entry error).**
-
-**Please pick one:**
-1. Recategorize/delete the -$791 Wealthfront row (it's the actual bug — data, not code) and the math will resolve.
-2. I should change the model so transfer-out reduces the *spent* side instead of the *budget* side (so an over-refund + transfer-out shows as positive remaining instead of negative budget).
-3. Other — describe how you want $75/$75 to fall out of these inputs.
-
-While waiting on Bug 1, I will ship the other four items (which are unambiguous):
-
-## What I will ship now
-
-### Bug 2 — Transfers in Activity feed
-Already implemented in `TransactionsView` (renders `transferRows` when `showTransfers` toggle is on; default true). I'll verify it actually renders, and if it's hidden behind an off-by-default state I'll flip the default and check the toggle UI.
-
-### Bug 3 — Split deposit deducts instead of adds
-Root cause in `EditTransactionSheet.tsx` lines 188-209 and `AddTransactionSheet.tsx` lines 102-115: split rows are always saved with `transaction_type: 'expense'` and a positive amount. When the original is a deposit, each split is then summed into `spentByCategory` as positive expense (line 219-220 of `Index.tsx`).
-
-Fix: when the parent transaction (or the user's selected mode) is a deposit, write each split with `transaction_type: 'deposit'` so the existing line 225-227 logic subtracts from spent (= adds back to budget).
-
-### Bug 4 — Ignored transactions in Activity unassigned list
-`TransactionsView.tsx` line 186 filters `t.categoryId === 'unassigned'` only. Home uses the same check **plus** `!isExcluded(t)`. I'll add the same exclusion in the Activity filter.
-
-### UI improvement — Transfer button on Categories tab
-Add a prominent "Transfer Between Buckets" button near the top of `SpendingView`. Clicking opens `MoveFundsSheet` with an empty "From" picker (currently the sheet requires a from-id; I'll add a small "from picker" mode or a wrapper).
-
-### Backlog item
-The -$791 Wealthfront row as a probable data-entry / Plaid-mapping bug — I'll add to BACKLOG for you to audit.
-
-## Files I'll touch
-
-- `src/components/keeper/TransactionsView.tsx` — unassigned filter + verify transfer rendering
-- `src/components/keeper/EditTransactionSheet.tsx` — preserve deposit type in splits
-- `src/components/keeper/AddTransactionSheet.tsx` — same (if reachable for deposits)
-- `src/components/keeper/SpendingView.tsx` — Transfer button
-- `src/components/keeper/MoveFundsSheet.tsx` — allow opening without a preset `fromCategoryId`
-- `src/pages/Index.tsx` — wire the new transfer entry point
-- `BACKLOG.md` — Wealthfront -$791 audit note
-
-After you answer the Bug 1 question, I'll add the math fix.
+## Assumption
+Prior-year goals are stored as retreat_year 2025 (set at the 2025 retreat) with horizon "2026", and the Prior Years selector is labeled by goal year ("2026").
