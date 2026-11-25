@@ -33,6 +33,7 @@ const SecurityView = lazy(() => import('@/components/keeper/SecurityView').then(
 const NotificationsView = lazy(() => import('@/components/keeper/NotificationsView').then(m => ({ default: m.NotificationsView })));
 const SpendingTrendsView = lazy(() => import('@/components/keeper/SpendingTrendsView').then(m => ({ default: m.SpendingTrendsView })));
 const BudgetTabView = lazy(() => import('@/components/keeper/BudgetTabView').then(m => ({ default: m.BudgetTabView })));
+const RetreatHub = lazy(() => import('@/components/retreat/RetreatHub').then(m => ({ default: m.RetreatHub })));
 const CalendarSettingsView = lazy(() => import('@/components/home/CalendarSettingsView').then(m => ({ default: m.CalendarSettingsView })));
 
 const ScreenLoader = () => (
@@ -43,7 +44,7 @@ const ScreenLoader = () => (
   </div>
 );
 
-type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars' | 'notifications';
+type ProfileSubView = 'menu' | 'settings' | 'bank-connections' | 'trends' | 'security' | 'calendars' | 'notifications' | '2717';
 
 const Index = () => {
   const {
@@ -616,6 +617,9 @@ const Index = () => {
         )}
         {activeTab === 'profile' && profileSubView === 'notifications' && (
           <NotificationsView onBack={() => setProfileSubView('menu')} />
+        )}
+        {activeTab === 'profile' && profileSubView === '2717' && (
+          <RetreatHub onBack={() => setProfileSubView('menu')} />
         )}
         {activeTab === 'profile' && profileSubView === 'security' && (
           <SecurityView onBack={() => setProfileSubView('menu')} />

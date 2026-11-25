@@ -1,4 +1,4 @@
-import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3, CalendarClock, Bell } from 'lucide-react';
+import { LogOut, Building2, ShieldCheck, ChevronRight, CalendarDays, BarChart3, CalendarClock, Bell, Mountain } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export type ProfileTabSelection =
@@ -7,7 +7,8 @@ export type ProfileTabSelection =
   | 'budget-setup'
   | 'trends'
   | 'calendars'
-  | 'notifications';
+  | 'notifications'
+  | '2717';
 
 interface ProfileTabProps {
   onSelect: (target: ProfileTabSelection, profileTabHint?: string) => void;
@@ -30,6 +31,14 @@ export function ProfileTab({ onSelect }: ProfileTabProps) {
           title="Budget Setup"
           subtitle="Take-home, categories, fixed bills, savings, giving"
           onClick={() => onSelect('budget-setup')}
+        />
+
+        <Tile
+          accent="primary"
+          icon={Mountain}
+          title="2717"
+          subtitle="Goals, net worth, income, advisor data"
+          onClick={() => onSelect('2717')}
         />
 
         <Tile

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      advisor_monthly: {
+        Row: {
+          aum: number | null
+          created_at: string
+          household_id: string
+          id: string
+          month: string
+          nna: number | null
+          production: number | null
+          updated_at: string
+        }
+        Insert: {
+          aum?: number | null
+          created_at?: string
+          household_id: string
+          id?: string
+          month: string
+          nna?: number | null
+          production?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aum?: number | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          month?: string
+          nna?: number | null
+          production?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_insights_cache: {
         Row: {
           created_at: string
@@ -663,6 +696,74 @@ export type Database = {
         }
         Relationships: []
       }
+      income_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          household_id: string
+          id: string
+          month: number
+          source_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          household_id: string
+          id?: string
+          month: number
+          source_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          month?: number
+          source_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_entries_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "income_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      income_sources: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           code: string
@@ -857,6 +958,117 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      nw_line_items: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          household_id: string
+          id: string
+          is_business_equity: boolean
+          is_business_loan: boolean
+          name: string
+          section: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          created_at?: string
+          household_id: string
+          id?: string
+          is_business_equity?: boolean
+          is_business_loan?: boolean
+          name: string
+          section: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          is_business_equity?: boolean
+          is_business_loan?: boolean
+          name?: string
+          section?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nw_snapshots: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          snapshot_month: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          snapshot_month: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          snapshot_month?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nw_values: {
+        Row: {
+          amount: number
+          created_at: string
+          household_id: string
+          id: string
+          line_item_id: string
+          snapshot_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          household_id: string
+          id?: string
+          line_item_id: string
+          snapshot_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          line_item_id?: string
+          snapshot_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nw_values_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "nw_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nw_values_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "nw_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plaid_accounts: {
         Row: {
@@ -1122,6 +1334,108 @@ export type Database = {
           keys?: Json
           last_success_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      retreat_goals: {
+        Row: {
+          category: string
+          created_at: string
+          horizon: string
+          household_id: string
+          id: string
+          result: string | null
+          result_note: string | null
+          retreat_year: number
+          sort_order: number
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          horizon: string
+          household_id: string
+          id?: string
+          result?: string | null
+          result_note?: string | null
+          retreat_year: number
+          sort_order?: number
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          horizon?: string
+          household_id?: string
+          id?: string
+          result?: string | null
+          result_note?: string | null
+          retreat_year?: number
+          sort_order?: number
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      retreat_scorecards: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          summary_line: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          summary_line?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          summary_line?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      retreat_visions: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          label: string
+          retreat_year: number
+          sort_order: number
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          label: string
+          retreat_year: number
+          sort_order?: number
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          label?: string
+          retreat_year?: number
+          sort_order?: number
+          text?: string
+          updated_at?: string
         }
         Relationships: []
       }
