@@ -35,7 +35,7 @@ export function AdvisorDataView({ onBack }: { onBack: () => void }) {
   const sticky = 'sticky left-0 z-10 bg-inherit';
   const cell = (r: Row, f: Field) => (
     <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-      <button onClick={() => setEdit({ r, f })} className="tabular-nums hover:underline">{r[f] == null ? '–' : f === 'production' ? fmtCents(Number(r[f])) : fmtWhole(Number(r[f]))}</button>
+      <button onClick={() => setEdit({ r, f })} className="tabular-nums hover:underline">{r[f] == null ? '–' : f === 'aum' ? fmtWhole(Number(r[f])) : fmtCents(Number(r[f]))}</button>
     </td>
   );
   const dupMonth = data.rows.some(r => r.month === `${month}-01`);
@@ -48,7 +48,7 @@ export function AdvisorDataView({ onBack }: { onBack: () => void }) {
         <Card label="Avg monthly production" value={`$${fmtCents(s.avg)}`} />
         <Card label="Best month" value={s.best ? `${format(parseISO(s.best.month), 'MMM')} · $${fmtCents(Number(s.best.production))}` : '–'} />
         <Card label="Latest AUM" value={s.latestAum ? `$${fmtWhole(Number(s.latestAum.aum))}` : '–'} sub={s.latestAum ? format(parseISO(s.latestAum.month), 'MMM yyyy') : undefined} />
-        <Card label="YTD NNA" value={s.hasNna ? `$${fmtWhole(s.nna)}` : '–'} />
+        <Card label="YTD NNA" value={s.hasNna ? `$${fmtCents(s.nna)}` : '–'} />
       </div>
       <div className="px-6 mt-4 flex justify-end"><Button variant="ghost" size="sm" onClick={() => setAdding(true)}><Plus size={14} className="mr-1" />Month</Button></div>
       <div className="mt-1 overflow-x-auto border-y border-border">
