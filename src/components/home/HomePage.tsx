@@ -4,18 +4,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { WeatherStrip } from './WeatherStrip';
 import { CalendarCard } from './CalendarCard';
-import { HomeListCard } from './HomeListCard';
+import { DailyGoalsCard } from './DailyGoalsCard';
 import { TodoCard } from './TodoCard';
 import { Check, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HomeDataProvider, useHomeData } from './HomeDataContext';
 import { readSnapshot, useRefreshing, writeSnapshot } from '@/lib/snapshot';
 
-export type HomeCardId = 'calendar' | 'todo' | 'store';
+export type HomeCardId = 'calendar' | 'todo' | 'goals';
 
 /** Default layout. A per-user override can be stored in user_home_layouts.cards. */
-export const DEFAULT_HOME_CARDS: HomeCardId[] = ['calendar', 'todo', 'store'];
+export const DEFAULT_HOME_CARDS: HomeCardId[] = ['calendar', 'todo', 'goals'];
 const KNOWN = new Set<string>(DEFAULT_HOME_CARDS);
+
+/** Saved layouts may still name the removed store card: it becomes Daily Goals, and Goals is always present. */
+export function normalizeHomeCards(saved: unknown): HomeCardId[] {
+  if (!Array.isArray(saved)) return DEFAULT_HOME_CARDS;
+  const out: HomeCardId[] = [];
+  for (const c of saved) {
+    const id = c === 'store' ? 'goals' : c;
+    if (typeof id === 'string' && KNOWN.has(id) && !out.includes(id as HomeCardId)) out.push(id as HomeCardId);
+  }
+  if (!out.length) return DEFAULT_HOME_CARDS;
+  if (!out.includes('goals')) out.push('goals');
+  return out;
+}
 
 interface HomePageProps {
   onOpenCalendarSettings: () => void;
@@ -35,23 +48,21 @@ export function HomePage(props: HomePageProps) {
 
 function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassigned, restoreLastTab }: HomePageProps) {
   const { user } = useAuth();
-  const { todo, store, owners: { isVisible, keyOf } } = useHomeData();
+  const { todo, owners: { isVisible, keyOf } } = useHomeData();
   // Live open counts for the mobile toggle; chip choices come from user_home_layouts.todo_visibility.
   const nyToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const todoCount = todo.items.filter(i => !i.completed && i.due_date && i.due_date <= nyToday && isVisible(keyOf(i.user_id))).length;
-  const storeCount = store.items.filter(i => !i.completed).length;
   const refreshing = useRefreshing();
   const [cards, setCards] = useState<HomeCardId[]>(() => {
-    const s = readSnapshot<string[]>(user?.id, 'home-cards');
-    const list = Array.isArray(s) ? s.filter(c => KNOWN.has(c)) : [];
-    return list.length ? list as HomeCardId[] : DEFAULT_HOME_CARDS;
+    return normalizeHomeCards(readSnapshot<string[]>(user?.id, 'home-cards'));
   });
   // Mobile: one widget at a time behind a segmented toggle; starts on Calendar
   // (the component remounts whenever Home is opened, so it always resets here).
   const [mobileTab, setMobileTab] = useState<HomeCardId>(() => {
     if (peekReminderLink()) return 'todo';
     if (restoreLastTab) {
-      const last = readSnapshot<string>(user?.id, 'home-tab');
+      const raw = readSnapshot<string>(user?.id, 'home-tab');
+      const last = raw === 'store' ? 'goals' : raw;
       if (last && KNOWN.has(last)) return last as HomeCardId;
     }
     return 'calendar';
@@ -63,11 +74,12 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
 
   useEffect(() => {
     if (!user) return;
+    try { window.localStorage.removeItem(`perritt-snap:${user.id}:home-list-store`); } catch { /* ignore */ }
     supabase.from('user_home_layouts').select('cards').eq('user_id', user.id).maybeSingle().then(({ data, error }) => {
       if (error) return;
-      const list = Array.isArray(data?.cards) ? (data.cards as string[]).filter(c => KNOWN.has(c)) : null;
-      if (list && list.length) setCards(list as HomeCardId[]);
-      writeSnapshot(user.id, 'home-cards', list && list.length ? list : DEFAULT_HOME_CARDS);
+      const list = normalizeHomeCards(data?.cards);
+      setCards(list);
+      writeSnapshot(user.id, 'home-cards', list);
     });
   }, [user]);
 
@@ -77,7 +89,7 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
     switch (id) {
       case 'calendar': return <CalendarCard onConnect={onOpenCalendarSettings} />;
       case 'todo': return <TodoCard />;
-      case 'store': return <HomeListCard />;
+      case 'goals': return <DailyGoalsCard />;
     }
   };
 
@@ -108,7 +120,7 @@ function HomePageInner({ onOpenCalendarSettings, unassignedCount, onOpenUnassign
           {cards.map(id => (
             <button key={id} role="tab" aria-selected={mobileTab === id} onClick={() => setMobileTab(id)}
               className={`h-8 rounded-full text-sm font-medium transition-colors ${mobileTab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-              {id === 'calendar' ? 'Calendar' : id === 'todo' ? `To Do${todoCount ? ` (${todoCount})` : ''}` : `Store${storeCount ? ` (${storeCount})` : ''}`}
+              {id === 'calendar' ? 'Calendar' : id === 'todo' ? `To Do${todoCount ? ` (${todoCount})` : ''}` : 'Goals'}
             </button>
           ))}
         </div>

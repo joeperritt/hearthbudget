@@ -25,9 +25,9 @@ const tools = [{
   functionDeclarations: [
     {
       name: 'add_list_items',
-      description: 'Add items immediately. list=todo adds to the shared To Do list with an owner; list=store adds to the shared Store List (anything to buy or pick up).',
+      description: 'Add to dos immediately. list=todo adds to the shared To Do list with an owner.',
       parameters: { type: 'OBJECT', properties: {
-        list: { type: 'STRING', enum: ['todo', 'store'] },
+        list: { type: 'STRING', enum: ['todo'] },
         items: { type: 'ARRAY', items: { type: 'STRING' } },
         owner: { type: 'STRING', enum: ['joe', 'katie', 'family'], description: 'todo only' },
         due_date: { type: 'STRING', description: 'todo only, optional YYYY-MM-DD' },
@@ -157,7 +157,7 @@ View-only calendars (find_events may show their events for context, but NEVER pr
 ${roList || '(none)'}
 Rules:
 - If the user asks to add, change, move or delete an event on a view-only calendar (e.g. a work calendar), do not propose anything; reply that that calendar is view only in Perritt.
-- Any shopping request ("we need milk", "pick up batteries", "buy a new hose") -> add_list_items list=store, one item per thing, short names.
+- There is no store or shopping list. For a shopping request ("we need milk"), add nothing and reply briefly that Perritt no longer has a store list.
 - To dos ("remind me to...", "I need to...") -> add_list_items list=todo. owner defaults to ${profile.display_name.split(' ')[0].toLowerCase()}; use family for household tasks or when it mentions "we", "us" or Thomas; use the other person's name if it is for them. Add due_date/due_time only if a time frame is given.
 - Resolve relative dates ("tomorrow", "next Friday", "end of the month") against today in America/New_York.
 - "Remind me" turns on the asking user's reminder at the to do's due date AND time (reminder=at). If a time is missing, ask "What time?" before adding or changing anything. Never invent a time or use offsets/morning reminders. For existing to dos, find_todos may supply the existing due time. To turn it off, update_todo clear_reminder.
@@ -167,7 +167,7 @@ Rules:
 - When the user says an event was moved, rescheduled, changed, pushed, canceled or deleted, ALWAYS call find_events first, then propose_update_event or propose_delete_event on the existing event. NEVER create a new event in that case. If several events match, ask which one (list them briefly with day and time). If none match, say so and offer to create a new one.
 - For recurring events change only the single occurrence mentioned (use event_id) unless the user says "every" or "all" (then use recurring_event_id).
 - If a date or time is ambiguous or missing for a timed event, ask one quick follow-up question instead of guessing.
-- After any action, reply with ONE short line (e.g. "Added milk and eggs to Grocery." or "Here's the event — tap Confirm to add it.").
+- After any action, reply with ONE short line (e.g. "Added call the plumber to To Do." or "Here's the event — tap Confirm to add it.").
 - For anything outside lists and calendar, answer briefly and take no actions. Plain text, no markdown.${parsed.data.event_context ? `
 
 The user is editing one specific event: "${parsed.data.event_context.title}" (calendar_id ${parsed.data.event_context.calendar_id}, event_id ${parsed.data.event_context.event_id}). Do NOT call find_events — target this exact event. Restate the change in one line, then call propose_update_event (or propose_delete_event if they ask to remove it) with this calendar_id and event_id so the confirmation card appears. Never create a new event.` : ''}`;
@@ -178,7 +178,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
     // deno-lint-ignore no-explicit-any
     const proposals: any[] = [];
     let reply = '';
-    const listName: Record<string, string> = { todo: 'To Do', store: 'Store List' };
+    const listName: Record<string, string> = { todo: 'To Do' };
     const ownerId = (o: unknown): string | null | undefined => {
       if (o === undefined || o === null || o === '') return undefined;
       const k = String(o).toLowerCase();
@@ -227,7 +227,7 @@ The user is editing one specific event: "${parsed.data.event_context.title}" (ca
         const args = fc.args ?? {};
         let result: unknown;
         if (fc.name === 'add_list_items') {
-          const list = args.list === 'todo' || args.list === 'store' ? args.list : null;
+          const list = args.list === 'todo' ? args.list : null;
           const items = (Array.isArray(args.items) ? args.items : []).map((x: unknown) => String(x).trim().slice(0, 300)).filter(Boolean).slice(0, 25);
           if (!list || !items.length) result = { error: 'invalid list or items' };
           else if (list === 'todo' && args.reminder && (!validDate(args.due_date) || !validTime(args.due_time))) result = { error: 'Ask what date/time before creating this to do. Reminder requires both.' };

@@ -1,0 +1,1 @@
+ALTER TABLE public.home_list_items ADD CONSTRAINT home_list_items_todo_only CHECK (list_type = 'todo');

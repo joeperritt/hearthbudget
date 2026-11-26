@@ -12,7 +12,7 @@ export function useTable<T>(table: string, order: string) {
     setLoading(false);
   }, [table, order]);
   useEffect(() => { reload(); }, [reload]);
-  return { rows, loading, reload };
+  return { rows, loading, reload, setRows };
 }
 
 export async function run(p: PromiseLike<{ error: unknown }>, ok?: string) {

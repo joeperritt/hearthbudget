@@ -1,40 +1,8 @@
-import { WidgetSkeleton } from './WidgetSkeleton';
 import { useRef, useState, KeyboardEvent, TouchEvent, ReactNode } from 'react';
 import { Bell, Check, X, Plus, Repeat } from 'lucide-react';
 import { HomeListItem } from '@/hooks/useHomeList';
-import { ListItemEditSheet } from './ListItemEditSheet';
-import { useHomeData } from './HomeDataContext';
 
-/** Store List: shared household list. */
-export function HomeListCard() {
-  const { store: { items, loading, add, update, toggle, remove, clearCompleted } } = useHomeData();
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<HomeListItem | null>(null);
-  const open = items.filter(i => !i.completed);
-  const done = items.filter(i => i.completed);
-  const submit = () => { add(draft); setDraft(''); };
-
-  return (
-    <section className="bg-card rounded-2xl border border-border p-4 shadow-sm lg:h-full lg:flex lg:flex-col lg:min-h-0">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display text-lg font-semibold text-foreground">Store List</h2>
-        {done.length > 0 && <button onClick={clearCompleted} className="text-xs text-muted-foreground active:text-foreground">Clear completed</button>}
-      </div>
-      <QuickAdd value={draft} onChange={setDraft} onSubmit={submit} placeholder="Add something we need" />
-      {loading ? <WidgetSkeleton />
-        : items.length === 0 ? <p className="text-xs text-muted-foreground py-2">Nothing here yet.</p>
-        : (
-          <ul className="divide-y divide-border lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-            {[...open, ...done].map(item => (
-              <ListRow key={item.id} item={item} onToggle={() => toggle(item)} onDelete={() => remove(item.id)} onEdit={() => setEditing(item)} />
-            ))}
-          </ul>
-        )}
-      <ListItemEditSheet item={editing} kind="store" onClose={() => setEditing(null)} onSave={update} onDelete={id => { remove(id); setEditing(null); }} />
-    </section>
-  );
-}
-
+/** Shared list row pieces used by the To Do card. */
 export function QuickAdd({ value, onChange, onSubmit, placeholder, children }: { value: string; onChange: (v: string) => void; onSubmit: () => void; placeholder: string; children?: ReactNode }) {
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); onSubmit(); } };
   return (

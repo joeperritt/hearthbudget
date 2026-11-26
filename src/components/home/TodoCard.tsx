@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { HomeListItem } from '@/hooks/useHomeList';
 import { useHomeData } from './HomeDataContext';
 import { ListItemEditSheet } from './ListItemEditSheet';
-import { ListRow } from './HomeListCard';
+import { ListRow } from './ListRow';
 import { AddEventMenu } from './AddEventButton';
 import { ReminderSheet } from './ReminderSheet';
 import { ReminderAction } from '@/lib/todoReminderActions';

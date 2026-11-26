@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { ChevronRight, Target, Landmark, Wallet, LineChart } from 'lucide-react';
+import { ChevronRight, Target, Landmark, Wallet, LineChart, HandHeart } from 'lucide-react';
 import { SubHeader } from './SubHeader';
 import { GoalsView } from './GoalsView';
 import { NetWorthView } from './NetWorthView';
 import { IncomeView } from './IncomeView';
 import { AdvisorDataView } from './AdvisorDataView';
+import { GivingView } from './GivingView';
 
-type View = 'hub' | 'goals' | 'net-worth' | 'income' | 'advisor';
+type View = 'hub' | 'goals' | 'net-worth' | 'income' | 'giving' | 'advisor';
 
 export function RetreatHub({ onBack }: { onBack: () => void }) {
   const [view, setView] = useState<View>('hub');
@@ -14,11 +15,13 @@ export function RetreatHub({ onBack }: { onBack: () => void }) {
   if (view === 'goals') return <GoalsView onBack={back} />;
   if (view === 'net-worth') return <NetWorthView onBack={back} />;
   if (view === 'income') return <IncomeView onBack={back} />;
+  if (view === 'giving') return <GivingView onBack={back} />;
   if (view === 'advisor') return <AdvisorDataView onBack={back} />;
   const tiles: { v: View; icon: typeof Target; title: string; sub: string }[] = [
     { v: 'goals', icon: Target, title: 'Goals', sub: 'Vision, current goals, prior years' },
     { v: 'net-worth', icon: Landmark, title: 'Net Worth', sub: 'Balance sheet snapshots' },
     { v: 'income', icon: Wallet, title: 'Income', sub: 'Household income by month' },
+    { v: 'giving', icon: HandHeart, title: 'Giving', sub: 'Gifts by month, type and recipient' },
     { v: 'advisor', icon: LineChart, title: 'JP Advisor Data', sub: 'AUM, net new assets, production' },
   ];
   return (

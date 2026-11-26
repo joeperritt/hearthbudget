@@ -10,7 +10,7 @@ import { ReminderRule } from '@/hooks/useTodoReminders';
 
 interface Props {
   item: HomeListItem | null;
-  kind: 'todo' | 'store';
+  kind: 'todo';
   owners?: TodoOwner[];
   onClose: () => void;
   onSave: (id: string, patch: HomeListPatch) => void;

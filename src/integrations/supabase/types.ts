@@ -564,6 +564,131 @@ export type Database = {
           },
         ]
       }
+      giving_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          gift_date: string
+          household_id: string
+          id: string
+          notes: string | null
+          recipient: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          gift_date: string
+          household_id: string
+          id?: string
+          notes?: string | null
+          recipient?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          gift_date?: string
+          household_id?: string
+          id?: string
+          notes?: string | null
+          recipient?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      habit_definitions: {
+        Row: {
+          active: boolean
+          created_at: string
+          household_id: string
+          id: string
+          kind: string
+          name: string
+          period: string
+          section: string
+          sort_order: number
+          start_date: string
+          target: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          household_id: string
+          id?: string
+          kind?: string
+          name: string
+          period?: string
+          section?: string
+          sort_order?: number
+          start_date?: string
+          target?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          household_id?: string
+          id?: string
+          kind?: string
+          name?: string
+          period?: string
+          section?: string
+          sort_order?: number
+          start_date?: string
+          target?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habit_logs: {
+        Row: {
+          created_at: string
+          habit_id: string
+          household_id: string
+          id: string
+          log_date: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          habit_id: string
+          household_id: string
+          id?: string
+          log_date: string
+          updated_at?: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          habit_id?: string
+          household_id?: string
+          id?: string
+          log_date?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       home_list_items: {
         Row: {
           auto_due_date: string | null
@@ -1341,43 +1466,76 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          habit_id: string | null
           horizon: string
           household_id: string
           id: string
+          linked_line_item_id: string | null
+          linked_metric: string | null
+          progress: Json
           result: string | null
           result_note: string | null
           retreat_year: number
           sort_order: number
+          target: number | null
           text: string
+          tracking_type: string | null
           updated_at: string
         }
         Insert: {
           category: string
           created_at?: string
+          habit_id?: string | null
           horizon: string
           household_id: string
           id?: string
+          linked_line_item_id?: string | null
+          linked_metric?: string | null
+          progress?: Json
           result?: string | null
           result_note?: string | null
           retreat_year: number
           sort_order?: number
+          target?: number | null
           text: string
+          tracking_type?: string | null
           updated_at?: string
         }
         Update: {
           category?: string
           created_at?: string
+          habit_id?: string | null
           horizon?: string
           household_id?: string
           id?: string
+          linked_line_item_id?: string | null
+          linked_metric?: string | null
+          progress?: Json
           result?: string | null
           result_note?: string | null
           retreat_year?: number
           sort_order?: number
+          target?: number | null
           text?: string
+          tracking_type?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "retreat_goals_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habit_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retreat_goals_linked_line_item_id_fkey"
+            columns: ["linked_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "nw_line_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       retreat_scorecards: {
         Row: {

@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Recurrence } from '@/lib/recurrence';
 import { readSnapshot, trackRefresh, writeSnapshot } from '@/lib/snapshot';
 
-export type HomeListType = 'todo' | 'store';
+export type HomeListType = 'todo';
 
 export interface HomeListItem {
   id: string;
