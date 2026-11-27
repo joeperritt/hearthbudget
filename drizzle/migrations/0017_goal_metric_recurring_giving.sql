@@ -1,0 +1,2 @@
+ALTER TABLE public.retreat_goals DROP CONSTRAINT retreat_goals_linked_metric_check;
+ALTER TABLE public.retreat_goals ADD CONSTRAINT retreat_goals_linked_metric_check CHECK (linked_metric = ANY (ARRAY['giving_month','giving_recurring_month','production_month','nw_line_item','net_worth','net_worth_ex_business','advisor_aum','advisor_nna_ytd']));

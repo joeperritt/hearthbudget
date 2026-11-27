@@ -113,6 +113,20 @@
       "when": 1795726949435,
       "tag": "0015_to_do_only_home_list",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795744991778,
+      "tag": "0016_recurring_giving",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795745032300,
+      "tag": "0017_goal_metric_recurring_giving",
+      "breakpoints": true
     }
   ]
 }

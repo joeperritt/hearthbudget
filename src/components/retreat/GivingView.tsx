@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { SubHeader, YearSelect } from './SubHeader';
 import { useTable, db, run } from '@/hooks/useRetreatData';
 import { GIVING_TYPES, GivingEntry, givingTotals } from '@/lib/giving';
+import { RecurringGivingSection, AssignBucketDialog, generateRecurring } from './RecurringGiving';
 import { fmtCents } from '@/lib/netWorth';
 import { nyToday } from '@/lib/habits';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-type Draft = { id?: string; gift_date: string; type: string; recipient: string; amount: string; notes: string };
+type Draft = { recurring?: boolean; id?: string; gift_date: string; type: string; recipient: string; amount: string; notes: string };
 const $ = (n: number) => `$${fmtCents(n)}`;
 
 export function GivingView({ onBack }: { onBack: () => void }) {
@@ -24,6 +25,10 @@ export function GivingView({ onBack }: { onBack: () => void }) {
   const months = Object.keys(t.byMonth).sort().reverse();
   const [edit, setEdit] = useState<Draft | null>(null);
   const [rename, setRename] = useState<string | null>(null);
+  const [assign, setAssign] = useState<GivingEntry | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { generateRecurring().then(n => { setReady(true); if (n) data.reload(); }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const toAssign = data.rows.filter(r => r.unassigned && !r.skipped).length;
   const recipients = useMemo(() => [...new Set(data.rows.map(r => r.recipient).filter(Boolean))].sort(), [data.rows]);
 
   return (
@@ -43,6 +48,7 @@ export function GivingView({ onBack }: { onBack: () => void }) {
               ))}
             </div>
           </div>
+          {toAssign > 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{toAssign} giving {toAssign === 1 ? 'bucket' : 'buckets'} to assign</p>}
           <Button size="sm" variant="outline" onClick={() => setEdit({ gift_date: today.startsWith(`${y}-`) ? today : `${y}-01-01`, type: 'Church', recipient: '', amount: '', notes: '' })}><Plus /> Add gift</Button>
 
           {months.length === 0 && <p className="text-sm text-muted-foreground">No gifts recorded for {y}.</p>}
@@ -55,11 +61,12 @@ export function GivingView({ onBack }: { onBack: () => void }) {
               <ul className="divide-y divide-border">
                 {t.list.filter(e => e.gift_date.startsWith(m)).sort((a, b) => b.gift_date.localeCompare(a.gift_date)).map(e => (
                   <li key={e.id}>
-                    <button onClick={() => setEdit({ id: e.id, gift_date: e.gift_date, type: e.type, recipient: e.recipient, amount: String(e.amount), notes: e.notes ?? '' })} className="w-full flex items-start gap-3 px-4 py-2.5 text-left">
+                    <button onClick={() => e.unassigned ? setAssign(e) : setEdit({ recurring: !!e.recurring_id, id: e.id, gift_date: e.gift_date, type: e.type, recipient: e.recipient, amount: String(e.amount), notes: e.notes ?? '' })} className="w-full flex items-start gap-3 px-4 py-2.5 text-left">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground truncate">{e.recipient || '(No recipient)'}</p>
                         <p className="text-[11px] text-muted-foreground truncate">{format(parseISO(e.gift_date), 'MMM d')} · {e.type}{e.notes ? ` · ${e.notes}` : ''}</p>
                       </div>
+                      {e.unassigned && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Assign</span>}
                       <span className="text-sm tabular-nums text-foreground">{$(Number(e.amount))}</span>
                     </button>
                   </li>
@@ -67,6 +74,8 @@ export function GivingView({ onBack }: { onBack: () => void }) {
               </ul>
             </section>
           ))}
+
+          {ready && <RecurringGivingSection today={today} onChanged={() => generateRecurring().then(() => data.reload())} />}
 
           {t.recipients.length > 0 && (
             <section className="rounded-xl border border-border bg-card p-4">
@@ -85,6 +94,7 @@ export function GivingView({ onBack }: { onBack: () => void }) {
         </div>
       )}
       <EntryDialog draft={edit} recipients={recipients} onClose={() => setEdit(null)} onDone={() => { setEdit(null); data.reload(); }} />
+      <AssignBucketDialog entry={assign} recipients={recipients} onClose={() => setAssign(null)} onDone={() => { setAssign(null); data.reload(); }} />
       <RenameDialog name={rename} onClose={() => setRename(null)} onDone={() => { setRename(null); data.reload(); }} />
     </div>
   );
@@ -115,17 +125,17 @@ function EntryDialog({ draft, recipients, onClose, onDone }: { draft: Draft | nu
             <Input className="col-span-2" aria-label="Notes" placeholder="Notes (optional)" value={d.notes} onChange={e => setD({ ...d, notes: e.target.value })} maxLength={500} />
           </div>
           <DialogFooter className="gap-2 sm:justify-between">
-            {d.id ? <Button variant="ghost" className="text-destructive" onClick={() => setConfirm(true)}>Delete</Button> : <span />}
+            {d.id ? <Button variant="ghost" className="text-destructive" onClick={() => setConfirm(true)}>{d.recurring ? 'Skip this month' : 'Delete'}</Button> : <span />}
             <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={!ok} onClick={save}>Save</Button></div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Delete this gift?</AlertDialogTitle><AlertDialogDescription>{d.recipient} · ${fmtCents(amount || 0)}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>{d.recurring ? 'Skip this month?' : 'Delete this gift?'}</AlertDialogTitle><AlertDialogDescription>{d.recipient} · ${fmtCents(amount || 0)}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { setConfirm(false); if (d.id && await run(db('giving_entries').delete().eq('id', d.id), 'Gift deleted')) onDone(); }}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={async () => { setConfirm(false); if (d.id && await run(d.recurring ? db('giving_entries').update({ skipped: true }).eq('id', d.id) : db('giving_entries').delete().eq('id', d.id), d.recurring ? 'Skipped for this month' : 'Gift deleted')) onDone(); }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

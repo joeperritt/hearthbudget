@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronRight, Target, Landmark, Wallet, LineChart, HandHeart } from 'lucide-react';
 import { SubHeader } from './SubHeader';
 import { GoalsView } from './GoalsView';
@@ -6,12 +6,14 @@ import { NetWorthView } from './NetWorthView';
 import { IncomeView } from './IncomeView';
 import { AdvisorDataView } from './AdvisorDataView';
 import { GivingView } from './GivingView';
+import { generateRecurring } from './RecurringGiving';
 
 type View = 'hub' | 'goals' | 'net-worth' | 'income' | 'giving' | 'advisor';
 
 export function RetreatHub({ onBack }: { onBack: () => void }) {
   const [view, setView] = useState<View>('hub');
   const back = () => setView('hub');
+  useEffect(() => { generateRecurring(); }, []);
   if (view === 'goals') return <GoalsView onBack={back} />;
   if (view === 'net-worth') return <NetWorthView onBack={back} />;
   if (view === 'income') return <IncomeView onBack={back} />;

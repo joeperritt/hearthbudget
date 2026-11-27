@@ -1,7 +1,8 @@
+import { RecurringItem, recurringTotal } from './giving';
 import { HabitDef, HabitLog, monthsLogged, ytdWeeklyAvg } from './habits';
 
 export type TrackingType = 'habit' | 'monthly' | 'linked' | 'count' | 'checklist' | 'quarterly';
-export type LinkedMetric = 'giving_month' | 'production_month' | 'nw_line_item' | 'net_worth' | 'net_worth_ex_business' | 'advisor_aum' | 'advisor_nna_ytd';
+export type LinkedMetric = 'giving_month' | 'giving_recurring_month' | 'production_month' | 'nw_line_item' | 'net_worth' | 'net_worth_ex_business' | 'advisor_aum' | 'advisor_nna_ytd';
 export type GoalStatus = 'on_track' | 'behind' | 'hit';
 
 export interface TrackedGoal {
@@ -14,6 +15,7 @@ export interface TrackingContext {
   today: string;                       // NY date
   habits: HabitDef[]; logs: HabitLog[];
   givingByMonth: Record<string, number>; // 'YYYY-MM' -> total
+  recurring?: RecurringItem[];
   advisor: { month: string; aum: number | null; nna: number | null; production: number | null }[];
   latestLineItem: (id: string) => number | null;
   latestNetWorth: number | null; latestNetWorthEx: number | null;
@@ -90,6 +92,15 @@ export function goalProgress(g: TrackedGoal, ctx: TrackingContext): GoalProgress
           const total = vals.reduce((a, b) => a + b, 0);
           const detail = g.linked_metric === 'giving_month' ? `${year} total ${money(total)}` : undefined;
           return reached(best, target, `Best ${year} month ${money(best)} of ${money(target)}`, detail);
+        }
+        case 'giving_recurring_month': {
+          const items = ctx.recurring ?? [];
+          const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+          const best = Math.max(0, ...months.filter(m => m <= ctx.today.slice(0, 7)).map(m => recurringTotal(items, m)));
+          const nowTotal = recurringTotal(items, ctx.today.slice(0, 7));
+          const total = Object.entries(ctx.givingByMonth).filter(([m]) => m.startsWith(`${year}-`)).reduce((a, [, v]) => a + v, 0);
+          const r = reached(nowTotal, target, `Recurring ${money(nowTotal)}/mo of ${money(target)}`, `${year} total given ${money(total)}`);
+          return best >= target && target > 0 && year <= curYear ? { ...r, status: 'hit' } : r;
         }
         case 'nw_line_item': {
           const v = g.linked_line_item_id ? ctx.latestLineItem(g.linked_line_item_id) ?? 0 : 0;

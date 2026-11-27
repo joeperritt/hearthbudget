@@ -573,7 +573,12 @@ export type Database = {
           id: string
           notes: string | null
           recipient: string
+          recurring_id: string | null
+          recurring_month: string | null
+          skipped: boolean
+          split_from: string | null
           type: string
+          unassigned: boolean
           updated_at: string
         }
         Insert: {
@@ -584,7 +589,12 @@ export type Database = {
           id?: string
           notes?: string | null
           recipient?: string
+          recurring_id?: string | null
+          recurring_month?: string | null
+          skipped?: boolean
+          split_from?: string | null
           type: string
+          unassigned?: boolean
           updated_at?: string
         }
         Update: {
@@ -595,10 +605,76 @@ export type Database = {
           id?: string
           notes?: string | null
           recipient?: string
+          recurring_id?: string | null
+          recurring_month?: string | null
+          skipped?: boolean
+          split_from?: string | null
+          type?: string
+          unassigned?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giving_entries_recurring_id_fkey"
+            columns: ["recurring_id"]
+            isOneToOne: false
+            referencedRelation: "giving_recurring"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      giving_recurring: {
+        Row: {
+          amount: number
+          created_at: string
+          end_month: string | null
+          household_id: string
+          id: string
+          kind: string
+          notes: string | null
+          recipient: string
+          sort_order: number
+          start_month: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          end_month?: string | null
+          household_id?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          recipient: string
+          sort_order?: number
+          start_month: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          end_month?: string | null
+          household_id?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          recipient?: string
+          sort_order?: number
+          start_month?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "giving_recurring_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       habit_definitions: {
         Row: {
@@ -1875,6 +1951,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_giving_bucket: {
+        Args: { _entry_id: string; _gifts: Json }
+        Returns: undefined
+      }
+      change_recurring_amount: {
+        Args: { _amount: number; _effective: string; _id: string }
+        Returns: string
+      }
       compute_remind_at: {
         Args: { _due_date: string; _due_time: string; _rule: Json }
         Returns: string
@@ -1888,6 +1972,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      generate_recurring_giving: { Args: never; Returns: number }
       get_household_id: { Args: never; Returns: string }
       has_role: {
         Args: {

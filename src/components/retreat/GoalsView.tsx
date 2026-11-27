@@ -5,7 +5,7 @@ import { useTable, db, run } from '@/hooks/useRetreatData';
 import { NwLineItem, computeTotals, scorecard } from '@/lib/netWorth';
 import { GoalProgress, TrackedGoal, closeOutDefault, goalProgress } from '@/lib/goalTracking';
 import { HabitDef, HabitLog, nyToday } from '@/lib/habits';
-import { GivingEntry, givingByMonth } from '@/lib/giving';
+import { GivingEntry, RecurringItem, givingByMonth } from '@/lib/giving';
 import { GoalTracker, StatusChip } from './GoalTrackers';
 import { GoalDraft, GoalEditDialog } from './GoalEditDialog';
 import { CloseOutRow, CloseOutYearDialog } from './CloseOutYearDialog';
@@ -38,6 +38,7 @@ export function GoalsView({ onBack }: { onBack: () => void }) {
   const habits = useTable<HabitDef>('habit_definitions', 'sort_order');
   const logs = useTable<HabitLog>('habit_logs', 'log_date');
   const giving = useTable<GivingEntry>('giving_entries', 'gift_date');
+  const recurring = useTable<RecurringItem>('giving_recurring', 'sort_order');
   const advisor = useTable<{ month: string; aum: number | null; nna: number | null; production: number | null }>('advisor_monthly', 'month');
   const items = useTable<NwLineItem>('nw_line_items', 'sort_order');
   const snaps = useTable<{ id: string; snapshot_month: string }>('nw_snapshots', 'snapshot_month');
@@ -60,11 +61,11 @@ export function GoalsView({ onBack }: { onBack: () => void }) {
     const active = items.rows.filter(i => i.active || values[i.id] != null);
     const totals = latest ? computeTotals(active, values) : null;
     return {
-      today, habits: habits.rows, logs: logs.rows, givingByMonth: givingByMonth(giving.rows), advisor: advisor.rows,
+      today, habits: habits.rows, logs: logs.rows, givingByMonth: givingByMonth(giving.rows), recurring: recurring.rows, advisor: advisor.rows,
       latestLineItem: (id: string) => (latest ? values[id] ?? 0 : null),
       latestNetWorth: totals?.netWorth ?? null, latestNetWorthEx: totals?.netWorthExBusiness ?? null,
     };
-  }, [today, habits.rows, logs.rows, giving.rows, advisor.rows, items.rows, snaps.rows, vals.rows]);
+  }, [today, habits.rows, logs.rows, giving.rows, recurring.rows, advisor.rows, items.rows, snaps.rows, vals.rows]);
   const progressOf = (g: Goal): GoalProgress | null => goalProgress(g, ctx);
 
   const horizons = useMemo(() => [...new Set(current.map(g => g.horizon))].sort((a, b) => horizonKey(a) - horizonKey(b)), [current]);
